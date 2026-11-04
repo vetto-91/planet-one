@@ -4,7 +4,6 @@
 //! salto + corsa, sensibilità mouse regolabile e reset della scena.
 
 mod camera;
-mod hud;
 mod menu;
 mod player;
 mod scene;
@@ -53,16 +52,9 @@ fn main() {
         .init_state::<AppState>()
         .insert_resource(ClearColor(Color::srgb(0.02, 0.03, 0.05)))
         .init_resource::<camera::OrbitCamera>()
-        .init_resource::<hud::ShowFps>()
+        .init_resource::<menu::ShowFps>()
         // Costruzione iniziale della scena (terreno, luci, camera, player).
-        .add_systems(
-            Startup,
-            (
-                scene::spawn_camera,
-                scene::spawn_world_startup,
-                hud::setup_fps,
-            ),
-        )
+        .add_systems(Startup, (scene::spawn_camera, scene::spawn_world_startup))
         // Gameplay: attivo solo in `Playing`.
         .add_systems(
             Update,
@@ -77,17 +69,12 @@ fn main() {
                 .chain()
                 .run_if(in_state(AppState::Playing)),
         )
-        // HUD: aggiornamento FPS (sempre attivo, ma mostrato solo se ShowFps).
-        .add_systems(Update, hud::update_fps)
-        // Menu: il disegno della UI egui DEVI girare nella schedule
-        // EguiPrimaryContextPass (in egui 0.36 i font sono disponibili solo
-        // durante il pass).
+        // Menu e overlay FPS: il disegno della UI egui DEVE girare nella
+        // schedule EguiPrimaryContextPass (in egui 0.36 i font sono
+        // disponibili solo durante il pass).
         .add_systems(EguiPrimaryContextPass, menu::ui)
-        // Toggle Esc e reset: lo spostiamo su OnEnter(Resetting).
-        // Il toggle Esc in Paused permette anche di chiudere il menu;
-        // il reset vero è gestito dallo stato Resetting, non più da un
-        // booleano, per evitare il panic "Entity despawned".
-        .add_systems(Update, menu::toggle.run_if(in_state(AppState::Paused)))
+        // Toggle Esc: bidirezionale (Playing ↔ Paused), esclude Resetting.
+        .add_systems(Update, menu::toggle)
         .add_systems(OnEnter(AppState::Resetting), scene::reset_scene)
         .run();
 }

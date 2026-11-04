@@ -1,16 +1,24 @@
-//! Menu Esc (egui): toggle pausa, lista tasti, slider sensibilità, reset scena e FPS toggle.
+//! Menu Esc (egui): toggle pausa, lista tasti, slider sensibilità, reset scena e FPS overlay.
 
-use crate::{AppState, camera::OrbitCamera, hud::ShowFps};
+use crate::{AppState, camera::OrbitCamera};
+use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, egui};
 
-/// Toggle del menu: `Esc` alterna `Playing` ↔ `Paused`.
+/// Risorsa che decide se mostrare il contatore FPS (default: sì).
+#[derive(Resource)]
+pub struct ShowFps(pub bool);
+
+impl Default for ShowFps {
+    fn default() -> Self {
+        Self(true)
+    }
+}
+
+/// Toggle del menu: `Esc` alterna `Playing` ↔ `Paused` in entrambe le direzioni.
 ///
 /// La finestra di Bevy NON si chiude con Esc perché `close_on_escape`
 /// è disattivato in `main.rs`: Esc serve solo al menu.
-///
-/// Nota: il sistema ha `run_if(in_state(AppState::Paused))`, ma per sicurezza
-/// dentro la funzione rifiutiamo qualsiasi stato non `Paused`.
 pub fn toggle(
     keys: Res<ButtonInput<KeyCode>>,
     state: Res<State<AppState>>,
@@ -19,10 +27,12 @@ pub fn toggle(
     if !keys.just_pressed(KeyCode::Escape) {
         return;
     }
-    if state.get() != &AppState::Paused {
-        return;
+    match state.get() {
+        AppState::Playing => next.set(AppState::Paused),
+        AppState::Paused => next.set(AppState::Playing),
+        // Durante il reset ESC non fa nulla: è uno stato transitorio.
+        AppState::Resetting => {}
     }
-    next.set(AppState::Playing);
 }
 
 /// UI egui: hint discreto in gioco, menu completo in pausa.
@@ -38,6 +48,7 @@ pub fn ui(
     mut next: ResMut<NextState<AppState>>,
     mut orbit: ResMut<OrbitCamera>,
     mut show_fps: ResMut<ShowFps>,
+    diagnostics: Res<DiagnosticsStore>,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return; // Contesto egui non ancora pronto (primi frame).
@@ -51,6 +62,20 @@ pub fn ui(
                 .show(ctx, |ui| {
                     ui.label("ESC = menu");
                 });
+
+            // Contatore FPS in alto a destra (se attivato dal menu).
+            if show_fps.0
+                && let Some(fps) = diagnostics
+                    .get(&FrameTimeDiagnosticsPlugin::FPS)
+                    .and_then(|d| d.smoothed())
+            {
+                let size = ctx.viewport_rect().size();
+                egui::Area::new(egui::Id::new("fps"))
+                    .fixed_pos(egui::pos2(size.x - 100.0, 12.0))
+                    .show(ctx, |ui| {
+                        ui.label(format!("FPS: {:.0}", fps));
+                    });
+            }
         }
         AppState::Paused => {
             // In egui 0.36 i CentralPanel si mostrano dentro una Ui radice:
@@ -94,7 +119,6 @@ pub fn ui(
 
                     // Toggle contatore FPS.
                     ui.checkbox(&mut show_fps.0, "Mostra FPS");
-
                     ui.separator();
 
                     // Riprendi (equivalente a Esc).

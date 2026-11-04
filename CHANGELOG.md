@@ -2,6 +2,20 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## v0.0.1.4 — Fase 1.4: fix menu Esc e FPS overlay egui (2026-11-04)
+
+- Fix regressione "menu Esc scomparso": il toggle era rimasto monodirezionale
+  (solo chiusura) dopo la riscrittura della 1.3. Ripristinato il toggle
+  bidirezionale `Playing ↔ Paused`.
+- FPS overlay riscritto come Area egui in alto a destra (dentro
+  `EguiPrimaryContextPass`): il vecchio `Text2d` era in coordinate world
+  e risultava fuori schermo con la camera orbit.
+- Rimosso il modulo `hud.rs` (Text2d + posizionamento viewport): il contatore
+  ora vive in `menu.rs` insieme al resto della UI, con checkbox "Mostra FPS".
+- `ShowFps` default `true`, persistente tra pause e reset.
+- Test automatici: toggle Esc aperto/chiuso/riaperto, 2 reset consecutivi dal
+  menu via click simulato — 0 panic, 0 ambiguità camera.
+
 ## v0.0.1.3 — Fase 1.3: fix reset e contatore FPS (2026-11-04)
 
 - Fix del crash "Reset scena": introdotto lo stato transitorio `Resetting`;

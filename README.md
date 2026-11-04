@@ -2,9 +2,9 @@
 
 RPG 3D open source, cel-shaded, in terza persona. Scritto in **Rust** con il motore **[Bevy](https://bevy.org)**. Obiettivo iniziale: una **vertical slice** giocabile (1 quest, 1 NPC, 1 nemico, inventario minimale).
 
-> Stato: **Fase 1.3 — Fix reset + FPS overlay** (`v0.0.1.3`).
-> Menu Esc, WASD + corsa (Shift) + salto (Space), camera orbit, reset scena robusto,
-> contatore FPS attivabile dal menu.
+> Stato: **Fase 1.4 — Fix menu Esc + FPS overlay** (`v0.0.1.4`).
+> Menu Esc (tasti, slider sensibilità, checkbox FPS, reset scena robusto),
+> WASD + corsa (Shift) + salto (Space), camera orbit, contatore FPS.
 
 ## Requisiti
 
@@ -39,8 +39,7 @@ src/      codice del gioco (ECS Bevy)
   scene.rs  costruzione e reset della scena
   player.rs movimento, salto, corsa, facing, ground-check
   camera.rs orbita e follow della camera
-  menu.rs   UI egui (menu Esc)
-  hud.rs    contatore FPS
+  menu.rs   UI egui (menu Esc, hint, contatore FPS)
 docs/     decisioni (ADR) e convenzioni
 .github/  template issue e PR
 ```
