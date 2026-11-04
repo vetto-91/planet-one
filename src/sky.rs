@@ -121,7 +121,12 @@ pub fn gradient_skybox() -> Image {
         size,
         TextureDimension::D2,
         data,
-        TextureFormat::Rgba8UnormSrgb,
+        // NOTA: Escolhemos Rgba8Unorm (lineare) Deliberadamente em vez de Srgb:
+        // a cubemap é amostrada diretamente pelo shader do skybox SEM passar
+        // pela conversão sRGB do tonemapping, então guardar os dados em sRGB
+        // causaria um "double gamma" que deixa o céu acinzentado.
+        // Com Unorm os valores 46..232 viram diretamente o gradiente azul.
+        TextureFormat::Rgba8Unorm,
         RenderAssetUsages::default(),
     );
 

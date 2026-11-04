@@ -21,7 +21,7 @@ use bevy::prelude::*;
 use bevy::render::mesh::VertexAttributeValues;
 
 /// Estensione del terreno sul piano XZ (m): il piano è centrato in origine.
-const TERRAIN_SIZE: f32 = 40.0;
+const TERRAIN_SIZE: f32 = 100.0;
 /// Scala verticale della heightmap: i valori 0..255 diventano -1..+1 e poi
 /// vengono moltiplicati per `HEIGHT_SCALE` (m).
 const HEIGHT_SCALE: f32 = 4.0;
@@ -75,7 +75,7 @@ pub fn spawn_terrain(
         Collider::cuboid(TERRAIN_SIZE, 1.0, TERRAIN_SIZE),
         Mesh3d(placeholder_mesh),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::srgb(0.55, 0.65, 0.25),
+            base_color: Color::srgb(0.35, 0.50, 0.22),
             perceptual_roughness: 0.85,
             metallic: 0.0,
             ..Default::default()
@@ -125,6 +125,24 @@ pub fn update_terrain(
     // Genera mesh e collider dalla heightmap.
     let mesh = build_terrain_mesh(image, TERRAIN_SIZE, HEIGHT_SCALE);
     let collider = build_terrain_collider(image, TERRAIN_SIZE, HEIGHT_SCALE);
+
+    // Log diagnostico: dimensioni della heightmap e range delle altezze.
+    let (mut h_min, mut h_max) = (f32::INFINITY, f32::NEG_INFINITY);
+    for y in 0..image.height() {
+        for x in 0..image.width() {
+            let h = sample_height(image, x, y) * HEIGHT_SCALE;
+            h_min = h_min.min(h);
+            h_max = h_max.max(h);
+        }
+    }
+    info!(
+        "terrain diagnostics: image {}x{}, height range [{:.2}, {:.2}] m, size {} m",
+        image.width(),
+        image.height(),
+        h_min,
+        h_max,
+        TERRAIN_SIZE
+    );
 
     let mesh_handle = meshes.add(mesh);
     assets.built_mesh = Some(mesh_handle.clone());
@@ -176,11 +194,15 @@ fn build_terrain_collider(image: &Image, size: f32, height_scale: f32) -> Collid
     let width = image.width();
     let height = image.height();
 
+    // Parry heightfield usa una matrice `heights_zx` indicizzata [riga_z, colonna_x]:
+    // la prima dimensione è la Z, la seconda è la X. Qui costruiamo le righe
+    // lungo Z, quindi per ogni z scorriamo tutte le x.
     let mut heights: Vec<Vec<f32>> = Vec::with_capacity(height as usize);
-    for y in 0..height {
+    for z in 0..height {
         let mut row: Vec<f32> = Vec::with_capacity(width as usize);
         for x in 0..width {
-            row.push(sample_height(image, x, y) * height_scale);
+            // L'immagine ha y=z (riga) → coordinata z del mondo.
+            row.push(sample_height(image, x, z) * height_scale);
         }
         heights.push(row);
     }

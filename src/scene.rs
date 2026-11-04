@@ -15,8 +15,8 @@
 use crate::{AppState, camera::OrbitCamera, player, sky, terrain};
 use bevy::image::Image;
 use bevy::light::Skybox;
-use bevy::pbr::{DistanceFog, FogFalloff};
 use bevy::prelude::*;
+use bevy::render::view::Tonemapping;
 
 /// Marker sulle entità radice della scena, soggette al reset.
 #[derive(Component)]
@@ -32,27 +32,20 @@ pub struct Ground;
 /// agganciato ad essa e `bevy_egui` non lo ricrea mai. Il transform
 /// iniziale viene poi guidato dal sistema di follow; in caso di reset
 /// viene riportato al punto di partenza.
-///
-/// Nota: all'avvio Bevy 0.20 stampa un warning "render graph not
-/// configured" riferito a entità Observer interne (upstream, non nostro):
-/// la nostra camera ha il graph corretto tramite le required components di
-/// `Camera3d`.
 pub fn spawn_camera(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
+    // Cielo: cubemap procedurale generata a runtime (senza asset HDRI).
     let skybox = images.add(sky::gradient_skybox());
 
     commands.spawn((
         Camera3d::default(),
+        // Tonemapping disattivato: il cielo procedurale va visto così com'è,
+        // senza curve che ne alterano i colori.
+        Tonemapping::None,
         Transform::from_xyz(-4.0, 3.5, 6.0),
         Skybox {
             image: Some(skybox),
             brightness: 1000.0,
             ..Default::default()
-        },
-        DistanceFog {
-            color: Color::srgb(0.75, 0.80, 0.88),
-            directional_light_color: Color::srgb(1.0, 0.95, 0.85),
-            directional_light_exponent: 4.0,
-            falloff: FogFalloff::from_visibility(60.0),
         },
     ));
 }
@@ -77,11 +70,16 @@ pub fn spawn_world(
     commands.spawn((
         SceneNode,
         DirectionalLight {
-            illuminance: 2500.0,
+            color: Color::srgb(1.0, 0.95, 0.85),
+            illuminance: 4000.0,
             shadow_maps_enabled: true,
+            // Bias alzati per evitare "shadow acne" sul player: con la luce
+            // quasi verticale le facce frontali finivano in ombra propria.
+            shadow_depth_bias: 0.05,
+            shadow_normal_bias: 3.0,
             ..Default::default()
         },
-        Transform::from_xyz(4.0, 8.0, 3.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Transform::from_xyz(4.0, 10.0, 4.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
 
     // --- Player ---

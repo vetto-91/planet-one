@@ -2,8 +2,9 @@
 
 RPG 3D open source, cel-shaded, in terza persona. Scritto in **Rust** con il motore **[Bevy](https://bevy.org)**. Obiettivo iniziale: una **vertical slice** giocabile (1 quest, 1 NPC, 1 nemico, inventario minimale).
 
-> Stato: **Fase 2 — Scena** (`v0.0.2.0`).
-> Terreno da heightmap PNG con collider heightfield, cielo procedurale (cubemap generata a runtime), nebbia di distanza, luci, menu Esc con tasti e reset scena robusto, WASD + corsa (Shift) + salto (Space), camera orbit, contatore FPS.
+> Stato: **Fase 2.1 — Collisioni stabili + character controller** (`v0.0.2.1`).
+> Terreno 100 m da heightmap con collider allineato, player kinematico Avian
+> (niente più sprofondamenti), cielo procedurale corretto, F3 = wireframe collider.
 
 ## Requisiti
 
@@ -28,6 +29,7 @@ cargo clippy         # linter
 | Space | Salto |
 | Mouse | Orbita camera (sensibilità dal menu) |
 | Esc | Menu pausa (tasti, slider sensibilità, checkbox FPS, reset scena) |
+| F3 | Wireframe dei collider (debug fisico) |
 
 ## Struttura
 

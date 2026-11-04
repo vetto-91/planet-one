@@ -15,7 +15,7 @@ categories = ["game"]
 
 [dependencies]
 bevy = { version = "0.20.1", features = ["file_watcher"] }
-avian3d = "0.8.0"
+avian3d = { version = "0.8.0", features = ["debug-plugin"] }
 bevy_egui = "0.43.1"
 
 # Ottimizzazione build in dev: link dynamic per iterazione rapida

@@ -2,6 +2,28 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## v0.0.2.1 — Fase 2.1: character controller kinematico + fix collisioni terreno (2026-11-04)
+
+- Player migrato da `RigidBody::Dynamic` a character controller cinematico
+  Avian (`RigidBody::Kinematic` + `CustomPositionIntegration` + `MoveAndSlide`
+  in `FixedUpdate`): elimina sprofondamenti e cadute nel vuoto sulle pendenze
+  dell'heightfield a celle grandi (100 m / 256 = ~0.39 m).
+- campaign Gravità manuale (20 m/s²) in `movement`; salto solo se `Grounded`.
+- Terreno allargato a 100 m (da 40 m); heightmap mappata su -1..+1 (grigio
+  medio = 0) per avere colline sopra e sotto il livello base.
+- Collider heightfield Avian corretto: matrice `heights_zx` (righe=Z, colonne=X)
+  come richiesto da Parry, allineata alla mesh.
+- Cielo procedurale in `Rgba8Unorm` (lineare) invece di Srgb: sRGB causava un
+  "double gamma" che rendeva il cielo grigio; `Tonemapping::None` sulla camera.
+- Nebbia di distanza rimossa (era troppo densa a 80 m sul terreno piccolo);
+  riattivabile in futuro con slider.
+- Luci: `GlobalAmbientLight` 80 cd/m², `DirectionalLight` 4000 lux con
+  `shadow_depth_bias 0.05` / `shadow_normal_bias 3.0` per evitare shadow acne.
+- Debug: F3 toggle wireframe collider Avian (disattivato di default).
+- Diagnostica: log `terrain diagnostics` (image size, height range) a ogni rebuild.
+- Test automatici: camminata 6 s su colline (player sempre a y≈0.85, mai nel
+  vuoto), salto, menu Esc, 0 panic.
+
 ## v0.0.2.0 — Fase 2: Scena (terreno, cielo, nebbia, hot-reload) (2026-11-04)
 
 - Terreno procedurale da heightmap PNG (`assets/textures/terrain_heightmap.png`,
