@@ -1,11 +1,29 @@
 //! Planet One — RPG 3D open source, cel-shaded.
-//! Fase 1: movimento WASD relativo alla camera + orbita mouse + fisica (Avian).
+//!
+//! Fase 1.2: stato applicativo (Playing/Paused), menu Esc con egui,
+//! salto + corsa, sensibilità mouse regolabile e reset della scena.
 
 mod camera;
+mod menu;
 mod player;
+mod scene;
 
 use avian3d::prelude::*;
 use bevy::prelude::*;
+use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
+
+/// Stati principali dell'applicazione.
+///
+/// - `Playing`: gameplay attivo (movimento, camera, fisica).
+/// - `Paused`: menu Esc aperto; i sistemi di gameplay sono sospesi.
+#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub enum AppState {
+    /// Gameplay attivo.
+    #[default]
+    Playing,
+    /// Menu aperto (Esc): gameplay sospeso.
+    Paused,
+}
 
 fn main() {
     App::new()
@@ -15,78 +33,37 @@ fn main() {
                 resolution: (1280u32, 720u32).into(),
                 ..default()
             }),
+            // In Bevy 0.20 Esc non chiude più la finestra di default:
+            // lo lasciamo gestire solo al menu di gioco.
             ..default()
         }))
-        .add_plugins(PhysicsPlugins::default())
+        // Fisica (Avian) e UI (egui).
+        .add_plugins((PhysicsPlugins::default(), EguiPlugin::default()))
+        // Stato applicativo + risorse.
+        .init_state::<AppState>()
         .insert_resource(ClearColor(Color::srgb(0.02, 0.03, 0.05)))
         .init_resource::<camera::OrbitCamera>()
-        .add_systems(Startup, (setup, player::spawn))
+        .init_resource::<scene::ResetSceneRequest>()
+        // Costruzione iniziale della scena (terreno, luci, camera, player).
+        .add_systems(Startup, scene::spawn_scene_startup)
+        // Gameplay: attivo solo in `Playing`.
         .add_systems(
             Update,
             (
                 player::movement,
                 player::facing,
+                player::update_grounded,
+                player::jump,
                 camera::orbit,
                 camera::follow,
             )
-                .chain(),
+                .chain()
+                .run_if(in_state(AppState::Playing)),
         )
-        .add_systems(
-            Update,
-            (
-                player::movement,
-                player::facing,
-                camera::orbit,
-                camera::follow,
-            )
-                .chain(),
-        )
+        // Menu e gestione del reset.
+        // Il disegno della UI egui DEVI girare nella schedule EguiPrimaryContextPass
+        // (in egui 0.36 i font sono disponibili solo durante il pass).
+        .add_systems(EguiPrimaryContextPass, menu::ui)
+        .add_systems(Update, (menu::toggle, scene::reset_scene).chain())
         .run();
-}
-
-/// Scena statica: terreno fisico+visuale, luci e camera.
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
-    // Terreno: collider statico + mesh visuale.
-    commands.spawn((
-        RigidBody::Static,
-        Collider::cuboid(40.0, 1.0, 40.0),
-        Transform::from_xyz(0.0, -0.5, 0.0),
-    ));
-    commands.spawn((
-        Mesh3d(meshes.add(Plane3d {
-            half_size: Vec2::splat(20.0),
-            ..default()
-        })),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::srgb(0.10, 0.12, 0.10),
-            ..default()
-        })),
-    ));
-
-    // Luce ambientale soft.
-    commands.spawn((AmbientLight {
-        color: Color::srgb(0.6, 0.7, 0.9),
-        brightness: 80.0,
-        ..default()
-    },));
-
-    // Luce direzionale (sole) con ombre.
-    commands.spawn((
-        DirectionalLight {
-            illuminance: 2500.0,
-            shadow_maps_enabled: true,
-            ..default()
-        },
-        Transform::from_xyz(4.0, 8.0, 3.0).looking_at(Vec3::ZERO, Vec3::Y),
-    ));
-
-    // Camera: il transform iniziale viene poi guidato dal sistema di follow.
-    // Nota: all'avvio Bevy 0.20 stampa un warning "render graph not configured"
-    // riferito a entità Observer interne (upstream, non nostro): la nostra
-    // camera ha il graph registrato dalle required components di Camera3d.
-    commands.spawn((Camera3d::default(), Transform::from_xyz(-4.0, 3.5, 6.0)));
 }

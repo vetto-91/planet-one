@@ -2,6 +2,20 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## v0.0.1.2 — Fase 1.2: Menu, salto e corsa (2026-11-04)
+
+- Menu Esc (bevy_egui 0.43 + egui 0.36): lista tasti, slider sensibilità mouse,
+  pulsanti "Riprendi" e "Reset scena" (solo da menu, per evitare pressioni accidentali).
+- Stato applicativo `AppState { Playing, Paused }`: gameplay sospeso in pausa.
+- Salto con Space: ground-check via raycast Avian (solo collider marcati `Ground`),
+  impulso y=6.0 solo da terra, anti double-jump.
+- Corsa con Shift: moltiplicatore 1.7× su WASD.
+- Sensibilità mouse default 0.003 (da 0.005), regolabile a runtime dal menu.
+- Reset scena da zero: despawn ricorsivo delle entità `SceneNode` (terreno, luci,
+  player) e ricostruzione. La camera persiste (il contesto egui è agganciato ad essa
+  e bevy_egui non lo ricrea) e viene riposizionata.
+- Architettura: nuovi moduli `scene.rs` (spawn/reset) e `menu.rs` (UI).
+
 ## v0.0.1.0 — Fase 1: Movimento (2026-11-04)
 
 - Player: capsule dinamica (Avian) con rotazione bloccata, gravità e collisione col terreno.

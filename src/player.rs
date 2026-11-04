@@ -1,5 +1,6 @@
-//! Player: spawn, movimento WASD relativo alla camera e orientamento del mesh.
+//! Player: spawn, movimento WASD+sprint relativo alla camera, salto e facing.
 
+use crate::scene::{Ground, SceneNode};
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
@@ -12,17 +13,36 @@ pub struct Player;
 #[derive(Component)]
 pub struct PlayerVisual;
 
+/// Marker: il player è a terra in questo frame (gestito da [`update_grounded`]).
+#[derive(Component)]
+pub struct Grounded;
+
 /// Velocità di camminata (m/s).
 const WALK_SPEED: f32 = 6.0;
+/// Moltiplicatore di velocità in corsa (Shift).
+const SPRINT_FACTOR: f32 = 1.7;
+/// Impulso verticale del salto (m/s).
+const JUMP_SPEED: f32 = 6.0;
+/// Soglia oltre la quale il player non è considerato a terra (m).
+/// 0.85 = semi-altezza della capsula (raggio 0.35 + semi-lunghezza 0.5).
+const GROUND_CHECK_DISTANCE: f32 = 0.85;
+/// Pelle di tolleranza sotto i piedi (m): un po' di margine evita
+/// "salto che non parte" su micro-irregolarità del contatto.
+const GROUND_SKIN: f32 = 0.10;
+/// Soglia di velocità verticale sopra la quale il salto è bloccato
+/// (evita il doppio salto nei primi frame di ascesa).
+const MAX_RISE_FOR_JUMP: f32 = 0.5;
 
 /// Spawn del giocatore: capsule dinamica (corpo) + mesh visivo (figlio).
+/// La radice è marcata `SceneNode` per partecipare al reset della scena.
 pub fn spawn(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
 ) {
     commands
         .spawn((
+            SceneNode,
             Player,
             RigidBody::Dynamic,
             Collider::capsule(0.35, 1.0),
@@ -59,8 +79,9 @@ pub fn spawn(
         });
 }
 
-/// Movimento WASD relativo all'orientamento della camera (piano XZ).
-/// La componente verticale della velocità è lasciata alla gravità.
+/// Movimento WASD/frecce relativo all'orientamento della camera (piano XZ).
+/// `Shift` attiva la corsa (moltiplicatore [`SPRINT_FACTOR`]).
+/// La componente verticale della velocità è lasciata a gravità e salto.
 pub fn movement(
     keys: Res<ButtonInput<KeyCode>>,
     cameras: Query<&GlobalTransform, With<Camera3d>>,
@@ -86,8 +107,17 @@ pub fn movement(
     }
     let input = input.clamp_length_max(1.0);
     if input == Vec2::ZERO {
+        // Nessun input: azzera la velocità orizzontale (stop secco).
+        for mut velocity in &mut players {
+            velocity.x = 0.0;
+            velocity.z = 0.0;
+        }
         return;
     }
+
+    // Corsa con Shift (sinistro o destro).
+    let sprinting = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
+    let speed = WALK_SPEED * if sprinting { SPRINT_FACTOR } else { 1.0 };
 
     // Forward della camera proiettato sul piano XZ (forward = -Z locale).
     let cam_forward = camera.forward().normalize_or_zero();
@@ -109,8 +139,61 @@ pub fn movement(
     let direction = (forward * input.y + right * input.x).normalize_or_zero();
 
     for mut velocity in &mut players {
-        velocity.x = direction.x * WALK_SPEED;
-        velocity.z = direction.z * WALK_SPEED;
+        velocity.x = direction.x * speed;
+        velocity.z = direction.z * speed;
+    }
+}
+
+/// Ground-check: raycast verso il basso dal centro della capsula.
+///
+/// Il player è considerato a terra (componente [`Grounded`] aggiunta) se il
+/// raycast colpisce un collider marcato [`Ground`] entro la semi-altezza
+/// della capsula più una piccola pelle di tolleranza. Il ray esclude il
+/// collider del player stesso (senza il filtro colpirebbe la propria
+/// capsula). Restringere al marker `Ground` evita che muri o ostacoli
+/// futuri vengano scambiati per suolo calpestabile.
+pub fn update_grounded(
+    spatial_query: SpatialQuery,
+    mut commands: Commands,
+    grounds: Query<Entity, With<Ground>>,
+    players: Query<(Entity, &GlobalTransform), With<Player>>,
+) {
+    for (entity, transform) in &players {
+        // Il ray parte dal centro della capsula e guarda in basso.
+        // Il predicato accetta solo collider marcati `Ground`.
+        let filter = SpatialQueryFilter::default().with_excluded_entities([entity]);
+        let hit = spatial_query.cast_ray_predicate(
+            transform.translation(),
+            Dir3::NEG_Y,
+            GROUND_CHECK_DISTANCE + GROUND_SKIN,
+            true,
+            &filter,
+            &|hit_entity| grounds.contains(hit_entity),
+        );
+
+        if hit.is_some() {
+            commands.entity(entity).insert(Grounded);
+        } else {
+            commands.entity(entity).remove::<Grounded>();
+        }
+    }
+}
+
+/// Salto: impulso verticale su `just_pressed(Space)`, solo se a terra
+/// e non già in ascesa (evita il double-jump).
+pub fn jump(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut players: Query<(&mut LinearVelocity, Option<&Grounded>), With<Player>>,
+) {
+    if !keys.just_pressed(KeyCode::Space) {
+        return;
+    }
+
+    for (mut velocity, grounded) in &mut players {
+        let grounded = grounded.is_some();
+        if grounded && velocity.y <= MAX_RISE_FOR_JUMP {
+            velocity.y = JUMP_SPEED;
+        }
     }
 }
 
@@ -126,7 +209,7 @@ pub fn facing(
 
     let horizontal = Vec2::new(velocity.x, velocity.z);
     if horizontal.length() < 0.1 {
-        return;
+        return; // Fermi: mantieni l'orientamento attuale.
     }
 
     // Yaw che porta il -Z locale (il "naso") nella direzione di movimento.

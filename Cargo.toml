@@ -16,6 +16,7 @@ categories = ["game"]
 [dependencies]
 bevy = "0.20.1"
 avian3d = "0.8.0"
+bevy_egui = "0.43.1"
 
 # Ottimizzazione build in dev: link dynamic per iterazione rapida
 [profile.dev]

@@ -13,6 +13,8 @@ pub struct OrbitCamera {
     pub pitch: f32,
     /// Distanza dal player (m).
     pub distance: f32,
+    /// Sensibilità del mouse (rad per pixel), regolabile dal menu Esc.
+    pub sensitivity: f32,
 }
 
 impl Default for OrbitCamera {
@@ -21,12 +23,11 @@ impl Default for OrbitCamera {
             yaw: 0.6,
             pitch: 0.45,
             distance: 7.0,
+            sensitivity: 0.003,
         }
     }
 }
 
-/// Sensibilità del mouse (rad per pixel).
-const SENSITIVITY: f32 = 0.005;
 /// Limiti dell'angolo verticale.
 const PITCH_MIN: f32 = 0.05;
 const PITCH_MAX: f32 = 1.35;
@@ -36,10 +37,12 @@ const FOLLOW_SMOOTHNESS: f32 = 8.0;
 const LOOK_AT_HEIGHT: f32 = 1.0;
 
 /// Aggiorna yaw/pitch della camera con il movimento relativo del mouse.
+/// La sensibilità vive nella resource [`OrbitCamera`] ed è modificabile
+/// a runtime dal menu Esc (slider).
 /// Nota: funziona mentre il cursore è sulla finestra (cursor lock in un backlog futuro).
 pub fn orbit(mouse: Res<AccumulatedMouseMotion>, mut state: ResMut<OrbitCamera>) {
-    state.yaw -= mouse.delta.x * SENSITIVITY;
-    state.pitch = (state.pitch + mouse.delta.y * SENSITIVITY).clamp(PITCH_MIN, PITCH_MAX);
+    state.yaw -= mouse.delta.x * state.sensitivity;
+    state.pitch = (state.pitch + mouse.delta.y * state.sensitivity).clamp(PITCH_MIN, PITCH_MAX);
 }
 
 /// Posiziona la camera in orbita attorno al player, con smoothing.
