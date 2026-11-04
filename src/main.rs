@@ -2,7 +2,9 @@
 //! Finestra, camera in terza persona statica, cubo e piano terra.
 //! Il vero cel-shading (toon shader + outline) arriva in Fase 2.
 
+use bevy::core_pipeline::schedule::Core3d;
 use bevy::prelude::*;
+use bevy::render::camera::CameraRenderGraph;
 
 fn main() {
     App::new()
@@ -65,7 +67,10 @@ fn setup(
     ));
 
     // Camera in terza persona (statica in Fase 0).
+    // CameraRenderGraph va inserito prima di Camera3d per evitare un warning
+    // spurio dell'hook d'inserimento in Bevy 0.20.
     commands.spawn((
+        CameraRenderGraph::new(Core3d),
         Camera3d::default(),
         Transform::from_xyz(-4.0, 3.5, 6.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));

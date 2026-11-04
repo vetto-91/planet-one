@@ -2,6 +2,11 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## v0.0.0.2 — Fase 0 (2026-11-04)
+
+- fix: inserito `CameraRenderGraph::new(Core3d)` esplicitamente prima di `Camera3d`
+  per evitare il warning spurio dell'hook di spawn in Bevy 0.20.
+
 ## v0.0.0.1 — Fase 0: Bootstrap (2026-11-04)
 
 - Progetto scaffoldato: Rust + Bevy 0.20.1.
