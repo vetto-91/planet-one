@@ -12,8 +12,10 @@
 //! spawn degli altri elementi (`spawn_world`, chiamato sia allo startup
 //! sia durante il reset).
 
-use crate::{AppState, camera::OrbitCamera, player};
-use avian3d::prelude::*;
+use crate::{AppState, camera::OrbitCamera, player, sky, terrain};
+use bevy::image::Image;
+use bevy::light::Skybox;
+use bevy::pbr::{DistanceFog, FogFalloff};
 use bevy::prelude::*;
 
 /// Marker sulle entità radice della scena, soggette al reset.
@@ -35,8 +37,24 @@ pub struct Ground;
 /// configured" riferito a entità Observer interne (upstream, non nostro):
 /// la nostra camera ha il graph corretto tramite le required components di
 /// `Camera3d`.
-pub fn spawn_camera(mut commands: Commands) {
-    commands.spawn((Camera3d::default(), Transform::from_xyz(-4.0, 3.5, 6.0)));
+pub fn spawn_camera(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
+    let skybox = images.add(sky::gradient_skybox());
+
+    commands.spawn((
+        Camera3d::default(),
+        Transform::from_xyz(-4.0, 3.5, 6.0),
+        Skybox {
+            image: Some(skybox),
+            brightness: 1000.0,
+            ..Default::default()
+        },
+        DistanceFog {
+            color: Color::srgb(0.75, 0.80, 0.88),
+            directional_light_color: Color::srgb(1.0, 0.95, 0.85),
+            directional_light_exponent: 4.0,
+            falloff: FogFalloff::from_visibility(60.0),
+        },
+    ));
 }
 
 /// Costruisce gli elementi della scena soggetti a reset: terreno, luci e
@@ -49,43 +67,19 @@ pub fn spawn_world(
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
 ) {
-    // --- Terreno: collider statico + mesh visuale ---
-    commands.spawn((
-        SceneNode,
-        Ground,
-        RigidBody::Static,
-        Collider::cuboid(40.0, 1.0, 40.0),
-        Transform::from_xyz(0.0, -0.5, 0.0),
-    ));
-    commands.spawn((
-        SceneNode,
-        Mesh3d(meshes.add(Plane3d {
-            half_size: Vec2::splat(20.0),
-            ..default()
-        })),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::srgb(0.10, 0.12, 0.10),
-            ..default()
-        })),
-    ));
+    // --- Terreno: entità con segnaposto piatto; mesh e collider reali
+    //     vengono sostituiti da `terrain::update_terrain` appena la heightmap
+    //     è disponibile (o cambia a runtime). ---
+    terrain::spawn_terrain(commands, meshes, materials);
 
     // --- Luci ---
-    // Luce ambientale soft (riempie le zone in ombra).
-    commands.spawn((
-        SceneNode,
-        AmbientLight {
-            color: Color::srgb(0.6, 0.7, 0.9),
-            brightness: 80.0,
-            ..default()
-        },
-    ));
     // Luce direzionale (sole) con ombre.
     commands.spawn((
         SceneNode,
         DirectionalLight {
             illuminance: 2500.0,
             shadow_maps_enabled: true,
-            ..default()
+            ..Default::default()
         },
         Transform::from_xyz(4.0, 8.0, 3.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));

@@ -2,9 +2,8 @@
 
 RPG 3D open source, cel-shaded, in terza persona. Scritto in **Rust** con il motore **[Bevy](https://bevy.org)**. Obiettivo iniziale: una **vertical slice** giocabile (1 quest, 1 NPC, 1 nemico, inventario minimale).
 
-> Stato: **Fase 1.4 — Fix menu Esc + FPS overlay** (`v0.0.1.4`).
-> Menu Esc (tasti, slider sensibilità, checkbox FPS, reset scena robusto),
-> WASD + corsa (Shift) + salto (Space), camera orbit, contatore FPS.
+> Stato: **Fase 2 — Scena** (`v0.0.2.0`).
+> Terreno da heightmap PNG con collider heightfield, cielo procedurale (cubemap generata a runtime), nebbia di distanza, luci, menu Esc con tasti e reset scena robusto, WASD + corsa (Shift) + salto (Space), camera orbit, contatore FPS.
 
 ## Requisiti
 
@@ -34,9 +33,13 @@ cargo clippy         # linter
 
 ```
 assets/   modelli glTF, texture, audio, scene
+  textures/terrain_heightmap.png   heightmap in scala di grigi (256×256)
+scripts/  utility di sviluppo (es. gen_heightmap.py per rigenerare il terreno)
 src/      codice del gioco (ECS Bevy)
   main.rs   stato app e cablaggio sistemi
   scene.rs  costruzione e reset della scena
+  terrain.rs heightmap → mesh + collider, hot-reload
+  sky.rs    cubemap procedurale (gradiente cielo)
   player.rs movimento, salto, corsa, facing, ground-check
   camera.rs orbita e follow della camera
   menu.rs   UI egui (menu Esc, hint, contatore FPS)
@@ -44,11 +47,23 @@ docs/     decisioni (ADR) e convenzioni
 .github/  template issue e PR
 ```
 
+## Asset e hot-reload
+
+Il terreno è generato da `assets/textures/terrain_heightmap.png` (scala di grigi, 256×256):
+ogni pixel diventa un’altezza nel mesh e nel collider Avian. Modificando la PNG mentre il
+gioco gira, il terreno si ricostruisce automaticamente (`bevy/file_watcher`).
+
+Per rigenerare la heightmap con colline diverse:
+
+```bash
+python3 scripts/gen_heightmap.py
+```
+
 ## Roadmap
 
 - [x] Fase 0 — Bootstrap
 - [x] Fase 1 — Movimento (WASD + camera terza persona)
-- [ ] Fase 2 — Scena (terreno, cel-shading, luci)
+- [x] Fase 2 — Scena (terreno heightmap, cielo, nebbia, luci)
 - [ ] Fase 3 — Entità (NPC, dialoghi, nemico)
 - [ ] Fase 4 — UI / Inventario
 - [ ] Fase 5 — Vertical slice RPG

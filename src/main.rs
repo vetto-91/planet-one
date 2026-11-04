@@ -7,6 +7,8 @@ mod camera;
 mod menu;
 mod player;
 mod scene;
+mod sky;
+mod terrain;
 
 use avian3d::prelude::*;
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
@@ -51,10 +53,24 @@ fn main() {
         // Stato applicativo + risorse.
         .init_state::<AppState>()
         .insert_resource(ClearColor(Color::srgb(0.02, 0.03, 0.05)))
+        .insert_resource(GlobalAmbientLight {
+            color: Color::srgb(0.85, 0.90, 0.95),
+            brightness: 40.0,
+            ..Default::default()
+        })
         .init_resource::<camera::OrbitCamera>()
         .init_resource::<menu::ShowFps>()
-        // Costruzione iniziale della scena (terreno, luci, camera, player).
-        .add_systems(Startup, (scene::spawn_camera, scene::spawn_world_startup))
+        // Asset del terreno: heightmap PNG + handle del mesh generato.
+        .add_systems(
+            Startup,
+            (
+                scene::spawn_camera,
+                scene::spawn_world_startup,
+                terrain::setup_assets,
+            ),
+        )
+        // Ricostruzione del terreno quando la heightmap è disponibile o cambia.
+        .add_systems(Update, terrain::update_terrain)
         // Gameplay: attivo solo in `Playing`.
         .add_systems(
             Update,

@@ -2,6 +2,28 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## v0.0.2.0 — Fase 2: Scena (terreno, cielo, nebbia, hot-reload) (2026-11-04)
+
+- Terreno procedurale da heightmap PNG (`assets/textures/terrain_heightmap.png`,
+  256×256 in scala di grigi): mesh generato a runtime con un piano suddiviso e
+  vertici sollevati per pixel; grigio medio = altezza zero.
+- Collider Avian `heightfield` generato dalla stessa heightmap: il player
+  cammina realmente sulle colline.
+- Hot-reload dell’asset: `bevy/file_watcher` + `AssetEvent<Image>::Modified`
+  rigenerano mesh e collider senza riavviare il gioco.
+- Cielo procedurale: cubemap generata a runtime (`sky.rs`) con gradiente
+  orizzonte/zenit calcolato per pixel, senza asset esterni né HDRI da scaricare.
+- Nebbia di distanza (`DistanceFog` + `FogFalloff::from_visibility`) e luce
+  ambientale globale (`GlobalAmbientLight`) più calda e neutra.
+- Rimossa la vecchia luce ambientale per-entità (spawn sbagliato) e il piano
+  piatto segnaposto; il terreno ora è un’entità dedicata (`TerrainMesh`).
+- Script `scripts/gen_heightmap.py` per rigenerare il terreno senza asset
+  esterni (CC0, nessuna dipendenza aggiuntiva).
+- Moduli nuovi: `terrain.rs` (heightmap → mesh/collider) e `sky.rs`
+  (cubemap procedurale).
+- Test: build pulita, runtime stabile, hot-reload verificato con
+  heightmap modificata a runtime (mesh rigenerato senza panic).
+
 ## v0.0.1.4 — Fase 1.4: fix menu Esc e FPS overlay egui (2026-11-04)
 
 - Fix regressione "menu Esc scomparso": il toggle era rimasto monodirezionale
