@@ -1,0 +1,22 @@
+# Rust
+/target
+debug/
+release/
+**/*.rs.bk
+
+# Asset binari pesanti (usare Git LFS o release per i grandi)
+# assets/**/*.blend1
+
+# Blender
+*.blend1
+*.blend2
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Variabili locali
+.env

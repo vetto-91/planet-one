@@ -1,0 +1,28 @@
+[package]
+name = "planet-one"
+version = "0.0.0"
+edition = "2024"
+description = "Planet One — RPG 3D open source, cel-shaded (Rust + Bevy)"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/planet-one/planet-one"
+readme = "README.md"
+keywords = ["gamedev", "rpg", "bevy"]
+categories = ["game"]
+
+# Nota versioning: il formato del progetto è vMAJOR.MINOR.FEATURE.BUGFIX
+# (vedi docs/VERSIONING.md). Cargo/semver accetta solo 3 segmenti: i primi 3
+# vivono qui, il 4° (BUGFIX) è tracciato nei tag Git e in CHANGELOG.md.
+
+[dependencies]
+bevy = "0.20.1"
+
+# Ottimizzazione build in dev: link dynamic per iterazione rapida
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
