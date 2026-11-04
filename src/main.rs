@@ -1,10 +1,11 @@
-//! Planet One — Fase 0: bootstrap.
-//! Finestra, camera in terza persona statica, cubo e piano terra.
-//! Il vero cel-shading (toon shader + outline) arriva in Fase 2.
+//! Planet One — RPG 3D open source, cel-shaded.
+//! Fase 1: movimento WASD relativo alla camera + orbita mouse + fisica (Avian).
 
-use bevy::core_pipeline::schedule::Core3d;
+mod camera;
+mod player;
+
+use avian3d::prelude::*;
 use bevy::prelude::*;
-use bevy::render::camera::CameraRenderGraph;
 
 fn main() {
     App::new()
@@ -16,28 +17,45 @@ fn main() {
             }),
             ..default()
         }))
+        .add_plugins(PhysicsPlugins::default())
         .insert_resource(ClearColor(Color::srgb(0.02, 0.03, 0.05)))
-        .add_systems(Startup, setup)
+        .init_resource::<camera::OrbitCamera>()
+        .add_systems(Startup, (setup, player::spawn))
+        .add_systems(
+            Update,
+            (
+                player::movement,
+                player::facing,
+                camera::orbit,
+                camera::follow,
+            )
+                .chain(),
+        )
+        .add_systems(
+            Update,
+            (
+                player::movement,
+                player::facing,
+                camera::orbit,
+                camera::follow,
+            )
+                .chain(),
+        )
         .run();
 }
 
-/// Setup iniziale della scena: cubo, piano, luce e camera.
+/// Scena statica: terreno fisico+visuale, luci e camera.
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // Cubo protagonista (placeholder per il personaggio).
+    // Terreno: collider statico + mesh visuale.
     commands.spawn((
-        Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::srgb(0.85, 0.45, 0.15),
-            ..default()
-        })),
-        Transform::from_xyz(0.0, 0.5, 0.0),
+        RigidBody::Static,
+        Collider::cuboid(40.0, 1.0, 40.0),
+        Transform::from_xyz(0.0, -0.5, 0.0),
     ));
-
-    // Piano terra.
     commands.spawn((
         Mesh3d(meshes.add(Plane3d {
             half_size: Vec2::splat(20.0),
@@ -66,12 +84,9 @@ fn setup(
         Transform::from_xyz(4.0, 8.0, 3.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
 
-    // Camera in terza persona (statica in Fase 0).
-    // CameraRenderGraph va inserito prima di Camera3d per evitare un warning
-    // spurio dell'hook d'inserimento in Bevy 0.20.
-    commands.spawn((
-        CameraRenderGraph::new(Core3d),
-        Camera3d::default(),
-        Transform::from_xyz(-4.0, 3.5, 6.0).looking_at(Vec3::ZERO, Vec3::Y),
-    ));
+    // Camera: il transform iniziale viene poi guidato dal sistema di follow.
+    // Nota: all'avvio Bevy 0.20 stampa un warning "render graph not configured"
+    // riferito a entità Observer interne (upstream, non nostro): la nostra
+    // camera ha il graph registrato dalle required components di Camera3d.
+    commands.spawn((Camera3d::default(), Transform::from_xyz(-4.0, 3.5, 6.0)));
 }

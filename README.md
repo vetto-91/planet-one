@@ -30,7 +30,7 @@ docs/     decisioni (ADR) e convenzioni
 ## Roadmap
 
 - [x] Fase 0 — Bootstrap
-- [ ] Fase 1 — Movimento (WASD + camera terza persona)
+- [x] Fase 1 — Movimento (WASD + camera terza persona)
 - [ ] Fase 2 — Scena (terreno, cel-shading, luci)
 - [ ] Fase 3 — Entità (NPC, dialoghi, nemico)
 - [ ] Fase 4 — UI / Inventario
