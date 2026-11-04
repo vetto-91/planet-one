@@ -2,6 +2,19 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## v0.0.1.3 — Fase 1.3: fix reset e contatore FPS (2026-11-04)
+
+- Fix del crash "Reset scena": introdotto lo stato transitorio `Resetting`;
+  il reset avviene in `OnEnter(Resetting)` dove tutti i sistemi di gameplay
+  (`run_if(in_state(Playing))`) sono spenti, eliminando la corsa critica con
+  il ground-check che scriveva su entità despawnate.
+- Fix della camera duplicata al reset: separato `spawn_camera` (solo startup)
+  da `spawn_world` (startup + reset). La camera persiste e viene solo
+  riposizionata; sparisce il warning "Camera order ambiguities".
+- HUD FPS in alto a destra, attivabile/disattivabile dal menu Esc tramite
+  checkbox "Mostra FPS". Usa `FrameTimeDiagnosticsPlugin` e `Text2d`.
+- Rimossa risorsa `ResetSceneRequest` (ora obsoleta); codice documentato.
+
 ## v0.0.1.2 — Fase 1.2: Menu, salto e corsa (2026-11-04)
 
 - Menu Esc (bevy_egui 0.43 + egui 0.36): lista tasti, slider sensibilità mouse,

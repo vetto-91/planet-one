@@ -2,7 +2,9 @@
 
 RPG 3D open source, cel-shaded, in terza persona. Scritto in **Rust** con il motore **[Bevy](https://bevy.org)**. Obiettivo iniziale: una **vertical slice** giocabile (1 quest, 1 NPC, 1 nemico, inventario minimale).
 
-> Stato: **Fase 1.2 — Movimento completo + menu** (`v0.0.1.2`). WASD + corsa (Shift) + salto (Space), camera orbit con sensibilità regolabile, menu Esc con reset scena.
+> Stato: **Fase 1.3 — Fix reset + FPS overlay** (`v0.0.1.3`).
+> Menu Esc, WASD + corsa (Shift) + salto (Space), camera orbit, reset scena robusto,
+> contatore FPS attivabile dal menu.
 
 ## Requisiti
 
@@ -26,7 +28,7 @@ cargo clippy         # linter
 | Shift | Corsa (1.7×) |
 | Space | Salto |
 | Mouse | Orbita camera (sensibilità dal menu) |
-| Esc | Menu pausa (tasti, slider sensibilità, reset scena) |
+| Esc | Menu pausa (tasti, slider sensibilità, checkbox FPS, reset scena) |
 
 ## Struttura
 
@@ -35,9 +37,10 @@ assets/   modelli glTF, texture, audio, scene
 src/      codice del gioco (ECS Bevy)
   main.rs   stato app e cablaggio sistemi
   scene.rs  costruzione e reset della scena
-  player.rs movimento, salto, corsa, facing
+  player.rs movimento, salto, corsa, facing, ground-check
   camera.rs orbita e follow della camera
   menu.rs   UI egui (menu Esc)
+  hud.rs    contatore FPS
 docs/     decisioni (ADR) e convenzioni
 .github/  template issue e PR
 ```

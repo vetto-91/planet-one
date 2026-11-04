@@ -4,11 +4,13 @@
 //! salto + corsa, sensibilità mouse regolabile e reset della scena.
 
 mod camera;
+mod hud;
 mod menu;
 mod player;
 mod scene;
 
 use avian3d::prelude::*;
+use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
 use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 
@@ -16,6 +18,9 @@ use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 ///
 /// - `Playing`: gameplay attivo (movimento, camera, fisica).
 /// - `Paused`: menu Esc aperto; i sistemi di gameplay sono sospesi.
+/// - `Resetting`: transitorio: in un singolo frame despawn e ricostruzione
+///   della scena da zero; evita che sistemi di gameplay tentino di scrivere
+///   su entità che stanno per essere distrutte.
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub enum AppState {
     /// Gameplay attivo.
@@ -23,29 +28,41 @@ pub enum AppState {
     Playing,
     /// Menu aperto (Esc): gameplay sospeso.
     Paused,
+    /// Reset della scena in corso (un frame, non interattivo).
+    Resetting,
 }
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Planet One".into(),
-                resolution: (1280u32, 720u32).into(),
+        .add_plugins((
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "Planet One".into(),
+                    resolution: (1280u32, 720u32).into(),
+                    ..default()
+                }),
+                // In Bevy 0.20 Esc non chiude più la finestra di default:
+                // lo lasciamo gestire solo al menu di gioco.
                 ..default()
             }),
-            // In Bevy 0.20 Esc non chiude più la finestra di default:
-            // lo lasciamo gestire solo al menu di gioco.
-            ..default()
-        }))
-        // Fisica (Avian) e UI (egui).
-        .add_plugins((PhysicsPlugins::default(), EguiPlugin::default()))
+            PhysicsPlugins::default(),
+            EguiPlugin::default(),
+            FrameTimeDiagnosticsPlugin::default(),
+        ))
         // Stato applicativo + risorse.
         .init_state::<AppState>()
         .insert_resource(ClearColor(Color::srgb(0.02, 0.03, 0.05)))
         .init_resource::<camera::OrbitCamera>()
-        .init_resource::<scene::ResetSceneRequest>()
+        .init_resource::<hud::ShowFps>()
         // Costruzione iniziale della scena (terreno, luci, camera, player).
-        .add_systems(Startup, scene::spawn_scene_startup)
+        .add_systems(
+            Startup,
+            (
+                scene::spawn_camera,
+                scene::spawn_world_startup,
+                hud::setup_fps,
+            ),
+        )
         // Gameplay: attivo solo in `Playing`.
         .add_systems(
             Update,
@@ -60,10 +77,17 @@ fn main() {
                 .chain()
                 .run_if(in_state(AppState::Playing)),
         )
-        // Menu e gestione del reset.
-        // Il disegno della UI egui DEVI girare nella schedule EguiPrimaryContextPass
-        // (in egui 0.36 i font sono disponibili solo durante il pass).
+        // HUD: aggiornamento FPS (sempre attivo, ma mostrato solo se ShowFps).
+        .add_systems(Update, hud::update_fps)
+        // Menu: il disegno della UI egui DEVI girare nella schedule
+        // EguiPrimaryContextPass (in egui 0.36 i font sono disponibili solo
+        // durante il pass).
         .add_systems(EguiPrimaryContextPass, menu::ui)
-        .add_systems(Update, (menu::toggle, scene::reset_scene).chain())
+        // Toggle Esc e reset: lo spostiamo su OnEnter(Resetting).
+        // Il toggle Esc in Paused permette anche di chiudere il menu;
+        // il reset vero è gestito dallo stato Resetting, non più da un
+        // booleano, per evitare il panic "Entity despawned".
+        .add_systems(Update, menu::toggle.run_if(in_state(AppState::Paused)))
+        .add_systems(OnEnter(AppState::Resetting), scene::reset_scene)
         .run();
 }

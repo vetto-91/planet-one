@@ -1,6 +1,6 @@
-//! Menu Esc (egui): toggle pausa, lista tasti, slider sensibilità e reset scena.
+//! Menu Esc (egui): toggle pausa, lista tasti, slider sensibilità, reset scena e FPS toggle.
 
-use crate::{AppState, camera::OrbitCamera, scene::ResetSceneRequest};
+use crate::{AppState, camera::OrbitCamera, hud::ShowFps};
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, egui};
 
@@ -8,6 +8,9 @@ use bevy_egui::{EguiContexts, egui};
 ///
 /// La finestra di Bevy NON si chiude con Esc perché `close_on_escape`
 /// è disattivato in `main.rs`: Esc serve solo al menu.
+///
+/// Nota: il sistema ha `run_if(in_state(AppState::Paused))`, ma per sicurezza
+/// dentro la funzione rifiutiamo qualsiasi stato non `Paused`.
 pub fn toggle(
     keys: Res<ButtonInput<KeyCode>>,
     state: Res<State<AppState>>,
@@ -16,24 +19,25 @@ pub fn toggle(
     if !keys.just_pressed(KeyCode::Escape) {
         return;
     }
-    match state.get() {
-        AppState::Playing => next.set(AppState::Paused),
-        AppState::Paused => next.set(AppState::Playing),
+    if state.get() != &AppState::Paused {
+        return;
     }
+    next.set(AppState::Playing);
 }
 
 /// UI egui: hint discreto in gioco, menu completo in pausa.
 ///
 /// - In `Playing`: solo un piccolo hint in alto a sinistra ("ESC = menu").
 /// - In `Paused`: pannello centrale con la lista dei tasti, lo slider della
-///   sensibilità del mouse, il pulsante "Riprendi" e il pulsante
-///   "Reset scena" (ricostruzione da zero di terreno, luci e player).
+///   sensibilità del mouse, il checkbox per il contatore FPS, il pulsante
+///   "Riprendi" e il pulsante "Reset scena" (ricostruzione da zero di
+///   terreno, luci e player).
 pub fn ui(
     mut contexts: EguiContexts,
     state: Res<State<AppState>>,
     mut next: ResMut<NextState<AppState>>,
     mut orbit: ResMut<OrbitCamera>,
-    mut reset: ResMut<ResetSceneRequest>,
+    mut show_fps: ResMut<ShowFps>,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return; // Contesto egui non ancora pronto (primi frame).
@@ -88,6 +92,9 @@ pub fn ui(
                             .text("Sensibilità mouse"),
                     );
 
+                    // Toggle contatore FPS.
+                    ui.checkbox(&mut show_fps.0, "Mostra FPS");
+
                     ui.separator();
 
                     // Riprendi (equivalente a Esc).
@@ -96,12 +103,16 @@ pub fn ui(
                     }
 
                     // Reset della scena: ricostruzione da zero.
-                    // Pulsante (non tasto) per evitare pressioni accidentali.
+                    // Entra nello stato transitorio `Resetting`, in cui tutti i
+                    // sistemi di gameplay sono spenti; questo evita il panic
+                    // "Entity despawned" che accadeva quando il reset era
+                    // eseguito in `Update` insieme al ground-check.
                     if ui.button("Reset scena").clicked() {
-                        reset.0 = true;
-                        next.set(AppState::Playing);
+                        next.set(AppState::Resetting);
                     }
                 });
         }
+        // Durante Resetting non mostriamo nulla; la UI riapparirà in Playing/Paused.
+        AppState::Resetting => {}
     }
 }
