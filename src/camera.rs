@@ -15,8 +15,6 @@ use crate::player::Player;
 use bevy::input::mouse::AccumulatedMouseMotion;
 use bevy::prelude::*;
 
-/// Altezza degli occhi del player in prima persona (m).
-
 /// Modalità della camera.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum CameraMode {
