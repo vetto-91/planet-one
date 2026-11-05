@@ -16,9 +16,6 @@ use bevy::input::mouse::AccumulatedMouseMotion;
 use bevy::prelude::*;
 
 /// Altezza degli occhi del player in prima persona (m).
-/// Offset in avanti (m) della camera in prima persona, lungo la direzione
-/// di sguardo. 0 = dentro il player, 0.6 = appena fuori dalla capsula.
-const FIRST_PERSON_FORWARD_OFFSET: f32 = 3.0;
 
 /// Modalità della camera.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -70,8 +67,6 @@ const PITCH_MAX: f32 = 1.35;
 const FOLLOW_SMOOTHNESS: f32 = 8.0;
 /// Offset verticale del punto osservato in terza persona (petto del pg).
 const LOOK_AT_HEIGHT: f32 = 1.0;
-/// Smorzamento transizione prima→terza persona (1/s): più alto = più rapido.
-const MODE_SWITCH_SMOOTHNESS: f32 = 12.0;
 
 /// Aggiorna yaw/pitch con il movimento relativo del mouse (sempre attivo in
 /// entrambe le modalità, così la mira resta sincronizzata).
