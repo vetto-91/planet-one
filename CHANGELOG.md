@@ -130,6 +130,18 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 - Hiatus del cursore: lasciato al SO (Ctrl+Alt+Invio full-screen cattura input).
 - Test: transizione 3a(giu')->1a(orizzonte), poi 1a su/giu' — 0 panic.
 
+## v0.0.4.6 — F11 fullscreen + naso allineato al crosshair (2026-11-05)
+
+- F11: toggle fullscreen nativo (`WindowMode::Fullscreen(Current, Current)`)
+  gestito dal SO (cattura input mouse/tastiera). Aggiunto alla lista comandi
+  del menu Esc. Testato: 1280x720 -> fullscreen -> 1280x720.
+- PlayerVisual (naso) ora segue il crosshair:
+  - 3a persona fermo: ruota verso la direzione della camera (yaw).
+  - 3a in movimento: ruota verso la direzione di movimento (come prima).
+  - 1a persona: rotazione = yaw+pitch della camera (corpo segue lo sguardo).
+- Test: F11 on/off verificato via dimensioni finestra, rotazione naso
+  sinistra/droite misurata via pixel gialli — 0 panic.
+
 ## v0.0.2.0 — Fase 2: Scena (terreno, cielo, nebbia, hot-reload) (2026-11-04)
 
 - Terreno procedurale da heightmap PNG (`assets/textures/terrain_heightmap.png`,

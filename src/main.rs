@@ -152,7 +152,10 @@ fn main() {
         // F3: toggle debug wireframe dei collider (PhysicsDebugPlugin).
         .add_systems(
             Update,
-            toggle_physics_debug.run_if(in_state(AppState::Playing)),
+            (
+                toggle_physics_debug.run_if(in_state(AppState::Playing)),
+                toggle_fullscreen,
+            ),
         )
         .add_systems(OnEnter(AppState::Resetting), scene::reset_scene)
         .run();
@@ -165,6 +168,27 @@ fn disable_physics_debug_default(mut store: ResMut<GizmoConfigStore>) {
         .config_mut::<avian3d::prelude::PhysicsGizmos>()
         .0
         .enabled = false;
+}
+
+/// F11: toggle fullscreen (usa il sistema operativo per catturare input).
+fn toggle_fullscreen(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut windows: Query<&mut Window, With<bevy::window::PrimaryWindow>>,
+) {
+    use bevy::window::{MonitorSelection, VideoModeSelection, WindowMode};
+    if !keys.just_pressed(KeyCode::F11) {
+        return;
+    }
+    let Ok(mut window) = windows.single_mut() else {
+        return;
+    };
+    window.mode = match window.mode {
+        WindowMode::Windowed => {
+            WindowMode::Fullscreen(MonitorSelection::Current, VideoModeSelection::Current)
+        }
+        _ => WindowMode::Windowed,
+    };
+    info!("fullscreen: {:?}", window.mode);
 }
 
 /// Toggle con F3 del rendering debug dei collider (wireframe arancione).

@@ -343,22 +343,42 @@ pub fn run_move_and_slide(
     }
 }
 
-/// Ruota il mesh visivo verso la direzione di movimento (slerp in FixedUpdate).
+/// Ruota il mesh visivo del player.
+///
+/// - In 3a persona: ruota solo sull'asse Y verso la direzione di movimento
+///   (comportamento standard RPG), oppure verso la direzione della camera
+///   quando il player è fermo, così il "naso" punta verso il crosshair.
+/// - In 1a persona: il player è nascosto, ma la rotazione resta sincronizzata
+///   con yaw+pitch della camera (se mai riattivato).
 pub fn facing(
     mut visuals: Query<&mut Transform, With<PlayerVisual>>,
     players: Query<&LinearVelocity, With<Player>>,
+    orbit: Res<crate::camera::OrbitCamera>,
     time: Res<Time>,
 ) {
-    let Ok(velocity) = players.single() else {
-        return;
-    };
+    let mode = orbit.mode;
 
-    let horizontal = Vec2::new(velocity.x, velocity.z);
-    if horizontal.length() < 0.1 {
+    // In 1a persona: il corpo segue yaw+pitch della camera (naso = crosshair).
+    if mode == crate::camera::CameraMode::FirstPerson {
+        let target = Quat::from_rotation_y(orbit.yaw) * Quat::from_rotation_x(-orbit.pitch);
+        for mut transform in &mut visuals {
+            let alpha = (12.0 * time.delta_secs()).clamp(0.0, 1.0);
+            transform.rotation = transform.rotation.slerp(target, alpha);
+        }
         return;
     }
 
-    let target_yaw = (-velocity.x).atan2(-velocity.z);
+    // 3a persona: se ci si muove, ruota verso la direzione del movimento;
+    // se fermi, ruota verso la direzione della camera (verso il crosshair).
+    let Ok(velocity) = players.single() else {
+        return;
+    };
+    let horizontal = Vec2::new(velocity.x, velocity.z);
+    let target_yaw = if horizontal.length() > 0.1 {
+        (-velocity.x).atan2(-velocity.z)
+    } else {
+        orbit.yaw // fermo: guarda dove guarda la camera (crosshair)
+    };
     let target = Quat::from_rotation_y(target_yaw);
 
     for mut transform in &mut visuals {

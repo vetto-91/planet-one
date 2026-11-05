@@ -150,6 +150,9 @@ pub fn ui(
                     ui.label("• Space — salto");
                     ui.label("• Mouse — orbita camera");
                     ui.label("• Esc — menu / riprendi");
+                    ui.label("• F3 — wireframe collider (debug)");
+                    ui.label("• F11 — schermo intero on/off");
+                    ui.label("• V — prima persona on/off, RMB tenuto = prima persona temporanea");
                     ui.separator();
 
                     // Sensibilità del mouse: modifica la resource in tempo reale.
