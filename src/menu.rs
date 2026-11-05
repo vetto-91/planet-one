@@ -182,16 +182,7 @@ pub fn ui(
 
                     ui.add_space(8.0);
                     // Esci dal gioco: chiude la finestra con AppExit::Success.
-                    let exit_btn = ui.button("Esci dal gioco");
-                    if exit_btn.hovered() || exit_btn.clicked() {
-                        info!(
-                            "[UI] bottone Esci: hovered={} clicked={} rect={:?}",
-                            exit_btn.hovered(),
-                            exit_btn.clicked(),
-                            exit_btn.rect
-                        );
-                    }
-                    if exit_btn.clicked() {
+                    if ui.button("Esci dal gioco").clicked() {
                         info!("[EVENT] richiesta uscita dal gioco");
                         exit.write(AppExit::Success);
                     }
