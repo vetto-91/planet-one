@@ -9,7 +9,7 @@
 //!   usando lo stesso `MoveAndSlide` del player (senza input utente).
 //!
 //! Interazione: tasto `E` quando si è nel range di un `Interactable`.
-//! Dialogo: pannello in basso (stile RPG), `Enter`/`Space` per avanzare,
+//! Dialogo: pannello in basso (stile RPG), `E`/`Invio` per avanzare,
 //! `Esc` per chiudere. Il movimento resta libero durante il dialogo.
 
 use crate::combat::EnemyHealth;
@@ -64,6 +64,25 @@ pub struct DialogState {
     pub speaker: String,
     pub lines: Vec<String>,
     pub index: usize,
+    /// Scelte mostrate dopo l'ultima riga (vuoto = nessuna scelta).
+    pub choices: Vec<String>,
+    /// Scelta evidenziata (indice in `choices`).
+    pub selected: usize,
+    /// `true` quando si mostra la domanda con le scelte (dopo l'ultima riga).
+    pub choosing: bool,
+    /// Scelta confermata alla chiusura (`None` = nessuna scelta, es. Esc).
+    pub result: Option<usize>,
+    /// La E che chiude il dialogo non deve riaprirlo nello stesso frame.
+    pub block_interact: bool,
+}
+
+/// Chiude il dialogo registrando l'eventuale scelta confermata.
+fn close_dialog(dialog: &mut DialogState, result: Option<usize>) {
+    dialog.open = false;
+    dialog.index = 0;
+    dialog.choosing = false;
+    dialog.result = result;
+    dialog.block_interact = true;
 }
 
 /// Spawn dell'NPC a una posizione data, con dialogo.
@@ -153,6 +172,11 @@ pub fn interact(
         nearest.prompt = None;
         return;
     }
+    // La E che ha appena chiuso il dialogo non deve riaprirlo.
+    if dialog.block_interact {
+        dialog.block_interact = false;
+        return;
+    }
 
     let Ok(player) = players.single() else {
         return;
@@ -188,27 +212,60 @@ pub fn interact(
             lines
         };
         dialog.index = 0;
+        dialog.choices = crate::quest::npc_quest_choices(&quest);
+        dialog.selected = 0;
+        dialog.choosing = false;
+        dialog.result = None;
         info!("dialogo aperto con {}", npc.name);
     }
 }
 
-/// Avanza il dialogo con Enter/Space; chiude con Esc.
+/// Avanza il dialogo con E o Invio; chiude con Esc.
+///
+/// Se il dialogo ha delle scelte, dopo l'ultima riga si entra in modalità
+/// `choosing`: Su/Giù (o W/S) cambiano la scelta evidenziata, E/Invio la
+/// confermano. Esc chiude senza scelta (equivale a rifiutare).
 pub fn advance_dialog(keys: Res<ButtonInput<KeyCode>>, mut dialog: ResMut<DialogState>) {
     if !dialog.open {
         return;
     }
 
     if keys.just_pressed(KeyCode::Escape) {
-        dialog.open = false;
-        dialog.index = 0;
+        close_dialog(&mut dialog, None);
         return;
     }
 
-    if keys.just_pressed(KeyCode::Enter) || keys.just_pressed(KeyCode::Space) {
+    let confirm = keys.just_pressed(KeyCode::KeyE) || keys.just_pressed(KeyCode::Enter);
+
+    if dialog.choosing {
+        let n = dialog.choices.len();
+        if n > 0 {
+            if keys.just_pressed(KeyCode::ArrowUp) || keys.just_pressed(KeyCode::KeyW) {
+                dialog.selected = (dialog.selected + n - 1) % n;
+            }
+            if keys.just_pressed(KeyCode::ArrowDown) || keys.just_pressed(KeyCode::KeyS) {
+                dialog.selected = (dialog.selected + 1) % n;
+            }
+        }
+        if confirm {
+            let choice = dialog.selected;
+            info!("[DIALOG] scelta confermata: {}", choice);
+            close_dialog(&mut dialog, Some(choice));
+        }
+        return;
+    }
+
+    if confirm {
         dialog.index += 1;
         if dialog.index >= dialog.lines.len() {
-            dialog.open = false;
-            dialog.index = 0;
+            if dialog.choices.is_empty() {
+                close_dialog(&mut dialog, None);
+            } else {
+                // Resta sull'ultima riga e mostra le scelte.
+                dialog.index = dialog.lines.len().saturating_sub(1);
+                dialog.choosing = true;
+                dialog.selected = 0;
+            }
         }
     }
 }

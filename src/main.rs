@@ -155,9 +155,12 @@ fn main() {
                 quest::update_thief_hint,
                 quest::place_quest_thief,
                 quest::tick_title,
+                // advance_dialog PRIMA di interact: la E che apre il dialogo
+                // non deve anche avanzarlo nello stesso frame.
+                entities::advance_dialog.before(entities::interact),
                 entities::interact,
-                entities::advance_dialog,
                 inventory::collect_pickups,
+                inventory::use_hotbar_items,
                 combat::player_attack,
                 combat::contact_damage,
                 combat::handle_enemy_death,
@@ -170,7 +173,13 @@ fn main() {
         // disponibili solo durante il pass).
         .add_systems(EguiPrimaryContextPass, menu::ui)
         // Toggle Esc: bidirezionale (Playing ↔ Paused), esclude Resetting.
-        .add_systems(Update, menu::toggle)
+        // (dopo advance_dialog e prima di interact: vedi `DialogState::block_interact`)
+        .add_systems(
+            Update,
+            menu::toggle
+                .after(entities::advance_dialog)
+                .before(entities::interact),
+        )
         // F3: toggle debug wireframe dei collider (PhysicsDebugPlugin).
         .add_systems(
             Update,

@@ -41,16 +41,21 @@ grep "\[EVENT\]" run.log    # eventi finestra/cursore
 | Esc | Menu pausa (tasti, slider sensibilità, checkbox FPS, reset scena) |
 | F3 | Wireframe dei collider (debug fisico) |
 | F11 | Schermo intero on/off (in fullscreen il cursore è bloccato e nascosto) |
-| TAB (tenuto) | Obiettivi della quest "Denaro Rubato" |
-| E | Parla con l'NPC vicino |
+| TAB (tenuto) | Obiettivi della quest (solo a quest attiva) |
+| E | Parla con l'NPC vicino; nel dialogo continua / conferma |
+| Invio | Nel dialogo: continua / conferma (alternativa a E) |
+| Su/Giù o W/S | Nel dialogo: cambia la scelta evidenziata |
+| 1–9, 0 | Usa l'oggetto nello slot corrispondente della barra in basso (pozione: +25 HP) |
 | Click sinistro | Attacco melee |
 
 ## Quest: "Denaro Rubato"
 
-Parla con il **Viandante** (NPC blu) allo spawn → la quest parte.
-Trova il **ladro** (cubo rosso, lontano, oltre le colline; la bussola in alto ti guida), uccidilo,
-raccogli le **12 monete d'oro** che lascia, torna dal Viandante → completata.
-La bussola in alto al centro ti guida sempre; tieni **TAB** per gli obiettivi.
+Parla con il **Viandante** (NPC blu) allo spawn: alla fine del dialogo scegli
+"Sì, ti aiuto" per far partire la quest ("Ora non ho tempo" la rimanda).
+Trova il **ladro** (cubo rosso, lontano, oltre le colline; il segnalino rosso sulla bussola
+in alto indica la sua direzione), uccidilo, raccogli le **12 monete d'oro** che lascia,
+torna dal Viandante → completata, con ricompensa di 5 monete.
+Tieni **TAB** per gli obiettivi: spunta verde = completato, sfera azzurra = in corso.
 
 ## Struttura
 

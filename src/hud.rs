@@ -5,7 +5,7 @@
 
 use crate::combat::EnemyHealth;
 use crate::entities::Enemy;
-use crate::inventory::{Inventory, ItemKind};
+use crate::inventory::Inventory;
 use crate::player::PlayerHealth;
 use bevy::prelude::*;
 use bevy_egui::egui;
@@ -84,12 +84,7 @@ pub fn draw_hud(ctx: &egui::Context, health: &PlayerHealth, inventory: &Inventor
     // --- Inventario in basso al centro: slot quadrati con icona colore + qty ---
     // Le monete NON compaiono qui (solo nel contatore in alto a sinistra).
     // Gli slot si creano in ordine di raccolta (vedi Inventory::add), max 10 (tasti 1..0).
-    let visible: Vec<_> = inventory
-        .slots
-        .iter()
-        .filter(|s| s.kind != ItemKind::Coin && inventory.qty(s.kind) > 0)
-        .take(10)
-        .collect();
+    let visible = inventory.hotbar();
     if !visible.is_empty() {
         let slot = 44.0_f32;
         let gap = 6.0;
@@ -117,7 +112,11 @@ pub fn draw_hud(ctx: &egui::Context, health: &PlayerHealth, inventory: &Inventor
                             egui::StrokeKind::Inside,
                         );
                         // Tasto associato allo slot: 1..9, poi 0 (10 slot in tutto).
-                        let key = if i == 9 { "0".to_string() } else { (i + 1).to_string() };
+                        let key = if i == 9 {
+                            "0".to_string()
+                        } else {
+                            (i + 1).to_string()
+                        };
                         ui.painter().text(
                             egui::pos2(rect.min.x + 4.0, rect.min.y + 3.0),
                             egui::Align2::LEFT_TOP,

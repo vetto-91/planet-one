@@ -38,8 +38,9 @@ pub fn toggle(
         return;
     }
     // Se un dialogo è aperto, Esc lo chiude (gestito da advance_dialog):
-    // qui non apriamo il menu.
-    if dialog.open {
+    // qui non apriamo il menu. `block_interact` copre il caso in cui il dialogo
+    // sia già stato chiuso da advance_dialog nello stesso frame.
+    if dialog.open || dialog.block_interact {
         return;
     }
     match state.get() {
@@ -162,7 +163,9 @@ pub fn ui(
             if let Some((text, _t)) = &quest.title {
                 draw_title_banner(ctx, text);
             }
-            if keys.pressed(KeyCode::Tab) {
+            // Obiettivi (TAB): solo a quest accettata e non ancora completata.
+            if keys.pressed(KeyCode::Tab) && quest.accepted && quest.stage != QuestStage::Completed
+            {
                 draw_objectives(ctx, &quest);
             }
 
@@ -280,32 +283,70 @@ fn show_interact_prompt(
 /// hint per avanzare/chiudere.
 fn show_dialog_panel(ctx: &egui::Context, dialog: &DialogState) {
     let size = ctx.viewport_rect().size();
-    let panel_h = 110.0;
+    let panel_w = 780.0_f32.min(size.x - 40.0);
+    let panel_h = if dialog.choosing { 250.0 } else { 190.0 };
+    let gold = egui::Color32::from_rgb(255, 214, 102);
     let frame = egui::Frame::default()
-        .fill(egui::Color32::from_rgba_unmultiplied(15, 18, 28, 235))
-        .stroke(egui::Stroke::new(
-            1.0,
-            egui::Color32::from_rgb(90, 110, 160),
-        ))
-        .inner_margin(egui::Margin::symmetric(16, 12))
-        .corner_radius(egui::CornerRadius::same(6));
+        .fill(egui::Color32::from_rgba_unmultiplied(10, 12, 20, 250))
+        .stroke(egui::Stroke::new(2.0, gold))
+        .inner_margin(egui::Margin::symmetric(26, 18))
+        .corner_radius(egui::CornerRadius::same(10));
 
     egui::Area::new(egui::Id::new("dialog_panel"))
-        .fixed_pos(egui::pos2(size.x / 2.0 - 320.0, size.y - panel_h - 24.0))
+        .fixed_pos(egui::pos2(
+            size.x / 2.0 - panel_w / 2.0,
+            size.y - panel_h - 48.0,
+        ))
         .show(ctx, |ui| {
-            ui.set_width(640.0);
-            ui.set_height(panel_h);
+            ui.set_width(panel_w);
+            ui.set_min_height(panel_h);
             frame.show(ui, |ui| {
-                ui.label(egui::RichText::new(&dialog.speaker).strong().size(16.0));
-                ui.add_space(4.0);
-                if let Some(line) = dialog.lines.get(dialog.index) {
-                    ui.label(line);
-                }
-                ui.add_space(6.0);
+                ui.set_min_width(panel_w - 52.0);
+                // Nome del parlante: grande e colorato.
                 ui.label(
-                    egui::RichText::new("Enter/Space = avanti   •   Esc = chiudi")
-                        .small()
-                        .color(egui::Color32::from_rgb(160, 170, 190)),
+                    egui::RichText::new(&dialog.speaker)
+                        .strong()
+                        .size(26.0)
+                        .color(gold),
+                );
+                ui.add_space(8.0);
+                // Riga corrente: testo grande, bianco pieno.
+                if let Some(line) = dialog.lines.get(dialog.index) {
+                    ui.label(
+                        egui::RichText::new(line)
+                            .size(23.0)
+                            .color(egui::Color32::from_rgb(250, 252, 255)),
+                    );
+                }
+                // Scelte (dopo l'ultima riga): quella evidenziata è in oro.
+                if dialog.choosing {
+                    ui.add_space(12.0);
+                    for (i, choice) in dialog.choices.iter().enumerate() {
+                        let selected = i == dialog.selected;
+                        let (prefix, color) = if selected {
+                            ("> ", gold)
+                        } else {
+                            ("   ", egui::Color32::from_rgb(190, 198, 215))
+                        };
+                        let mut text = egui::RichText::new(format!("{prefix}{choice}"))
+                            .size(22.0)
+                            .color(color);
+                        if selected {
+                            text = text.strong();
+                        }
+                        ui.label(text);
+                    }
+                }
+                ui.add_space(10.0);
+                let hint = if dialog.choosing {
+                    "Su/Giù = scegli   •   E / Invio = conferma   •   Esc = chiudi"
+                } else {
+                    "E / Invio = continua   •   Esc = chiudi"
+                };
+                ui.label(
+                    egui::RichText::new(hint)
+                        .size(15.0)
+                        .color(egui::Color32::from_rgb(175, 185, 205)),
                 );
             });
         });
@@ -350,7 +391,7 @@ fn draw_compass(
     // La camera guarda in direzione (-sin yaw, -cos yaw): bearing = -yaw.
     let heading_deg = (-orbit.yaw).to_degrees().rem_euclid(360.0);
     const BAR_W: f32 = 440.0;
-    const BAR_H: f32 = 46.0;
+    const BAR_H: f32 = 52.0;
     const WIN_HALF_DEG: f32 = 45.0; // finestra visibile ~90°
 
     egui::Area::new(egui::Id::new("compass"))
@@ -427,33 +468,60 @@ fn draw_compass(
                 egui::Stroke::NONE,
             ));
 
-            // Freccia verso il target, relativa allo sguardo (lato destro della barra).
+            // Indicatore del target sulla tacca del suo bearing (stesso asse
+            // dei gradi): allineato alla posizione reale. Fuori dalla finestra
+            // di ±45° resta sul bordo, con la punta rivolta verso il target.
             if let Some(t) = target {
                 let to = t - player_pos;
-                let world_angle = to.x.atan2(-to.z); // radianti, 0 = -Z (N)
-                let rel = world_angle - heading_deg.to_radians();
-                let r = 12.0_f32;
-                let c = egui::pos2(rect.right() - 18.0, rect.center().y);
-                let dir = egui::vec2(rel.sin(), -rel.cos());
-                let tip = c + dir * r;
-                let left = c + egui::vec2(-dir.y, dir.x) * 5.0;
-                let right = c + egui::vec2(dir.y, -dir.x) * 5.0;
-                painter.add(egui::Shape::convex_polygon(
-                    vec![tip, left, right],
-                    egui::Color32::from_rgb(255, 80, 60),
-                    egui::Stroke::new(1.0, egui::Color32::WHITE),
-                ));
+                let bearing = to.x.atan2(-to.z).to_degrees().rem_euclid(360.0);
+                let mut off = (bearing - heading_deg).rem_euclid(360.0);
+                if off > 180.0 {
+                    off -= 360.0;
+                }
+                let inside = off.abs() <= WIN_HALF_DEG;
+                let x = mid_x + off.clamp(-WIN_HALF_DEG, WIN_HALF_DEG) * px_per_deg;
+                let red = egui::Color32::from_rgb(255, 80, 60);
+                let stroke = egui::Stroke::new(1.0, egui::Color32::WHITE);
+                if inside {
+                    // Linea verticale sulla tacca + triangolo che punta in alto.
+                    painter.line_segment(
+                        [
+                            egui::pos2(x, rect.top() + 4.0),
+                            egui::pos2(x, rect.bottom() - 12.0),
+                        ],
+                        egui::Stroke::new(1.5, red),
+                    );
+                    painter.add(egui::Shape::convex_polygon(
+                        vec![
+                            egui::pos2(x, rect.bottom() - 12.0),
+                            egui::pos2(x - 6.0, rect.bottom() - 2.0),
+                            egui::pos2(x + 6.0, rect.bottom() - 2.0),
+                        ],
+                        red,
+                        stroke,
+                    ));
+                } else {
+                    // Target fuori vista: freccia sul bordo verso il lato giusto.
+                    let cy = rect.center().y;
+                    let s = if off > 0.0 { 1.0 } else { -1.0 };
+                    painter.add(egui::Shape::convex_polygon(
+                        vec![
+                            egui::pos2(x + s * 6.0, cy),
+                            egui::pos2(x - s * 4.0, cy - 7.0),
+                            egui::pos2(x - s * 4.0, cy + 7.0),
+                        ],
+                        red,
+                        stroke,
+                    ));
+                }
             }
 
             // Coordinate del player sotto la barra.
             ui.label(
-                egui::RichText::new(format!(
-                    "X {:6.1}   Z {:6.1}",
-                    player_pos.x, player_pos.z
-                ))
-                .monospace()
-                .size(12.0)
-                .color(egui::Color32::from_rgb(200, 210, 230)),
+                egui::RichText::new(format!("X {:6.1}   Z {:6.1}", player_pos.x, player_pos.z))
+                    .monospace()
+                    .size(12.0)
+                    .color(egui::Color32::from_rgb(200, 210, 230)),
             );
         });
 }
@@ -503,43 +571,154 @@ fn draw_title_banner(ctx: &egui::Context, text: &str) {
         });
 }
 
-/// Pannello obiettivi (tenendo premuto TAB): checklist stage quest.
+/// Stato di un obiettivo della quest nel pannello TAB.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ObjState {
+    /// Completato: spunta verde.
+    Done,
+    /// In corso: sfera azzurra.
+    Current,
+    /// Non ancora raggiungibile: cerchio vuoto grigio.
+    Pending,
+    /// Fallito: X rossa (non usato da "Denaro Rubato", pronto per altre quest).
+    #[allow(dead_code)]
+    Failed,
+}
+
+/// Disegna l'icona di stato di un obiettivo (con il painter, senza emoji:
+/// i font di egui non garantiscono quei glifi).
+fn draw_obj_icon(painter: &egui::Painter, c: egui::Pos2, state: ObjState) {
+    let r = 9.0;
+    match state {
+        ObjState::Done => {
+            painter.circle_filled(c, r, egui::Color32::from_rgb(52, 190, 90));
+            painter.add(egui::Shape::line(
+                vec![
+                    egui::pos2(c.x - 4.5, c.y + 0.5),
+                    egui::pos2(c.x - 1.0, c.y + 4.0),
+                    egui::pos2(c.x + 5.0, c.y - 3.5),
+                ],
+                egui::Stroke::new(2.4, egui::Color32::WHITE),
+            ));
+        }
+        ObjState::Current => {
+            painter.circle_filled(c, r, egui::Color32::from_rgb(56, 150, 255));
+            painter.circle_stroke(
+                c,
+                r,
+                egui::Stroke::new(1.5, egui::Color32::from_rgb(190, 225, 255)),
+            );
+        }
+        ObjState::Pending => {
+            painter.circle_stroke(
+                c,
+                r - 1.0,
+                egui::Stroke::new(1.5, egui::Color32::from_rgb(120, 130, 150)),
+            );
+        }
+        ObjState::Failed => {
+            let red = egui::Color32::from_rgb(235, 60, 55);
+            let d = 5.5;
+            painter.line_segment(
+                [egui::pos2(c.x - d, c.y - d), egui::pos2(c.x + d, c.y + d)],
+                egui::Stroke::new(3.0, red),
+            );
+            painter.line_segment(
+                [egui::pos2(c.x - d, c.y + d), egui::pos2(c.x + d, c.y - d)],
+                egui::Stroke::new(3.0, red),
+            );
+        }
+    }
+}
+
+/// Pannello obiettivi (tenendo premuto TAB): elenco con icone di stato
+/// (✓ verde = completato, sfera azzurra = in corso, X rossa = fallito).
 fn draw_objectives(ctx: &egui::Context, quest: &QuestState) {
     let size = ctx.viewport_rect().size();
+    let stage = quest.stage;
+    let after_thief = matches!(
+        stage,
+        QuestStage::Collecting | QuestStage::Returning | QuestStage::Completed
+    );
+    let after_coins = matches!(stage, QuestStage::Returning | QuestStage::Completed);
+    let state = |done: bool, current: bool| {
+        if done {
+            ObjState::Done
+        } else if current {
+            ObjState::Current
+        } else {
+            ObjState::Pending
+        }
+    };
+    let rows: [(String, ObjState); 4] = [
+        (
+            "Parla con il Viandante".to_string(),
+            if quest.accepted {
+                ObjState::Done
+            } else {
+                ObjState::Current
+            },
+        ),
+        (
+            "Sconfiggi il ladro".to_string(),
+            state(after_thief, stage == QuestStage::SeekThief),
+        ),
+        (
+            format!(
+                "Recupera le monete {}/{}",
+                quest.coins_collected, quest.coins_total
+            ),
+            state(after_coins, stage == QuestStage::Collecting),
+        ),
+        (
+            "Torna dal Viandante".to_string(),
+            state(
+                stage == QuestStage::Completed,
+                stage == QuestStage::Returning,
+            ),
+        ),
+    ];
+
     egui::Area::new(egui::Id::new("objectives"))
-        .fixed_pos(egui::pos2(size.x - 260.0, size.y / 2.0 - 90.0))
+        .fixed_pos(egui::pos2(size.x - 330.0, size.y / 2.0 - 90.0))
         .show(ctx, |ui| {
-            let (rect, _resp) =
-                ui.allocate_exact_size(egui::vec2(240.0, 180.0), egui::Sense::hover());
             let frame = egui::Frame::default()
-                .fill(egui::Color32::from_rgba_unmultiplied(12, 16, 24, 230))
-                .stroke(egui::Stroke::new(1.0, egui::Color32::from_rgb(80, 90, 120)))
-                .inner_margin(egui::Margin::symmetric(12, 10))
-                .corner_radius(egui::CornerRadius::same(6));
+                .fill(egui::Color32::from_rgba_unmultiplied(12, 16, 24, 240))
+                .stroke(egui::Stroke::new(
+                    1.5,
+                    egui::Color32::from_rgb(230, 190, 90),
+                ))
+                .inner_margin(egui::Margin::symmetric(16, 12))
+                .corner_radius(egui::CornerRadius::same(8));
             frame.show(ui, |ui| {
-                ui.set_min_width(rect.width());
+                ui.set_min_width(268.0);
                 ui.label(
                     egui::RichText::new("Obiettivi — Denaro Rubato")
                         .strong()
-                        .size(15.0),
+                        .size(17.0)
+                        .color(egui::Color32::from_rgb(255, 214, 102)),
                 );
-                ui.add_space(6.0);
-                let mark = |done: bool| if done { "[✓]" } else { "[ ]" };
-                let thief_done = quest.stage == QuestStage::Collecting
-                    || quest.stage == QuestStage::Returning
-                    || quest.stage == QuestStage::Completed;
-                let coins_done =
-                    quest.stage == QuestStage::Returning || quest.stage == QuestStage::Completed;
-                let ret_done = quest.stage == QuestStage::Completed;
-                ui.label(format!("{} Vai dal ladro", mark(quest.accepted)));
-                ui.label(format!("{} Uccidi il ladro", mark(thief_done)));
-                ui.label(format!(
-                    "{} Monete {}/{}",
-                    mark(coins_done),
-                    quest.coins_collected,
-                    quest.coins_total
-                ));
-                ui.label(format!("{} Torna dal Viandante", mark(ret_done)));
+                ui.add_space(8.0);
+                for (text, st) in &rows {
+                    let (rect, _resp) =
+                        ui.allocate_exact_size(egui::vec2(268.0, 28.0), egui::Sense::hover());
+                    draw_obj_icon(
+                        ui.painter(),
+                        egui::pos2(rect.left() + 11.0, rect.center().y),
+                        *st,
+                    );
+                    let color = match st {
+                        ObjState::Pending => egui::Color32::from_rgb(150, 158, 178),
+                        _ => egui::Color32::from_rgb(245, 248, 255),
+                    };
+                    ui.painter().text(
+                        egui::pos2(rect.left() + 30.0, rect.center().y),
+                        egui::Align2::LEFT_CENTER,
+                        text,
+                        egui::FontId::proportional(16.0),
+                        color,
+                    );
+                }
             });
         });
 }

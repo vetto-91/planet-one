@@ -172,23 +172,35 @@ pub fn contact_damage(
     }
 }
 
+/// Query dei nemici con i dati necessari alla gestione della morte.
+type EnemiesQuery<'w, 's> = Query<
+    'w,
+    's,
+    (
+        Entity,
+        &'static EnemyHealth,
+        &'static PatrolState,
+        &'static GlobalTransform,
+        Option<&'static crate::quest::QuestThief>,
+    ),
+    With<Enemy>,
+>;
+
 /// Gestione morte nemici: despawn + marker di respawn con i waypoint.
 pub fn handle_enemy_death(
     mut commands: Commands,
-    enemies: Query<
-        (
-            Entity,
-            &EnemyHealth,
-            &PatrolState,
-            Option<&crate::quest::QuestThief>,
-        ),
-        With<Enemy>,
-    >,
+    mut quest: ResMut<crate::quest::QuestState>,
+    enemies: EnemiesQuery,
 ) {
-    for (entity, hp, patrol, is_thief) in &enemies {
+    for (entity, hp, patrol, transform, is_thief) in &enemies {
         if hp.current <= 0.0 {
             commands.entity(entity).despawn();
-            // Il ladro della quest NON respawna: morte definitiva.
+            // Il ladro della quest NON respawna: morte definitiva. La posizione
+            // viene registrata qui (prima del despawn) così la quest non dipende
+            // dall'ordine di esecuzione dei sistemi.
+            if is_thief.is_some() {
+                quest.thief_killed_at = Some(transform.translation());
+            }
             if is_thief.is_none() {
                 let wps = patrol.waypoints.clone();
                 commands.spawn((

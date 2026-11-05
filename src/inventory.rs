@@ -65,6 +65,83 @@ impl Inventory {
             .find(|s| s.kind == kind)
             .map_or(0, |s| s.qty)
     }
+
+    /// Slot mostrati nella barra in basso, in ordine di raccolta: niente
+    /// monete (hanno il loro contatore) e solo quantità > 0, massimo 10
+    /// (tasti 1..9 e 0). HUD e uso degli oggetti condividono questa lista,
+    /// così il numero a schermo corrisponde al tasto da premere.
+    pub fn hotbar(&self) -> Vec<&ItemStack> {
+        self.slots
+            .iter()
+            .filter(|s| s.kind != ItemKind::Coin && s.qty > 0)
+            .take(10)
+            .collect()
+    }
+
+    /// Consuma `qty` unità di un tipo; lo slot sparisce a quantità 0.
+    pub fn consume(&mut self, kind: ItemKind, qty: u32) {
+        if let Some(slot) = self.slots.iter_mut().find(|s| s.kind == kind) {
+            slot.qty = slot.qty.saturating_sub(qty);
+        }
+        self.slots.retain(|s| s.qty > 0);
+    }
+}
+
+/// Punti vita ripristinati da una pozione.
+pub const POTION_HEAL: f32 = 25.0;
+
+/// Sistema: i tasti 1..9 e 0 usano l'oggetto nello slot corrispondente della
+/// barra in basso. La pozione cura [`POTION_HEAL`] HP (non si consuma se la
+/// vita è già piena). Disattivato mentre un dialogo è aperto.
+pub fn use_hotbar_items(
+    keys: Res<ButtonInput<KeyCode>>,
+    dialog: Res<crate::entities::DialogState>,
+    mut inventory: ResMut<Inventory>,
+    mut health: Query<&mut crate::player::PlayerHealth, With<crate::player::Player>>,
+) {
+    if dialog.open {
+        return;
+    }
+    const SLOT_KEYS: [KeyCode; 10] = [
+        KeyCode::Digit1,
+        KeyCode::Digit2,
+        KeyCode::Digit3,
+        KeyCode::Digit4,
+        KeyCode::Digit5,
+        KeyCode::Digit6,
+        KeyCode::Digit7,
+        KeyCode::Digit8,
+        KeyCode::Digit9,
+        KeyCode::Digit0,
+    ];
+    for (i, key) in SLOT_KEYS.iter().enumerate() {
+        if !keys.just_pressed(*key) {
+            continue;
+        }
+        let Some(kind) = inventory.hotbar().get(i).map(|s| s.kind) else {
+            continue;
+        };
+        match kind {
+            ItemKind::HealthPotion => {
+                let Ok(mut hp) = health.single_mut() else {
+                    continue;
+                };
+                if hp.current >= hp.max {
+                    info!("[INVENTORY] pozione non usata: vita già piena");
+                    continue;
+                }
+                hp.current = (hp.current + POTION_HEAL).min(hp.max);
+                inventory.consume(ItemKind::HealthPotion, 1);
+                info!(
+                    "[INVENTORY] pozione usata (slot {}): vita {:.0}/{:.0}",
+                    i + 1,
+                    hp.current,
+                    hp.max
+                );
+            }
+            ItemKind::Coin => {}
+        }
+    }
 }
 
 /// Marker su entità raccoglibili nella scena 3D.

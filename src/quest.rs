@@ -63,6 +63,9 @@ pub struct QuestState {
     /// Direzione e distanza del ladro (es. "nord-ovest, circa 60 m"),
     /// aggiornata ogni frame; usata dal Viandante quando la quest è attiva.
     pub thief_hint: Option<String>,
+    /// Posizione in cui il ladro è stato ucciso (scritta da
+    /// `combat::handle_enemy_death`, consumata da `quest_on_thief_death`).
+    pub thief_killed_at: Option<Vec3>,
 }
 
 impl Default for QuestState {
@@ -75,6 +78,7 @@ impl Default for QuestState {
             accepted: false,
             final_done: false,
             thief_hint: None,
+            thief_killed_at: None,
         }
     }
 }
@@ -134,7 +138,10 @@ pub fn place_quest_thief(
         transform.translation = patrol.waypoints[0];
         patrol.current = 0;
         commands.entity(entity).remove::<NeedsGroundSnap>();
-        info!("[QUEST] ladro appoggiato al terreno a {:?}", transform.translation);
+        info!(
+            "[QUEST] ladro appoggiato al terreno a {:?}",
+            transform.translation
+        );
     }
 }
 
@@ -159,7 +166,8 @@ pub fn quest_on_dialog_close(
     *last_open = dialog.open;
     if was_open && !dialog.open {
         match quest.stage {
-            QuestStage::Idle if !quest.accepted => {
+            // La quest parte SOLO se il giocatore risponde "Sì" (scelta 0).
+            QuestStage::Idle if !quest.accepted && dialog.result == Some(0) => {
                 quest.accepted = true;
                 quest.stage = QuestStage::SeekThief;
                 show_title(&mut quest, "Denaro Rubato", 3.0);
@@ -178,15 +186,21 @@ pub fn quest_on_dialog_close(
     }
 }
 
-/// Sistema: quando il ladro (QuestThief) muore (vita <= 0), spawna le monete
-/// al suo posto e passa alla fase Collecting.
+/// Sistema: quando il ladro muore (posizione registrata da
+/// `combat::handle_enemy_death` in `thief_killed_at`), spawna le monete al suo
+/// posto e passa alla fase Collecting. Non dipende dall'ordine dei sistemi:
+/// la morte è comunicata tramite `QuestState`, non leggendo l'entità (che nel
+/// frattempo potrebbe essere già stata despawnata).
 pub fn quest_on_thief_death(
     mut commands: Commands,
-    thieves: Query<(&GlobalTransform, &crate::combat::EnemyHealth), With<QuestThief>>,
+    spatial: SpatialQuery,
     mut quest: ResMut<QuestState>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    let Some(death_pos) = quest.thief_killed_at.take() else {
+        return;
+    };
     // Il ladro può morire anche prima di accettare la quest: in quel caso le
     // monete spawnano comunque (e il Viandante le ritira alla consegna).
     if matches!(
@@ -195,21 +209,44 @@ pub fn quest_on_thief_death(
     ) {
         return;
     }
-    for (t, hp) in &thieves {
-        if hp.current <= 0.0 {
-            quest.stage = QuestStage::Collecting;
-            quest.coins_collected = 0;
-            quest.thief_hint = None;
-            show_title(&mut quest, "Ladro sconfitto: raccogli il denaro", 3.0);
-            spawn_loot(
-                &mut commands,
-                &mut meshes,
-                &mut materials,
-                t.translation(),
-                LOOT_TOTAL,
-            );
-            info!("[QUEST] ladro morto, stage=Collecting");
+    // Appoggia il bottino al terreno sotto il punto di morte (raycast verso il basso).
+    let ground_y = spatial
+        .cast_ray(
+            death_pos + Vec3::Y * 5.0,
+            Dir3::NEG_Y,
+            30.0,
+            true,
+            &SpatialQueryFilter::default(),
+        )
+        .map(|hit| death_pos.y + 5.0 - hit.distance)
+        .unwrap_or(death_pos.y - THIEF_CENTER_OFFSET);
+    let center = Vec3::new(death_pos.x, ground_y, death_pos.z);
+
+    quest.stage = QuestStage::Collecting;
+    quest.coins_collected = 0;
+    quest.thief_hint = None;
+    show_title(&mut quest, "Ladro sconfitto: raccogli il denaro", 3.0);
+    spawn_loot(
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+        center,
+        LOOT_TOTAL,
+    );
+    info!(
+        "[QUEST] ladro morto in {:?}, stage=Collecting (accepted={})",
+        death_pos, quest.accepted
+    );
+}
+
+/// Scelte mostrate al giocatore alla fine del dialogo con il Viandante.
+/// Solo quando la quest non è ancora stata accettata (stage Idle).
+pub fn npc_quest_choices(quest: &QuestState) -> Vec<String> {
+    match quest.stage {
+        QuestStage::Idle if !quest.accepted => {
+            vec!["Sì, ti aiuto".to_string(), "Ora non ho tempo".to_string()]
         }
+        _ => Vec::new(),
     }
 }
 
@@ -289,7 +326,14 @@ pub fn tick_title(time: Res<Time>, mut quest: ResMut<QuestState>) {
 /// Convenzione mondo: N = -Z, E = +X (come in `draw_compass`).
 pub fn compass_name(from: Vec3, to: Vec3) -> &'static str {
     const NAMES: [&str; 8] = [
-        "nord", "nord-est", "est", "sud-est", "sud", "sud-ovest", "ovest", "nord-ovest",
+        "nord",
+        "nord-est",
+        "est",
+        "sud-est",
+        "sud",
+        "sud-ovest",
+        "ovest",
+        "nord-ovest",
     ];
     let d = to - from;
     let bearing = d.x.atan2(-d.z).to_degrees().rem_euclid(360.0);
@@ -351,9 +395,9 @@ pub fn npc_quest_lines(quest: &QuestState) -> Vec<String> {
             "Le mie monete! Grazie, viaggiatore!",
             "Ecco 5 monete per il tuo aiuto.",
         ]),
-        QuestStage::Completed => lines(&[
-            "Grazie ancora, viaggiatore. Il ladro non darà più fastidio a nessuno.",
-        ]),
+        QuestStage::Completed => {
+            lines(&["Grazie ancora, viaggiatore. Il ladro non darà più fastidio a nessuno."])
+        }
     }
 }
 
