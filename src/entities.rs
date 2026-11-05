@@ -146,6 +146,7 @@ pub fn interact(
     interactables: Query<(&GlobalTransform, &Interactable, Option<&Npc>), Without<Player>>,
     mut dialog: ResMut<DialogState>,
     mut nearest: ResMut<NearestInteract>,
+    quest: Res<crate::quest::QuestState>,
 ) {
     // Se un dialogo è già aperto non riaprire.
     if dialog.open {
@@ -176,7 +177,16 @@ pub fn interact(
     {
         dialog.open = true;
         dialog.speaker = npc.name.to_string();
-        dialog.lines = npc.lines.iter().map(|s| s.to_string()).collect();
+        // Linee dinamiche in base alla fase della quest (se presente), altrimenti default.
+        let lines: Vec<String> = crate::quest::npc_quest_lines(&quest)
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        dialog.lines = if lines.is_empty() {
+            npc.lines.iter().map(|s| s.to_string()).collect()
+        } else {
+            lines
+        };
         dialog.index = 0;
         info!("dialogo aperto con {}", npc.name);
     }

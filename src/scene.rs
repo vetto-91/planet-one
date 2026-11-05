@@ -12,7 +12,7 @@
 //! spawn degli altri elementi (`spawn_world`, chiamato sia allo startup
 //! sia durante il reset).
 
-use crate::{AppState, camera::OrbitCamera, entities, inventory, player, sky, terrain};
+use crate::{AppState, camera::OrbitCamera, entities, inventory, player, quest, sky, terrain};
 use bevy::image::Image;
 use bevy::light::Skybox;
 use bevy::prelude::*;
@@ -116,13 +116,13 @@ pub fn spawn_world(
         Vec3::new(6.0, 0.0, -5.0),
     );
 
-    // --- Nemico in patrol tra due punti ---
-    entities::spawn_enemy(
+    // --- Ladro della quest: in un angolo della mappa (nord-ovest) ---
+    quest::spawn_thief(
         commands,
         meshes,
         materials,
-        Vec3::new(-5.0, 0.0, 2.0),
-        Vec3::new(-8.0, 0.0, -3.0),
+        Vec3::new(-14.0, 0.0, -12.0),
+        Vec3::new(-20.0, 0.0, -8.0),
     );
 }
 
@@ -154,6 +154,7 @@ pub fn spawn_world_startup(
 /// 3. Ricostruzione del mondo con [`spawn_world`]
 ///    (la camera NON viene ricreata).
 /// 4. Transizione verso `AppState::Playing`.
+#[allow(clippy::too_many_arguments)]
 pub fn reset_scene(
     mut commands: Commands,
     scene_nodes: Query<Entity, With<SceneNode>>,
@@ -162,6 +163,7 @@ pub fn reset_scene(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut next: ResMut<NextState<AppState>>,
+    mut quest: ResMut<quest::QuestState>,
 ) {
     // 1. Despawn di tutte le entità radice della scena.
     //    In Bevy 0.20 despawn() è già ricorsivo sui Children (relationship).
@@ -169,8 +171,9 @@ pub fn reset_scene(
         commands.entity(entity).despawn();
     }
 
-    // 2. Camera e orbita tornano ai valori di partenza.
+    // 2. Camera, orbita e stato quest tornano ai valori di partenza.
     *orbit = OrbitCamera::default();
+    *quest = quest::QuestState::default();
     for mut transform in &mut cameras {
         *transform = Transform::from_xyz(-4.0, 3.5, 6.0);
     }

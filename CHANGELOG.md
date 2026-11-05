@@ -173,6 +173,21 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
   nessun kill forzato: pronto per salvataggi futuri).
 - Test: avvio fullscreen 4480x1440 verificato via screenshot; 0 panic.
 
+## v0.0.5.0 — Fase 5: Vertical slice RPG "Denaro Rubato" (2026-11-05)
+
+- Quest completa in memoria: NPC Viandante allo spawn -> dialogo -> accetta
+  "Denaro Rubato" (overlay titolo 3 s). Ladro rosso (QuestThief, 30 HP) in
+  nord-ovest: ucciderlo (morte definitiva, no respawn) -> spawn 12 monete
+  gialle (QuestCoin) -> raccolta automatica entro 2 m -> torna dal Viandante
+  -> dialogo finale -> "Missione completata".
+- Bussola sempre visibile in alto al centro: coordinate x,z + freccia rossa
+  verso il target corrente (ladro / moneta piu' vicina / NPC).
+- TAB tenuto: pannello obiettivi con checklist ([✓]/[ ] e conteggio monete).
+- Overlay titolo quest in alto (banner oro).
+- Reset scena resetta anche QuestState (full reset).
+- Nessun salvataggio su file (come da piano).
+- Test: quest accettata via log [QUEST], bussola+TAB verificati via screenshot, 0 panic.
+
 ## v0.0.2.0 — Fase 2: Scena (terreno, cielo, nebbia, hot-reload) (2026-11-04)
 
 - Terreno procedurale da heightmap PNG (`assets/textures/terrain_heightmap.png`,

@@ -65,6 +65,7 @@ pub struct ContactDamageCd {
 /// Gira in Update (input), solo in Playing e se nessun dialogo è aperto.
 pub fn player_attack(
     mouse: Res<ButtonInput<MouseButton>>,
+    mut raw_mouse: MessageReader<bevy::input::mouse::MouseButtonInput>,
     mut combat: Query<&mut CombatState, With<Player>>,
     players: Query<&GlobalTransform, With<Player>>,
     mut enemies: Query<(&GlobalTransform, &mut EnemyHealth, Entity), With<Enemy>>,
@@ -80,7 +81,13 @@ pub fn player_attack(
     };
     combat.attack_cd = (combat.attack_cd - time.delta_secs()).max(0.0);
 
-    if !mouse.just_pressed(MouseButton::Left) || combat.attack_cd > 0.0 {
+    // Click sinistro: accettiamo sia da ButtonInput sia dagli eventi raw
+    // (utile quando il cursore e' warpato al centro in fullscreen).
+    let clicked = mouse.just_pressed(MouseButton::Left)
+        || raw_mouse
+            .read()
+            .any(|e| e.button == MouseButton::Left && e.state.is_pressed());
+    if !clicked || combat.attack_cd > 0.0 {
         return;
     }
     info!("click sinistro: attacco!");
@@ -168,20 +175,33 @@ pub fn contact_damage(
 /// Gestione morte nemici: despawn + marker di respawn con i waypoint.
 pub fn handle_enemy_death(
     mut commands: Commands,
-    enemies: Query<(Entity, &EnemyHealth, &PatrolState), With<Enemy>>,
+    enemies: Query<
+        (
+            Entity,
+            &EnemyHealth,
+            &PatrolState,
+            Option<&crate::quest::QuestThief>,
+        ),
+        With<Enemy>,
+    >,
 ) {
-    for (entity, hp, patrol) in &enemies {
+    for (entity, hp, patrol, is_thief) in &enemies {
         if hp.current <= 0.0 {
-            let wps = patrol.waypoints.clone();
             commands.entity(entity).despawn();
-            commands.spawn((
-                crate::scene::SceneNode,
-                EnemyRespawn {
-                    timer: ENEMY_RESPAWN_TIME,
-                    waypoints: wps,
-                },
-            ));
-            info!("nemico morto -> respawn in {:.0}s", ENEMY_RESPAWN_TIME);
+            // Il ladro della quest NON respawna: morte definitiva.
+            if is_thief.is_none() {
+                let wps = patrol.waypoints.clone();
+                commands.spawn((
+                    crate::scene::SceneNode,
+                    EnemyRespawn {
+                        timer: ENEMY_RESPAWN_TIME,
+                        waypoints: wps,
+                    },
+                ));
+                info!("nemico morto -> respawn in {:.0}s", ENEMY_RESPAWN_TIME);
+            } else {
+                info!("[QUEST] ladro ucciso definitivamente");
+            }
         }
     }
 }

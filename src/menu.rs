@@ -7,8 +7,10 @@ use crate::{
     hud,
     inventory::Inventory,
     player::PlayerHealth,
+    quest::{QuestStage, QuestState},
 };
 use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, egui};
 
@@ -55,6 +57,40 @@ pub fn toggle(
 ///   sensibilità del mouse, il checkbox per il contatore FPS, il pulsante
 ///   "Riprendi" e il pulsante "Reset scena" (ricostruzione da zero di
 ///   terreno, luci e player).
+// Parametri "query-heavy" della UI, raggruppati in uno struct SystemParam:
+// Bevy 0.20 supporta al massimo 16 parametri per sistema.
+#[derive(SystemParam)]
+pub struct UiQueries<'w, 's> {
+    pub health: Query<'w, 's, &'static PlayerHealth, With<crate::player::Player>>,
+    pub enemies: Query<
+        'w,
+        's,
+        (
+            &'static GlobalTransform,
+            &'static crate::combat::EnemyHealth,
+        ),
+        With<crate::entities::Enemy>,
+    >,
+    pub cameras: Query<'w, 's, (&'static Camera, &'static GlobalTransform)>,
+    pub player_pos: Query<'w, 's, &'static GlobalTransform, With<crate::player::Player>>,
+    pub thief_pos: Query<
+        'w,
+        's,
+        &'static GlobalTransform,
+        (
+            With<crate::quest::QuestThief>,
+            Without<crate::player::Player>,
+        ),
+    >,
+    pub coins_pos: Query<'w, 's, &'static GlobalTransform, With<crate::quest::QuestCoin>>,
+    pub npc_pos: Query<
+        'w,
+        's,
+        &'static GlobalTransform,
+        (With<crate::entities::Npc>, Without<crate::player::Player>),
+    >,
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn ui(
     mut contexts: EguiContexts,
@@ -65,11 +101,11 @@ pub fn ui(
     diagnostics: Res<DiagnosticsStore>,
     dialog: Res<DialogState>,
     nearest: Res<NearestInteract>,
-    health: Query<&PlayerHealth, With<crate::player::Player>>,
     inventory: Res<Inventory>,
-    enemies: Query<(&GlobalTransform, &crate::combat::EnemyHealth), With<crate::entities::Enemy>>,
-    cameras: Query<(&Camera, &GlobalTransform)>,
     mut exit: MessageWriter<AppExit>,
+    quest: Res<QuestState>,
+    keys: Res<ButtonInput<KeyCode>>,
+    q: UiQueries,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return; // Contesto egui non ancora pronto (primi frame).
@@ -98,12 +134,31 @@ pub fn ui(
             }
 
             // HUD di gioco: barra vita (basso-sx), crosshair, inventario.
-            if let Ok(hp) = health.single() {
+            if let Ok(hp) = q.health.single() {
                 hud::draw_hud(ctx, hp, &inventory);
             }
 
             // Barre vita dei nemici sopra le loro teste (proiezione world→screen).
-            hud::draw_enemy_bars(ctx, &enemies, &cameras);
+            hud::draw_enemy_bars(ctx, &q.enemies, &q.cameras);
+
+            // Bussola in alto al centro + titolo quest + obiettivi (TAB).
+            if let Ok(pp) = q.player_pos.single() {
+                draw_compass(
+                    ctx,
+                    &quest,
+                    pp.translation(),
+                    &q.thief_pos,
+                    &q.coins_pos,
+                    &q.npc_pos,
+                    &orbit,
+                );
+            }
+            if let Some((text, _t)) = &quest.title {
+                draw_title_banner(ctx, text);
+            }
+            if keys.pressed(KeyCode::Tab) {
+                draw_objectives(ctx, &quest);
+            }
 
             // Contatore FPS in alto a destra (se attivato dal menu).
             if show_fps.0
@@ -246,6 +301,153 @@ fn show_dialog_panel(ctx: &egui::Context, dialog: &DialogState) {
                         .small()
                         .color(egui::Color32::from_rgb(160, 170, 190)),
                 );
+            });
+        });
+}
+
+/// Disegna la bussola in alto al centro: cerchio con freccia verso il target
+/// della quest + coordinate x,z del player.
+fn draw_compass(
+    ctx: &egui::Context,
+    quest: &QuestState,
+    player_pos: Vec3,
+    thief: &Query<
+        &GlobalTransform,
+        (
+            With<crate::quest::QuestThief>,
+            Without<crate::player::Player>,
+        ),
+    >,
+    coins: &Query<&GlobalTransform, With<crate::quest::QuestCoin>>,
+    npc: &Query<&GlobalTransform, (With<crate::entities::Npc>, Without<crate::player::Player>)>,
+    orbit: &crate::camera::OrbitCamera,
+) {
+    let size = ctx.viewport_rect().size();
+    let center = egui::pos2(size.x / 2.0, 30.0);
+
+    // Scegli il target in base allo stage.
+    let target: Option<Vec3> = match quest.stage {
+        QuestStage::SeekThief => thief.single().ok().map(|t| t.translation()),
+        QuestStage::Collecting => coins
+            .iter()
+            .min_by(|a, b| {
+                let da = a.translation().distance(player_pos);
+                let db = b.translation().distance(player_pos);
+                da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .map(|t| t.translation()),
+        QuestStage::Returning | QuestStage::Completed => npc.single().ok().map(|t| t.translation()),
+        QuestStage::Idle => npc.single().ok().map(|t| t.translation()),
+    };
+
+    egui::Area::new(egui::Id::new("compass"))
+        .fixed_pos(egui::pos2(center.x - 60.0, 10.0))
+        .show(ctx, |ui| {
+            let (rect, _resp) =
+                ui.allocate_exact_size(egui::vec2(120.0, 40.0), egui::Sense::hover());
+            // sfondo pillola
+            ui.painter().rect_filled(
+                rect,
+                egui::CornerRadius::same(8),
+                egui::Color32::from_rgba_unmultiplied(10, 14, 22, 200),
+            );
+            // coordinate
+            ui.painter().text(
+                egui::pos2(rect.min.x + 6.0, rect.center().y),
+                egui::Align2::LEFT_CENTER,
+                format!("{:5.1} , {:5.1}", player_pos.x, player_pos.z),
+                egui::FontId::monospace(12.0),
+                egui::Color32::from_rgb(200, 210, 230),
+            );
+            // freccia verso target: angolo relativo tra direzione target e yaw camera
+            if let Some(t) = target {
+                let to = t - player_pos;
+                let world_angle = to.x.atan2(-to.z); // angolo nel mondo (0 = -Z, come forward)
+                let rel = world_angle - orbit.yaw;
+                let r = 14.0_f32;
+                let c = rect.max - egui::vec2(20.0, 20.0);
+                let dir = egui::vec2(rel.sin(), -rel.cos());
+                let tip = c + dir * r;
+                let left = c + egui::vec2(-dir.y, dir.x) * 5.0;
+                let right = c + egui::vec2(dir.y, -dir.x) * 5.0;
+                ui.painter().add(egui::Shape::convex_polygon(
+                    vec![tip, left, right],
+                    egui::Color32::from_rgb(255, 80, 60),
+                    egui::Stroke::new(1.0, egui::Color32::WHITE),
+                ));
+            }
+        });
+}
+
+/// Banner titolo quest in alto al centro (es. "Denaro Rubato").
+fn draw_title_banner(ctx: &egui::Context, text: &str) {
+    let size = ctx.viewport_rect().size();
+    egui::Area::new(egui::Id::new("quest_title"))
+        .fixed_pos(egui::pos2(size.x / 2.0 - 200.0, 70.0))
+        .show(ctx, |ui| {
+            let (rect, _resp) =
+                ui.allocate_exact_size(egui::vec2(400.0, 44.0), egui::Sense::hover());
+            ui.painter().rect_filled(
+                rect,
+                egui::CornerRadius::same(6),
+                egui::Color32::from_rgba_unmultiplied(20, 14, 8, 225),
+            );
+            ui.painter().rect_stroke(
+                rect,
+                egui::CornerRadius::same(6),
+                egui::Stroke::new(1.5, egui::Color32::from_rgb(230, 190, 80)),
+                egui::StrokeKind::Inside,
+            );
+            ui.painter().text(
+                rect.center(),
+                egui::Align2::CENTER_CENTER,
+                text,
+                egui::FontId::proportional(20.0),
+                egui::Color32::from_rgb(240, 210, 120),
+            );
+        });
+}
+
+/// Pannello obiettivi (tenendo premuto TAB): checklist stage quest.
+fn draw_objectives(ctx: &egui::Context, quest: &QuestState) {
+    let size = ctx.viewport_rect().size();
+    egui::Area::new(egui::Id::new("objectives"))
+        .fixed_pos(egui::pos2(size.x - 260.0, size.y / 2.0 - 90.0))
+        .show(ctx, |ui| {
+            let (rect, _resp) =
+                ui.allocate_exact_size(egui::vec2(240.0, 180.0), egui::Sense::hover());
+            let frame = egui::Frame::default()
+                .fill(egui::Color32::from_rgba_unmultiplied(12, 16, 24, 230))
+                .stroke(egui::Stroke::new(1.0, egui::Color32::from_rgb(80, 90, 120)))
+                .inner_margin(egui::Margin::symmetric(12, 10))
+                .corner_radius(egui::CornerRadius::same(6));
+            frame.show(ui, |ui| {
+                ui.set_min_width(rect.width());
+                ui.label(
+                    egui::RichText::new("Obiettivi — Denaro Rubato")
+                        .strong()
+                        .size(15.0),
+                );
+                ui.add_space(6.0);
+                let mark = |done: bool| if done { "[✓]" } else { "[ ]" };
+                let thief_done = quest.stage == QuestStage::Collecting
+                    || quest.stage == QuestStage::Returning
+                    || quest.stage == QuestStage::Completed;
+                let coins_done =
+                    quest.stage == QuestStage::Returning || quest.stage == QuestStage::Completed;
+                let ret_done = quest.stage == QuestStage::Completed;
+                ui.label(format!(
+                    "{} Vai dal ladro (nord-ovest)",
+                    mark(quest.accepted)
+                ));
+                ui.label(format!("{} Uccidi il ladro", mark(thief_done)));
+                ui.label(format!(
+                    "{} Monete {}/{}",
+                    mark(coins_done),
+                    quest.coins_collected,
+                    quest.coins_total
+                ));
+                ui.label(format!("{} Torna dal Viandante", mark(ret_done)));
             });
         });
 }

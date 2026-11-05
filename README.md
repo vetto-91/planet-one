@@ -40,6 +40,18 @@ grep "\[EVENT\]" run.log    # eventi finestra/cursore
 | Mouse | Orbita camera (sensibilità dal menu) |
 | Esc | Menu pausa (tasti, slider sensibilità, checkbox FPS, reset scena) |
 | F3 | Wireframe dei collider (debug fisico) |
+| TAB (tenuto) | Obiettivi della quest "Denaro Rubato" |
+| E | Parla con l'NPC vicino |
+| Click sinistro | Attacco melee |
+
+## Quest: "Denaro Rubato"
+
+Parla con il **Viandante** (NPC blu) allo spawn → la quest parte.
+Trova il **ladro** (cubo rosso, nord-ovest, punta la bussola in alto), uccidilo,
+raccogli le **12 monete d'oro** che lascia, torna dal Viandante → completata.
+La bussola in alto al centro ti guida sempre; tieni **TAB** per gli obiettivi.
+
+| F3 | Wireframe dei collider (debug fisico) |
 | F11 | Schermo intero on/off (in fullscreen il cursore è bloccato e nascosto) |
 
 ## Struttura

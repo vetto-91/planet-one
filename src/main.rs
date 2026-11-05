@@ -10,6 +10,7 @@ mod hud;
 mod inventory;
 mod menu;
 mod player;
+mod quest;
 mod scene;
 mod sky;
 mod terrain;
@@ -87,6 +88,7 @@ fn main() {
         .init_resource::<entities::DialogState>()
         .init_resource::<entities::NearestInteract>()
         .init_resource::<inventory::Inventory>()
+        .init_resource::<quest::QuestState>()
         .init_resource::<combat::ContactDamageCd>()
         // Asset del terreno: heightmap PNG + handle del mesh generato.
         .add_systems(
@@ -100,6 +102,15 @@ fn main() {
         // All'avvio il wireframe dei collider è DISATTIVO; F3 lo attiva
         // (utile in sviluppo per confrontare mesh e collider del terreno).
         .add_systems(Startup, disable_physics_debug_default)
+        // Disabilita temporaneamente fullscreen di default per test input (F11 per riattivare)
+        .add_systems(
+            Startup,
+            |mut q: Query<&mut bevy::window::Window, With<bevy::window::PrimaryWindow>>| {
+                if let Ok(mut w) = q.single_mut() {
+                    w.mode = bevy::window::WindowMode::Windowed;
+                }
+            },
+        )
         // Ricostruzione del terreno quando la heightmap è disponibile o cambia.
         .add_systems(Update, terrain::update_terrain)
         // Fisica e movimento del player in FixedUpdate (delta stabile):
@@ -138,6 +149,10 @@ fn main() {
         .add_systems(
             Update,
             (
+                quest::quest_on_dialog_close,
+                quest::quest_on_thief_death,
+                quest::collect_quest_coins,
+                quest::tick_title,
                 entities::interact,
                 entities::advance_dialog,
                 inventory::collect_pickups,
