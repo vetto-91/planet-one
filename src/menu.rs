@@ -97,6 +97,7 @@ pub struct UiQueries<'w, 's> {
     pub cameras: Query<'w, 's, (&'static Camera, &'static GlobalTransform)>,
     pub transforms: Query<'w, 's, &'static GlobalTransform>,
     pub npcs: Query<'w, 's, (&'static GlobalTransform, &'static crate::entities::Npc)>,
+    pub styled: Local<'s, bool>,
     pub clock: ResMut<'w, crate::daynight::GameClock>,
     pub wait: ResMut<'w, crate::daynight::WaitUi>,
     pub player_pos: Query<'w, 's, &'static GlobalTransform, With<crate::player::Player>>,
@@ -141,6 +142,11 @@ pub fn ui(
     let Ok(ctx) = contexts.ctx_mut() else {
         return; // Contesto egui non ancora pronto (primi frame).
     };
+    // Tema condiviso (colori e dimensioni dell'HUD) applicato una volta sola.
+    if !*q.styled {
+        crate::ui_style::apply_style(ctx);
+        *q.styled = true;
+    }
 
     match state.get() {
         AppState::Playing => {
@@ -240,62 +246,77 @@ pub fn ui(
 
             // Frame scuro semi-trasparente per coprire il mondo in pausa.
             let frame = egui::Frame::default()
-                .fill(egui::Color32::from_rgba_unmultiplied(8, 10, 15, 220))
-                .inner_margin(egui::Margin::symmetric(24, 16));
+                .fill(egui::Color32::from_rgba_unmultiplied(8, 10, 15, 225))
+                .inner_margin(egui::Margin::symmetric(40, 24));
 
             egui::CentralPanel::default()
                 .frame(frame)
                 .show(&mut viewport_ui, |ui| {
-                    ui.vertical_centered(|ui| {
-                        ui.heading("Planet One");
-                        ui.label("— pausa —");
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        ui.vertical_centered(|ui| {
+                            ui.label(
+                                egui::RichText::new("Planet One")
+                                    .strong()
+                                    .size(34.0)
+                                    .color(crate::ui_style::GOLD),
+                            );
+                            ui.label("— pausa —");
+                        });
+                        ui.separator();
+
+                        // Lista dei controlli disponibili.
+                        ui.label(
+                            egui::RichText::new("Controlli")
+                                .strong()
+                                .color(crate::ui_style::GOLD),
+                        );
+                        ui.label("• W/A/S/D o frecce — movimento");
+                        ui.label("• Shift — corsa");
+                        ui.label("• Space — salto");
+                        ui.label("• Mouse — orbita camera");
+                        ui.label("• Esc — menu / riprendi");
+                        ui.label("• J — diario delle quest, T — aspetta, TAB (tenuto) — obiettivi");
+                        ui.label("• E / Invio — dialogo, 1–0 — usa oggetti");
+                        ui.label("• F3 — wireframe collider (debug)");
+                        ui.label("• F11 — schermo intero on/off");
+                        ui.label(
+                            "• V — prima persona on/off, RMB tenuto = prima persona temporanea",
+                        );
+                        ui.separator();
+
+                        // Sensibilità del mouse: modifica la resource in tempo reale.
+                        ui.add(
+                            egui::Slider::new(&mut orbit.sensitivity, 0.0005..=0.010)
+                                .text("Sensibilità mouse"),
+                        );
+
+                        // Toggle contatore FPS.
+                        ui.checkbox(&mut show_fps.0, "Mostra FPS");
+                        ui.separator();
+
+                        // Riprendi (equivalente a Esc).
+                        let btn = |t: &str| egui::Button::new(egui::RichText::new(t).strong());
+                        let bsize = egui::vec2(240.0, 40.0);
+                        if ui.add_sized(bsize, btn("Riprendi")).clicked() {
+                            next.set(AppState::Playing);
+                        }
+
+                        // Reset della scena: ricostruzione da zero.
+                        // Entra nello stato transitorio `Resetting`, in cui tutti i
+                        // sistemi di gameplay sono spenti; questo evita il panic
+                        // "Entity despawned" che accadeva quando il reset era
+                        // eseguito in `Update` insieme al ground-check.
+                        if ui.add_sized(bsize, btn("Reset scena")).clicked() {
+                            next.set(AppState::Resetting);
+                        }
+
+                        ui.add_space(8.0);
+                        // Esci dal gioco: chiude la finestra con AppExit::Success.
+                        if ui.add_sized(bsize, btn("Esci dal gioco")).clicked() {
+                            info!("[EVENT] richiesta uscita dal gioco");
+                            exit.write(AppExit::Success);
+                        }
                     });
-                    ui.separator();
-
-                    // Lista dei controlli disponibili.
-                    ui.label("Controlli");
-                    ui.label("• W/A/S/D o frecce — movimento");
-                    ui.label("• Shift — corsa");
-                    ui.label("• Space — salto");
-                    ui.label("• Mouse — orbita camera");
-                    ui.label("• Esc — menu / riprendi");
-                    ui.label("• J — diario delle quest, T — aspetta, TAB (tenuto) — obiettivi");
-                    ui.label("• E / Invio — dialogo, 1–0 — usa oggetti");
-                    ui.label("• F3 — wireframe collider (debug)");
-                    ui.label("• F11 — schermo intero on/off");
-                    ui.label("• V — prima persona on/off, RMB tenuto = prima persona temporanea");
-                    ui.separator();
-
-                    // Sensibilità del mouse: modifica la resource in tempo reale.
-                    ui.add(
-                        egui::Slider::new(&mut orbit.sensitivity, 0.0005..=0.010)
-                            .text("Sensibilità mouse"),
-                    );
-
-                    // Toggle contatore FPS.
-                    ui.checkbox(&mut show_fps.0, "Mostra FPS");
-                    ui.separator();
-
-                    // Riprendi (equivalente a Esc).
-                    if ui.button("Riprendi").clicked() {
-                        next.set(AppState::Playing);
-                    }
-
-                    // Reset della scena: ricostruzione da zero.
-                    // Entra nello stato transitorio `Resetting`, in cui tutti i
-                    // sistemi di gameplay sono spenti; questo evita il panic
-                    // "Entity despawned" che accadeva quando il reset era
-                    // eseguito in `Update` insieme al ground-check.
-                    if ui.button("Reset scena").clicked() {
-                        next.set(AppState::Resetting);
-                    }
-
-                    ui.add_space(8.0);
-                    // Esci dal gioco: chiude la finestra con AppExit::Success.
-                    if ui.button("Esci dal gioco").clicked() {
-                        info!("[EVENT] richiesta uscita dal gioco");
-                        exit.write(AppExit::Success);
-                    }
                 });
         }
         AppState::Wait => {
@@ -357,18 +378,51 @@ fn show_interact_prompt(
     dialog: &DialogState,
     nearest_prompt: &Option<String>,
 ) {
-    if dialog.open || nearest_prompt.is_none() {
+    if dialog.open {
         return;
     }
+    let Some(prompt) = nearest_prompt else {
+        return;
+    };
     let size = ctx.viewport_rect().size();
-    egui::Area::new(egui::Id::new("interact_prompt"))
-        .fixed_pos(egui::pos2(size.x / 2.0 - 60.0, size.y - 120.0))
-        .show(ctx, |ui| {
-            ui.label(
-                egui::RichText::new(nearest_prompt.as_deref().unwrap_or("[E] Interagisci"))
-                    .strong(),
-            );
-        });
+    // Il tasto fra parentesi quadre (es. "[E]") in oro, il resto in bianco.
+    let (key, action) = match prompt.split_once("] ") {
+        Some((k, rest)) => (format!("{k}]"), rest.to_string()),
+        None => (String::new(), prompt.clone()),
+    };
+    let font = egui::FontId::proportional(26.0);
+    let painter = ctx.layer_painter(egui::LayerId::background());
+    let mut job = egui::text::LayoutJob::default();
+    if !key.is_empty() {
+        job.append(
+            &format!("{key} "),
+            0.0,
+            egui::TextFormat::simple(font.clone(), crate::ui_style::GOLD),
+        );
+    }
+    job.append(
+        &action,
+        0.0,
+        egui::TextFormat::simple(font, crate::ui_style::TEXT),
+    );
+    let galley = painter.layout_job(job);
+    let pad = egui::vec2(16.0, 8.0);
+    let rect = egui::Rect::from_center_size(
+        egui::pos2(size.x / 2.0, size.y - 120.0),
+        galley.size() + pad * 2.0,
+    );
+    painter.rect_filled(
+        rect,
+        egui::CornerRadius::same(8),
+        crate::ui_style::PANEL_FILL,
+    );
+    painter.rect_stroke(
+        rect,
+        egui::CornerRadius::same(8),
+        egui::Stroke::new(2.0, crate::ui_style::GOLD_EDGE),
+        egui::StrokeKind::Inside,
+    );
+    painter.galley(rect.min + pad, galley, crate::ui_style::TEXT);
 }
 
 /// Pannello del dialogo in basso, stile RPG: nome parlante + riga corrente +
@@ -635,42 +689,47 @@ fn hud_chip(ui: &mut egui::Ui, text: &str) {
         .corner_radius(egui::CornerRadius::same(7))
         .inner_margin(egui::Margin::symmetric(12, 6))
         .show(ui, |ui| {
-            ui.label(
-                egui::RichText::new(text)
-                    .size(19.0)
-                    .strong()
-                    .color(egui::Color32::WHITE),
+            ui.add(
+                egui::Label::new(
+                    egui::RichText::new(text)
+                        .size(19.0)
+                        .strong()
+                        .color(egui::Color32::WHITE),
+                )
+                .wrap_mode(egui::TextWrapMode::Extend),
             );
         });
 }
 
-/// Banner titolo quest in alto al centro (es. "Denaro Rubato").
+/// Banner titolo quest (es. "Denaro Rubato"), sotto bussola e coordinate.
 fn draw_title_banner(ctx: &egui::Context, text: &str) {
     let size = ctx.viewport_rect().size();
-    egui::Area::new(egui::Id::new("quest_title"))
-        .fixed_pos(egui::pos2(size.x / 2.0 - 200.0, 70.0))
-        .show(ctx, |ui| {
-            let (rect, _resp) =
-                ui.allocate_exact_size(egui::vec2(400.0, 44.0), egui::Sense::hover());
-            ui.painter().rect_filled(
-                rect,
-                egui::CornerRadius::same(6),
-                egui::Color32::from_rgba_unmultiplied(20, 14, 8, 225),
-            );
-            ui.painter().rect_stroke(
-                rect,
-                egui::CornerRadius::same(6),
-                egui::Stroke::new(1.5, egui::Color32::from_rgb(230, 190, 80)),
-                egui::StrokeKind::Inside,
-            );
-            ui.painter().text(
-                rect.center(),
-                egui::Align2::CENTER_CENTER,
-                text,
-                egui::FontId::proportional(20.0),
-                egui::Color32::from_rgb(240, 210, 120),
-            );
-        });
+    let painter = ctx.layer_painter(egui::LayerId::background());
+    let galley = painter.layout_no_wrap(
+        text.to_string(),
+        egui::FontId::proportional(24.0),
+        crate::ui_style::GOLD,
+    );
+    let pad = egui::vec2(24.0, 10.0);
+    let rect = egui::Rect::from_center_size(
+        egui::pos2(
+            size.x / 2.0,
+            (size.y * 0.20).max(150.0) + galley.size().y / 2.0,
+        ),
+        galley.size() + pad * 2.0,
+    );
+    painter.rect_filled(
+        rect,
+        egui::CornerRadius::same(8),
+        crate::ui_style::PANEL_FILL,
+    );
+    painter.rect_stroke(
+        rect,
+        egui::CornerRadius::same(8),
+        egui::Stroke::new(2.0, crate::ui_style::GOLD_EDGE),
+        egui::StrokeKind::Inside,
+    );
+    painter.galley(rect.min + pad, galley, crate::ui_style::GOLD);
 }
 
 /// Stato di un obiettivo della quest nel pannello TAB.
@@ -841,7 +900,7 @@ fn draw_barks(
         let Ok(t) = transforms.get(b.entity) else {
             continue;
         };
-        let Ok(screen) = camera.world_to_viewport(cam_t, t.translation() + Vec3::Y * 2.3) else {
+        let Ok(screen) = camera.world_to_viewport(cam_t, t.translation() + Vec3::Y * 2.6) else {
             continue;
         };
         egui::Area::new(egui::Id::new(("bark", i)))

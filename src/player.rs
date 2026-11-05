@@ -239,7 +239,7 @@ pub fn movement(
 
     let cam_forward = camera.forward().normalize_or_zero();
     let forward = Vec3::new(cam_forward.x, 0.0, cam_forward.z).normalize_or_zero();
-    let right = Vec3::new(cam_forward.z, 0.0, -cam_forward.x).normalize_or_zero();
+    let right = Vec3::new(-cam_forward.z, 0.0, cam_forward.x).normalize_or_zero();
     let forward = if forward.length_squared() < 0.5 {
         -Vec3::Z
     } else {

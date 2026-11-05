@@ -86,7 +86,7 @@ pub fn spawn_sky_discs(
     let sphere = meshes.add(Sphere::new(1.0));
     for (is_sun, radius, color) in [
         (true, 16.0, Color::srgb(1.0, 0.93, 0.6)),
-        (false, 12.0, Color::srgb(0.85, 0.9, 1.0)),
+        (false, 10.0, Color::srgb(0.62, 0.68, 0.82)),
     ] {
         commands.spawn((
             SkyDisc { is_sun },
@@ -139,7 +139,7 @@ pub fn update_sky(
     }
     if let Ok((mut t, mut light)) = moon.single_mut() {
         *t = Transform::from_translation(-dir * 20.0).looking_at(Vec3::ZERO, Vec3::Y);
-        light.illuminance = 1500.0 * night_moon;
+        light.illuminance = 700.0 * night_moon;
     }
 
     let amb = Vec3::new(0.35, 0.42, 0.7).lerp(Vec3::new(0.9, 0.92, 0.98), day);
@@ -148,7 +148,7 @@ pub fn update_sky(
 
     let sky = smoothstep(-0.15, 0.3, elev);
     for mut s in &mut skyboxes {
-        s.brightness = 120.0 + (1000.0 - 120.0) * sky;
+        s.brightness = 80.0 + (1000.0 - 80.0) * sky;
     }
 
     let cam = cameras.single().map(|t| t.translation).unwrap_or_default();

@@ -52,6 +52,7 @@ Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, 
 - `src/sky.rs`: cielo da `assets/textures/sky.png` convertito in cubemap a runtime.
 - `src/daynight.rs`: orologio (1 h = 60 s), sole/luna (luci e dischi), stato `Wait` (tasto T).
 - `src/figure.rs`: mesh a parallelepipedo con UV per faccia per le skin in `assets/textures/{player,ladro,viandante}.png`.
+- `src/ui_style.rs`: palette, targhette (`plate`) e tema egui condiviso (stesso stile dei dialoghi).
 - `src/menu.rs`: UI egui (menu Esc, dialogo, FPS, diario J, bussola, fumetti).
 
 ## Regole di lavoro

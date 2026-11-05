@@ -16,6 +16,7 @@ mod quests;
 mod scene;
 mod sky;
 mod terrain;
+mod ui_style;
 
 use avian3d::prelude::*;
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;

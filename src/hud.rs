@@ -195,18 +195,23 @@ pub fn draw_enemy_bars(
             continue;
         }
 
-        let bar_w = 60.0_f32;
+        let bar_w = 70.0_f32;
         let bar_h = 6.0_f32;
-        let name_h = 16.0_f32;
+        let name_h = 0.0_f32;
         let center = egui::pos2(x, y - name_h - bar_h - 4.0);
 
-        // Nome "enemy" sopra la barra, centrato.
-        painter.text(
-            egui::pos2(center.x, center.y + name_h / 2.0),
-            egui::Align2::CENTER_CENTER,
+        // Targhetta con il nome sopra la barra vita.
+        let name_color = if thief.is_some() {
+            egui::Color32::from_rgb(255, 150, 140)
+        } else {
+            crate::ui_style::TEXT
+        };
+        crate::ui_style::plate(
+            &painter,
+            egui::pos2(center.x, center.y + name_h),
             if thief.is_some() { "Ladro" } else { "Nemico" },
-            egui::FontId::proportional(12.0),
-            egui::Color32::from_rgb(255, 220, 220),
+            20.0,
+            name_color,
         );
 
         // Barra vita: sfondo scuro + riempimento rosso proporzionale.
@@ -250,12 +255,12 @@ pub fn draw_npc_labels(
         if !viewport.contains(egui::pos2(screen.x, screen.y)) {
             continue;
         }
-        painter.text(
-            egui::pos2(screen.x, screen.y - 8.0),
-            egui::Align2::CENTER_CENTER,
+        crate::ui_style::plate(
+            &painter,
+            egui::pos2(screen.x, screen.y),
             npc.name,
-            egui::FontId::proportional(14.0),
-            egui::Color32::from_rgb(190, 220, 255),
+            20.0,
+            crate::ui_style::GOLD,
         );
     }
 }
