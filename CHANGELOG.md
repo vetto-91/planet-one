@@ -33,6 +33,21 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 - Verifica: wireframe copre tutta la mesh, camminata 10 s stabile sul
   pendio, salto, menu Esc — 0 panic.
 
+## v0.0.2.4 — Fase 2.2: salto affidabile con coyote time (2026-11-05)
+
+- Nuovo `GroundedState { grounded_now, coyote_left }` sul player.
+- Coyote time 0.12 s: il salto resta valido 0.12 s dopo l'ultimo contatto
+  reale, risolvendo i salti mancati in camminata/corsa sulle pendenze.
+- Raycast ground-check esteso a 1.25 m (semi-altezza 0.85 + tolleranza 0.40)
+  e filtro sulla normale (solo superfici con normal.y >= 0.6 contano come
+  suolo: i muri non danno grounded).
+- Anti double-jump: dopo un salto valido il coyote viene consumato.
+- Tutto il movimento del player (ground-check, input, gravity, MoveAndSlide,
+  facing) spostato in FixedUpdate: pipeline unica, delta stabile.
+- JUMP_SPEED 6.0 → 7.0 per un salto visibilmente più alto.
+- Camera resta in Update dopo il FixedUpdate.
+- Test: salto da fermo, in camminata e in corsa (3 ripetizioni) — 0 panic.
+
 ## v0.0.2.0 — Fase 2: Scena (terreno, cielo, nebbia, hot-reload) (2026-11-04)
 
 - Terreno procedurale da heightmap PNG (`assets/textures/terrain_heightmap.png`,

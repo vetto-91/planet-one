@@ -89,23 +89,24 @@ fn main() {
         .add_systems(Startup, disable_physics_debug_default)
         // Ricostruzione del terreno quando la heightmap è disponibile o cambia.
         .add_systems(Update, terrain::update_terrain)
-        // Fisica del player in FixedUpdate (delta stabile), solo in Playing.
+        // Fisica e movimento del player in FixedUpdate (delta stabile):
+        // ground-check, input/gravita'/salto, MoveAndSlide, facing in un'unica
+        // pipeline fixed: salto e contatto restano coerenti anche in corsa.
         .add_systems(
             FixedUpdate,
-            player::run_move_and_slide.run_if(in_state(AppState::Playing)),
-        )
-        // Gameplay: attivo solo in `Playing`.
-        .add_systems(
-            Update,
             (
-                player::movement,
-                player::facing,
                 player::update_grounded,
-                camera::orbit,
-                camera::follow,
+                player::movement,
+                player::run_move_and_slide,
+                player::facing,
             )
                 .chain()
                 .run_if(in_state(AppState::Playing)),
+        )
+        // Camera in Update (dopo il FixedUpdate): segue il pg con delta reale.
+        .add_systems(
+            Update,
+            (camera::orbit, camera::follow).run_if(in_state(AppState::Playing)),
         )
         // Menu e overlay FPS: il disegno della UI egui DEVE girare nella
         // schedule EguiPrimaryContextPass (in egui 0.36 i font sono

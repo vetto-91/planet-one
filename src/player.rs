@@ -1,18 +1,15 @@
-//! Player cinematico (Fase 2.1): character controller MoveAndSlide di Avian.
+//! Player cinematico (Fase 2.2): character controller Avian + coyote time.
 //!
-//! Perché il passaggio da `RigidBody::Dynamic` a kinematico?
-//! La capsula dinamica su heightfield a celle grandi (100 m / 256 = ~0.39 m)
-//! tende a tunnelare o a rimbalzare sulle pendenze: il solver fisico non
-//! garantisce il contatto quando la velocità verticale supera la dimensione
-//! della cella. `MoveAndSlide` risolve il movimento con sweep continui
-//! (shape cast), quindi scivola sulle colline senza sprofondare.
+//! Perché il coyote time?
+//! Su pendenze del terreno il raycast a volte perde il contatto per un frame
+//! (il pg "galleggia" di pochi cm durante la corsa), e il salto veniva ignorato
+//! anche se il giocatore era (=TerrainMesh/collisione). Con il coyote time il
+//! salto resta valido per ~0.12 s dopo l'ultimo contatto reale.
 //!
-//! Flusso:
-//! - `movement` calcola la velocità desiderata (orizzontale + gravità + salto)
-//!   e la scrive in `LinearVelocity`.
-//! - `run_move_and_slide` (FixedUpdate) chiama `MoveAndSlide::move_and_slide`
-//!   e scrive il risultato direttamente in `Transform` e `LinearVelocity`.
-//! - `CustomPositionIntegration` impedisce ad Avian di muovere il corpo da solo.
+//! Flusso (tutto in FixedUpdate per delta stabile):
+//! - `update_grounded`: raycast + gestione coyote/last-ground.
+//! - `movement`: input Orizzontale, gravity, salto con coyote.
+//! - `run_move_and_slide`: sweep fisico e scrittura Transform/LinearVelocity.
 
 use crate::scene::{Ground, SceneNode};
 use avian3d::prelude::*;
@@ -22,37 +19,45 @@ use bevy::prelude::*;
 #[derive(Component)]
 pub struct Player;
 
-/// Marker del gruppo visivo (figlio del corpo): ruota verso la direzione di moto.
+/// Marker del gruppo visivo (figlio): ruota verso la direzione di moto.
 #[derive(Component)]
 pub struct PlayerVisual;
 
-/// Marker: il player è a terra in questo frame (gestito da [`update_grounded`]).
-#[derive(Component)]
-pub struct Grounded;
+/// Stato del ground-check con coyote time (gestito da [`update_grounded`]).
+///
+/// - `grounded_now`: il raycast colpisce il terreno in questo step.
+/// - `coyote_left`: tempo residuo in cui il salto resta permesso
+///   dopo l'ultimo contatto reale (coyote time).
+#[derive(Component, Default)]
+pub struct GroundedState {
+    pub grounded_now: bool,
+    pub coyote_left: f32,
+}
 
 /// Velocità di camminata (m/s).
 const WALK_SPEED: f32 = 6.0;
 /// Moltiplicatore di velocità in corsa (Shift).
 const SPRINT_FACTOR: f32 = 1.7;
 /// Impulso verticale del salto (m/s).
-const JUMP_SPEED: f32 = 6.0;
-/// Accelerazione di gravità (m/s²), applicata manualmente perché il corpo
-/// è kinematico e Avian non applica la gravità da solo.
+const JUMP_SPEED: f32 = 7.0;
+/// Accelerazione di gravità (m/s²), manuale perché il corpo è kinematico.
 const GRAVITY: f32 = 20.0;
-/// Soglia di distanza per il ground-check (m): semi-altezza capsula (0.85) + pelle.
+/// Distanza base del ground-check (semi-altezza capsula 0.85) + pelle.
 const GROUND_CHECK_DISTANCE: f32 = 0.85;
-const GROUND_SKIN: f32 = 0.10;
+/// Margine extra per tollerare il "galleggiamento" su pendenze durante
+/// camminata/corsa: il raycast arriva fino a 1.25 m sotto il centro.
+const GROUND_TOLERANCE: f32 = 0.40;
+/// Coyote time (s): dopo l'ultimo contatto, il salto resta valido per
+/// questo tempo. Rende il salto affidabile in corsa sulle colline.
+const COYOTE_TIME: f32 = 0.12;
+/// Soglia sulla normale del contatto: solo superfici con normal.y > 0.6
+/// contano come "suolo" (i muri non debeno dare grounded).
+const MIN_GROUND_NORMAL_Y: f32 = 0.6;
 /// Soglia di velocità verticale sopra la quale il salto è bloccato
-/// (evita il doppio salto nei primi frame di ascesa).
+/// (evita il doppio salto in ascesa).
 const MAX_RISE_FOR_JUMP: f32 = 0.5;
 
 /// Spawn del giocatore: corpo kinematico + mesh visivo figlio.
-///
-/// - `RigidBody::Kinematic`: Avian non lo muove da solo, ma i suoi collider
-///   interagiscono con il mondo (il terreno lo blocca).
-/// - `CustomPositionIntegration`: disattiva l'integratore di posizione di Avian,
-///   così solo `run_move_and_slide` sposta il corpo.
-/// - `LockedAxes::ROTATION_LOCKED`: la capsula non ruota mai (evita capovolte).
 pub fn spawn(
     commands: &mut Commands,
     meshes: &mut Assets<Mesh>,
@@ -67,14 +72,13 @@ pub fn spawn(
             LockedAxes::ROTATION_LOCKED,
             LinearVelocity::ZERO,
             CustomPositionIntegration,
-            // Visibility: serve per la propagazione dei figli mesh (evita B0004).
+            GroundedState::default(),
             Visibility::default(),
             Transform::from_xyz(0.0, 1.0, 0.0),
         ))
         .with_children(|body| {
             body.spawn((PlayerVisual, Transform::default(), Visibility::default()))
                 .with_children(|visual| {
-                    // Corpo (placeholder per il personaggio).
                     visual.spawn((
                         Mesh3d(meshes.add(Cuboid::new(0.7, 1.3, 0.7))),
                         MeshMaterial3d(materials.add(StandardMaterial {
@@ -83,7 +87,6 @@ pub fn spawn(
                         })),
                         Transform::from_xyz(0.0, 0.0, 0.0),
                     ));
-                    // "Naso" per rendere visibile l'orientamento.
                     visual.spawn((
                         Mesh3d(meshes.add(Cuboid::new(0.3, 0.3, 0.3))),
                         MeshMaterial3d(materials.add(StandardMaterial {
@@ -96,24 +99,56 @@ pub fn spawn(
         });
 }
 
-/// Calcola la velocità desiderata del player (input + gravità + salto) e la
-/// scrive in `LinearVelocity`. Il movimento effettivo avviene in
-/// [`run_move_and_slide`].
+/// Aggiorna lo stato di ground con coyote time. Gira in `FixedUpdate`.
 ///
-/// La componente orizzontale è sovrascritta dall'input (WASD relativo alla
-/// camera); la componente verticale accumula la gravità e viene azzerata
-/// quando si è a terra, così il personaggio resta appoggiato al terreno.
+/// Se il raycast colpisce un `Ground` con normale sufficientemente verticale:
+///
+/// - `grounded_now = true`, `coyote_left = COYOTE_TIME`.
+///
+/// Altrimenti `grounded_now = false` e `coyote_left` scala col tempo fino a 0.
+pub fn update_grounded(
+    spatial_query: SpatialQuery,
+    grounds: Query<Entity, With<Ground>>,
+    mut players: Query<(Entity, &GlobalTransform, &mut GroundedState), With<Player>>,
+    time: Res<Time>,
+) {
+    let max_dist = GROUND_CHECK_DISTANCE + GROUND_TOLERANCE;
+    for (entity, transform, mut state) in &mut players {
+        let filter = SpatialQueryFilter::default().with_excluded_entities([entity]);
+        let hit = spatial_query.cast_ray_predicate(
+            transform.translation(),
+            Dir3::NEG_Y,
+            max_dist,
+            true,
+            &filter,
+            &|hit_entity| grounds.contains(hit_entity),
+        );
+
+        let hit_ground = hit.filter(|h| h.normal.y >= MIN_GROUND_NORMAL_Y).is_some();
+
+        if hit_ground {
+            state.grounded_now = true;
+            state.coyote_left = COYOTE_TIME;
+        } else {
+            state.grounded_now = false;
+            state.coyote_left = (state.coyote_left - time.delta_secs()).max(0.0);
+        }
+    }
+}
+
+/// Calcola la velocità desiderata (input + gravità + salto con coyote) e la
+/// scrive in `LinearVelocity`. Il movimento effettivo è in [`run_move_and_slide`].
+/// Gira in `FixedUpdate` insieme a ground-check e fisica.
 pub fn movement(
     keys: Res<ButtonInput<KeyCode>>,
     cameras: Query<&GlobalTransform, With<Camera3d>>,
-    mut players: Query<(&mut LinearVelocity, Option<&Grounded>), With<Player>>,
+    mut players: Query<(&mut LinearVelocity, &mut GroundedState), With<Player>>,
     time: Res<Time>,
 ) {
     let Ok(camera) = cameras.single() else {
         return;
     };
 
-    // Direzione di input sul piano XZ.
     let mut input = Vec2::ZERO;
     if keys.pressed(KeyCode::KeyW) || keys.pressed(KeyCode::ArrowUp) {
         input.y += 1.0;
@@ -129,11 +164,9 @@ pub fn movement(
     }
     let input = input.clamp_length_max(1.0);
 
-    // Corsa con Shift.
     let sprinting = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
     let speed = WALK_SPEED * if sprinting { SPRINT_FACTOR } else { 1.0 };
 
-    // Forward/right della camera proiettati sul piano XZ.
     let cam_forward = camera.forward().normalize_or_zero();
     let forward = Vec3::new(cam_forward.x, 0.0, cam_forward.z).normalize_or_zero();
     let right = Vec3::new(cam_forward.z, 0.0, -cam_forward.x).normalize_or_zero();
@@ -150,29 +183,32 @@ pub fn movement(
 
     let direction = (forward * input.y + right * input.x).normalize_or_zero();
 
-    for (mut velocity, grounded) in &mut players {
-        // Orizzontale:速度 direttamente dall'input.
+    let jump_pressed = keys.just_pressed(KeyCode::Space);
+
+    for (mut velocity, mut state) in &mut players {
         velocity.x = direction.x * speed;
         velocity.z = direction.z * speed;
 
-        // Verticale: gravità, azzerata a terra (grounded) per restare appoggiati.
-        let grounded = grounded.is_some();
-        if grounded && velocity.y <= 0.0 {
+        // Verticale: gravità; a terra (grounded_now) azzera per restare appoggiati.
+        if state.grounded_now && velocity.y <= 0.0 {
             velocity.y = 0.0;
         } else {
             velocity.y -= GRAVITY * time.delta_secs();
         }
 
-        // Salto: impulso solo se a terra e non in ascesa (anti double-jump).
-        if keys.just_pressed(KeyCode::Space) && grounded && velocity.y <= MAX_RISE_FOR_JUMP {
+        // Salto con coyote time: valido se grounded_now OPPURE entro coyote_left.
+        // Anti double-jump: blocca se già in ascesa.
+        if jump_pressed
+            && (state.grounded_now || state.coyote_left > 0.0)
+            && velocity.y <= MAX_RISE_FOR_JUMP
+        {
             velocity.y = JUMP_SPEED;
+            state.coyote_left = 0.0; // consuma il coyote: niente doppio salto
         }
     }
 }
 
-/// Esegue `MoveAndSlide` sul corpo kinematico: aggiorna `Transform` e
-/// `LinearVelocity` con il risultato dello sweep. Gira in `FixedUpdate`
-/// per avere un delta tempo stabile.
+/// Esegue `MoveAndSlide` sul corpo kinematico in `FixedUpdate`.
 pub fn run_move_and_slide(
     move_and_slide: MoveAndSlide,
     time: Res<Time>,
@@ -195,37 +231,7 @@ pub fn run_move_and_slide(
     }
 }
 
-/// Ground-check: raycast verso il basso dal centro della capsula.
-///
-/// Il player è a terra se il ray colpisce un collider `Ground` entro la
-/// semi-altezza della capsula più una pelle di tolleranza. Escludere il
-/// player stesso evita che il ray colpisca la propria capsula.
-pub fn update_grounded(
-    spatial_query: SpatialQuery,
-    mut commands: Commands,
-    grounds: Query<Entity, With<Ground>>,
-    players: Query<(Entity, &GlobalTransform), With<Player>>,
-) {
-    for (entity, transform) in &players {
-        let filter = SpatialQueryFilter::default().with_excluded_entities([entity]);
-        let hit = spatial_query.cast_ray_predicate(
-            transform.translation(),
-            Dir3::NEG_Y,
-            GROUND_CHECK_DISTANCE + GROUND_SKIN,
-            true,
-            &filter,
-            &|hit_entity| grounds.contains(hit_entity),
-        );
-
-        if hit.is_some() {
-            commands.entity(entity).insert(Grounded);
-        } else {
-            commands.entity(entity).remove::<Grounded>();
-        }
-    }
-}
-
-/// Ruota il mesh visivo verso la direzione di movimento (smooth).
+/// Ruota il mesh visivo verso la direzione di movimento (slerp in FixedUpdate).
 pub fn facing(
     mut visuals: Query<&mut Transform, With<PlayerVisual>>,
     players: Query<&LinearVelocity, With<Player>>,
@@ -237,7 +243,7 @@ pub fn facing(
 
     let horizontal = Vec2::new(velocity.x, velocity.z);
     if horizontal.length() < 0.1 {
-        return; // Fermi: mantieni l'orientamento attuale.
+        return;
     }
 
     let target_yaw = (-velocity.x).atan2(-velocity.z);
