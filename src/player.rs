@@ -1,15 +1,17 @@
-//! Player cinematico (Fase 2.2): character controller Avian + coyote time.
+//! Player cinematico (Fase 2.3): character controller Avian + ground detection robusta.
 //!
-//! Perché il coyote time?
-//! Su pendenze del terreno il raycast a volte perde il contatto per un frame
-//! (il pg "galleggia" di pochi cm durante la corsa), e il salto veniva ignorato
-//! anche se il giocatore era (=TerrainMesh/collisione). Con il coyote time il
-//! salto resta valido per ~0.12 s dopo l'ultimo contatto reale.
+//! Perché questa versione?
+//! Su pendenze ripide un singolo raycast centrale perde il contatto per qualche
+//! frame durante la corsa: il salto veniva ignorato. Ora il ground-check usa
+//! 5 raycast (centro + 4 offset) e il contatto fisico di `MoveAndSlide` viene
+//! tracciato come "hit recente": il salto resta valido per 0.25 s (coyote)
+//! dopo l'ultimo contatto, anche se il ray non colpisce più.
 //!
-//! Flusso (tutto in FixedUpdate per delta stabile):
-//! - `update_grounded`: raycast + gestione coyote/last-ground.
-//! - `movement`: input Orizzontale, gravity, salto con coyote.
-//! - `run_move_and_slide`: sweep fisico e scrittura Transform/LinearVelocity.
+//! Flusso (tutto in FixedUpdate):
+//! - `update_grounded`: 5 raycast verso il basso, aggiorna GroundedState.
+//! - `movement`: input orizzontale, gravità, salto con coyote/hit-recente.
+//! - `run_move_and_slide`: sweep fisico + registrazione hit col terreno.
+//! - `facing`: rotazione mesh.
 
 use crate::scene::{Ground, SceneNode};
 use avian3d::prelude::*;
@@ -23,15 +25,38 @@ pub struct Player;
 #[derive(Component)]
 pub struct PlayerVisual;
 
-/// Stato del ground-check con coyote time (gestito da [`update_grounded`]).
-///
-/// - `grounded_now`: il raycast colpisce il terreno in questo step.
-/// - `coyote_left`: tempo residuo in cui il salto resta permesso
-///   dopo l'ultimo contatto reale (coyote time).
+/// Buffer del tasto salto: il salto si attiva anche se Space viene premuto
+/// pochi frame prima di essere grounded (utile in atterraggio/corsa su pendii).
 #[derive(Component, Default)]
+pub struct JumpBuffer {
+    pub time_left: f32,
+}
+
+/// Stato del ground con coyote time e cronologia degli hit fisici.
+///
+/// - `grounded_now`: almeno un raycast ha colpito il terreno in questo step.
+/// - `ground_dist`: distanza del hit più vicino (f32::INFINITY se nessuno).
+/// - `coyote_left`: tempo residuo in cui il salto è permesso dopo l'ultimo
+///   contatto (coyote time).
+/// - `last_ground_hit`: tempo residuo in cui l'ultimo hit di MoveAndSlide
+///   col terreno (normale verso l'alto) resta "recente" e abilita il salto.
+#[derive(Component)]
 pub struct GroundedState {
     pub grounded_now: bool,
+    pub ground_dist: f32,
     pub coyote_left: f32,
+    pub last_ground_hit: f32,
+}
+
+impl Default for GroundedState {
+    fn default() -> Self {
+        Self {
+            grounded_now: false,
+            ground_dist: f32::INFINITY,
+            coyote_left: 0.0,
+            last_ground_hit: 0.0,
+        }
+    }
 }
 
 /// Velocità di camminata (m/s).
@@ -39,23 +64,35 @@ const WALK_SPEED: f32 = 6.0;
 /// Moltiplicatore di velocità in corsa (Shift).
 const SPRINT_FACTOR: f32 = 1.7;
 /// Impulso verticale del salto (m/s).
-const JUMP_SPEED: f32 = 7.0;
+const JUMP_SPEED: f32 = 7.5;
 /// Accelerazione di gravità (m/s²), manuale perché il corpo è kinematico.
 const GRAVITY: f32 = 20.0;
-/// Distanza base del ground-check (semi-altezza capsula 0.85) + pelle.
-const GROUND_CHECK_DISTANCE: f32 = 0.85;
-/// Margine extra per tollerare il "galleggiamento" su pendenze durante
-/// camminata/corsa: il raycast arriva fino a 1.25 m sotto il centro.
-const GROUND_TOLERANCE: f32 = 0.40;
-/// Coyote time (s): dopo l'ultimo contatto, il salto resta valido per
-/// questo tempo. Rende il salto affidabile in corsa sulle colline.
-const COYOTE_TIME: f32 = 0.12;
-/// Soglia sulla normale del contatto: solo superfici con normal.y > 0.6
-/// contano come "suolo" (i muri non debeno dare grounded).
-const MIN_GROUND_NORMAL_Y: f32 = 0.6;
-/// Soglia di velocità verticale sopra la quale il salto è bloccato
-/// (evita il doppio salto in ascesa).
-const MAX_RISE_FOR_JUMP: f32 = 0.5;
+
+// --- Ground detection ---
+/// Distanza massima del raycast di rilevamento (m): permette di rilevare il
+/// terreno anche quando il pg "galleggia" di poco su pendenze ripide.
+const GROUND_DETECT_DISTANCE: f32 = 1.50;
+/// Distanza entro cui il terreno viene "snapputo" (gravità azzerata): più
+/// corta del detect, così in caduta libera a >0.95 m non si ferma in aria.
+const GROUND_SNAP_DISTANCE: f32 = 0.95;
+/// Normale minima (y) per considerare una superficie "suolo".
+const MIN_GROUND_NORMAL_Y: f32 = 0.5;
+/// Offset laterali dei 4 raycast aggiuntivi (m), entro il raggio capsula (0.35).
+const RAY_OFFSETS: [Vec2; 4] = [
+    Vec2::new(0.25, 0.0),
+    Vec2::new(-0.25, 0.0),
+    Vec2::new(0.0, 0.25),
+    Vec2::new(0.0, -0.25),
+];
+/// Coyote time (s): il salto resta valido questo tempo dopo l'ultimo contatto.
+const COYOTE_TIME: f32 = 0.25;
+/// Durata (s) per cui un hit fisico di MoveAndSlide resta "recente".
+const GROUND_HIT_RECENT: f32 = 0.20;
+/// Soglia di velocità verticale sopra cui il salto è bloccato (anti double-jump).
+const MAX_RISE_FOR_JUMP: f32 = 1.0;
+/// Durata del buffer di salto (s): se premi Space entro questo tempo prima
+/// di essere grounded, il salto parte appena tocchi terra.
+const JUMP_BUFFER_TIME: f32 = 0.15;
 
 /// Spawn del giocatore: corpo kinematico + mesh visivo figlio.
 pub fn spawn(
@@ -73,6 +110,7 @@ pub fn spawn(
             LinearVelocity::ZERO,
             CustomPositionIntegration,
             GroundedState::default(),
+            JumpBuffer::default(),
             Visibility::default(),
             Transform::from_xyz(0.0, 1.0, 0.0),
         ))
@@ -99,50 +137,67 @@ pub fn spawn(
         });
 }
 
-/// Aggiorna lo stato di ground con coyote time. Gira in `FixedUpdate`.
+/// Ground-check multi-ray: 5 raycast verso il basso (centro + 4 offset XZ).
 ///
-/// Se il raycast colpisce un `Ground` con normale sufficientemente verticale:
-///
-/// - `grounded_now = true`, `coyote_left = COYOTE_TIME`.
-///
-/// Altrimenti `grounded_now = false` e `coyote_left` scala col tempo fino a 0.
+/// `grounded_now` è true se almeno un ray colpisce un `Ground` con normale
+/// verticale Breaking >= MIN_GROUND_NORMAL_Y entro GROUND_DETECT_DISTANCE.
+/// `ground_dist` è la distanza del hit più vicino. Gira in FixedUpdate.
 pub fn update_grounded(
     spatial_query: SpatialQuery,
     grounds: Query<Entity, With<Ground>>,
     mut players: Query<(Entity, &GlobalTransform, &mut GroundedState), With<Player>>,
     time: Res<Time>,
 ) {
-    let max_dist = GROUND_CHECK_DISTANCE + GROUND_TOLERANCE;
     for (entity, transform, mut state) in &mut players {
         let filter = SpatialQueryFilter::default().with_excluded_entities([entity]);
-        let hit = spatial_query.cast_ray_predicate(
-            transform.translation(),
-            Dir3::NEG_Y,
-            max_dist,
-            true,
-            &filter,
-            &|hit_entity| grounds.contains(hit_entity),
-        );
+        let center = transform.translation();
 
-        let hit_ground = hit.filter(|h| h.normal.y >= MIN_GROUND_NORMAL_Y).is_some();
+        // Raccoglie il hit più vicino tra centro e 4 offset laterali.
+        let mut best: Option<RayHitData> = None;
+        let mut origins = Vec::with_capacity(5);
+        origins.push(center);
+        for off in RAY_OFFSETS {
+            origins.push(center + Vec3::new(off.x, 0.0, off.y));
+        }
 
-        if hit_ground {
+        for origin in origins {
+            if let Some(hit) = spatial_query.cast_ray_predicate(
+                origin,
+                Dir3::NEG_Y,
+                GROUND_DETECT_DISTANCE,
+                true,
+                &filter,
+                &|hit_entity| grounds.contains(hit_entity),
+            ) && hit.normal.y >= MIN_GROUND_NORMAL_Y
+                && best.as_ref().is_none_or(|b| hit.distance < b.distance)
+            {
+                best = Some(hit);
+            }
+        }
+
+        if let Some(hit) = best {
             state.grounded_now = true;
+            state.ground_dist = hit.distance;
             state.coyote_left = COYOTE_TIME;
         } else {
             state.grounded_now = false;
+            state.ground_dist = f32::INFINITY;
             state.coyote_left = (state.coyote_left - time.delta_secs()).max(0.0);
         }
     }
 }
 
-/// Calcola la velocità desiderata (input + gravità + salto con coyote) e la
-/// scrive in `LinearVelocity`. Il movimento effettivo è in [`run_move_and_slide`].
-/// Gira in `FixedUpdate` insieme a ground-check e fisica.
+/// Calcola la velocità desiderata (input + gravità + salto) in FixedUpdate.
+///
+/// - Orizzontale: dall'input WASD relativo alla camera.
+/// - Verticale: gravità; azzerata solo se il terreno è entro GROUND_SNAP_DISTANCE
+///   (così in caduta libera non si ferma a mezz'aria).
+/// - Salto: valido se grounded_now OPPURE coyote_left > 0 OPPURE un hit fisico
+///   recente (last_ground_hit > 0), e non in forte ascesa (anti double-jump).
 pub fn movement(
     keys: Res<ButtonInput<KeyCode>>,
     cameras: Query<&GlobalTransform, With<Camera3d>>,
-    mut players: Query<(&mut LinearVelocity, &mut GroundedState), With<Player>>,
+    mut players: Query<(&mut LinearVelocity, &mut GroundedState, &mut JumpBuffer), With<Player>>,
     time: Res<Time>,
 ) {
     let Ok(camera) = cameras.single() else {
@@ -183,38 +238,65 @@ pub fn movement(
 
     let direction = (forward * input.y + right * input.x).normalize_or_zero();
 
+    // Buffer del salto: se Space viene premuto, resta "prenotato" per
+    // JUMP_BUFFER_TIME secondi e viene consumato appena si puo' saltare.
     let jump_pressed = keys.just_pressed(KeyCode::Space);
 
-    for (mut velocity, mut state) in &mut players {
+    for (mut velocity, mut state, mut buffer) in &mut players {
         velocity.x = direction.x * speed;
         velocity.z = direction.z * speed;
 
-        // Verticale: gravità; a terra (grounded_now) azzera per restare appoggiati.
-        if state.grounded_now && velocity.y <= 0.0 {
+        // Snap al terreno solo se molto vicino (non in caduta libera).
+        let snapped = state.grounded_now && state.ground_dist <= GROUND_SNAP_DISTANCE;
+        if snapped && velocity.y <= 0.0 {
             velocity.y = 0.0;
         } else {
             velocity.y -= GRAVITY * time.delta_secs();
         }
 
-        // Salto con coyote time: valido se grounded_now OPPURE entro coyote_left.
-        // Anti double-jump: blocca se già in ascesa.
-        if jump_pressed
-            && (state.grounded_now || state.coyote_left > 0.0)
-            && velocity.y <= MAX_RISE_FOR_JUMP
-        {
+        // Aggiorna il buffer di salto col delta del fixed step.
+        if jump_pressed {
+            buffer.time_left = JUMP_BUFFER_TIME;
+        } else {
+            buffer.time_left = (buffer.time_left - time.delta_secs()).max(0.0);
+        }
+
+        // Salto: buffer attivo + (coyote OR hit recente OR grounded) +
+        // non in forte ascesa (anti double-jump).
+        let can_jump = buffer.time_left > 0.0
+            && (state.grounded_now || state.coyote_left > 0.0 || state.last_ground_hit > 0.0)
+            && velocity.y <= MAX_RISE_FOR_JUMP;
+        if can_jump {
             velocity.y = JUMP_SPEED;
-            state.coyote_left = 0.0; // consuma il coyote: niente doppio salto
+            buffer.time_left = 0.0;
+            state.coyote_left = 0.0;
+            state.last_ground_hit = 0.0;
         }
     }
 }
 
-/// Esegue `MoveAndSlide` sul corpo kinematico in `FixedUpdate`.
+/// Esegue `MoveAndSlide` in FixedUpdate e registra gli hit col terreno.
+///
+/// Se durante lo sweep c'è un contatto con normale verso l'alto (>= 0.5),
+/// `last_ground_hit` viene ricaricato a GROUND_HIT_RECENT: questo rende il
+/// salto affidabile anche quando i raycast non vedono il terreno (pendenze).
 pub fn run_move_and_slide(
     move_and_slide: MoveAndSlide,
     time: Res<Time>,
-    mut players: Query<(Entity, &mut Transform, &mut LinearVelocity, &Collider), With<Player>>,
+    mut players: Query<
+        (
+            Entity,
+            &mut Transform,
+            &mut LinearVelocity,
+            &Collider,
+            &mut GroundedState,
+        ),
+        With<Player>,
+    >,
 ) {
-    for (entity, mut transform, mut velocity, collider) in &mut players {
+    let dt = time.delta_secs();
+    for (entity, mut transform, mut velocity, collider, mut state) in &mut players {
+        let mut hit_ground = false;
         let output = move_and_slide.move_and_slide(
             collider,
             transform.translation,
@@ -223,11 +305,22 @@ pub fn run_move_and_slide(
             time.delta(),
             &MoveAndSlideConfig::default(),
             &SpatialQueryFilter::from_excluded_entities([entity]),
-            |_hit| MoveAndSlideHitResponse::Accept,
+            |hit| {
+                if hit.intersects() && hit.normal.y >= MIN_GROUND_NORMAL_Y {
+                    hit_ground = true;
+                }
+                MoveAndSlideHitResponse::Accept
+            },
         );
 
         transform.translation = output.position;
         velocity.0 = output.projected_velocity;
+
+        if hit_ground {
+            state.last_ground_hit = GROUND_HIT_RECENT;
+        } else {
+            state.last_ground_hit = (state.last_ground_hit - dt).max(0.0);
+        }
     }
 }
 

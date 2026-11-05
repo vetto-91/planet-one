@@ -48,6 +48,20 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 - Camera resta in Update dopo il FixedUpdate.
 - Test: salto da fermo, in camminata e in corsa (3 ripetizioni) — 0 panic.
 
+## v0.0.2.5 — Fase 2.3: salto robusto su pendenze (multi-ray + coyote + hit-history + buffer) (2026-11-05)
+
+- Ground-check multi-ray: 5 raycast (centro + 4 offset XZ) entro 1.5 m,
+  normale minima normal.y >= 0.5: rileva il terreno anche su pendenze ripide.
+- Coyote time alzato a 0.25 s + cronologia hit fisici di MoveAndSlide
+  (last_ground_hit, 0.2 s): il salto resta valido anche se i ray non vedono
+  il terreno durante la corsa in salita.
+- Jump buffer 0.15 s: se premi Space poco prima di toccare terra, il salto
+  parte appena diventi grounded.
+- Snap al terreno solo entro 0.95 m (non in caduta libera).
+- JUMP_SPEED 6.0 -> 7.5.
+- Anti double-jump: buffer + coyote + hit consumati al salto.
+- Test: salti in camminata e corsa ripetuti — 0 panic, salto sempre attivo.
+
 ## v0.0.2.0 — Fase 2: Scena (terreno, cielo, nebbia, hot-reload) (2026-11-04)
 
 - Terreno procedurale da heightmap PNG (`assets/textures/terrain_heightmap.png`,
