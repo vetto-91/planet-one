@@ -4,6 +4,7 @@
 //! terreno 100 m, debug wireframe collider (F3).
 
 mod camera;
+mod entities;
 mod menu;
 mod player;
 mod scene;
@@ -75,6 +76,8 @@ fn main() {
         })
         .init_resource::<camera::OrbitCamera>()
         .init_resource::<menu::ShowFps>()
+        .init_resource::<entities::DialogState>()
+        .init_resource::<entities::NearestInteract>()
         // Asset del terreno: heightmap PNG + handle del mesh generato.
         .add_systems(
             Startup,
@@ -103,10 +106,20 @@ fn main() {
                 .chain()
                 .run_if(in_state(AppState::Playing)),
         )
+        // Nemico in FixedUpdate: stesso pipeline del player per MoveAndSlide.
+        .add_systems(
+            FixedUpdate,
+            entities::enemy_patrol.run_if(in_state(AppState::Playing)),
+        )
         // Camera in Update (dopo il FixedUpdate): segue il pg con delta reale.
         .add_systems(
             Update,
             (camera::orbit, camera::follow).run_if(in_state(AppState::Playing)),
+        )
+        // Interazione (E) e avanzamento dialogo in Update, solo in Playing.
+        .add_systems(
+            Update,
+            (entities::interact, entities::advance_dialog).run_if(in_state(AppState::Playing)),
         )
         // Menu e overlay FPS: il disegno della UI egui DEVE girare nella
         // schedule EguiPrimaryContextPass (in egui 0.36 i font sono

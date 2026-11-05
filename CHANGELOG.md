@@ -62,6 +62,18 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 - Anti double-jump: buffer + coyote + hit consumati al salto.
 - Test: salti in camminata e corsa ripetuti — 0 panic, salto sempre attivo.
 
+## v0.0.3.0 — Fase 3: Entità (NPC, dialogo, nemico patrol) (2026-11-05)
+
+- Nuovo modulo `entities.rs`: NPC (Viandante, blu) con dialogo lineare,
+  inimigo (rosso) in patrol tra waypoint con lo stesso MoveAndSlide del player.
+- Interazione: prompt "[E] Parla" quando nel range (5 m), tasto E apre il dialogo.
+- Dialogo: pannello in basso stile RPG (egui), Enter/Space avanza, Esc chiude.
+  Esc durante dialogo chiude il dialogo SENZA aprire il menu pausa.
+- Movimento libero durante il dialogo (come richiesto).
+- Reset scena include NPC e nemico (SceneNode).
+- Test: dialogo aperto/avanzato/chiuso (4 righe), movimento durante dialogo,
+  patrol nemico verificato via log — 0 panic.
+
 ## v0.0.2.0 — Fase 2: Scena (terreno, cielo, nebbia, hot-reload) (2026-11-04)
 
 - Terreno procedurale da heightmap PNG (`assets/textures/terrain_heightmap.png`,

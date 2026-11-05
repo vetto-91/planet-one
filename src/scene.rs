@@ -12,7 +12,7 @@
 //! spawn degli altri elementi (`spawn_world`, chiamato sia allo startup
 //! sia durante il reset).
 
-use crate::{AppState, camera::OrbitCamera, player, sky, terrain};
+use crate::{AppState, camera::OrbitCamera, entities, player, sky, terrain};
 use bevy::image::Image;
 use bevy::light::Skybox;
 use bevy::prelude::*;
@@ -84,6 +84,20 @@ pub fn spawn_world(
 
     // --- Player ---
     player::spawn(commands, meshes, materials);
+
+    // --- NPC con dialogo (vicino allo spawn del player) ---
+    // NPC vicino allo spawn del player (0,0,0): a (3, 0, -2) così si vede subito.
+    // NPC a 2.5 m dallo spawn del player: subito nel range di interazione.
+    entities::spawn_npc(commands, meshes, materials, Vec3::new(2.5, 0.0, 0.0));
+
+    // --- Nemico in patrol tra due punti ---
+    entities::spawn_enemy(
+        commands,
+        meshes,
+        materials,
+        Vec3::new(-4.0, 0.0, -8.0),
+        Vec3::new(-10.0, 0.0, -10.0),
+    );
 }
 
 /// Adapter per l'uso come sistema di startup: converte i `ResMut`

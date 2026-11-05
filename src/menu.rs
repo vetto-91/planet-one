@@ -1,6 +1,10 @@
 //! Menu Esc (egui): toggle pausa, lista tasti, slider sensibilità, reset scena e FPS overlay.
 
-use crate::{AppState, camera::OrbitCamera};
+use crate::{
+    AppState,
+    camera::OrbitCamera,
+    entities::{DialogState, NearestInteract},
+};
 use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, egui};
@@ -22,9 +26,15 @@ impl Default for ShowFps {
 pub fn toggle(
     keys: Res<ButtonInput<KeyCode>>,
     state: Res<State<AppState>>,
+    dialog: Res<crate::entities::DialogState>,
     mut next: ResMut<NextState<AppState>>,
 ) {
     if !keys.just_pressed(KeyCode::Escape) {
+        return;
+    }
+    // Se un dialogo è aperto, Esc lo chiude (gestito da advance_dialog):
+    // qui non apriamo il menu.
+    if dialog.open {
         return;
     }
     match state.get() {
@@ -42,6 +52,7 @@ pub fn toggle(
 ///   sensibilità del mouse, il checkbox per il contatore FPS, il pulsante
 ///   "Riprendi" e il pulsante "Reset scena" (ricostruzione da zero di
 ///   terreno, luci e player).
+#[allow(clippy::too_many_arguments)]
 pub fn ui(
     mut contexts: EguiContexts,
     state: Res<State<AppState>>,
@@ -49,6 +60,8 @@ pub fn ui(
     mut orbit: ResMut<OrbitCamera>,
     mut show_fps: ResMut<ShowFps>,
     diagnostics: Res<DiagnosticsStore>,
+    dialog: Res<DialogState>,
+    nearest: Res<NearestInteract>,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return; // Contesto egui non ancora pronto (primi frame).
@@ -62,6 +75,19 @@ pub fn ui(
                 .show(ctx, |ui| {
                     ui.label("ESC = menu");
                 });
+
+            // Prompt di interazione: appare quando il player e' vicino a un
+            // NPC interagibile (il sistema entities::interact gestisce il range).
+            // Mostriamo "[E] Parla" quando un dialogo non e' aperto e c'e'
+            // un interagibile vicino: lo deduciamo da una query separata.
+            // (semplificato: mostriamo il prompt se DialogState non e' aperto
+            // e il player e' fermo vicino all'NPC — gestito sotto via query)
+            show_interact_prompt(ctx, &dialog, &nearest.prompt);
+
+            // Pannello dialogo in basso (stile RPG) quando aperto.
+            if dialog.open {
+                show_dialog_panel(ctx, &dialog);
+            }
 
             // Contatore FPS in alto a destra (se attivato dal menu).
             if show_fps.0
@@ -139,4 +165,61 @@ pub fn ui(
         // Durante Resetting non mostriamo nulla; la UI riapparirà in Playing/Paused.
         AppState::Resetting => {}
     }
+}
+
+/// Mostra il prompt di interazione in basso al centro quando il player e'
+/// nel range di un interagibile (NPC). Il prompt usa il testo di
+/// `Interactable::prompt` del nearest.
+fn show_interact_prompt(
+    ctx: &egui::Context,
+    dialog: &DialogState,
+    nearest_prompt: &Option<String>,
+) {
+    if dialog.open || nearest_prompt.is_none() {
+        return;
+    }
+    let size = ctx.viewport_rect().size();
+    egui::Area::new(egui::Id::new("interact_prompt"))
+        .fixed_pos(egui::pos2(size.x / 2.0 - 60.0, size.y - 120.0))
+        .show(ctx, |ui| {
+            ui.label(
+                egui::RichText::new(nearest_prompt.as_deref().unwrap_or("[E] Interagisci"))
+                    .strong(),
+            );
+        });
+}
+
+/// Pannello del dialogo in basso, stile RPG: nome parlante + riga corrente +
+/// hint per avanzare/chiudere.
+fn show_dialog_panel(ctx: &egui::Context, dialog: &DialogState) {
+    let size = ctx.viewport_rect().size();
+    let panel_h = 110.0;
+    let frame = egui::Frame::default()
+        .fill(egui::Color32::from_rgba_unmultiplied(15, 18, 28, 235))
+        .stroke(egui::Stroke::new(
+            1.0,
+            egui::Color32::from_rgb(90, 110, 160),
+        ))
+        .inner_margin(egui::Margin::symmetric(16, 12))
+        .corner_radius(egui::CornerRadius::same(6));
+
+    egui::Area::new(egui::Id::new("dialog_panel"))
+        .fixed_pos(egui::pos2(size.x / 2.0 - 320.0, size.y - panel_h - 24.0))
+        .show(ctx, |ui| {
+            ui.set_width(640.0);
+            ui.set_height(panel_h);
+            frame.show(ui, |ui| {
+                ui.label(egui::RichText::new(&dialog.speaker).strong().size(16.0));
+                ui.add_space(4.0);
+                if let Some(line) = dialog.lines.get(dialog.index) {
+                    ui.label(line);
+                }
+                ui.add_space(6.0);
+                ui.label(
+                    egui::RichText::new("Enter/Space = avanti   •   Esc = chiudi")
+                        .small()
+                        .color(egui::Color32::from_rgb(160, 170, 190)),
+                );
+            });
+        });
 }
