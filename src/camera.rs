@@ -100,13 +100,9 @@ pub fn orbit(mut cursor_events: MessageReader<CursorMoved>, mut state: ResMut<Or
     } else {
         (PITCH_MIN, PITCH_MAX)
     };
-    // In prima persona "mouse su" deve alzare la vista: inverti delta.y solo li'.
-    let dy = if state.mode == CameraMode::FirstPerson {
-        -delta.y
-    } else {
-        delta.y
-    };
-    state.pitch = (state.pitch + dy * state.sensitivity).clamp(min, max);
+    // Stesso segno di dy' in entrambe le viste: pitch alto = guardi in basso
+    // (sia in 3a che in 1a), cosi' il passaggio 3a->1a non inverte la verticale.
+    state.pitch = (state.pitch + delta.y * state.sensitivity).clamp(min, max);
 }
 
 /// Legge gli eventi raw del mouse e aggiorna `rmb_held` nella resource.
@@ -130,6 +126,9 @@ pub fn mode_input(keys: Res<ButtonInput<KeyCode>>, mut state: ResMut<OrbitCamera
     if keys.just_pressed(KeyCode::KeyV) {
         state.first_person_lock = !state.first_person_lock;
         state.mode = if state.first_person_lock {
+            // Entrando in 1a persona, azzera il pitch: la mira parte orizzontale.
+            // Cosi' non erediti l'altezza 3a che farebbe guardare cielo/terra a caso.
+            state.pitch = 0.0;
             CameraMode::FirstPerson
         } else {
             CameraMode::ThirdPerson
@@ -149,11 +148,16 @@ pub fn mode_input(keys: Res<ButtonInput<KeyCode>>, mut state: ResMut<OrbitCamera
 
     // RMB tenuto → prima persona temporanea; al rilascio → terza persona.
     state.rmb_held = rmb;
-    state.mode = if state.rmb_held {
+    let new_mode = if state.rmb_held {
         CameraMode::FirstPerson
     } else {
         CameraMode::ThirdPerson
     };
+    // Alla transizione 3a->1a azzera pitch: mira orizzontale, niente salto verticale.
+    if new_mode == CameraMode::FirstPerson && state.mode == CameraMode::ThirdPerson {
+        state.pitch = 0.0;
+    }
+    state.mode = new_mode;
 }
 
 /// Posiziona la camera: in terza persona orbita attorno al player con
@@ -189,7 +193,10 @@ pub fn follow(
             // una FPS standard. yaw su Y (destra/sinistra), pitch su X (alto/basso).
             // In orbit() in 1a persona dy e' invertito, quindi mouse SU aumenta
             // pitch; rotation_x(+pitch) in Bevy (Y-up) porta il forward verso +Y = SU.
-            let rot = Quat::from_rotation_y(state.yaw) * Quat::from_rotation_x(state.pitch);
+            // pitch alto = guardi in basso (come in 3a), quindi -pitch su X.
+            // Mouse giu' -> pitch aumenta -> -pitch diminuisce -> guardi giu'.
+            // La mira resta coerente con la crosshair della 3a persona.
+            let rot = Quat::from_rotation_y(state.yaw) * Quat::from_rotation_x(-state.pitch);
             camera.translation = player.translation();
             camera.rotation = rot;
         }

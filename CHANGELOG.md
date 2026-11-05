@@ -120,6 +120,16 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 - Test: 3a persona (orizzonte si sposta col mouse), 1a persona (mouse su = cielo,
   destra/sinistra = yaw corretto, player invisibile) — 0 panic.
 
+## v0.0.4.5 — Pitch coerente 3a/1a persona (2026-11-05)
+
+- Alla transizione 3a->1a (V o RMB) il pitch viene azzerato: la mira parte
+  orizzontale, niente salto verticale (prima: guardavi giu' in 3a e vedevi
+  il cielo in 1a).
+- In 1a: `rotation_x(-pitch)`, stesso segno dy in entrambe le viste:
+  mouse giu' = guardi giu', mouse su = guardi su, coerente con la crosshair 3a.
+- Hiatus del cursore: lasciato al SO (Ctrl+Alt+Invio full-screen cattura input).
+- Test: transizione 3a(giu')->1a(orizzonte), poi 1a su/giu' — 0 panic.
+
 ## v0.0.2.0 — Fase 2: Scena (terreno, cielo, nebbia, hot-reload) (2026-11-04)
 
 - Terreno procedurale da heightmap PNG (`assets/textures/terrain_heightmap.png`,
