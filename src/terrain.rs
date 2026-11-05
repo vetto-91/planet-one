@@ -199,16 +199,21 @@ fn build_terrain_collider(image: &Image, size: f32, height_scale: f32) -> Collid
     let width = image.width();
     let height = image.height();
 
-    // PASSAGGIO 2 (fix orientamento): Parry heightfield usa `heights_zx`
-    // indicizzata [riga_i, colonna_j] dove `i` avanza su Z e `j` su X
-    // (vedi unit_cell_height su nrows e unit_cell_width su ncols).
-    // La mesh invece ha loop esterno su Z e interno su X con indice
-    // `index = z * width + x`, cioè riga = z. Quindi la matrice va
-    // costruita come heights[z][x] = sample(x, z): identica copertura.
-    let mut heights: Vec<Vec<f32>> = Vec::with_capacity(height as usize);
-    for z in 0..height {
-        let mut row: Vec<f32> = Vec::with_capacity(width as usize);
-        for x in 0..width {
+    // PASSO 2 DEFINITIVO (fix orientamento): la matrice Parry `heights_zx`
+    // e' indicizzata [i, j] con i = riga (asse Z) e j = colonna (asse X).
+    // La mesh usa index = z*width + x,cioè' riga=z, colonna=x.
+    // Quindi heights[z][x] = sample(x, z) allinea perfettamente i due.
+    // Verifica numerica: la mappa ASCII della heightmap mostra che NW e'
+    // basso e SE e' alto; il wireframe F3 deve mostrare la stessa forma.
+    // FIX FINALE COLLIDER: la matrice deve essere heights[x][z] (riga=X,
+    // colonna=Z) perche' Parry legge nrows->Z? NO: nrows conta le righe
+    // che scorrono su Z, ma noi vogliamo che l'indice di riga corrisponda
+    // a X perche' la mesh ha x come indice veloce. In realta' il problema
+    // e' la trasposizione: costruiamo heights[x][z] = sample(x,z).
+    let mut heights: Vec<Vec<f32>> = Vec::with_capacity(width as usize);
+    for x in 0..width {
+        let mut row: Vec<f32> = Vec::with_capacity(height as usize);
+        for z in 0..height {
             row.push(sample_height(image, x, z) * height_scale);
         }
         heights.push(row);

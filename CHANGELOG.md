@@ -24,6 +24,15 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 - Test automatici: camminata 6 s su colline (player sempre a y≈0.85, mai nel
   vuoto), salto, menu Esc, 0 panic.
 
+## v0.0.2.3 — Fase 2.1: allineamento definitivo mesh/collider (2026-11-05)
+
+- Fix definitivo: matrice collider costruita come heights[x][z] (riga=X,
+  colonna=Z), trasposta rispetto alla prima versione: ora il wireframe F3
+  copre esattamente tutta la mesh verde su tutto il terreno 100 m.
+- Sonda numerica rimossa dopo la verifica (angoli + centro heightmap).
+- Verifica: wireframe copre tutta la mesh, camminata 10 s stabile sul
+  pendio, salto, menu Esc — 0 panic.
+
 ## v0.0.2.0 — Fase 2: Scena (terreno, cielo, nebbia, hot-reload) (2026-11-04)
 
 - Terreno procedurale da heightmap PNG (`assets/textures/terrain_heightmap.png`,
