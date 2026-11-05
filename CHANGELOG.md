@@ -107,6 +107,19 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 - Test: V lock prima persona verificato (0 pixel player = camera dentro il pg);
   RMB/release; movimento in prima persona — 0 panic.
 
+## v0.0.4.4 — Fix prima persona e proiezione barra nemico (2026-11-05)
+
+- Fix rotazione prima persona: `Quat::from_rotation_y(yaw) * from_rotation_x(pitch)`
+  invece di `EulerRot::ZYX` (che metteva lo yaw sull'asse Z = visuale ruotata 90°).
+- Mouse: letto via `CursorMoved` (delta) invece di `MouseMotion` raw: su X11 i
+  device events non arrivano sempre, CursorMoved sì. In 1a persona dy invertito
+  (mouse su = guarda su); in 3a persona comportamento storico invariato.
+- Player nascosto in prima persona (sia corpo che mesh), riapparso in 3a.
+- Fix proiezione barra nemico: `world_to_viewport` in Bevy 0.20 gia' restituisce
+  pixel y-down — rimossa la doppia inversione Y che la spostava sotto il nemico.
+- Test: 3a persona (orizzonte si sposta col mouse), 1a persona (mouse su = cielo,
+  destra/sinistra = yaw corretto, player invisibile) — 0 panic.
+
 ## v0.0.2.0 — Fase 2: Scena (terreno, cielo, nebbia, hot-reload) (2026-11-04)
 
 - Terreno procedurale da heightmap PNG (`assets/textures/terrain_heightmap.png`,

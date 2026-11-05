@@ -12,8 +12,8 @@
 //! - Se il lock è attivo, rilasciare RMB NON fa tornare in terza persona.
 
 use crate::player::Player;
-use bevy::input::mouse::AccumulatedMouseMotion;
 use bevy::prelude::*;
+use bevy::window::CursorMoved;
 
 /// Modalità della camera.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -66,17 +66,47 @@ const FOLLOW_SMOOTHNESS: f32 = 8.0;
 /// Offset verticale del punto osservato in terza persona (petto del pg).
 const LOOK_AT_HEIGHT: f32 = 1.0;
 
+/// Nasconde/mostra il mesh visivo del player: in prima persona non si deve vedere.
+#[allow(clippy::type_complexity)]
+pub fn player_visibility(
+    state: Res<OrbitCamera>,
+    // Nascondi sia il corpo fisico (Player) sia il gruppo mesh (PlayerVisual):
+    // il corpo ha Visibility perche' e' parent dei mesh figli.
+    mut bodies: Query<&mut Visibility, Or<(With<Player>, With<crate::player::PlayerVisual>)>>,
+) {
+    let target = if state.mode == CameraMode::FirstPerson {
+        Visibility::Hidden
+    } else {
+        Visibility::Visible
+    };
+    for mut v in &mut bodies {
+        *v = target;
+    }
+}
+
 /// Aggiorna yaw/pitch con il movimento relativo del mouse (sempre attivo in
 /// entrambe le modalità, così la mira resta sincronizzata).
-pub fn orbit(mouse: Res<AccumulatedMouseMotion>, mut state: ResMut<OrbitCamera>) {
-    state.yaw -= mouse.delta.x * state.sensitivity;
+pub fn orbit(mut cursor_events: MessageReader<CursorMoved>, mut state: ResMut<OrbitCamera>) {
+    // Usiamo CursorMoved (delta calcolato da Bevy dal WindowEvent): su X11 i
+    // DeviceEvent MouseMotion possono non arrivare, CursorMoved arriva sempre.
+    let mut delta = Vec2::ZERO;
+    for ev in cursor_events.read() {
+        delta += ev.delta.unwrap_or_default();
+    }
+    state.yaw -= delta.x * state.sensitivity;
     // In prima persona permettiamo di guardare più in alto/giù (meno clamp alto).
     let (min, max) = if state.mode == CameraMode::FirstPerson {
         (-1.45, 1.45)
     } else {
         (PITCH_MIN, PITCH_MAX)
     };
-    state.pitch = (state.pitch + mouse.delta.y * state.sensitivity).clamp(min, max);
+    // In prima persona "mouse su" deve alzare la vista: inverti delta.y solo li'.
+    let dy = if state.mode == CameraMode::FirstPerson {
+        -delta.y
+    } else {
+        delta.y
+    };
+    state.pitch = (state.pitch + dy * state.sensitivity).clamp(min, max);
 }
 
 /// Legge gli eventi raw del mouse e aggiorna `rmb_held` nella resource.
@@ -155,9 +185,11 @@ pub fn follow(
             camera.look_at(focus, Vec3::Y);
         }
         CameraMode::FirstPerson => {
-            // VERA prima persona: la camera va esattamente DENTRO il player
-            // (stessa posizione, stessa rotazione yaw/pitch): il pg non si vede.
-            let rot = Quat::from_euler(EulerRot::ZYX, state.yaw, -state.pitch, 0.0);
+            // VERA prima persona: la camera va DENTRO il player e ruota come
+            // una FPS standard. yaw su Y (destra/sinistra), pitch su X (alto/basso).
+            // In orbit() in 1a persona dy e' invertito, quindi mouse SU aumenta
+            // pitch; rotation_x(+pitch) in Bevy (Y-up) porta il forward verso +Y = SU.
+            let rot = Quat::from_rotation_y(state.yaw) * Quat::from_rotation_x(state.pitch);
             camera.translation = player.translation();
             camera.rotation = rot;
         }

@@ -124,6 +124,7 @@ fn main() {
                 camera::orbit,
                 camera::mode_input,
                 camera::follow,
+                camera::player_visibility,
             )
                 .chain()
                 .run_if(in_state(AppState::Playing)),

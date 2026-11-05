@@ -169,10 +169,11 @@ pub fn draw_enemy_bars(
         let Ok(screen) = camera.world_to_viewport(cam_t, world_pos) else {
             continue; // fuori dallo schermo o dietro la camera
         };
-        // egui usa y-down, world_to_viewport restituisce y-up rispetto al basso:
-        // convertiamo nella viewport egui.
+        // Bevy 0.20: world_to_viewport restituisce gia' coordinate viewport
+        // in pixel con origine in ALTO a sinistra (y-down), pronte per egui.
+        // Non invertire y: quella conversione sposta la barra sotto il nemico.
         let x = screen.x;
-        let y = viewport.height() - screen.y;
+        let y = screen.y;
         if x < 0.0 || x > viewport.width() || y < 0.0 || y > viewport.height() {
             continue;
         }
