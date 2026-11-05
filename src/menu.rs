@@ -7,7 +7,10 @@ use crate::{
     hud,
     inventory::Inventory,
     player::PlayerHealth,
-    quest::{QuestStage, QuestState},
+    quests::{
+        Barks, ObjState, QuestEntry, QuestStatus, QuestTexts,
+        denaro_rubato::{QuestStage, QuestState},
+    },
 };
 use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
 use bevy::ecs::system::SystemParam;
@@ -34,6 +37,15 @@ pub fn toggle(
     dialog: Res<crate::entities::DialogState>,
     mut next: ResMut<NextState<AppState>>,
 ) {
+    // J: apre/chiude il diario (non durante un dialogo).
+    if keys.just_pressed(KeyCode::KeyJ) && !dialog.open {
+        match state.get() {
+            AppState::Playing => next.set(AppState::Journal),
+            AppState::Journal => next.set(AppState::Playing),
+            _ => {}
+        }
+        return;
+    }
     if !keys.just_pressed(KeyCode::Escape) {
         return;
     }
@@ -45,7 +57,7 @@ pub fn toggle(
     }
     match state.get() {
         AppState::Playing => next.set(AppState::Paused),
-        AppState::Paused => next.set(AppState::Playing),
+        AppState::Paused | AppState::Journal => next.set(AppState::Playing),
         // Durante il reset ESC non fa nulla: è uno stato transitorio.
         AppState::Resetting => {}
     }
@@ -73,17 +85,19 @@ pub struct UiQueries<'w, 's> {
         With<crate::entities::Enemy>,
     >,
     pub cameras: Query<'w, 's, (&'static Camera, &'static GlobalTransform)>,
+    pub transforms: Query<'w, 's, &'static GlobalTransform>,
     pub player_pos: Query<'w, 's, &'static GlobalTransform, With<crate::player::Player>>,
     pub thief_pos: Query<
         'w,
         's,
         &'static GlobalTransform,
         (
-            With<crate::quest::QuestThief>,
+            With<crate::quests::denaro_rubato::QuestThief>,
             Without<crate::player::Player>,
         ),
     >,
-    pub coins_pos: Query<'w, 's, &'static GlobalTransform, With<crate::quest::QuestCoin>>,
+    pub coins_pos:
+        Query<'w, 's, &'static GlobalTransform, With<crate::quests::denaro_rubato::QuestCoin>>,
     pub npc_pos: Query<
         'w,
         's,
@@ -106,6 +120,9 @@ pub fn ui(
     mut exit: MessageWriter<AppExit>,
     quest: Res<QuestState>,
     keys: Res<ButtonInput<KeyCode>>,
+    texts: Res<QuestTexts>,
+    barks: Res<Barks>,
+    mut tab: ResMut<JournalTab>,
     q: UiQueries,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else {
@@ -164,10 +181,16 @@ pub fn ui(
                 draw_title_banner(ctx, text);
             }
             // Obiettivi (TAB): solo a quest accettata e non ancora completata.
-            if keys.pressed(KeyCode::Tab) && quest.accepted && quest.stage != QuestStage::Completed
+            if keys.pressed(KeyCode::Tab)
+                && quest.accepted
+                && quest.stage != QuestStage::Completed
+                && let Some(entry) = crate::quests::journal_entries(&quest, &texts)
+                    .into_iter()
+                    .find(|e| e.status == QuestStatus::Active)
             {
-                draw_objectives(ctx, &quest);
+                draw_objectives(ctx, &entry);
             }
+            draw_barks(ctx, &barks, &q.transforms, &q.cameras);
 
             // Contatore FPS in alto a destra (se attivato dal menu).
             if show_fps.0
@@ -215,6 +238,8 @@ pub fn ui(
                     ui.label("• Space — salto");
                     ui.label("• Mouse — orbita camera");
                     ui.label("• Esc — menu / riprendi");
+                    ui.label("• J — diario delle quest, TAB (tenuto) — obiettivi");
+                    ui.label("• E / Invio — dialogo, 1–0 — usa oggetti");
                     ui.label("• F3 — wireframe collider (debug)");
                     ui.label("• F11 — schermo intero on/off");
                     ui.label("• V — prima persona on/off, RMB tenuto = prima persona temporanea");
@@ -251,6 +276,10 @@ pub fn ui(
                         exit.write(AppExit::Success);
                     }
                 });
+        }
+        AppState::Journal => {
+            let entries = crate::quests::journal_entries(&quest, &texts);
+            draw_journal(ctx, &entries, &mut tab);
         }
         // Durante Resetting non mostriamo nulla; la UI riapparirà in Playing/Paused.
         AppState::Resetting => {}
@@ -361,11 +390,11 @@ fn draw_compass(
     thief: &Query<
         &GlobalTransform,
         (
-            With<crate::quest::QuestThief>,
+            With<crate::quests::denaro_rubato::QuestThief>,
             Without<crate::player::Player>,
         ),
     >,
-    coins: &Query<&GlobalTransform, With<crate::quest::QuestCoin>>,
+    coins: &Query<&GlobalTransform, With<crate::quests::denaro_rubato::QuestCoin>>,
     npc: &Query<&GlobalTransform, (With<crate::entities::Npc>, Without<crate::player::Player>)>,
     orbit: &crate::camera::OrbitCamera,
 ) {
@@ -572,19 +601,6 @@ fn draw_title_banner(ctx: &egui::Context, text: &str) {
 }
 
 /// Stato di un obiettivo della quest nel pannello TAB.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum ObjState {
-    /// Completato: spunta verde.
-    Done,
-    /// In corso: sfera azzurra.
-    Current,
-    /// Non ancora raggiungibile: cerchio vuoto grigio.
-    Pending,
-    /// Fallito: X rossa (non usato da "Denaro Rubato", pronto per altre quest).
-    #[allow(dead_code)]
-    Failed,
-}
-
 /// Disegna l'icona di stato di un obiettivo (con il painter, senza emoji:
 /// i font di egui non garantiscono quei glifi).
 fn draw_obj_icon(painter: &egui::Painter, c: egui::Pos2, state: ObjState) {
@@ -631,54 +647,10 @@ fn draw_obj_icon(painter: &egui::Painter, c: egui::Pos2, state: ObjState) {
     }
 }
 
-/// Pannello obiettivi (tenendo premuto TAB): elenco con icone di stato
-/// (✓ verde = completato, sfera azzurra = in corso, X rossa = fallito).
-fn draw_objectives(ctx: &egui::Context, quest: &QuestState) {
+/// Pannello obiettivi (tenendo premuto TAB) della quest attiva: icone di stato
+/// (spunta verde = completato, sfera azzurra = in corso, X rossa = fallito).
+fn draw_objectives(ctx: &egui::Context, entry: &QuestEntry) {
     let size = ctx.viewport_rect().size();
-    let stage = quest.stage;
-    let after_thief = matches!(
-        stage,
-        QuestStage::Collecting | QuestStage::Returning | QuestStage::Completed
-    );
-    let after_coins = matches!(stage, QuestStage::Returning | QuestStage::Completed);
-    let state = |done: bool, current: bool| {
-        if done {
-            ObjState::Done
-        } else if current {
-            ObjState::Current
-        } else {
-            ObjState::Pending
-        }
-    };
-    let rows: [(String, ObjState); 4] = [
-        (
-            "Parla con il Viandante".to_string(),
-            if quest.accepted {
-                ObjState::Done
-            } else {
-                ObjState::Current
-            },
-        ),
-        (
-            "Sconfiggi il ladro".to_string(),
-            state(after_thief, stage == QuestStage::SeekThief),
-        ),
-        (
-            format!(
-                "Recupera le monete {}/{}",
-                quest.coins_collected, quest.coins_total
-            ),
-            state(after_coins, stage == QuestStage::Collecting),
-        ),
-        (
-            "Torna dal Viandante".to_string(),
-            state(
-                stage == QuestStage::Completed,
-                stage == QuestStage::Returning,
-            ),
-        ),
-    ];
-
     egui::Area::new(egui::Id::new("objectives"))
         .fixed_pos(egui::pos2(size.x - 330.0, size.y / 2.0 - 90.0))
         .show(ctx, |ui| {
@@ -693,32 +665,137 @@ fn draw_objectives(ctx: &egui::Context, quest: &QuestState) {
             frame.show(ui, |ui| {
                 ui.set_min_width(268.0);
                 ui.label(
-                    egui::RichText::new("Obiettivi — Denaro Rubato")
+                    egui::RichText::new(format!("Obiettivi — {}", entry.title))
                         .strong()
                         .size(17.0)
                         .color(egui::Color32::from_rgb(255, 214, 102)),
                 );
                 ui.add_space(8.0);
-                for (text, st) in &rows {
-                    let (rect, _resp) =
-                        ui.allocate_exact_size(egui::vec2(268.0, 28.0), egui::Sense::hover());
-                    draw_obj_icon(
-                        ui.painter(),
-                        egui::pos2(rect.left() + 11.0, rect.center().y),
-                        *st,
-                    );
-                    let color = match st {
-                        ObjState::Pending => egui::Color32::from_rgb(150, 158, 178),
-                        _ => egui::Color32::from_rgb(245, 248, 255),
-                    };
-                    ui.painter().text(
-                        egui::pos2(rect.left() + 30.0, rect.center().y),
-                        egui::Align2::LEFT_CENTER,
-                        text,
-                        egui::FontId::proportional(16.0),
-                        color,
-                    );
-                }
+                objective_rows(ui, &entry.objectives, 268.0, 16.0);
             });
         });
+}
+
+/// Righe obiettivo con icona di stato.
+fn objective_rows(ui: &mut egui::Ui, objectives: &[(String, ObjState)], w: f32, font: f32) {
+    for (text, st) in objectives {
+        let (rect, _resp) = ui.allocate_exact_size(egui::vec2(w, 28.0), egui::Sense::hover());
+        draw_obj_icon(
+            ui.painter(),
+            egui::pos2(rect.left() + 11.0, rect.center().y),
+            *st,
+        );
+        let color = match st {
+            ObjState::Pending => egui::Color32::from_rgb(150, 158, 178),
+            _ => egui::Color32::from_rgb(245, 248, 255),
+        };
+        ui.painter().text(
+            egui::pos2(rect.left() + 30.0, rect.center().y),
+            egui::Align2::LEFT_CENTER,
+            text,
+            egui::FontId::proportional(font),
+            color,
+        );
+    }
+}
+
+/// Tab selezionato del diario.
+#[derive(Resource, Default, PartialEq, Eq, Clone, Copy)]
+pub enum JournalTab {
+    #[default]
+    Todo,
+    Done,
+}
+
+/// Diario delle quest (tasto J): due tab, ogni quest espandibile.
+fn draw_journal(ctx: &egui::Context, entries: &[QuestEntry], tab: &mut JournalTab) {
+    let todo = entries
+        .iter()
+        .filter(|e| e.status == QuestStatus::Active)
+        .count();
+    let done = entries.len() - todo;
+    egui::Window::new("Diario")
+        .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+        .collapsible(false)
+        .resizable(false)
+        .fixed_size(egui::vec2(600.0, 440.0))
+        .show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.selectable_value(tab, JournalTab::Todo, format!("Da fare ({todo})"));
+                ui.selectable_value(tab, JournalTab::Done, format!("Completate ({done})"));
+            });
+            ui.separator();
+            let wanted = if *tab == JournalTab::Todo {
+                QuestStatus::Active
+            } else {
+                QuestStatus::Completed
+            };
+            let shown: Vec<&QuestEntry> = entries.iter().filter(|e| e.status == wanted).collect();
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                if shown.is_empty() {
+                    ui.label("Nessuna quest.");
+                }
+                for e in shown {
+                    egui::CollapsingHeader::new(
+                        egui::RichText::new(&e.title)
+                            .size(19.0)
+                            .color(egui::Color32::from_rgb(255, 214, 102)),
+                    )
+                    .id_salt(&e.title)
+                    .show(ui, |ui| {
+                        ui.label(&e.summary);
+                        ui.add_space(6.0);
+                        objective_rows(ui, &e.objectives, 540.0, 17.0);
+                    });
+                }
+            });
+            ui.separator();
+            ui.label("J / Esc = chiudi");
+        });
+}
+
+/// Fumetti sopra la testa di chi parla (proiezione world→screen).
+fn draw_barks(
+    ctx: &egui::Context,
+    barks: &Barks,
+    transforms: &Query<&GlobalTransform>,
+    cameras: &Query<(&Camera, &GlobalTransform)>,
+) {
+    let Ok((camera, cam_t)) = cameras.single() else {
+        return;
+    };
+    for (i, b) in barks.0.iter().enumerate() {
+        let Ok(t) = transforms.get(b.entity) else {
+            continue;
+        };
+        let Ok(screen) = camera.world_to_viewport(cam_t, t.translation() + Vec3::Y * 2.3) else {
+            continue;
+        };
+        egui::Area::new(egui::Id::new(("bark", i)))
+            .pivot(egui::Align2::CENTER_BOTTOM)
+            .fixed_pos(egui::pos2(screen.x, screen.y))
+            .show(ctx, |ui| {
+                egui::Frame::default()
+                    .fill(egui::Color32::from_rgba_unmultiplied(14, 18, 28, 235))
+                    .stroke(egui::Stroke::new(
+                        1.5,
+                        egui::Color32::from_rgb(230, 190, 90),
+                    ))
+                    .inner_margin(egui::Margin::symmetric(12, 8))
+                    .corner_radius(egui::CornerRadius::same(8))
+                    .show(ui, |ui| {
+                        ui.label(
+                            egui::RichText::new(&b.speaker)
+                                .strong()
+                                .size(14.0)
+                                .color(egui::Color32::from_rgb(255, 214, 102)),
+                        );
+                        ui.label(
+                            egui::RichText::new(&b.text)
+                                .size(18.0)
+                                .color(egui::Color32::WHITE),
+                        );
+                    });
+            });
+    }
 }

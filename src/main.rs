@@ -10,7 +10,7 @@ mod hud;
 mod inventory;
 mod menu;
 mod player;
-mod quest;
+mod quests;
 mod scene;
 mod sky;
 mod terrain;
@@ -21,6 +21,7 @@ use bevy::gizmos::config::GizmoConfigStore;
 use bevy::pbr::wireframe::WireframeConfig;
 use bevy::prelude::*;
 use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
+use quests::denaro_rubato as quest;
 
 /// Se true, mostra wireframe globale delle mesh (diagnostica).
 /// Default false per non coprire la scena in produzione.
@@ -40,6 +41,8 @@ pub enum AppState {
     Playing,
     /// Menu aperto (Esc): gameplay sospeso.
     Paused,
+    /// Diario delle quest aperto (J): gameplay sospeso, cursore libero.
+    Journal,
     /// Reset della scena in corso (un frame, non interattivo).
     Resetting,
 }
@@ -89,6 +92,9 @@ fn main() {
         .init_resource::<entities::NearestInteract>()
         .init_resource::<inventory::Inventory>()
         .init_resource::<quest::QuestState>()
+        .init_resource::<quests::QuestTexts>()
+        .init_resource::<quests::Barks>()
+        .init_resource::<menu::JournalTab>()
         .init_resource::<combat::ContactDamageCd>()
         // Asset del terreno: heightmap PNG + handle del mesh generato.
         .add_systems(
@@ -112,7 +118,7 @@ fn main() {
             },
         )
         // Ricostruzione del terreno quando la heightmap è disponibile o cambia.
-        .add_systems(Update, terrain::update_terrain)
+        .add_systems(Update, (terrain::update_terrain, sky::apply_sky_texture))
         // Fisica e movimento del player in FixedUpdate (delta stabile):
         // ground-check, input/gravita'/salto, MoveAndSlide, facing in un'unica
         // pipeline fixed: salto e contatto restano coerenti anche in corsa.
@@ -155,6 +161,9 @@ fn main() {
                 quest::update_thief_hint,
                 quest::place_quest_thief,
                 quest::tick_title,
+                quest::thief_notice_player,
+                quests::tick_barks,
+                entities::dialog_walk_away.before(entities::interact),
                 // advance_dialog PRIMA di interact: la E che apre il dialogo
                 // non deve anche avanzarlo nello stesso frame.
                 entities::advance_dialog.before(entities::interact),

@@ -12,7 +12,10 @@
 //! spawn degli altri elementi (`spawn_world`, chiamato sia allo startup
 //! sia durante il reset).
 
-use crate::{AppState, camera::OrbitCamera, entities, inventory, player, quest, sky, terrain};
+use crate::{
+    AppState, camera::OrbitCamera, entities, inventory, player, quests::denaro_rubato as quest,
+    sky, terrain,
+};
 use bevy::image::Image;
 use bevy::light::Skybox;
 use bevy::prelude::*;
@@ -32,7 +35,13 @@ pub struct Ground;
 /// agganciato ad essa e `bevy_egui` non lo ricrea mai. Il transform
 /// iniziale viene poi guidato dal sistema di follow; in caso di reset
 /// viene riportato al punto di partenza.
-pub fn spawn_camera(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
+pub fn spawn_camera(
+    mut commands: Commands,
+    mut images: ResMut<Assets<Image>>,
+    asset_server: Res<AssetServer>,
+) {
+    // Panoramica del cielo: convertita in cubemap da `sky::apply_sky_texture`.
+    commands.insert_resource(sky::SkyTexture(asset_server.load("textures/sky.png")));
     // Cielo: cubemap procedurale generata a runtime (senza asset HDRI).
     let skybox = images.add(sky::gradient_skybox());
 
@@ -59,11 +68,12 @@ pub fn spawn_world(
     commands: &mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
+    asset_server: &AssetServer,
 ) {
     // --- Terreno: entità con segnaposto piatto; mesh e collider reali
     //     vengono sostituiti da `terrain::update_terrain` appena la heightmap
     //     è disponibile (o cambia a runtime). ---
-    terrain::spawn_terrain(commands, meshes, materials);
+    terrain::spawn_terrain(commands, meshes, materials, asset_server);
 
     // --- Luci ---
     // Luce direzionale (sole) con ombre.
@@ -117,8 +127,9 @@ pub fn spawn_world_startup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
-    spawn_world(&mut commands, &mut meshes, &mut materials);
+    spawn_world(&mut commands, &mut meshes, &mut materials, &asset_server);
 }
 
 /// Reset completo della scena, eseguito su `OnEnter(AppState::Resetting)`.
@@ -149,6 +160,8 @@ pub fn reset_scene(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut next: ResMut<NextState<AppState>>,
     mut quest: ResMut<quest::QuestState>,
+    asset_server: Res<AssetServer>,
+    mut texts: ResMut<crate::quests::QuestTexts>,
 ) {
     // 1. Despawn di tutte le entità radice della scena.
     //    In Bevy 0.20 despawn() è già ricorsivo sui Children (relationship).
@@ -159,12 +172,13 @@ pub fn reset_scene(
     // 2. Camera, orbita e stato quest tornano ai valori di partenza.
     *orbit = OrbitCamera::default();
     *quest = quest::QuestState::default();
+    *texts = crate::quests::QuestTexts::load(); // rilegge dialoghi.txt
     for mut transform in &mut cameras {
         *transform = Transform::from_xyz(-4.0, 3.5, 6.0);
     }
 
     // 3. Ricostruzione del mondo: la camera esistente viene solo riposizionata.
-    spawn_world(&mut commands, &mut meshes, &mut materials);
+    spawn_world(&mut commands, &mut meshes, &mut materials, &asset_server);
 
     // 4. Rientro in Playing; i sistemi di gameplay riprenderono dal frame successivo.
     next.set(AppState::Playing);

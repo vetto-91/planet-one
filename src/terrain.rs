@@ -15,8 +15,11 @@
 use crate::scene::{Ground, SceneNode};
 use avian3d::prelude::*;
 use bevy::asset::AssetEvent;
-use bevy::image::Image;
-use bevy::math::{UVec3, Vec2};
+use bevy::image::{
+    Image, ImageAddressMode, ImageFilterMode, ImageLoaderSettings, ImageSampler,
+    ImageSamplerDescriptor,
+};
+use bevy::math::{Affine2, UVec3, Vec2};
 use bevy::prelude::*;
 use bevy::render::mesh::VertexAttributeValues;
 
@@ -25,6 +28,8 @@ const TERRAIN_SIZE: f32 = 100.0;
 /// Scala verticale della heightmap: i valori 0..255 diventano -1..+1 e poi
 /// vengono moltiplicati per `HEIGHT_SCALE` (m).
 const HEIGHT_SCALE: f32 = 4.0;
+/// Lato (m) di un tile della texture erba.
+const GRASS_TILE_M: f32 = 10.0;
 
 /// Asset e stato del terreno.
 #[derive(Resource)]
@@ -61,7 +66,23 @@ pub fn spawn_terrain(
     commands: &mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
+    asset_server: &AssetServer,
 ) {
+    // Texture erba ripetuta: sampler in modalità Repeat, un tile ogni GRASS_TILE_M metri.
+    let grass = asset_server
+        .load_builder()
+        .with_settings(|s: &mut ImageLoaderSettings| {
+            s.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
+                address_mode_u: ImageAddressMode::Repeat,
+                address_mode_v: ImageAddressMode::Repeat,
+                mag_filter: ImageFilterMode::Linear,
+                min_filter: ImageFilterMode::Linear,
+                mipmap_filter: ImageFilterMode::Linear,
+                anisotropy_clamp: 16,
+                ..Default::default()
+            });
+        })
+        .load("textures/grass.png");
     let placeholder_mesh = meshes.add(Plane3d {
         half_size: Vec2::splat(TERRAIN_SIZE / 2.0),
         ..Default::default()
@@ -75,7 +96,9 @@ pub fn spawn_terrain(
         Collider::cuboid(TERRAIN_SIZE, 1.0, TERRAIN_SIZE),
         Mesh3d(placeholder_mesh),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::srgb(0.35, 0.50, 0.22),
+            base_color: Color::WHITE,
+            base_color_texture: Some(grass),
+            uv_transform: Affine2::from_scale(Vec2::splat(TERRAIN_SIZE / GRASS_TILE_M)),
             perceptual_roughness: 0.85,
             metallic: 0.0,
             ..Default::default()

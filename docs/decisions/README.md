@@ -27,3 +27,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 |---|---|---|
 | 0001 | Rust + Bevy come stack del motore | accettato |
 | 0002 | Versioning a 4 segmenti vMAJOR.MINOR.FEATURE.BUGFIX | accettato |
+| 0003 | Quest in cartelle con dialoghi in file di testo | accettato |

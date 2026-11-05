@@ -1,0 +1,74 @@
+# Dialoghi e testi della quest "Denaro Rubato".
+# Modificabili a mano: dopo una modifica basta "Reset scena" dal menu Esc
+# (o rilanciare il gioco). Se una sezione manca, si usa il testo di default
+# incorporato nel programma.
+#
+# Formato:
+#   [nome]      inizia una sezione
+#   testo       una riga di dialogo (o una frase)
+#   ? testo     una scelta del giocatore (solo a fine dialogo)
+#   # testo     commento
+# Segnaposto: {hint} direzione del ladro, {n} monete raccolte,
+#             {total} monete totali, {reward} ricompensa.
+
+# --- Dialoghi del Viandante, per fase della quest ---
+
+[idle]
+Salve, viaggiatore! Un ladro mi ha rubato tutte le monete d'oro.
+Era un uomo alto e rosso, si nasconde lontano, oltre le colline.
+Uccidilo e riporta qui il mio denaro. Ti aspetto!
+? Sì, ti aiuto
+? Ora non ho tempo
+
+[seek_thief]
+Il ladro si trova a {hint}.
+Non lasciarlo scappare, viaggiatore!
+
+[seek_thief_nohint]
+Il ladro è là fuori... uccidilo e raccogli le mie {total} monete.
+Poi torna qui con il bottino!
+
+[collecting_accepted]
+Il ladro è stato sconfitto? Ottimo lavoro!
+Raccogli le mie {total} monete e torna qui.
+
+[collecting_unaccepted]
+Ho sentito che qualcuno ha sconfitto il ladro...
+Se trovi le mie {total} monete, portamele: ti ricompenserò.
+
+[returning]
+Le mie monete! Grazie, viaggiatore!
+Ecco {reward} monete per il tuo aiuto.
+
+[completed]
+Grazie ancora, viaggiatore. Il ladro non darà più fastidio a nessuno.
+
+# --- Battute singole (fumetti sopra la testa) ---
+
+# Il Viandante, quando ti allontani durante il dialogo.
+[saluto]
+Ok, ciao!
+
+# Il ladro, quando ti vede da lontano.
+[ladro_avvistato]
+Mi hai beccato! Fatti sotto!
+
+# --- Testi del diario delle quest ---
+
+[diario_titolo]
+Denaro Rubato
+
+[diario_riassunto]
+Un ladro ha rubato le monete d'oro del Viandante. Trovalo, sconfiggilo e riporta il bottino.
+
+[obiettivo_parla]
+Parla con il Viandante
+
+[obiettivo_ladro]
+Sconfiggi il ladro
+
+[obiettivo_monete]
+Recupera le monete {n}/{total}
+
+[obiettivo_ritorno]
+Torna dal Viandante

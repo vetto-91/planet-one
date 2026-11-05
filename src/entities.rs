@@ -74,10 +74,19 @@ pub struct DialogState {
     pub result: Option<usize>,
     /// La E che chiude il dialogo non deve riaprirlo nello stesso frame.
     pub block_interact: bool,
+    /// NPC con cui si sta parlando (per il congedo se ci si allontana).
+    pub speaker_entity: Option<Entity>,
+    /// Il dialogo è stato letto/confermato fino in fondo (non chiuso con Esc
+    /// né per allontanamento): solo allora la quest avanza.
+    pub finished: bool,
 }
 
+/// Distanza (m) oltre cui il dialogo si chiude da solo (range interazione: 5 m).
+pub const LEAVE_DISTANCE: f32 = 8.0;
+
 /// Chiude il dialogo registrando l'eventuale scelta confermata.
-fn close_dialog(dialog: &mut DialogState, result: Option<usize>) {
+fn close_dialog(dialog: &mut DialogState, result: Option<usize>, finished: bool) {
+    dialog.finished = finished;
     dialog.open = false;
     dialog.index = 0;
     dialog.choosing = false;
@@ -162,10 +171,11 @@ pub fn spawn_enemy(
 pub fn interact(
     keys: Res<ButtonInput<KeyCode>>,
     players: Query<&GlobalTransform, With<Player>>,
-    interactables: Query<(&GlobalTransform, &Interactable, Option<&Npc>), Without<Player>>,
+    interactables: Query<(Entity, &GlobalTransform, &Interactable, Option<&Npc>), Without<Player>>,
     mut dialog: ResMut<DialogState>,
     mut nearest: ResMut<NearestInteract>,
-    quest: Res<crate::quest::QuestState>,
+    quest: Res<crate::quests::denaro_rubato::QuestState>,
+    texts: Res<crate::quests::QuestTexts>,
 ) {
     // Se un dialogo è già aperto non riaprire.
     if dialog.open {
@@ -184,38 +194,39 @@ pub fn interact(
     let p = player.translation();
 
     // Trova l'interagibile più vicino entro range.
-    let mut best: Option<(f32, &Interactable, Option<&Npc>)> = None;
-    for (t, inter, npc) in &interactables {
+    let mut best: Option<(f32, Entity, &Interactable, Option<&Npc>)> = None;
+    for (e, t, inter, npc) in &interactables {
         let dist = t.translation().distance(p);
-        if dist <= inter.range && best.as_ref().is_none_or(|(d, _, _)| dist < *d) {
-            best = Some((dist, inter, npc));
+        if dist <= inter.range && best.as_ref().is_none_or(|(d, _, _, _)| dist < *d) {
+            best = Some((dist, e, inter, npc));
         }
     }
 
     // Aggiorna il prompt mostrato dalla UI per l'interagibile piu' vicino.
-    nearest.prompt = best.as_ref().map(|(_, inter, _)| inter.prompt.to_string());
+    nearest.prompt = best
+        .as_ref()
+        .map(|(_, _, inter, _)| inter.prompt.to_string());
     // (log debug rimosso)
 
-    if let Some((_, _, Some(npc))) = best
+    if let Some((_, entity, _, Some(npc))) = best
         && keys.just_pressed(KeyCode::KeyE)
     {
         dialog.open = true;
         dialog.speaker = npc.name.to_string();
-        // Linee dinamiche in base alla fase della quest (se presente), altrimenti default.
-        let lines: Vec<String> = crate::quest::npc_quest_lines(&quest)
-            .iter()
-            .map(|s| s.to_string())
-            .collect();
+        // Battute e scelte dalla quest (file dialoghi.txt), altrimenti default dell'NPC.
+        let (lines, choices) = crate::quests::npc_dialog(&quest, &texts);
         dialog.lines = if lines.is_empty() {
             npc.lines.iter().map(|s| s.to_string()).collect()
         } else {
             lines
         };
         dialog.index = 0;
-        dialog.choices = crate::quest::npc_quest_choices(&quest);
+        dialog.choices = choices;
         dialog.selected = 0;
         dialog.choosing = false;
         dialog.result = None;
+        dialog.finished = false;
+        dialog.speaker_entity = Some(entity);
         info!("dialogo aperto con {}", npc.name);
     }
 }
@@ -231,7 +242,7 @@ pub fn advance_dialog(keys: Res<ButtonInput<KeyCode>>, mut dialog: ResMut<Dialog
     }
 
     if keys.just_pressed(KeyCode::Escape) {
-        close_dialog(&mut dialog, None);
+        close_dialog(&mut dialog, None, false);
         return;
     }
 
@@ -250,7 +261,7 @@ pub fn advance_dialog(keys: Res<ButtonInput<KeyCode>>, mut dialog: ResMut<Dialog
         if confirm {
             let choice = dialog.selected;
             info!("[DIALOG] scelta confermata: {}", choice);
-            close_dialog(&mut dialog, Some(choice));
+            close_dialog(&mut dialog, Some(choice), true);
         }
         return;
     }
@@ -259,7 +270,7 @@ pub fn advance_dialog(keys: Res<ButtonInput<KeyCode>>, mut dialog: ResMut<Dialog
         dialog.index += 1;
         if dialog.index >= dialog.lines.len() {
             if dialog.choices.is_empty() {
-                close_dialog(&mut dialog, None);
+                close_dialog(&mut dialog, None, true);
             } else {
                 // Resta sull'ultima riga e mostra le scelte.
                 dialog.index = dialog.lines.len().saturating_sub(1);
@@ -267,6 +278,32 @@ pub fn advance_dialog(keys: Res<ButtonInput<KeyCode>>, mut dialog: ResMut<Dialog
                 dialog.selected = 0;
             }
         }
+    }
+}
+
+/// Se ci si allontana oltre [`LEAVE_DISTANCE`] dall'NPC durante il dialogo, lo
+/// chiude come uscendo (nessuna scelta, quest invariata) e l'NPC saluta.
+pub fn dialog_walk_away(
+    mut dialog: ResMut<DialogState>,
+    mut barks: ResMut<crate::quests::Barks>,
+    texts: Res<crate::quests::QuestTexts>,
+    players: Query<&GlobalTransform, With<Player>>,
+    npcs: Query<(&GlobalTransform, &Npc)>,
+) {
+    if !dialog.open {
+        return;
+    }
+    let (Ok(player), Some(entity)) = (players.single(), dialog.speaker_entity) else {
+        return;
+    };
+    let Ok((npc_t, npc)) = npcs.get(entity) else {
+        return;
+    };
+    if player.translation().distance(npc_t.translation()) > LEAVE_DISTANCE {
+        close_dialog(&mut dialog, None, false);
+        dialog.block_interact = false;
+        barks.say(entity, npc.name, texts.denaro_rubato.text("saluto", &[]));
+        info!("[DIALOG] giocatore allontanato: dialogo chiuso");
     }
 }
 

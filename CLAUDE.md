@@ -47,8 +47,10 @@ Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, 
 - `src/camera.rs`: orbita, terza e prima persona.
 - `src/entities.rs`: NPC, nemico, dialogo.
 - `src/combat.rs`, `src/inventory.rs`, `src/hud.rs`: combattimento, inventario, HUD.
-- `src/quest.rs`: stati della quest, bussola, monete.
-- `src/menu.rs`: UI egui (menu Esc, dialogo, FPS).
+- `src/quests/mod.rs`: parser dei dialoghi, voci del diario, fumetti (barks), registro quest.
+- `src/quests/<quest>/mod.rs` + `assets/quests/<quest>/dialoghi.txt`: logica e testi (modificabili a mano) di ogni quest. Vedi ADR 0003.
+- `src/sky.rs`: cielo da `assets/textures/sky.png` convertito in cubemap a runtime.
+- `src/menu.rs`: UI egui (menu Esc, dialogo, FPS, diario J, bussola, fumetti).
 
 ## Regole di lavoro
 

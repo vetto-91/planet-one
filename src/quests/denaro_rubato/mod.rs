@@ -17,11 +17,16 @@
 //! Viandante le ritira alla consegna. Con la quest attiva e il ladro vivo, il
 //! Viandante indica la direzione del ladro (`thief_hint`).
 //!
+//! I testi stanno in `assets/quests/denaro_rubato/dialoghi.txt` (modificabile a mano).
 //! Nessun salvataggio su file: la quest vive solo in memoria (come da piano).
+
+/// Distanza (m) entro cui il ladro nota il giocatore e lo apostrofa.
+pub const SPOT_DISTANCE: f32 = 12.0;
 
 use crate::entities::DialogState;
 use crate::inventory::{Inventory, ItemKind};
 use crate::player::Player;
+use crate::quests::{Barks, Dialogs, ObjState, QuestEntry, QuestStatus};
 use crate::scene::SceneNode;
 use avian3d::prelude::*;
 use bevy::prelude::*;
@@ -66,6 +71,8 @@ pub struct QuestState {
     /// Posizione in cui il ladro è stato ucciso (scritta da
     /// `combat::handle_enemy_death`, consumata da `quest_on_thief_death`).
     pub thief_killed_at: Option<Vec3>,
+    /// Il ladro ha già notato il giocatore (battuta detta una sola volta).
+    pub thief_spotted: bool,
 }
 
 impl Default for QuestState {
@@ -79,6 +86,7 @@ impl Default for QuestState {
             final_done: false,
             thief_hint: None,
             thief_killed_at: None,
+            thief_spotted: false,
         }
     }
 }
@@ -164,7 +172,8 @@ pub fn quest_on_dialog_close(
     // Rileva il fronte di discesa: dialog.open true -> false.
     let was_open = *last_open;
     *last_open = dialog.open;
-    if was_open && !dialog.open {
+    // Solo se il dialogo è stato letto fino in fondo (non Esc / allontanamento).
+    if was_open && !dialog.open && dialog.finished {
         match quest.stage {
             // La quest parte SOLO se il giocatore risponde "Sì" (scelta 0).
             QuestStage::Idle if !quest.accepted && dialog.result == Some(0) => {
@@ -237,17 +246,6 @@ pub fn quest_on_thief_death(
         "[QUEST] ladro morto in {:?}, stage=Collecting (accepted={})",
         death_pos, quest.accepted
     );
-}
-
-/// Scelte mostrate al giocatore alla fine del dialogo con il Viandante.
-/// Solo quando la quest non è ancora stata accettata (stage Idle).
-pub fn npc_quest_choices(quest: &QuestState) -> Vec<String> {
-    match quest.stage {
-        QuestStage::Idle if !quest.accepted => {
-            vec!["Sì, ti aiuto".to_string(), "Ora non ho tempo".to_string()]
-        }
-        _ => Vec::new(),
-    }
 }
 
 /// Spawn di N monete gialle (cubetti) attorno a una posizione (cerchio).
@@ -361,43 +359,108 @@ pub fn update_thief_hint(
     }
 }
 
-/// NPC: battute che dipendono dalla fase quest.
-pub fn npc_quest_lines(quest: &QuestState) -> Vec<String> {
-    let lines = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<String>>();
-    match quest.stage {
-        QuestStage::Idle => lines(&[
-            "Salve, viaggiatore! Un ladro mi ha rubato tutte le monete d'oro.",
-            "Era un uomo alto e rosso, si nasconde lontano, oltre le colline.",
-            "Uccidilo e riporta qui il mio denaro. Ti aspetto!",
-        ]),
-        // Quest attiva e monete ancora da portare: indica dove si trova il ladro.
-        QuestStage::SeekThief => match &quest.thief_hint {
-            Some(hint) => vec![
-                format!("Il ladro si trova a {hint}."),
-                "Non lasciarlo scappare, viaggiatore!".to_string(),
-            ],
-            None => lines(&[
-                "Il ladro è là fuori... uccidilo e raccogli le mie 12 monete.",
-                "Poi torna qui con il bottino!",
-            ]),
-        },
-        // Ladro sconfitto: monete da raccogliere (quest accettata o meno).
-        QuestStage::Collecting if quest.accepted => lines(&[
-            "Il ladro è stato sconfitto? Ottimo lavoro!",
-            "Raccogli le mie 12 monete e torna qui.",
-        ]),
-        QuestStage::Collecting => lines(&[
-            "Ho sentito che qualcuno ha sconfitto il ladro...",
-            "Se trovi le mie 12 monete, portamele: ti ricompenserò.",
-        ]),
-        // Consegna completa: ringraziamento e ricompensa.
-        QuestStage::Returning => lines(&[
-            "Le mie monete! Grazie, viaggiatore!",
-            "Ecco 5 monete per il tuo aiuto.",
-        ]),
-        QuestStage::Completed => {
-            lines(&["Grazie ancora, viaggiatore. Il ladro non darà più fastidio a nessuno."])
+/// Battute del Viandante (righe, scelte) in base alla fase; i testi vengono
+/// dal file `dialoghi.txt`. Le scelte compaiono solo alla prima richiesta.
+pub fn npc_dialog(quest: &QuestState, d: &Dialogs) -> (Vec<String>, Vec<String>) {
+    let vars = [
+        ("total", quest.coins_total.to_string()),
+        ("n", quest.coins_collected.to_string()),
+        ("reward", REWARD_COINS.to_string()),
+        ("hint", quest.thief_hint.clone().unwrap_or_default()),
+    ];
+    let section = match quest.stage {
+        QuestStage::Idle => "idle",
+        QuestStage::SeekThief if quest.thief_hint.is_some() => "seek_thief",
+        QuestStage::SeekThief => "seek_thief_nohint",
+        QuestStage::Collecting if quest.accepted => "collecting_accepted",
+        QuestStage::Collecting => "collecting_unaccepted",
+        QuestStage::Returning => "returning",
+        QuestStage::Completed => "completed",
+    };
+    let choices = if quest.stage == QuestStage::Idle && !quest.accepted {
+        d.choices("idle")
+    } else {
+        Vec::new()
+    };
+    (d.lines(section, &vars), choices)
+}
+
+/// Voce del diario: `None` finché la quest non è stata accettata.
+pub fn journal_entry(quest: &QuestState, d: &Dialogs) -> Option<QuestEntry> {
+    if !quest.accepted {
+        return None;
+    }
+    let stage = quest.stage;
+    let after_thief = matches!(
+        stage,
+        QuestStage::Collecting | QuestStage::Returning | QuestStage::Completed
+    );
+    let after_coins = matches!(stage, QuestStage::Returning | QuestStage::Completed);
+    let state = |done: bool, current: bool| {
+        if done {
+            ObjState::Done
+        } else if current {
+            ObjState::Current
+        } else {
+            ObjState::Pending
         }
+    };
+    let vars = [
+        ("n", quest.coins_collected.to_string()),
+        ("total", quest.coins_total.to_string()),
+    ];
+    Some(QuestEntry {
+        title: d.text("diario_titolo", &vars),
+        summary: d.text("diario_riassunto", &vars),
+        status: if stage == QuestStage::Completed {
+            QuestStatus::Completed
+        } else {
+            QuestStatus::Active
+        },
+        objectives: vec![
+            (d.text("obiettivo_parla", &vars), ObjState::Done),
+            (
+                d.text("obiettivo_ladro", &vars),
+                state(after_thief, stage == QuestStage::SeekThief),
+            ),
+            (
+                d.text("obiettivo_monete", &vars),
+                state(after_coins, stage == QuestStage::Collecting),
+            ),
+            (
+                d.text("obiettivo_ritorno", &vars),
+                state(
+                    stage == QuestStage::Completed,
+                    stage == QuestStage::Returning,
+                ),
+            ),
+        ],
+    })
+}
+
+/// Sistema: il ladro vivo nota il giocatore entro [`SPOT_DISTANCE`] e lo
+/// apostrofa con un fumetto (una sola volta).
+pub fn thief_notice_player(
+    mut quest: ResMut<QuestState>,
+    mut barks: ResMut<Barks>,
+    texts: Res<crate::quests::QuestTexts>,
+    players: Query<&GlobalTransform, With<Player>>,
+    thieves: Query<(Entity, &GlobalTransform), With<QuestThief>>,
+) {
+    if quest.thief_spotted {
+        return;
+    }
+    let (Ok(player), Ok((thief, tt))) = (players.single(), thieves.single()) else {
+        return;
+    };
+    if player.translation().distance(tt.translation()) <= SPOT_DISTANCE {
+        quest.thief_spotted = true;
+        barks.say(
+            thief,
+            "Ladro",
+            texts.denaro_rubato.text("ladro_avvistato", &[]),
+        );
+        info!("[QUEST] il ladro ha notato il giocatore");
     }
 }
 

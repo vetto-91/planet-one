@@ -41,6 +41,7 @@ grep "\[EVENT\]" run.log    # eventi finestra/cursore
 | Esc | Menu pausa (tasti, slider sensibilità, checkbox FPS, reset scena) |
 | F3 | Wireframe dei collider (debug fisico) |
 | F11 | Schermo intero on/off (in fullscreen il cursore è bloccato e nascosto) |
+| J | Diario delle quest (tab Da fare / Completate, quest espandibili); J o Esc per chiudere |
 | TAB (tenuto) | Obiettivi della quest (solo a quest attiva) |
 | E | Parla con l'NPC vicino; nel dialogo continua / conferma |
 | Invio | Nel dialogo: continua / conferma (alternativa a E) |
@@ -57,6 +58,15 @@ in alto indica la sua direzione), uccidilo, raccogli le **12 monete d'oro** che 
 torna dal Viandante → completata, con ricompensa di 5 monete.
 Tieni **TAB** per gli obiettivi: spunta verde = completato, sfera azzurra = in corso.
 
+Se ti allontani dal Viandante durante il dialogo (oltre 8 m) il dialogo si chiude e lui saluta.
+Il ladro ti apostrofa quando ti vede da vicino (~12 m).
+
+### Modificare i dialoghi
+
+I testi di ogni quest sono in `assets/quests/<quest>/dialoghi.txt` (formato descritto
+nell'intestazione del file). Dopo una modifica basta "Reset scena" dal menu Esc.
+La logica della quest è in `src/quests/<quest>/mod.rs`.
+
 ## Struttura
 
 ```
@@ -70,7 +80,9 @@ src/      codice del gioco (ECS Bevy)
   sky.rs    cubemap procedurale (gradiente cielo)
   player.rs movimento, salto, corsa, facing, ground-check
   camera.rs orbita e follow della camera
-  menu.rs   UI egui (menu Esc, hint, contatore FPS)
+  menu.rs   UI egui (menu Esc, hint, contatore FPS, diario)
+  quests/   una cartella per quest (logica) + parser dialoghi e diario
+assets/quests/<quest>/dialoghi.txt   testi della quest, modificabili a mano
 docs/     decisioni (ADR) e convenzioni
 .github/  template issue e PR
 ```

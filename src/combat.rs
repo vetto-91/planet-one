@@ -181,7 +181,7 @@ type EnemiesQuery<'w, 's> = Query<
         &'static EnemyHealth,
         &'static PatrolState,
         &'static GlobalTransform,
-        Option<&'static crate::quest::QuestThief>,
+        Option<&'static crate::quests::denaro_rubato::QuestThief>,
     ),
     With<Enemy>,
 >;
@@ -189,7 +189,7 @@ type EnemiesQuery<'w, 's> = Query<
 /// Gestione morte nemici: despawn + marker di respawn con i waypoint.
 pub fn handle_enemy_death(
     mut commands: Commands,
-    mut quest: ResMut<crate::quest::QuestState>,
+    mut quest: ResMut<crate::quests::denaro_rubato::QuestState>,
     enemies: EnemiesQuery,
 ) {
     for (entity, hp, patrol, transform, is_thief) in &enemies {
