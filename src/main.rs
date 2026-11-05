@@ -5,7 +5,9 @@
 
 mod camera;
 mod combat;
+mod daynight;
 mod entities;
+mod figure;
 mod hud;
 mod inventory;
 mod menu;
@@ -43,6 +45,8 @@ pub enum AppState {
     Paused,
     /// Diario delle quest aperto (J): gameplay sospeso, cursore libero.
     Journal,
+    /// Finestra "Aspetta" aperta (T): gameplay sospeso, cursore libero.
+    Wait,
     /// Reset della scena in corso (un frame, non interattivo).
     Resetting,
 }
@@ -95,6 +99,8 @@ fn main() {
         .init_resource::<quests::QuestTexts>()
         .init_resource::<quests::Barks>()
         .init_resource::<menu::JournalTab>()
+        .init_resource::<daynight::GameClock>()
+        .init_resource::<daynight::WaitUi>()
         .init_resource::<combat::ContactDamageCd>()
         // Asset del terreno: heightmap PNG + handle del mesh generato.
         .add_systems(
@@ -102,6 +108,7 @@ fn main() {
             (
                 scene::spawn_camera,
                 scene::spawn_world_startup,
+                daynight::spawn_sky_discs,
                 terrain::setup_assets,
             ),
         )
@@ -118,7 +125,15 @@ fn main() {
             },
         )
         // Ricostruzione del terreno quando la heightmap è disponibile o cambia.
-        .add_systems(Update, (terrain::update_terrain, sky::apply_sky_texture))
+        .add_systems(
+            Update,
+            (
+                terrain::update_terrain,
+                sky::apply_sky_texture,
+                daynight::update_sky,
+                daynight::tick_clock.run_if(in_state(AppState::Playing)),
+            ),
+        )
         // Fisica e movimento del player in FixedUpdate (delta stabile):
         // ground-check, input/gravita'/salto, MoveAndSlide, facing in un'unica
         // pipeline fixed: salto e contatto restano coerenti anche in corsa.

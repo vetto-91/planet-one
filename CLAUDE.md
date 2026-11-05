@@ -40,7 +40,7 @@ Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, 
 
 ## Architettura
 
-- `src/main.rs`: stati dell'app (`Playing`, `Paused`, `Resetting`) e cablaggio dei sistemi.
+- `src/main.rs`: stati dell'app (`Playing`, `Paused`, `Journal`, `Wait`, `Resetting`) e cablaggio dei sistemi.
 - `src/scene.rs`: costruzione e reset della scena.
 - `src/terrain.rs`: heightmap → mesh e collider, hot-reload.
 - `src/player.rs`: movimento, salto, corsa, ground-check (in `FixedUpdate`, character controller kinematico).
@@ -50,6 +50,8 @@ Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, 
 - `src/quests/mod.rs`: parser dei dialoghi, voci del diario, fumetti (barks), registro quest.
 - `src/quests/<quest>/mod.rs` + `assets/quests/<quest>/dialoghi.txt`: logica e testi (modificabili a mano) di ogni quest. Vedi ADR 0003.
 - `src/sky.rs`: cielo da `assets/textures/sky.png` convertito in cubemap a runtime.
+- `src/daynight.rs`: orologio (1 h = 60 s), sole/luna (luci e dischi), stato `Wait` (tasto T).
+- `src/figure.rs`: mesh a parallelepipedo con UV per faccia per le skin in `assets/textures/{player,ladro,viandante}.png`.
 - `src/menu.rs`: UI egui (menu Esc, dialogo, FPS, diario J, bussola, fumetti).
 
 ## Regole di lavoro

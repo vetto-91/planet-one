@@ -116,6 +116,7 @@ pub fn spawn(
     commands: &mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
+    asset_server: &AssetServer,
 ) {
     commands
         .spawn((
@@ -136,21 +137,16 @@ pub fn spawn(
         .with_children(|body| {
             body.spawn((PlayerVisual, Transform::default(), Visibility::default()))
                 .with_children(|visual| {
+                    // Skin dell'avventuriero (viso sul fronte, -Z).
                     visual.spawn((
-                        Mesh3d(meshes.add(Cuboid::new(0.7, 1.3, 0.7))),
-                        MeshMaterial3d(materials.add(StandardMaterial {
-                            base_color: Color::srgb(0.80, 0.35, 0.10),
-                            ..default()
-                        })),
+                        Mesh3d(meshes.add(crate::figure::figure_mesh(
+                            Vec3::new(0.7, 1.3, 0.7),
+                            &crate::figure::FigureUv::solid_sides(),
+                        ))),
+                        MeshMaterial3d(materials.add(crate::figure::skin_material(
+                            asset_server.load("textures/player.png"),
+                        ))),
                         Transform::from_xyz(0.0, 0.0, 0.0),
-                    ));
-                    visual.spawn((
-                        Mesh3d(meshes.add(Cuboid::new(0.3, 0.3, 0.3))),
-                        MeshMaterial3d(materials.add(StandardMaterial {
-                            base_color: Color::srgb(0.95, 0.75, 0.25),
-                            ..default()
-                        })),
-                        Transform::from_xyz(0.0, 0.3, -0.4),
                     ));
                 });
         });

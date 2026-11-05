@@ -28,13 +28,9 @@ Non lasciarlo scappare, viaggiatore!
 Il ladro è là fuori... uccidilo e raccogli le mie {total} monete.
 Poi torna qui con il bottino!
 
-[collecting_accepted]
+[collecting]
 Il ladro è stato sconfitto? Ottimo lavoro!
 Raccogli le mie {total} monete e torna qui.
-
-[collecting_unaccepted]
-Ho sentito che qualcuno ha sconfitto il ladro...
-Se trovi le mie {total} monete, portamele: ti ricompenserò.
 
 [returning]
 Le mie monete! Grazie, viaggiatore!

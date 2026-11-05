@@ -41,6 +41,7 @@ grep "\[EVENT\]" run.log    # eventi finestra/cursore
 | Esc | Menu pausa (tasti, slider sensibilità, checkbox FPS, reset scena) |
 | F3 | Wireframe dei collider (debug fisico) |
 | F11 | Schermo intero on/off (in fullscreen il cursore è bloccato e nascosto) |
+| T | "Aspetta": fa avanzare l'ora di gioco di N ore (T o Esc per chiudere) |
 | J | Diario delle quest (tab Da fare / Completate, quest espandibili); J o Esc per chiudere |
 | TAB (tenuto) | Obiettivi della quest (solo a quest attiva) |
 | E | Parla con l'NPC vicino; nel dialogo continua / conferma |
@@ -58,8 +59,16 @@ in alto indica la sua direzione), uccidilo, raccogli le **12 monete d'oro** che 
 torna dal Viandante → completata, con ricompensa di 5 monete.
 Tieni **TAB** per gli obiettivi: spunta verde = completato, sfera azzurra = in corso.
 
+Se uccidi il ladro prima di parlare col Viandante, la quest si attiva da sola con gli
+obiettivi già completati fino a quel punto.
 Se ti allontani dal Viandante durante il dialogo (oltre 8 m) il dialogo si chiude e lui saluta.
 Il ladro ti apostrofa quando ti vede da vicino (~12 m).
+
+### Giorno e notte
+
+Il giorno di gioco dura 24 minuti reali (1 ora = 1 minuto); sole e luna attraversano il cielo
+e luce e cielo cambiano con l'ora. L'ora è nel chip in alto a sinistra; T apre "Aspetta".
+Per provare un'ora precisa: `PLANET_ONE_HOUR=21 cargo run`.
 
 ### Modificare i dialoghi
 
@@ -81,6 +90,8 @@ src/      codice del gioco (ECS Bevy)
   player.rs movimento, salto, corsa, facing, ground-check
   camera.rs orbita e follow della camera
   menu.rs   UI egui (menu Esc, hint, contatore FPS, diario)
+  daynight.rs orologio di gioco, sole e luna, luci e cielo
+  figure.rs  personaggi a parallelepipedo con skin a sviluppo (player/ladro/viandante)
   quests/   una cartella per quest (logica) + parser dialoghi e diario
 assets/quests/<quest>/dialoghi.txt   testi della quest, modificabili a mano
 docs/     decisioni (ADR) e convenzioni

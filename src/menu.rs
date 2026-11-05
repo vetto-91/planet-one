@@ -37,14 +37,23 @@ pub fn toggle(
     dialog: Res<crate::entities::DialogState>,
     mut next: ResMut<NextState<AppState>>,
 ) {
-    // J: apre/chiude il diario (non durante un dialogo).
-    if keys.just_pressed(KeyCode::KeyJ) && !dialog.open {
-        match state.get() {
-            AppState::Playing => next.set(AppState::Journal),
-            AppState::Journal => next.set(AppState::Playing),
-            _ => {}
+    // J: diario, T: "Aspetta" (non durante un dialogo).
+    if !dialog.open {
+        let (key, panel) = if keys.just_pressed(KeyCode::KeyJ) {
+            (true, AppState::Journal)
+        } else if keys.just_pressed(KeyCode::KeyT) {
+            (true, AppState::Wait)
+        } else {
+            (false, AppState::Playing)
+        };
+        if key {
+            if *state.get() == AppState::Playing {
+                next.set(panel);
+            } else if *state.get() == panel {
+                next.set(AppState::Playing);
+            }
+            return;
         }
-        return;
     }
     if !keys.just_pressed(KeyCode::Escape) {
         return;
@@ -57,7 +66,7 @@ pub fn toggle(
     }
     match state.get() {
         AppState::Playing => next.set(AppState::Paused),
-        AppState::Paused | AppState::Journal => next.set(AppState::Playing),
+        AppState::Paused | AppState::Journal | AppState::Wait => next.set(AppState::Playing),
         // Durante il reset ESC non fa nulla: è uno stato transitorio.
         AppState::Resetting => {}
     }
@@ -81,11 +90,15 @@ pub struct UiQueries<'w, 's> {
         (
             &'static GlobalTransform,
             &'static crate::combat::EnemyHealth,
+            Option<&'static crate::quests::denaro_rubato::QuestThief>,
         ),
         With<crate::entities::Enemy>,
     >,
     pub cameras: Query<'w, 's, (&'static Camera, &'static GlobalTransform)>,
     pub transforms: Query<'w, 's, &'static GlobalTransform>,
+    pub npcs: Query<'w, 's, (&'static GlobalTransform, &'static crate::entities::Npc)>,
+    pub clock: ResMut<'w, crate::daynight::GameClock>,
+    pub wait: ResMut<'w, crate::daynight::WaitUi>,
     pub player_pos: Query<'w, 's, &'static GlobalTransform, With<crate::player::Player>>,
     pub thief_pos: Query<
         'w,
@@ -123,7 +136,7 @@ pub fn ui(
     texts: Res<QuestTexts>,
     barks: Res<Barks>,
     mut tab: ResMut<JournalTab>,
-    q: UiQueries,
+    mut q: UiQueries,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return; // Contesto egui non ancora pronto (primi frame).
@@ -139,9 +152,14 @@ pub fn ui(
                 });
             let coins = inventory.qty(crate::inventory::ItemKind::Coin);
             egui::Area::new(egui::Id::new("coins"))
-                .fixed_pos(egui::pos2(12.0, 48.0))
+                .fixed_pos(egui::pos2(12.0, 58.0))
                 .show(ctx, |ui| {
                     hud_chip(ui, &format!("Monete: {coins}"));
+                });
+            egui::Area::new(egui::Id::new("clock"))
+                .fixed_pos(egui::pos2(12.0, 104.0))
+                .show(ctx, |ui| {
+                    hud_chip(ui, &format!("Ora {}", q.clock.label()));
                 });
 
             // Prompt di interazione: appare quando il player e' vicino a un
@@ -164,6 +182,7 @@ pub fn ui(
 
             // Barre vita dei nemici sopra le loro teste (proiezione world→screen).
             hud::draw_enemy_bars(ctx, &q.enemies, &q.cameras);
+            hud::draw_npc_labels(ctx, &q.npcs, &q.cameras);
 
             // Bussola in alto al centro + titolo quest + obiettivi (TAB).
             if let Ok(pp) = q.player_pos.single() {
@@ -176,6 +195,7 @@ pub fn ui(
                     &q.npc_pos,
                     &orbit,
                 );
+                draw_coords(ctx, pp.translation());
             }
             if let Some((text, _t)) = &quest.title {
                 draw_title_banner(ctx, text);
@@ -200,7 +220,8 @@ pub fn ui(
             {
                 let size = ctx.viewport_rect().size();
                 egui::Area::new(egui::Id::new("fps"))
-                    .fixed_pos(egui::pos2(size.x - 120.0, 12.0))
+                    .pivot(egui::Align2::RIGHT_TOP)
+                    .fixed_pos(egui::pos2(size.x - 12.0, 12.0))
                     .show(ctx, |ui| {
                         hud_chip(ui, &format!("FPS: {:.0}", fps));
                     });
@@ -238,7 +259,7 @@ pub fn ui(
                     ui.label("• Space — salto");
                     ui.label("• Mouse — orbita camera");
                     ui.label("• Esc — menu / riprendi");
-                    ui.label("• J — diario delle quest, TAB (tenuto) — obiettivi");
+                    ui.label("• J — diario delle quest, T — aspetta, TAB (tenuto) — obiettivi");
                     ui.label("• E / Invio — dialogo, 1–0 — usa oggetti");
                     ui.label("• F3 — wireframe collider (debug)");
                     ui.label("• F11 — schermo intero on/off");
@@ -276,6 +297,48 @@ pub fn ui(
                         exit.write(AppExit::Success);
                     }
                 });
+        }
+        AppState::Wait => {
+            let mut wait_now = false;
+            let mut close = false;
+            egui::Window::new("Aspetta")
+                .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+                .collapsible(false)
+                .resizable(false)
+                .show(ctx, |ui| {
+                    ui.label(
+                        egui::RichText::new(format!("Ora attuale: {}", q.clock.label())).size(18.0),
+                    );
+                    ui.add_space(6.0);
+                    ui.add(egui::Slider::new(&mut q.wait.hours, 1..=24).text("ore da attendere"));
+                    let after = (q.clock.hour + q.wait.hours as f32).rem_euclid(24.0);
+                    ui.label(format!(
+                        "Dopo l'attesa: {:02}:{:02}",
+                        after as u32,
+                        (after.fract() * 60.0) as u32
+                    ));
+                    ui.add_space(8.0);
+                    ui.horizontal(|ui| {
+                        if ui.button("Aspetta").clicked() {
+                            wait_now = true;
+                        }
+                        if ui.button("Annulla").clicked() {
+                            close = true;
+                        }
+                    });
+                    ui.label("T / Esc = chiudi");
+                });
+            if wait_now {
+                q.clock.hour = (q.clock.hour + q.wait.hours as f32).rem_euclid(24.0);
+                info!(
+                    "[TIME] attesa di {} h: ora {}",
+                    q.wait.hours,
+                    q.clock.label()
+                );
+                next.set(AppState::Playing);
+            } else if close {
+                next.set(AppState::Playing);
+            }
         }
         AppState::Journal => {
             let entries = crate::quests::journal_entries(&quest, &texts);
@@ -544,13 +607,19 @@ fn draw_compass(
                     ));
                 }
             }
+        });
+}
 
-            // Coordinate del player sotto la barra.
-            ui.label(
-                egui::RichText::new(format!("X {:6.1}   Z {:6.1}", player_pos.x, player_pos.z))
-                    .monospace()
-                    .size(12.0)
-                    .color(egui::Color32::from_rgb(200, 210, 230)),
+/// Coordinate x,z del player in un chip centrato sotto la bussola.
+fn draw_coords(ctx: &egui::Context, player_pos: Vec3) {
+    let size = ctx.viewport_rect().size();
+    egui::Area::new(egui::Id::new("coords"))
+        .pivot(egui::Align2::CENTER_TOP)
+        .fixed_pos(egui::pos2(size.x / 2.0, 70.0))
+        .show(ctx, |ui| {
+            hud_chip(
+                ui,
+                &format!("X {:.1}   Z {:.1}", player_pos.x, player_pos.z),
             );
         });
 }
@@ -558,15 +627,19 @@ fn draw_compass(
 /// Etichetta HUD leggibile: testo chiaro e grande su sfondo scuro semi-opaco.
 fn hud_chip(ui: &mut egui::Ui, text: &str) {
     egui::Frame::default()
-        .fill(egui::Color32::from_rgba_unmultiplied(10, 14, 22, 215))
-        .corner_radius(egui::CornerRadius::same(6))
-        .inner_margin(egui::Margin::symmetric(10, 5))
+        .fill(egui::Color32::from_rgba_unmultiplied(8, 11, 18, 245))
+        .stroke(egui::Stroke::new(
+            1.5,
+            egui::Color32::from_rgb(170, 180, 205),
+        ))
+        .corner_radius(egui::CornerRadius::same(7))
+        .inner_margin(egui::Margin::symmetric(12, 6))
         .show(ui, |ui| {
             ui.label(
                 egui::RichText::new(text)
-                    .size(15.0)
+                    .size(19.0)
                     .strong()
-                    .color(egui::Color32::from_rgb(245, 248, 255)),
+                    .color(egui::Color32::WHITE),
             );
         });
 }

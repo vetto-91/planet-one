@@ -231,10 +231,19 @@ pub fn quest_on_thief_death(
         .unwrap_or(death_pos.y - THIEF_CENTER_OFFSET);
     let center = Vec3::new(death_pos.x, ground_y, death_pos.z);
 
+    // Ladro morto prima di parlare col Viandante (o trovato morto): la quest si
+    // attiva da sola, con gli obiettivi precedenti già completati.
+    if !quest.accepted {
+        quest.accepted = true;
+        show_title(&mut quest, "Denaro Rubato", 3.0);
+        info!("[QUEST] attivata automaticamente: il ladro era già morto");
+    }
     quest.stage = QuestStage::Collecting;
     quest.coins_collected = 0;
     quest.thief_hint = None;
-    show_title(&mut quest, "Ladro sconfitto: raccogli il denaro", 3.0);
+    if quest.title.is_none() {
+        show_title(&mut quest, "Ladro sconfitto: raccogli il denaro", 3.0);
+    }
     spawn_loot(
         &mut commands,
         &mut meshes,
@@ -372,8 +381,7 @@ pub fn npc_dialog(quest: &QuestState, d: &Dialogs) -> (Vec<String>, Vec<String>)
         QuestStage::Idle => "idle",
         QuestStage::SeekThief if quest.thief_hint.is_some() => "seek_thief",
         QuestStage::SeekThief => "seek_thief_nohint",
-        QuestStage::Collecting if quest.accepted => "collecting_accepted",
-        QuestStage::Collecting => "collecting_unaccepted",
+        QuestStage::Collecting => "collecting",
         QuestStage::Returning => "returning",
         QuestStage::Completed => "completed",
     };
@@ -469,15 +477,17 @@ pub fn spawn_thief(
     commands: &mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
+    asset_server: &AssetServer,
     start: Vec3,
     end: Vec3,
 ) {
-    let mesh = meshes.add(Cuboid::new(0.9, 1.4, 0.9));
-    let mat = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.85, 0.15, 0.10),
-        perceptual_roughness: 0.5,
-        ..default()
-    });
+    let mesh = meshes.add(crate::figure::figure_mesh(
+        Vec3::new(0.9, 1.4, 0.9),
+        &crate::figure::FigureUv::standard(),
+    ));
+    let mat = materials.add(crate::figure::skin_material(
+        asset_server.load("textures/ladro.png"),
+    ));
     commands.spawn((
         crate::scene::SceneNode,
         crate::entities::Enemy,

@@ -163,7 +163,14 @@ pub fn draw_hud(ctx: &egui::Context, health: &PlayerHealth, inventory: &Inventor
 /// Usa la proiezione camera→viewport per mettere la barra sopra la testa.
 pub fn draw_enemy_bars(
     ctx: &egui::Context,
-    enemies: &Query<(&GlobalTransform, &EnemyHealth), With<Enemy>>,
+    enemies: &Query<
+        (
+            &GlobalTransform,
+            &EnemyHealth,
+            Option<&crate::quests::denaro_rubato::QuestThief>,
+        ),
+        With<Enemy>,
+    >,
     cameras: &Query<(&Camera, &GlobalTransform)>,
 ) {
     let Ok((camera, cam_t)) = cameras.single() else {
@@ -172,7 +179,7 @@ pub fn draw_enemy_bars(
     let viewport = ctx.viewport_rect();
 
     let painter = ctx.layer_painter(egui::LayerId::background());
-    for (t, hp) in enemies.iter() {
+    for (t, hp, thief) in enemies.iter() {
         // Punto sopra la testa del nemico: il cubo e' alto 1.2 m, quindi
         // il top e' a +0.6; aggiungiamo margine per nome+barra (1.1 m).
         let world_pos = t.translation() + Vec3::Y * 1.1;
@@ -197,7 +204,7 @@ pub fn draw_enemy_bars(
         painter.text(
             egui::pos2(center.x, center.y + name_h / 2.0),
             egui::Align2::CENTER_CENTER,
-            "enemy",
+            if thief.is_some() { "Ladro" } else { "Nemico" },
             egui::FontId::proportional(12.0),
             egui::Color32::from_rgb(255, 220, 220),
         );
@@ -218,6 +225,37 @@ pub fn draw_enemy_bars(
             fill_rect,
             egui::CornerRadius::same(2),
             egui::Color32::from_rgb(220, 50, 40),
+        );
+    }
+}
+
+/// Targhetta con il nome sopra ogni NPC vicino (entro 25 m).
+pub fn draw_npc_labels(
+    ctx: &egui::Context,
+    npcs: &Query<(&GlobalTransform, &crate::entities::Npc)>,
+    cameras: &Query<(&Camera, &GlobalTransform)>,
+) {
+    let Ok((camera, cam_t)) = cameras.single() else {
+        return;
+    };
+    let viewport = ctx.viewport_rect();
+    let painter = ctx.layer_painter(egui::LayerId::background());
+    for (t, npc) in npcs.iter() {
+        if t.translation().distance(cam_t.translation()) > 25.0 {
+            continue;
+        }
+        let Ok(screen) = camera.world_to_viewport(cam_t, t.translation() + Vec3::Y * 1.3) else {
+            continue;
+        };
+        if !viewport.contains(egui::pos2(screen.x, screen.y)) {
+            continue;
+        }
+        painter.text(
+            egui::pos2(screen.x, screen.y - 8.0),
+            egui::Align2::CENTER_CENTER,
+            npc.name,
+            egui::FontId::proportional(14.0),
+            egui::Color32::from_rgb(190, 220, 255),
         );
     }
 }

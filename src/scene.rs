@@ -79,6 +79,7 @@ pub fn spawn_world(
     // Luce direzionale (sole) con ombre.
     commands.spawn((
         SceneNode,
+        crate::daynight::Sun,
         DirectionalLight {
             color: Color::srgb(1.0, 0.95, 0.85),
             illuminance: 4000.0,
@@ -92,13 +93,32 @@ pub fn spawn_world(
         Transform::from_xyz(4.0, 10.0, 4.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
 
+    // Luna: luce direzionale bluastra, senza ombre (regolata da `daynight::update_sky`).
+    commands.spawn((
+        SceneNode,
+        crate::daynight::Moon,
+        DirectionalLight {
+            color: Color::srgb(0.6, 0.7, 1.0),
+            illuminance: 0.0,
+            shadow_maps_enabled: false,
+            ..Default::default()
+        },
+        Transform::from_xyz(-4.0, -10.0, -4.0).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
+
     // --- Player ---
-    player::spawn(commands, meshes, materials);
+    player::spawn(commands, meshes, materials, asset_server);
 
     // --- NPC con dialogo (vicino allo spawn del player) ---
     // NPC vicino allo spawn del player (0,0,0): a (3, 0, -2) così si vede subito.
     // NPC a 2.5 m dallo spawn del player: subito nel range di interazione.
-    entities::spawn_npc(commands, meshes, materials, Vec3::new(2.5, 0.0, 0.0));
+    entities::spawn_npc(
+        commands,
+        meshes,
+        materials,
+        asset_server,
+        Vec3::new(2.5, 0.0, 0.0),
+    );
 
     // --- Pickup: pozione sparsa (le monete a terra sono solo quelle della quest) ---
     inventory::spawn_pickup(
@@ -116,6 +136,7 @@ pub fn spawn_world(
         commands,
         meshes,
         materials,
+        asset_server,
         Vec3::new(31.2, 0.0, -34.9),
         Vec3::new(27.2, 0.0, -34.9),
     );

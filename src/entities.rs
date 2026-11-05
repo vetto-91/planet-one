@@ -99,14 +99,16 @@ pub fn spawn_npc(
     commands: &mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
+    asset_server: &AssetServer,
     position: Vec3,
 ) {
-    let mesh = meshes.add(Cuboid::new(0.7, 1.6, 0.7));
-    let mat = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.15, 0.35, 0.95),
-        perceptual_roughness: 0.7,
-        ..default()
-    });
+    let mesh = meshes.add(crate::figure::figure_mesh(
+        Vec3::new(0.7, 1.6, 0.7),
+        &crate::figure::FigureUv::standard(),
+    ));
+    let mat = materials.add(crate::figure::skin_material(
+        asset_server.load("textures/viandante.png"),
+    ));
 
     commands.spawn((
         SceneNode,
@@ -127,7 +129,9 @@ pub fn spawn_npc(
         Collider::capsule(0.35, 1.0),
         Mesh3d(mesh),
         MeshMaterial3d(mat),
-        Transform::from_translation(position),
+        // Il fronte (-Z) guarda verso il giocatore, che parte a -X.
+        Transform::from_translation(position)
+            .with_rotation(Quat::from_rotation_y(std::f32::consts::FRAC_PI_2)),
     ));
 }
 
@@ -354,5 +358,10 @@ pub fn enemy_patrol(
 
         transform.translation = output.position;
         velocity.0 = output.projected_velocity;
+
+        // Il fronte (-Z) guarda nella direzione di marcia.
+        let target = Quat::from_rotation_y((-dir.x).atan2(-dir.z));
+        let alpha = (10.0 * time.delta_secs()).clamp(0.0, 1.0);
+        transform.rotation = transform.rotation.slerp(target, alpha);
     }
 }
