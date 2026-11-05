@@ -4,7 +4,10 @@
 //! terreno 100 m, debug wireframe collider (F3).
 
 mod camera;
+mod combat;
 mod entities;
+mod hud;
+mod inventory;
 mod menu;
 mod player;
 mod scene;
@@ -78,6 +81,8 @@ fn main() {
         .init_resource::<menu::ShowFps>()
         .init_resource::<entities::DialogState>()
         .init_resource::<entities::NearestInteract>()
+        .init_resource::<inventory::Inventory>()
+        .init_resource::<combat::ContactDamageCd>()
         // Asset del terreno: heightmap PNG + handle del mesh generato.
         .add_systems(
             Startup,
@@ -119,7 +124,16 @@ fn main() {
         // Interazione (E) e avanzamento dialogo in Update, solo in Playing.
         .add_systems(
             Update,
-            (entities::interact, entities::advance_dialog).run_if(in_state(AppState::Playing)),
+            (
+                entities::interact,
+                entities::advance_dialog,
+                inventory::collect_pickups,
+                combat::player_attack,
+                combat::contact_damage,
+                combat::handle_enemy_death,
+                combat::enemy_respawn_tick,
+            )
+                .run_if(in_state(AppState::Playing)),
         )
         // Menu e overlay FPS: il disegno della UI egui DEVE girare nella
         // schedule EguiPrimaryContextPass (in egui 0.36 i font sono

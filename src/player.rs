@@ -13,6 +13,7 @@
 //! - `run_move_and_slide`: sweep fisico + registrazione hit col terreno.
 //! - `facing`: rotazione mesh.
 
+use crate::combat::CombatState;
 use crate::scene::{Ground, SceneNode};
 use avian3d::prelude::*;
 use bevy::prelude::*;
@@ -24,6 +25,22 @@ pub struct Player;
 /// Marker del gruppo visivo (figlio): ruota verso la direzione di moto.
 #[derive(Component)]
 pub struct PlayerVisual;
+
+/// Vita del player (usata da HUD e combattimento).
+#[derive(Component)]
+pub struct PlayerHealth {
+    pub current: f32,
+    pub max: f32,
+}
+
+impl Default for PlayerHealth {
+    fn default() -> Self {
+        Self {
+            current: 100.0,
+            max: 100.0,
+        }
+    }
+}
 
 /// Buffer del tasto salto: il salto si attiva anche se Space viene premuto
 /// pochi frame prima di essere grounded (utile in atterraggio/corsa su pendii).
@@ -111,6 +128,8 @@ pub fn spawn(
             CustomPositionIntegration,
             GroundedState::default(),
             JumpBuffer::default(),
+            PlayerHealth::default(),
+            CombatState::default(),
             Visibility::default(),
             Transform::from_xyz(0.0, 1.0, 0.0),
         ))

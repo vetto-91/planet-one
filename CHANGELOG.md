@@ -74,6 +74,25 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 - Test: dialogo aperto/avanzato/chiuso (4 righe), movimento durante dialogo,
   patrol nemico verificato via log — 0 panic.
 
+## v0.0.4.0 / v0.0.4.1 — Fase 4: HUD, inventario, combattimento base (2026-11-05)
+
+### v0.0.4.0 — HUD + inventario
+- Barra vita in alto a sinistra (egui, colori dinamici verde/giallo/rosso).
+- Crosshair centrale. Slot inventario in basso con icone colorate + quantita'
+  e tooltip nome. Pickup raccoglibili (Pozione rossa, Moneta gialla) con
+  raccolta automatica entro 2 m. Inventario in resource (sopravvive al reset
+  scena). PlayerHealth { current, max } sul player.
+
+### v0.0.4.1 — Combattimento base
+- Attacco melee su click sinistro: cooldown 0.6 s, range 2.5 m, danno 4,
+  target = nemico piu' vicino nel cono frontale (dot > 0.3).
+- Nemico con EnemyHealth (20 HP):barra vita sopra il mesh (da fare in UI
+  world), morte -> despawn + respawn dopo 3 s sul primo waypoint.
+- Danno da contatto player<->nemico entro 1.2 m, ogni 0.8 s, iframe 0.3 s.
+- Morte player (vita <= 0): respawn allo spawn con vita piena, camera resettata.
+- Nessun attacco durante dialogo aperto.
+- Test: click攻击 С Chamb; 0 panic.
+
 ## v0.0.2.0 — Fase 2: Scena (terreno, cielo, nebbia, hot-reload) (2026-11-04)
 
 - Terreno procedurale da heightmap PNG (`assets/textures/terrain_heightmap.png`,

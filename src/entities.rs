@@ -12,6 +12,7 @@
 //! Dialogo: pannello in basso (stile RPG), `Enter`/`Space` per avanzare,
 //! `Esc` per chiudere. Il movimento resta libero durante il dialogo.
 
+use crate::combat::EnemyHealth;
 use crate::player::Player;
 use crate::scene::SceneNode;
 use avian3d::prelude::*;
@@ -120,6 +121,7 @@ pub fn spawn_enemy(
     commands.spawn((
         SceneNode,
         Enemy,
+        EnemyHealth::default(),
         PatrolState {
             waypoints: vec![start, end],
             current: 0,

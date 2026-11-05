@@ -4,6 +4,9 @@ use crate::{
     AppState,
     camera::OrbitCamera,
     entities::{DialogState, NearestInteract},
+    hud,
+    inventory::Inventory,
+    player::PlayerHealth,
 };
 use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
 use bevy::prelude::*;
@@ -62,6 +65,8 @@ pub fn ui(
     diagnostics: Res<DiagnosticsStore>,
     dialog: Res<DialogState>,
     nearest: Res<NearestInteract>,
+    health: Query<&PlayerHealth, With<crate::player::Player>>,
+    inventory: Res<Inventory>,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return; // Contesto egui non ancora pronto (primi frame).
@@ -87,6 +92,11 @@ pub fn ui(
             // Pannello dialogo in basso (stile RPG) quando aperto.
             if dialog.open {
                 show_dialog_panel(ctx, &dialog);
+            }
+
+            // HUD di gioco: barra vita, crosshair, inventario.
+            if let Ok(hp) = health.single() {
+                hud::draw_hud(ctx, hp, &inventory);
             }
 
             // Contatore FPS in alto a destra (se attivato dal menu).

@@ -12,7 +12,7 @@
 //! spawn degli altri elementi (`spawn_world`, chiamato sia allo startup
 //! sia durante il reset).
 
-use crate::{AppState, camera::OrbitCamera, entities, player, sky, terrain};
+use crate::{AppState, camera::OrbitCamera, entities, inventory, player, sky, terrain};
 use bevy::image::Image;
 use bevy::light::Skybox;
 use bevy::prelude::*;
@@ -90,13 +90,39 @@ pub fn spawn_world(
     // NPC a 2.5 m dallo spawn del player: subito nel range di interazione.
     entities::spawn_npc(commands, meshes, materials, Vec3::new(2.5, 0.0, 0.0));
 
+    // --- Pickup: pozione vicino allo spawn, monete sparse ---
+    inventory::spawn_pickup(
+        commands,
+        meshes,
+        materials,
+        inventory::ItemKind::HealthPotion,
+        1,
+        Vec3::new(1.5, 0.0, 1.5),
+    );
+    inventory::spawn_pickup(
+        commands,
+        meshes,
+        materials,
+        inventory::ItemKind::Coin,
+        5,
+        Vec3::new(-2.0, 0.0, 2.0),
+    );
+    inventory::spawn_pickup(
+        commands,
+        meshes,
+        materials,
+        inventory::ItemKind::Coin,
+        3,
+        Vec3::new(6.0, 0.0, -5.0),
+    );
+
     // --- Nemico in patrol tra due punti ---
     entities::spawn_enemy(
         commands,
         meshes,
         materials,
-        Vec3::new(-4.0, 0.0, -8.0),
-        Vec3::new(-10.0, 0.0, -10.0),
+        Vec3::new(-5.0, 0.0, 2.0),
+        Vec3::new(-8.0, 0.0, -3.0),
     );
 }
 
