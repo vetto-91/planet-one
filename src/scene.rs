@@ -90,23 +90,7 @@ pub fn spawn_world(
     // NPC a 2.5 m dallo spawn del player: subito nel range di interazione.
     entities::spawn_npc(commands, meshes, materials, Vec3::new(2.5, 0.0, 0.0));
 
-    // --- Pickup: pozione vicino allo spawn, monete sparse ---
-    inventory::spawn_pickup(
-        commands,
-        meshes,
-        materials,
-        inventory::ItemKind::HealthPotion,
-        1,
-        Vec3::new(1.5, 0.0, 1.5),
-    );
-    inventory::spawn_pickup(
-        commands,
-        meshes,
-        materials,
-        inventory::ItemKind::Coin,
-        5,
-        Vec3::new(-2.0, 0.0, 2.0),
-    );
+    // --- Pickup: monete sparse (pozione e moneta vicine all'NPC rimosse) ---
     inventory::spawn_pickup(
         commands,
         meshes,
@@ -116,13 +100,13 @@ pub fn spawn_world(
         Vec3::new(6.0, 0.0, -5.0),
     );
 
-    // --- Ladro della quest: in un angolo della mappa (nord-ovest) ---
+    // --- Ladro della quest: vicino al bordo nord-ovest della mappa (±50 m) ---
     quest::spawn_thief(
         commands,
         meshes,
         materials,
-        Vec3::new(-14.0, 0.0, -12.0),
-        Vec3::new(-20.0, 0.0, -8.0),
+        Vec3::new(-42.0, 0.0, -42.0),
+        Vec3::new(-46.0, 0.0, -38.0),
     );
 }
 

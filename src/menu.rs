@@ -113,11 +113,17 @@ pub fn ui(
 
     match state.get() {
         AppState::Playing => {
-            // Hint minimale sempre visibile durante il gioco.
+            // Hint sempre visibile + contatore monete in possesso (alto-sinistra).
             egui::Area::new(egui::Id::new("hint"))
                 .fixed_pos(egui::pos2(12.0, 12.0))
                 .show(ctx, |ui| {
-                    ui.label("ESC = menu");
+                    hud_chip(ui, "ESC = menu");
+                });
+            let coins = inventory.qty(crate::inventory::ItemKind::Coin);
+            egui::Area::new(egui::Id::new("coins"))
+                .fixed_pos(egui::pos2(12.0, 48.0))
+                .show(ctx, |ui| {
+                    hud_chip(ui, &format!("Monete: {coins}"));
                 });
 
             // Prompt di interazione: appare quando il player e' vicino a un
@@ -168,9 +174,9 @@ pub fn ui(
             {
                 let size = ctx.viewport_rect().size();
                 egui::Area::new(egui::Id::new("fps"))
-                    .fixed_pos(egui::pos2(size.x - 100.0, 12.0))
+                    .fixed_pos(egui::pos2(size.x - 120.0, 12.0))
                     .show(ctx, |ui| {
-                        ui.label(format!("FPS: {:.0}", fps));
+                        hud_chip(ui, &format!("FPS: {:.0}", fps));
                     });
             }
         }
@@ -340,42 +346,131 @@ fn draw_compass(
         QuestStage::Idle => npc.single().ok().map(|t| t.translation()),
     };
 
+    // Heading della camera in gradi compass (0 = N = -Z, 90 = E = +X).
+    // La camera guarda in direzione (-sin yaw, -cos yaw): bearing = -yaw.
+    let heading_deg = (-orbit.yaw).to_degrees().rem_euclid(360.0);
+    const BAR_W: f32 = 440.0;
+    const BAR_H: f32 = 46.0;
+    const WIN_HALF_DEG: f32 = 45.0; // finestra visibile ~90°
+
     egui::Area::new(egui::Id::new("compass"))
-        .fixed_pos(egui::pos2(center.x - 60.0, 10.0))
+        .fixed_pos(egui::pos2(center.x - BAR_W / 2.0, 10.0))
         .show(ctx, |ui| {
             let (rect, _resp) =
-                ui.allocate_exact_size(egui::vec2(120.0, 40.0), egui::Sense::hover());
-            // sfondo pillola
-            ui.painter().rect_filled(
+                ui.allocate_exact_size(egui::vec2(BAR_W, BAR_H), egui::Sense::hover());
+            let painter = ui.painter().clone();
+            painter.rect_filled(
                 rect,
                 egui::CornerRadius::same(8),
-                egui::Color32::from_rgba_unmultiplied(10, 14, 22, 200),
+                egui::Color32::from_rgba_unmultiplied(10, 14, 22, 205),
             );
-            // coordinate
-            ui.painter().text(
-                egui::pos2(rect.min.x + 6.0, rect.center().y),
-                egui::Align2::LEFT_CENTER,
-                format!("{:5.1} , {:5.1}", player_pos.x, player_pos.z),
-                egui::FontId::monospace(12.0),
-                egui::Color32::from_rgb(200, 210, 230),
-            );
-            // freccia verso target: angolo relativo tra direzione target e yaw camera
+
+            // Disco: tacche ogni 10°, centrate sullo sguardo.
+            let mid_x = rect.center().x;
+            let px_per_deg = (BAR_W - 40.0) / (2.0 * WIN_HALF_DEG);
+            for step in 0..36 {
+                let bearing = step as f32 * 10.0;
+                let mut off = (bearing - heading_deg).rem_euclid(360.0);
+                if off > 180.0 {
+                    off -= 360.0;
+                }
+                if off.abs() > WIN_HALF_DEG {
+                    continue;
+                }
+                let x = mid_x + off * px_per_deg;
+                // Cardinali: lettera (N/E/S/W) grande; altri gradi: numero piccolo.
+                let cardinal = match bearing as i32 {
+                    0 => Some(("N", egui::Color32::from_rgb(255, 210, 80))),
+                    90 => Some(("E", egui::Color32::from_rgb(245, 248, 255))),
+                    180 => Some(("S", egui::Color32::from_rgb(245, 248, 255))),
+                    270 => Some(("W", egui::Color32::from_rgb(245, 248, 255))),
+                    _ => None,
+                };
+                let (text, color, font, tick_len) = match cardinal {
+                    Some((letter, c)) => (
+                        letter.to_string(),
+                        c,
+                        egui::FontId::proportional(18.0),
+                        12.0,
+                    ),
+                    None => (
+                        format!("{}", bearing as i32),
+                        egui::Color32::from_rgb(170, 180, 200),
+                        egui::FontId::monospace(12.0),
+                        7.0,
+                    ),
+                };
+                painter.line_segment(
+                    [
+                        egui::pos2(x, rect.top() + 4.0),
+                        egui::pos2(x, rect.top() + 4.0 + tick_len),
+                    ],
+                    egui::Stroke::new(1.5, color),
+                );
+                painter.text(
+                    egui::pos2(x, rect.top() + 30.0),
+                    egui::Align2::CENTER_CENTER,
+                    text,
+                    font,
+                    color,
+                );
+            }
+
+            // Indicatore fisso al centro (direzione di sguardo).
+            painter.add(egui::Shape::convex_polygon(
+                vec![
+                    egui::pos2(mid_x - 5.0, rect.top() + 1.0),
+                    egui::pos2(mid_x + 5.0, rect.top() + 1.0),
+                    egui::pos2(mid_x, rect.top() + 8.0),
+                ],
+                egui::Color32::WHITE,
+                egui::Stroke::NONE,
+            ));
+
+            // Freccia verso il target, relativa allo sguardo (lato destro della barra).
             if let Some(t) = target {
                 let to = t - player_pos;
-                let world_angle = to.x.atan2(-to.z); // angolo nel mondo (0 = -Z, come forward)
-                let rel = world_angle - orbit.yaw;
-                let r = 14.0_f32;
-                let c = rect.max - egui::vec2(20.0, 20.0);
+                let world_angle = to.x.atan2(-to.z); // radianti, 0 = -Z (N)
+                let rel = world_angle - heading_deg.to_radians();
+                let r = 12.0_f32;
+                let c = egui::pos2(rect.right() - 18.0, rect.center().y);
                 let dir = egui::vec2(rel.sin(), -rel.cos());
                 let tip = c + dir * r;
                 let left = c + egui::vec2(-dir.y, dir.x) * 5.0;
                 let right = c + egui::vec2(dir.y, -dir.x) * 5.0;
-                ui.painter().add(egui::Shape::convex_polygon(
+                painter.add(egui::Shape::convex_polygon(
                     vec![tip, left, right],
                     egui::Color32::from_rgb(255, 80, 60),
                     egui::Stroke::new(1.0, egui::Color32::WHITE),
                 ));
             }
+
+            // Coordinate del player sotto la barra.
+            ui.label(
+                egui::RichText::new(format!(
+                    "X {:6.1}   Z {:6.1}",
+                    player_pos.x, player_pos.z
+                ))
+                .monospace()
+                .size(12.0)
+                .color(egui::Color32::from_rgb(200, 210, 230)),
+            );
+        });
+}
+
+/// Etichetta HUD leggibile: testo chiaro e grande su sfondo scuro semi-opaco.
+fn hud_chip(ui: &mut egui::Ui, text: &str) {
+    egui::Frame::default()
+        .fill(egui::Color32::from_rgba_unmultiplied(10, 14, 22, 215))
+        .corner_radius(egui::CornerRadius::same(6))
+        .inner_margin(egui::Margin::symmetric(10, 5))
+        .show(ui, |ui| {
+            ui.label(
+                egui::RichText::new(text)
+                    .size(15.0)
+                    .strong()
+                    .color(egui::Color32::from_rgb(245, 248, 255)),
+            );
         });
 }
 
@@ -436,10 +531,7 @@ fn draw_objectives(ctx: &egui::Context, quest: &QuestState) {
                 let coins_done =
                     quest.stage == QuestStage::Returning || quest.stage == QuestStage::Completed;
                 let ret_done = quest.stage == QuestStage::Completed;
-                ui.label(format!(
-                    "{} Vai dal ladro (nord-ovest)",
-                    mark(quest.accepted)
-                ));
+                ui.label(format!("{} Vai dal ladro", mark(quest.accepted)));
                 ui.label(format!("{} Uccidi il ladro", mark(thief_done)));
                 ui.label(format!(
                     "{} Monete {}/{}",

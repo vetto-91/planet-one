@@ -6,13 +6,21 @@
 //! 2. `SeekThief`: il ladro (enemy rosso) è in un angolo della mappa. Ucciderlo
 //!    → stage `LootSpawned`, spawn di 12 monete gialle (`QuestCoin`) al suo posto.
 //! 3. `Collecting { collected, total }`: raccolta automatica delle monete entro
-//!    2 m. Quando collected == total → stage `Returning`.
+//!    2 m. Quando collected == total → stage `Returning`. Le monete NON vanno
+//!    in inventario: sono contate solo dalla quest.
 //! 4. `Returning`: torna dal Viandante. Alla chiusura del dialogo finale →
-//!    stage `Completed`, overlay "Missione completata".
+//!    stage `Completed`, ricompensa di [`REWARD_COINS`] in inventario, overlay
+//!    "Missione completata".
+//!
+//! Il ladro può morire anche prima di accettare la quest: in quel caso le
+//! monete spawnano lo stesso (stage `Collecting` con `accepted = false`) e il
+//! Viandante le ritira alla consegna. Con la quest attiva e il ladro vivo, il
+//! Viandante indica la direzione del ladro (`thief_hint`).
 //!
 //! Nessun salvataggio su file: la quest vive solo in memoria (come da piano).
 
 use crate::entities::DialogState;
+use crate::inventory::{Inventory, ItemKind};
 use crate::player::Player;
 use crate::scene::SceneNode;
 use avian3d::prelude::*;
@@ -20,6 +28,9 @@ use bevy::prelude::*;
 
 /// Numero di monete da recuperare.
 pub const LOOT_TOTAL: u32 = 12;
+
+/// Ricompensa in monete consegnata dal Viandante a quest completata.
+pub const REWARD_COINS: u32 = 5;
 
 /// Fasi della quest.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -49,6 +60,9 @@ pub struct QuestState {
     pub accepted: bool,
     /// Flag: dialogo finale completato.
     pub final_done: bool,
+    /// Direzione e distanza del ladro (es. "nord-ovest, circa 60 m"),
+    /// aggiornata ogni frame; usata dal Viandante quando la quest è attiva.
+    pub thief_hint: Option<String>,
 }
 
 impl Default for QuestState {
@@ -60,6 +74,7 @@ impl Default for QuestState {
             title: None,
             accepted: false,
             final_done: false,
+            thief_hint: None,
         }
     }
 }
@@ -85,6 +100,7 @@ fn show_title(quest: &mut QuestState, text: &str, secs: f32) {
 pub fn quest_on_dialog_close(
     mut quest: ResMut<QuestState>,
     dialog: Res<DialogState>,
+    mut inventory: ResMut<Inventory>,
     mut last_open: Local<bool>,
 ) {
     // Rileva il fronte di discesa: dialog.open true -> false.
@@ -99,10 +115,12 @@ pub fn quest_on_dialog_close(
                 info!("[QUEST] accettata: Denaro Rubato");
             }
             QuestStage::Returning if !quest.final_done => {
+                // Consegna completa: ricompensa in inventario e chiusura.
                 quest.final_done = true;
                 quest.stage = QuestStage::Completed;
+                inventory.add(ItemKind::Coin, REWARD_COINS);
                 show_title(&mut quest, "Missione completata: Denaro recuperato", 4.0);
-                info!("[QUEST] completata");
+                info!("[QUEST] completata, ricompensa +{} monete", REWARD_COINS);
             }
             _ => {}
         }
@@ -118,13 +136,19 @@ pub fn quest_on_thief_death(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    if quest.stage != QuestStage::SeekThief {
+    // Il ladro può morire anche prima di accettare la quest: in quel caso le
+    // monete spawnano comunque (e il Viandante le ritira alla consegna).
+    if matches!(
+        quest.stage,
+        QuestStage::Collecting | QuestStage::Returning | QuestStage::Completed
+    ) {
         return;
     }
     for (t, hp) in &thieves {
         if hp.current <= 0.0 {
             quest.stage = QuestStage::Collecting;
             quest.coins_collected = 0;
+            quest.thief_hint = None;
             show_title(&mut quest, "Ladro sconfitto: raccogli il denaro", 3.0);
             spawn_loot(
                 &mut commands,
@@ -210,22 +234,75 @@ pub fn tick_title(time: Res<Time>, mut quest: ResMut<QuestState>) {
     }
 }
 
-/// NPC: dialogo che dipende dalla fase quest (iniziale vs finale).
-pub fn npc_quest_lines(quest: &QuestState) -> &'static [&'static str] {
+/// Nome cardinale/intercardinale (8 punti) della direzione da `from` verso `to`.
+/// Convenzione mondo: N = -Z, E = +X (come in `draw_compass`).
+pub fn compass_name(from: Vec3, to: Vec3) -> &'static str {
+    const NAMES: [&str; 8] = [
+        "nord", "nord-est", "est", "sud-est", "sud", "sud-ovest", "ovest", "nord-ovest",
+    ];
+    let d = to - from;
+    let bearing = d.x.atan2(-d.z).to_degrees().rem_euclid(360.0);
+    NAMES[((bearing + 22.5) / 45.0) as usize % 8]
+}
+
+/// Sistema: aggiorna `QuestState::thief_hint` con direzione e distanza del
+/// ladro rispetto all'NPC (usato nelle battute quando la quest è attiva).
+pub fn update_thief_hint(
+    mut quest: ResMut<QuestState>,
+    thieves: Query<&GlobalTransform, With<QuestThief>>,
+    npcs: Query<&GlobalTransform, With<crate::entities::Npc>>,
+) {
+    let hint = match (thieves.single(), npcs.single()) {
+        (Ok(t), Ok(n)) => {
+            let from = n.translation();
+            let to = t.translation();
+            let meters = (from.distance(to) / 5.0).round() * 5.0;
+            Some(format!("{}, circa {:.0} m", compass_name(from, to), meters))
+        }
+        _ => None,
+    };
+    if quest.thief_hint != hint {
+        quest.thief_hint = hint;
+    }
+}
+
+/// NPC: battute che dipendono dalla fase quest.
+pub fn npc_quest_lines(quest: &QuestState) -> Vec<String> {
+    let lines = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<String>>();
     match quest.stage {
-        QuestStage::Idle => &[
+        QuestStage::Idle => lines(&[
             "Salve, viaggiatore! Un ladro mi ha rubato tutte le monete d'oro.",
             "Era un uomo alto e rosso, si nasconde tra le colline a nord-ovest.",
             "Uccidilo e riporta qui il mio denaro. Ti aspetto!",
-        ],
-        QuestStage::Completed => &[
-            "Le mie monete! Grazie, viaggiatore! Sei un vero eroe di Planet One.",
-            "Il ladro non darà più fastidio a nessuno.",
-        ],
-        _ => &[
-            "Il ladro è là fuori... uccidilo e raccogli le mie 12 monete.",
-            "Poi torna qui con il bottino!",
-        ],
+        ]),
+        // Quest attiva e monete ancora da portare: indica dove si trova il ladro.
+        QuestStage::SeekThief => match &quest.thief_hint {
+            Some(hint) => vec![
+                format!("Il ladro si trova a {hint}."),
+                "Non lasciarlo scappare, viaggiatore!".to_string(),
+            ],
+            None => lines(&[
+                "Il ladro è là fuori... uccidilo e raccogli le mie 12 monete.",
+                "Poi torna qui con il bottino!",
+            ]),
+        },
+        // Ladro sconfitto: monete da raccogliere (quest accettata o meno).
+        QuestStage::Collecting if quest.accepted => lines(&[
+            "Il ladro è stato sconfitto? Ottimo lavoro!",
+            "Raccogli le mie 12 monete e torna qui.",
+        ]),
+        QuestStage::Collecting => lines(&[
+            "Ho sentito che qualcuno ha sconfitto il ladro...",
+            "Se trovi le mie 12 monete, portamele: ti ricompenserò.",
+        ]),
+        // Consegna completa: ringraziamento e ricompensa.
+        QuestStage::Returning => lines(&[
+            "Le mie monete! Grazie, viaggiatore!",
+            "Ecco 5 monete per il tuo aiuto.",
+        ]),
+        QuestStage::Completed => lines(&[
+            "Grazie ancora, viaggiatore. Il ladro non darà più fastidio a nessuno.",
+        ]),
     }
 }
 
