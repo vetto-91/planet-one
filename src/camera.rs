@@ -95,8 +95,11 @@ pub fn orbit(mut cursor_events: MessageReader<CursorMoved>, mut state: ResMut<Or
     }
     state.yaw -= delta.x * state.sensitivity;
     // In prima persona permettiamo di guardare più in alto/giù (meno clamp alto).
+    // Verticale: in 1a persona quasi 180° (±88°) — al massimo in alto (cielo)
+    // o in basso (terreno) la visuale si ferma, così il pg non si ribalta.
+    // In 3a persona range conservativo per non far passare la camera sotto il suolo.
     let (min, max) = if state.mode == CameraMode::FirstPerson {
-        (-1.45, 1.45)
+        (-1.54, 1.54)
     } else {
         (PITCH_MIN, PITCH_MAX)
     };

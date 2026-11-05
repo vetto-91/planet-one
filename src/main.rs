@@ -156,6 +156,8 @@ fn main() {
                 toggle_physics_debug.run_if(in_state(AppState::Playing)),
                 toggle_fullscreen,
                 apply_cursor_for_mode,
+                warp_cursor_to_center,
+                apply_cursor_warp,
                 log_input_events,
             ),
         )
@@ -178,29 +180,79 @@ fn disable_physics_debug_default(mut store: ResMut<GizmoConfigStore>) {
 fn apply_cursor_for_mode(
     windows: Query<&Window, With<bevy::window::PrimaryWindow>>,
     mut cursor_opts: Query<&mut bevy::window::CursorOptions, With<bevy::window::PrimaryWindow>>,
-    mut last_mode: Local<Option<bevy::window::WindowMode>>,
+    app_state: Res<State<AppState>>,
+    mut last: Local<(Option<bevy::window::WindowMode>, bool)>,
 ) {
     use bevy::window::{CursorGrabMode, WindowMode};
     let Ok(window) = windows.single() else {
         return;
     };
     let fullscreen = !matches!(window.mode, WindowMode::Windowed);
-    if *last_mode == Some(window.mode) {
+    // A schermo intero catturiamo SOLO in Playing: in Paused (menu) il cursore
+    // deve tornare visibile e libero per cliccare i bottoni.
+    let capture = fullscreen && *app_state.get() == AppState::Playing;
+    if *last == (Some(window.mode), capture) {
         return;
     }
-    *last_mode = Some(window.mode);
+    *last = (Some(window.mode), capture);
     let Ok(mut opts) = cursor_opts.single_mut() else {
         return;
     };
-    if fullscreen {
+    if capture {
         opts.visible = false;
         // Su X11 Locked ricade su Confined, ma è il massimo disponibile.
         opts.grab_mode = CursorGrabMode::Locked;
-        info!("[INPUT] fullscreen ON: cursore nascosto + bloccato");
+        info!("[CURSOR] cattura ON (fullscreen+playing): nascosto+bloccato");
     } else {
         opts.visible = true;
         opts.grab_mode = CursorGrabMode::None;
-        info!("[INPUT] fullscreen OFF: cursore visibile e libero");
+        if fullscreen {
+            info!("[CURSOR] fullscreen ma menu aperto: cursore libero");
+        } else {
+            info!("[CURSOR] finestra: cursore visibile e libero");
+        }
+    }
+}
+
+/// In fullscreen + Playing, riporta il cursore al centro della finestra ogni
+/// frame: su X11 Confined blocca ai bordi, ma il delta del movimento continua
+/// ad arrivare, così la rotazione yaw resta infinita (360°).
+fn warp_cursor_to_center(
+    mut commands: Commands,
+    windows: Query<(Entity, &Window), With<bevy::window::PrimaryWindow>>,
+    app_state: Res<State<AppState>>,
+) {
+    let Ok((entity, window)) = windows.single() else {
+        return;
+    };
+    let fullscreen = !matches!(window.mode, bevy::window::WindowMode::Windowed);
+    if !fullscreen || *app_state.get() != AppState::Playing {
+        return;
+    }
+    let size = window.resolution.size();
+    // set_cursor_position e' un metodo su &mut Window: usiamo un EntityCommand
+    // via Commands per ottenere il borrow mutabile in modo sicuro.
+    commands
+        .entity(entity)
+        .insert(CursorWarpRequest(size / 2.0));
+}
+
+/// Componente temporaneo: posizione a cui warpare il cursore (centro finestra).
+#[derive(Component)]
+struct CursorWarpRequest(Vec2);
+
+/// Applica il warp del cursore richiesto nel frame precedente.
+fn apply_cursor_warp(
+    mut commands: Commands,
+    mut windows: Query<(&mut Window, Entity), With<bevy::window::PrimaryWindow>>,
+    requests: Query<(Entity, &CursorWarpRequest)>,
+) {
+    for (req_entity, req) in &requests {
+        if let Ok((mut window, win_entity)) = windows.get_mut(req_entity) {
+            window.set_cursor_position(Some(req.0));
+            let _ = win_entity;
+        }
+        commands.entity(req_entity).remove::<CursorWarpRequest>();
     }
 }
 

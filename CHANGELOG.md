@@ -153,6 +153,18 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 - Test: log 16 eventi catturati (tasti W/Space/F11, click, movimento mouse),
   fullscreen 4480x1440 con cursore bloccato, ritorno 1280x720 libero — 0 panic.
 
+## v0.0.4.8 — Cursore in fullscreen + menu + pitch 180° (2026-11-05)
+
+- apply_cursor_for_mode: cattura cursore (Locked+nascosto) SOLO in fullscreen
+  E Playing; in Paused (menu Esc) o a finestra il cursore torna visibile e libero.
+- warp_cursor_to_center: in fullscreen+Playing riporta il cursore al centro ogni
+  frame → su X11 (Confined) la rotazione yaw resta infinita (360°), i delta
+  continuano ad arrivare anche al bordo.
+- Pitch verticale in 1a persona: ±1.54 rad (~±88°, quasi 180°): al massimo in
+  alto (cielo) o in basso (terreno) la visuale si ferma, niente ribaltamento pg.
+- Log [CURSOR] per stato cattura; [INPUT]/[EVENT] invariati.
+- Test: fullscreen cattura ON, menu Esc cursore libero, yaw 360, 0 panic.
+
 ## v0.0.2.0 — Fase 2: Scena (terreno, cielo, nebbia, hot-reload) (2026-11-04)
 
 - Terreno procedurale da heightmap PNG (`assets/textures/terrain_heightmap.png`,
