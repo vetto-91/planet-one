@@ -2,9 +2,9 @@
 
 RPG 3D open source, cel-shaded, in terza persona. Scritto in **Rust** con il motore **[Bevy](https://bevy.org)**. Obiettivo iniziale: una **vertical slice** giocabile (1 quest, 1 NPC, 1 nemico, inventario minimale).
 
-> Stato: **Fase 2.1 — Collisioni stabili + character controller** (`v0.0.2.1`).
-> Terreno 100 m da heightmap con collider allineato, player kinematico Avian
-> (niente più sprofondamenti), cielo procedurale corretto, F3 = wireframe collider.
+> Stato: **Fase 5 — Vertical slice completata** (`v0.0.5.0`).
+> Quest "Denaro Rubato", bussola, obiettivi (TAB), combattimento e inventario.
+> Roadmap e fasi: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Requisiti
 
@@ -40,6 +40,7 @@ grep "\[EVENT\]" run.log    # eventi finestra/cursore
 | Mouse | Orbita camera (sensibilità dal menu) |
 | Esc | Menu pausa (tasti, slider sensibilità, checkbox FPS, reset scena) |
 | F3 | Wireframe dei collider (debug fisico) |
+| F11 | Schermo intero on/off (in fullscreen il cursore è bloccato e nascosto) |
 | TAB (tenuto) | Obiettivi della quest "Denaro Rubato" |
 | E | Parla con l'NPC vicino |
 | Click sinistro | Attacco melee |
@@ -50,9 +51,6 @@ Parla con il **Viandante** (NPC blu) allo spawn → la quest parte.
 Trova il **ladro** (cubo rosso, nord-ovest, punta la bussola in alto), uccidilo,
 raccogli le **12 monete d'oro** che lascia, torna dal Viandante → completata.
 La bussola in alto al centro ti guida sempre; tieni **TAB** per gli obiettivi.
-
-| F3 | Wireframe dei collider (debug fisico) |
-| F11 | Schermo intero on/off (in fullscreen il cursore è bloccato e nascosto) |
 
 ## Struttura
 
@@ -88,10 +86,10 @@ python3 scripts/gen_heightmap.py
 
 - [x] Fase 0 — Bootstrap
 - [x] Fase 1 — Movimento (WASD + camera terza persona)
-- [x] Fase 2 — Scena (terreno heightmap, cielo, nebbia, luci)
-- [ ] Fase 3 — Entità (NPC, dialoghi, nemico)
-- [ ] Fase 4 — UI / Inventario
-- [ ] Fase 5 — Vertical slice RPG
+- [x] Fase 2 — Scena (terreno heightmap, cielo, luci)
+- [x] Fase 3 — Entità (NPC, dialoghi, nemico)
+- [x] Fase 4 — UI / Inventario / Combattimento
+- [x] Fase 5 — Vertical slice RPG ("Denaro Rubato")
 
 ## Contribuire
 
