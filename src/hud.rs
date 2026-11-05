@@ -3,6 +3,8 @@
 //! Tutto disegnato con egui Area dentro `EguiPrimaryContextPass`, così non
 //! servono caméra 2D né노 Text2d (coordinate world instabili con la camera orbit).
 
+use crate::combat::EnemyHealth;
+use crate::entities::Enemy;
 use crate::inventory::Inventory;
 use crate::player::PlayerHealth;
 use bevy::prelude::*;
@@ -13,10 +15,10 @@ use bevy_egui::egui;
 pub fn draw_hud(ctx: &egui::Context, health: &PlayerHealth, inventory: &Inventory) {
     let size = ctx.viewport_rect().size();
 
-    // --- Barra vita (alto a sinistra) ---
-    let bar_w = 220.0;
+    // --- Barra vita del player: in basso a sinistra, meta' lunghezza ---
+    let bar_w = 110.0;
     let bar_h = 18.0;
-    let pos = egui::pos2(16.0, 16.0);
+    let pos = egui::pos2(16.0, size.y - 34.0);
     egui::Area::new(egui::Id::new("health_bar"))
         .fixed_pos(pos)
         .show(ctx, |ui| {
@@ -144,5 +146,67 @@ pub fn draw_hud(ctx: &egui::Context, health: &PlayerHealth, inventory: &Inventor
                     }
                 });
             });
+    }
+}
+
+/// Disegna sopra ogni nemico: nome "enemy" + barra vita rossa.
+/// Usa la proiezione camera→viewport per mettere la barra sopra la testa.
+pub fn draw_enemy_bars(
+    ctx: &egui::Context,
+    enemies: &Query<(&GlobalTransform, &EnemyHealth), With<Enemy>>,
+    cameras: &Query<(&Camera, &GlobalTransform)>,
+) {
+    let Ok((camera, cam_t)) = cameras.single() else {
+        return;
+    };
+    let viewport = ctx.viewport_rect();
+
+    let painter = ctx.layer_painter(egui::LayerId::background());
+    for (t, hp) in enemies.iter() {
+        // Punto sopra la testa del nemico: il cubo e' alto 1.2 m, quindi
+        // il top e' a +0.6; aggiungiamo margine per nome+barra (1.1 m).
+        let world_pos = t.translation() + Vec3::Y * 1.1;
+        let Ok(screen) = camera.world_to_viewport(cam_t, world_pos) else {
+            continue; // fuori dallo schermo o dietro la camera
+        };
+        // egui usa y-down, world_to_viewport restituisce y-up rispetto al basso:
+        // convertiamo nella viewport egui.
+        let x = screen.x;
+        let y = viewport.height() - screen.y;
+        if x < 0.0 || x > viewport.width() || y < 0.0 || y > viewport.height() {
+            continue;
+        }
+
+        let bar_w = 60.0_f32;
+        let bar_h = 6.0_f32;
+        let name_h = 16.0_f32;
+        let center = egui::pos2(x, y - name_h - bar_h - 4.0);
+
+        // Nome "enemy" sopra la barra, centrato.
+        painter.text(
+            egui::pos2(center.x, center.y + name_h / 2.0),
+            egui::Align2::CENTER_CENTER,
+            "enemy",
+            egui::FontId::proportional(12.0),
+            egui::Color32::from_rgb(255, 220, 220),
+        );
+
+        // Barra vita: sfondo scuro + riempimento rosso proporzionale.
+        let bar_rect = egui::Rect::from_center_size(
+            egui::pos2(center.x, center.y + name_h + bar_h / 2.0 + 2.0),
+            egui::vec2(bar_w, bar_h),
+        );
+        painter.rect_filled(
+            bar_rect,
+            egui::CornerRadius::same(2),
+            egui::Color32::from_rgba_unmultiplied(30, 10, 10, 220),
+        );
+        let frac = (hp.current / hp.max).clamp(0.0, 1.0);
+        let fill_rect = egui::Rect::from_min_size(bar_rect.min, egui::vec2(bar_w * frac, bar_h));
+        painter.rect_filled(
+            fill_rect,
+            egui::CornerRadius::same(2),
+            egui::Color32::from_rgb(220, 50, 40),
+        );
     }
 }

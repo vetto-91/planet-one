@@ -119,7 +119,14 @@ fn main() {
         // Camera in Update (dopo il FixedUpdate): segue il pg con delta reale.
         .add_systems(
             Update,
-            (camera::orbit, camera::follow).run_if(in_state(AppState::Playing)),
+            (
+                camera::rmb_raw,
+                camera::orbit,
+                camera::mode_input,
+                camera::follow,
+            )
+                .chain()
+                .run_if(in_state(AppState::Playing)),
         )
         // Interazione (E) e avanzamento dialogo in Update, solo in Playing.
         .add_systems(

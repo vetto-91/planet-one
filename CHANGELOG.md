@@ -93,6 +93,20 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 - Nessun attacco durante dialogo aperto.
 - Test: click攻击 С Chamb; 0 panic.
 
+## v0.0.4.2 — Fase 4.3: prima persona (RMB/V), barra enemy, barra player in basso (2026-11-05)
+
+- Camera in prima persona VERA: la camera va dentro il player (stessa posizione
+  e rotazione yaw/pitch), il pg non si vede. Crosshair centrato e sincronizzato.
+- RMB tenuto → prima persona temporanea (rilascio = torna in terza persona).
+- Tasto V → toggle lock prima persona (RMB non interferisce col lock attivo).
+- Input RMB letto via MessageReader<MouseButtonInput> raw in PreUpdate-equivalente,
+  per non essere filtrato da egui/ButtonInput.
+- Barra vita player spostata in basso a sinistra, lunghezza dimezzata (110 px).
+- Barra nemico sopra la testa: nome "enemy" + barra rossa proporzionale,
+  proiettata world→viewport con Camera::world_to_viewport.
+- Test: V lock prima persona verificato (0 pixel player = camera dentro il pg);
+  RMB/release; movimento in prima persona — 0 panic.
+
 ## v0.0.2.0 — Fase 2: Scena (terreno, cielo, nebbia, hot-reload) (2026-11-04)
 
 - Terreno procedurale da heightmap PNG (`assets/textures/terrain_heightmap.png`,

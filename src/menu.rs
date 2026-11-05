@@ -67,6 +67,8 @@ pub fn ui(
     nearest: Res<NearestInteract>,
     health: Query<&PlayerHealth, With<crate::player::Player>>,
     inventory: Res<Inventory>,
+    enemies: Query<(&GlobalTransform, &crate::combat::EnemyHealth), With<crate::entities::Enemy>>,
+    cameras: Query<(&Camera, &GlobalTransform)>,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return; // Contesto egui non ancora pronto (primi frame).
@@ -94,10 +96,13 @@ pub fn ui(
                 show_dialog_panel(ctx, &dialog);
             }
 
-            // HUD di gioco: barra vita, crosshair, inventario.
+            // HUD di gioco: barra vita (basso-sx), crosshair, inventario.
             if let Ok(hp) = health.single() {
                 hud::draw_hud(ctx, hp, &inventory);
             }
+
+            // Barre vita dei nemici sopra le loro teste (proiezione world→screen).
+            hud::draw_enemy_bars(ctx, &enemies, &cameras);
 
             // Contatore FPS in alto a destra (se attivato dal menu).
             if show_fps.0
