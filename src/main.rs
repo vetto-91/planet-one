@@ -155,6 +155,8 @@ fn main() {
             (
                 toggle_physics_debug.run_if(in_state(AppState::Playing)),
                 toggle_fullscreen,
+                apply_cursor_for_mode,
+                log_input_events,
             ),
         )
         .add_systems(OnEnter(AppState::Resetting), scene::reset_scene)
@@ -168,6 +170,67 @@ fn disable_physics_debug_default(mut store: ResMut<GizmoConfigStore>) {
         .config_mut::<avian3d::prelude::PhysicsGizmos>()
         .0
         .enabled = false;
+}
+
+/// Applica le opzioni del cursore in base alla modalità finestra:
+/// - fullscreen (F11): cursore nascosto e bloccato (grab) → tutti gli input restano nel gioco.
+/// - finestra: cursore visibile e libero → può uscire e interagire col sistema.
+fn apply_cursor_for_mode(
+    windows: Query<&Window, With<bevy::window::PrimaryWindow>>,
+    mut cursor_opts: Query<&mut bevy::window::CursorOptions, With<bevy::window::PrimaryWindow>>,
+    mut last_mode: Local<Option<bevy::window::WindowMode>>,
+) {
+    use bevy::window::{CursorGrabMode, WindowMode};
+    let Ok(window) = windows.single() else {
+        return;
+    };
+    let fullscreen = !matches!(window.mode, WindowMode::Windowed);
+    if *last_mode == Some(window.mode) {
+        return;
+    }
+    *last_mode = Some(window.mode);
+    let Ok(mut opts) = cursor_opts.single_mut() else {
+        return;
+    };
+    if fullscreen {
+        opts.visible = false;
+        // Su X11 Locked ricade su Confined, ma è il massimo disponibile.
+        opts.grab_mode = CursorGrabMode::Locked;
+        info!("[INPUT] fullscreen ON: cursore nascosto + bloccato");
+    } else {
+        opts.visible = true;
+        opts.grab_mode = CursorGrabMode::None;
+        info!("[INPUT] fullscreen OFF: cursore visibile e libero");
+    }
+}
+
+/// Logga TUTTI gli eventi di input (tastiera, mouse, wheel, finestra) con
+/// prefisso [INPUT]/[EVENT] per debug via grep. Attivo sempre in dev.
+fn log_input_events(
+    mut keys: MessageReader<bevy::input::keyboard::KeyboardInput>,
+    mut mouse_btn: MessageReader<bevy::input::mouse::MouseButtonInput>,
+    mut mouse_motion: MessageReader<bevy::input::mouse::MouseMotion>,
+    mut wheel: MessageReader<bevy::input::mouse::MouseWheel>,
+    mut cursor_moved: MessageReader<bevy::window::CursorMoved>,
+) {
+    for ev in keys.read() {
+        info!("[INPUT] key {:?} {:?}", ev.key_code, ev.state);
+    }
+    for ev in mouse_btn.read() {
+        info!("[INPUT] mouse btn {:?} {:?}", ev.button, ev.state);
+    }
+    for ev in mouse_motion.read() {
+        info!("[INPUT] mouse motion delta={:?}", ev.delta);
+    }
+    for ev in wheel.read() {
+        info!("[INPUT] wheel {:?}", ev.unit);
+    }
+    for ev in cursor_moved.read() {
+        info!(
+            "[EVENT] cursor moved to {:?} delta={:?}",
+            ev.position, ev.delta
+        );
+    }
 }
 
 /// F11: toggle fullscreen (usa il sistema operativo per catturare input).

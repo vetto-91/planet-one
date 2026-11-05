@@ -142,6 +142,17 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 - Test: F11 on/off verificato via dimensioni finestra, rotazione naso
   sinistra/droite misurata via pixel gialli — 0 panic.
 
+## v0.0.4.7 — Cursor capture in fullscreen + log completo input (2026-11-05)
+
+- F11 fullscreen: cursore nascosto + `CursorGrabMode::Locked` (tutti gli input
+  restano nel gioco). A finestra: cursore visibile e libero (esce e interagisce
+  col sistema). Su X11 Locked ricade su Confined (max disponibile).
+- Nuovo sistema `log_input_events`: logga TUTTI gli eventi con prefisso
+  [INPUT]/[EVENT] — key press/release, mouse button, motion, wheel, cursor moved.
+  Utile per debug via grep: `cargo run 2>&1 | grep "\[INPUT\]"`.
+- Test: log 16 eventi catturati (tasti W/Space/F11, click, movimento mouse),
+  fullscreen 4480x1440 con cursore bloccato, ritorno 1280x720 libero — 0 panic.
+
 ## v0.0.2.0 — Fase 2: Scena (terreno, cielo, nebbia, hot-reload) (2026-11-04)
 
 - Terreno procedurale da heightmap PNG (`assets/textures/terrain_heightmap.png`,

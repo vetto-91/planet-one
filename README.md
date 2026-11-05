@@ -20,6 +20,16 @@ cargo fmt            # formatta
 cargo clippy         # linter
 ```
 
+## Debug input
+
+Tutti gli eventi di tastiera/mouse vengono loggati con prefisso `[INPUT]`/`[EVENT]`:
+
+```bash
+~/.cargo/bin/cargo run 2>&1 | tee run.log
+grep "\[INPUT\]" run.log    # solo input
+grep "\[EVENT\]" run.log    # eventi finestra/cursore
+```
+
 ## Controlli
 
 | Tasto | Azione |
@@ -30,6 +40,7 @@ cargo clippy         # linter
 | Mouse | Orbita camera (sensibilità dal menu) |
 | Esc | Menu pausa (tasti, slider sensibilità, checkbox FPS, reset scena) |
 | F3 | Wireframe dei collider (debug fisico) |
+| F11 | Schermo intero on/off (in fullscreen il cursore è bloccato e nascosto) |
 
 ## Struttura
 
