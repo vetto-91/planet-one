@@ -69,6 +69,7 @@ pub fn ui(
     inventory: Res<Inventory>,
     enemies: Query<(&GlobalTransform, &crate::combat::EnemyHealth), With<crate::entities::Enemy>>,
     cameras: Query<(&Camera, &GlobalTransform)>,
+    mut exit: MessageWriter<AppExit>,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return; // Contesto egui non ancora pronto (primi frame).
@@ -177,6 +178,22 @@ pub fn ui(
                     // eseguito in `Update` insieme al ground-check.
                     if ui.button("Reset scena").clicked() {
                         next.set(AppState::Resetting);
+                    }
+
+                    ui.add_space(8.0);
+                    // Esci dal gioco: chiude la finestra con AppExit::Success.
+                    let exit_btn = ui.button("Esci dal gioco");
+                    if exit_btn.hovered() || exit_btn.clicked() {
+                        info!(
+                            "[UI] bottone Esci: hovered={} clicked={} rect={:?}",
+                            exit_btn.hovered(),
+                            exit_btn.clicked(),
+                            exit_btn.rect
+                        );
+                    }
+                    if exit_btn.clicked() {
+                        info!("[EVENT] richiesta uscita dal gioco");
+                        exit.write(AppExit::Success);
                     }
                 });
         }

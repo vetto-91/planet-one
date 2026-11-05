@@ -165,6 +165,14 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 - Log [CURSOR] per stato cattura; [INPUT]/[EVENT] invariati.
 - Test: fullscreen cattura ON, menu Esc cursore libero, yaw 360, 0 panic.
 
+## v0.0.4.9 — Avvio fullscreen + pulsante "Esci dal gioco" (2026-11-05)
+
+- Avvio a schermo intero di default (WindowMode::Fullscreen(Current, Current));
+  F11 alterna fullscreen/finestra. Cursore catturato subito in Playing.
+- Menu Esc: nuovo pulsante "Esci dal gioco" → AppExit::Success (chiusura pulita,
+  nessun kill forzato: pronto per salvataggi futuri).
+- Test: avvio fullscreen 4480x1440 verificato via screenshot; 0 panic.
+
 ## v0.0.2.0 — Fase 2: Scena (terreno, cielo, nebbia, hot-reload) (2026-11-04)
 
 - Terreno procedurale da heightmap PNG (`assets/textures/terrain_heightmap.png`,

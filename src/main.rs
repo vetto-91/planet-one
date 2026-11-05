@@ -50,6 +50,11 @@ fn main() {
                 primary_window: Some(Window {
                     title: "Planet One".into(),
                     resolution: (1280u32, 720u32).into(),
+                    // Avvio a schermo intero di default; F11 torna a finestra.
+                    mode: bevy::window::WindowMode::Fullscreen(
+                        bevy::window::MonitorSelection::Current,
+                        bevy::window::VideoModeSelection::Current,
+                    ),
                     ..default()
                 }),
                 // In Bevy 0.20 Esc non chiude più la finestra di default:
