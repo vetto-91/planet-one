@@ -136,11 +136,13 @@ pub fn update_terrain(
         }
     }
     info!(
-        "terrain diagnostics: image {}x{}, height range [{:.2}, {:.2}] m, size {} m",
+        "terrain diagnostics: image {}x{}, height range [{:.2}, {:.2}] m, size {} m, collider scale = ({}, 1, {})",
         image.width(),
         image.height(),
         h_min,
         h_max,
+        TERRAIN_SIZE,
+        TERRAIN_SIZE,
         TERRAIN_SIZE
     );
 
@@ -174,10 +176,13 @@ fn build_terrain_mesh(image: &Image, size: f32, height_scale: f32) -> Mesh {
     if let Some(VertexAttributeValues::Float32x3(positions)) =
         mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION)
     {
+        // PlaneMeshBuilder genera vertici con loop esterno su Z e interno su X:
+        // index = z * width + x  =>  x = index % width, z = index / width.
+        // Usiamo sample_height(image, x, z) con z = riga immagine (y).
         for (index, position) in positions.iter_mut().enumerate() {
             let x = index as u32 % width;
-            let y = index as u32 / width;
-            position[1] = sample_height(image, x, y) * height_scale;
+            let z = index as u32 / width;
+            position[1] = sample_height(image, x, z) * height_scale;
         }
     }
 
@@ -194,20 +199,29 @@ fn build_terrain_collider(image: &Image, size: f32, height_scale: f32) -> Collid
     let width = image.width();
     let height = image.height();
 
-    // Parry heightfield usa una matrice `heights_zx` indicizzata [riga_z, colonna_x]:
-    // la prima dimensione è la Z, la seconda è la X. Qui costruiamo le righe
-    // lungo Z, quindi per ogni z scorriamo tutte le x.
+    // PASSAGGIO 2 (fix orientamento): Parry heightfield usa `heights_zx`
+    // indicizzata [riga_i, colonna_j] dove `i` avanza su Z e `j` su X
+    // (vedi unit_cell_height su nrows e unit_cell_width su ncols).
+    // La mesh invece ha loop esterno su Z e interno su X con indice
+    // `index = z * width + x`, cioè riga = z. Quindi la matrice va
+    // costruita come heights[z][x] = sample(x, z): identica copertura.
     let mut heights: Vec<Vec<f32>> = Vec::with_capacity(height as usize);
     for z in 0..height {
         let mut row: Vec<f32> = Vec::with_capacity(width as usize);
         for x in 0..width {
-            // L'immagine ha y=z (riga) → coordinata z del mondo.
             row.push(sample_height(image, x, z) * height_scale);
         }
         heights.push(row);
     }
 
-    Collider::heightfield(heights, Vec3::new(size / 2.0, 1.0, size / 2.0))
+    // PASSAGGI 1+2 (fix scala e copertura): Parry heightfield scala i vertici
+    // locali (che stanno in [-0.5, 0.5]) per `scale`, quindi l'estensione
+    // reale su XZ e' `scale.x`/`scale.z`. Per coprire `size` metri:
+    // scale.x = size, scale.z = size. Il vecchio `size/2` dimezzava il campo.
+    // Parry: i vertici locali vanno da -0.5 a 0.5 e vengono moltiplicati
+    // per `scale`, quindi l'estensione reale su XZ e' proprio `scale.x/z`.
+    // Per coprire `size` metri: scale.x = scale.z = size.
+    Collider::heightfield(heights, Vec3::new(size, 1.0, size))
 }
 
 /// Campiona la heightmap come valore -1..+1 (centrata sul grigio medio).
