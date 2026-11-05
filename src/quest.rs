@@ -87,6 +87,57 @@ pub struct QuestThief;
 #[derive(Component)]
 pub struct QuestCoin;
 
+/// Marker: il ladro deve essere appoggiato al terreno (dopo lo spawn o una caduta).
+#[derive(Component)]
+pub struct NeedsGroundSnap;
+
+/// Metà altezza del collider capsule del ladro (come il player): centro sopra il suolo.
+const THIEF_CENTER_OFFSET: f32 = 0.85;
+
+/// Sistema: appoggia il ladro sul terreno con un raycast verso il basso e allinea
+/// i waypoint alla stessa quota. Riprova ogni frame finché il collider del
+/// terreno non è pronto, e riporta il ladro sul terreno se cade sotto la mappa.
+pub fn place_quest_thief(
+    mut commands: Commands,
+    spatial: SpatialQuery,
+    mut thieves: Query<
+        (
+            Entity,
+            &mut Transform,
+            &mut crate::entities::PatrolState,
+            Has<NeedsGroundSnap>,
+        ),
+        With<QuestThief>,
+    >,
+) {
+    for (entity, mut transform, mut patrol, pending) in &mut thieves {
+        if !pending && transform.translation.y > -10.0 {
+            continue;
+        }
+        let filter = SpatialQueryFilter::from_excluded_entities([entity]);
+        // Quota del suolo sotto un punto (raycast da 40 m, verso il basso).
+        let ground_at = |p: Vec3| -> Option<f32> {
+            spatial
+                .cast_ray(Vec3::new(p.x, 40.0, p.z), Dir3::NEG_Y, 100.0, true, &filter)
+                .map(|hit| 40.0 - hit.distance)
+        };
+        let Some(base) = patrol.waypoints.first().copied() else {
+            continue;
+        };
+        // Il collider del terreno potrebbe non essere ancora pronto: riprova.
+        let Some(base_ground) = ground_at(base) else {
+            continue;
+        };
+        for wp in patrol.waypoints.iter_mut() {
+            wp.y = ground_at(*wp).unwrap_or(base_ground) + THIEF_CENTER_OFFSET;
+        }
+        transform.translation = patrol.waypoints[0];
+        patrol.current = 0;
+        commands.entity(entity).remove::<NeedsGroundSnap>();
+        info!("[QUEST] ladro appoggiato al terreno a {:?}", transform.translation);
+    }
+}
+
 /// Mostra un titolo temporaneo in alto al centro (durata in secondi).
 fn show_title(quest: &mut QuestState, text: &str, secs: f32) {
     quest.title = Some((text.to_string(), secs));
@@ -272,7 +323,7 @@ pub fn npc_quest_lines(quest: &QuestState) -> Vec<String> {
     match quest.stage {
         QuestStage::Idle => lines(&[
             "Salve, viaggiatore! Un ladro mi ha rubato tutte le monete d'oro.",
-            "Era un uomo alto e rosso, si nasconde tra le colline a nord-ovest.",
+            "Era un uomo alto e rosso, si nasconde lontano, oltre le colline.",
             "Uccidilo e riporta qui il mio denaro. Ti aspetto!",
         ]),
         // Quest attiva e monete ancora da portare: indica dove si trova il ladro.
@@ -341,5 +392,6 @@ pub fn spawn_thief(
         Mesh3d(mesh),
         MeshMaterial3d(mat),
         Transform::from_translation(start),
+        NeedsGroundSnap,
     ));
 }

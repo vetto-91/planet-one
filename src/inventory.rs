@@ -13,8 +13,6 @@ use bevy::prelude::*;
 /// Tipi di oggetto raccoglibili.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum ItemKind {
-    // Nessun pickup di pozione nella slice attuale (rimosso dallo spawn iniziale).
-    #[allow(dead_code)]
     HealthPotion,
     Coin,
 }

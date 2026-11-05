@@ -48,7 +48,7 @@ grep "\[EVENT\]" run.log    # eventi finestra/cursore
 ## Quest: "Denaro Rubato"
 
 Parla con il **Viandante** (NPC blu) allo spawn → la quest parte.
-Trova il **ladro** (cubo rosso, nord-ovest, punta la bussola in alto), uccidilo,
+Trova il **ladro** (cubo rosso, lontano, oltre le colline; la bussola in alto ti guida), uccidilo,
 raccogli le **12 monete d'oro** che lascia, torna dal Viandante → completata.
 La bussola in alto al centro ti guida sempre; tieni **TAB** per gli obiettivi.
 

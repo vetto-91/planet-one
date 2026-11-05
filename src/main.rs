@@ -153,6 +153,7 @@ fn main() {
                 quest::quest_on_thief_death,
                 quest::collect_quest_coins,
                 quest::update_thief_hint,
+                quest::place_quest_thief,
                 quest::tick_title,
                 entities::interact,
                 entities::advance_dialog,

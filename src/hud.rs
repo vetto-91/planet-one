@@ -5,7 +5,7 @@
 
 use crate::combat::EnemyHealth;
 use crate::entities::Enemy;
-use crate::inventory::Inventory;
+use crate::inventory::{Inventory, ItemKind};
 use crate::player::PlayerHealth;
 use bevy::prelude::*;
 use bevy_egui::egui;
@@ -82,11 +82,13 @@ pub fn draw_hud(ctx: &egui::Context, health: &PlayerHealth, inventory: &Inventor
         });
 
     // --- Inventario in basso al centro: slot quadrati con icona colore + qty ---
-    // Filtra gli slot con quantita' zero (utile se in futuro si consumano item).
+    // Le monete NON compaiono qui (solo nel contatore in alto a sinistra).
+    // Gli slot si creano in ordine di raccolta (vedi Inventory::add), max 10 (tasti 1..0).
     let visible: Vec<_> = inventory
         .slots
         .iter()
-        .filter(|s| inventory.qty(s.kind) > 0)
+        .filter(|s| s.kind != ItemKind::Coin && inventory.qty(s.kind) > 0)
+        .take(10)
         .collect();
     if !visible.is_empty() {
         let slot = 44.0_f32;
@@ -99,7 +101,7 @@ pub fn draw_hud(ctx: &egui::Context, health: &PlayerHealth, inventory: &Inventor
             .fixed_pos(egui::pos2(start_x, start_y))
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    for stack in &visible {
+                    for (i, stack) in visible.iter().enumerate() {
                         let (rect, _resp) =
                             ui.allocate_exact_size(egui::vec2(slot, slot), egui::Sense::hover());
                         // Sfondo slot.
@@ -113,6 +115,15 @@ pub fn draw_hud(ctx: &egui::Context, health: &PlayerHealth, inventory: &Inventor
                             egui::CornerRadius::same(4),
                             egui::Stroke::new(1.0, egui::Color32::from_rgb(90, 100, 130)),
                             egui::StrokeKind::Inside,
+                        );
+                        // Tasto associato allo slot: 1..9, poi 0 (10 slot in tutto).
+                        let key = if i == 9 { "0".to_string() } else { (i + 1).to_string() };
+                        ui.painter().text(
+                            egui::pos2(rect.min.x + 4.0, rect.min.y + 3.0),
+                            egui::Align2::LEFT_TOP,
+                            key,
+                            egui::FontId::proportional(12.0),
+                            egui::Color32::from_rgb(200, 210, 235),
                         );
                         // Icona: quadrato colorato al centro.
                         let icon = 22.0;
