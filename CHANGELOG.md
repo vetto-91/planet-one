@@ -2,77 +2,117 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## v0.0.2.1 — Fase 2.1: character controller kinematico + fix collisioni terreno (2026-11-04)
+## v0.0.6.0 — Rifiniture: diario, giorno/notte, skin, UI condivisa (2026-11-06)
 
-- Player migrato da `RigidBody::Dynamic` a character controller cinematico
-  Avian (`RigidBody::Kinematic` + `CustomPositionIntegration` + `MoveAndSlide`
-  in `FixedUpdate`): elimina sprofondamenti e cadute nel vuoto sulle pendenze
-  dell'heightfield a celle grandi (100 m / 256 = ~0.39 m).
-- campaign Gravità manuale (20 m/s²) in `movement`; salto solo se `Grounded`.
-- Terreno allargato a 100 m (da 40 m); heightmap mappata su -1..+1 (grigio
-  medio = 0) per avere colline sopra e sotto il livello base.
-- Collider heightfield Avian corretto: matrice `heights_zx` (righe=Z, colonne=X)
-  come richiesto da Parry, allineata alla mesh.
-- Cielo procedurale in `Rgba8Unorm` (lineare) invece di Srgb: sRGB causava un
-  "double gamma" che rendeva il cielo grigio; `Tonemapping::None` sulla camera.
-- Nebbia di distanza rimossa (era troppo densa a 80 m sul terreno piccolo);
-  riattivabile in futuro con slider.
-- Luci: `GlobalAmbientLight` 80 cd/m², `DirectionalLight` 4000 lux con
-  `shadow_depth_bias 0.05` / `shadow_normal_bias 3.0` per evitare shadow acne.
-- Debug: F3 toggle wireframe collider Avian (disattivato di default).
-- Diagnostica: log `terrain diagnostics` (image size, height range) a ogni rebuild.
-- Test automatici: camminata 6 s su colline (player sempre a y≈0.85, mai nel
-  vuoto), salto, menu Esc, 0 panic.
+- Diario delle quest (J) con tab "Da fare" / "Completate" e quest espandibili; pannello TAB
+  alimentato dalla stessa voce.
+- Quest in cartelle: logica in `src/quests/<quest>/`, testi modificabili a mano in
+  `assets/quests/<quest>/dialoghi.txt` (ricaricati dal Reset scena, fallback incorporato).
+- Dialoghi: E/Invio per avanzare, scelta Sì/No, il Viandante saluta se ci si allontana;
+  il ladro apostrofa il giocatore quando lo vede (fumetti sopra la testa).
+- Quest attivata da sola se il ladro muore prima di parlare col Viandante.
+- Texture erba low-poly sul terreno e cielo a nuvole (panoramica convertita in cubemap a runtime).
+- Ciclo giorno/notte (1 h = 60 s) con sole e luna, luce e cielo che cambiano; tasto T "Aspetta".
+- Skin per player, ladro e viandante (mesh a UV per faccia); targhette "Viandante"/"Ladro".
+- Tema UI condiviso (`ui_style`): menu, diario e HUD coerenti; chip più leggibili, coordinate
+  su una riga, banner quest più in basso.
+- Fix: A/D invertiti; luna meno luminosa; la quest si completa solo se il dialogo finale è letto.
+- Repository: `.gitignore` completo, `scripts/sync_drive.sh`, documentazione allineata a `main`.
 
-## v0.0.2.3 — Fase 2.1: allineamento definitivo mesh/collider (2026-11-05)
+## v0.0.5.0 — Fase 5: Vertical slice RPG "Denaro Rubato" (2026-11-05)
 
-- Fix definitivo: matrice collider costruita come heights[x][z] (riga=X,
-  colonna=Z), trasposta rispetto alla prima versione: ora il wireframe F3
-  copre esattamente tutta la mesh verde su tutto il terreno 100 m.
-- Sonda numerica rimossa dopo la verifica (angoli + centro heightmap).
-- Verifica: wireframe copre tutta la mesh, camminata 10 s stabile sul
-  pendio, salto, menu Esc — 0 panic.
+- Quest completa in memoria: NPC Viandante allo spawn -> dialogo -> accetta
+  "Denaro Rubato" (overlay titolo 3 s). Ladro rosso (QuestThief, 30 HP) in
+  nord-ovest: ucciderlo (morte definitiva, no respawn) -> spawn 12 monete
+  gialle (QuestCoin) -> raccolta automatica entro 2 m -> torna dal Viandante
+  -> dialogo finale -> "Missione completata".
+- Bussola sempre visibile in alto al centro: coordinate x,z + freccia rossa
+  verso il target corrente (ladro / moneta piu' vicina / NPC).
+- TAB tenuto: pannello obiettivi con checklist ([✓]/[ ] e conteggio monete).
+- Overlay titolo quest in alto (banner oro).
+- Reset scena resetta anche QuestState (full reset).
+- Nessun salvataggio su file (come da piano).
+- Test: quest accettata via log [QUEST], bussola+TAB verificati via screenshot, 0 panic.
 
-## v0.0.2.4 — Fase 2.2: salto affidabile con coyote time (2026-11-05)
+## v0.0.4.9 — Avvio fullscreen + pulsante "Esci dal gioco" (2026-11-05)
 
-- Nuovo `GroundedState { grounded_now, coyote_left }` sul player.
-- Coyote time 0.12 s: il salto resta valido 0.12 s dopo l'ultimo contatto
-  reale, risolvendo i salti mancati in camminata/corsa sulle pendenze.
-- Raycast ground-check esteso a 1.25 m (semi-altezza 0.85 + tolleranza 0.40)
-  e filtro sulla normale (solo superfici con normal.y >= 0.6 contano come
-  suolo: i muri non danno grounded).
-- Anti double-jump: dopo un salto valido il coyote viene consumato.
-- Tutto il movimento del player (ground-check, input, gravity, MoveAndSlide,
-  facing) spostato in FixedUpdate: pipeline unica, delta stabile.
-- JUMP_SPEED 6.0 → 7.0 per un salto visibilmente più alto.
-- Camera resta in Update dopo il FixedUpdate.
-- Test: salto da fermo, in camminata e in corsa (3 ripetizioni) — 0 panic.
+- Avvio a schermo intero di default (WindowMode::Fullscreen(Current, Current));
+  F11 alterna fullscreen/finestra. Cursore catturato subito in Playing.
+- Menu Esc: nuovo pulsante "Esci dal gioco" → AppExit::Success (chiusura pulita,
+  nessun kill forzato: pronto per salvataggi futuri).
+- Test: avvio fullscreen 4480x1440 verificato via screenshot; 0 panic.
 
-## v0.0.2.5 — Fase 2.3: salto robusto su pendenze (multi-ray + coyote + hit-history + buffer) (2026-11-05)
+## v0.0.4.8 — Cursore in fullscreen + menu + pitch 180° (2026-11-05)
 
-- Ground-check multi-ray: 5 raycast (centro + 4 offset XZ) entro 1.5 m,
-  normale minima normal.y >= 0.5: rileva il terreno anche su pendenze ripide.
-- Coyote time alzato a 0.25 s + cronologia hit fisici di MoveAndSlide
-  (last_ground_hit, 0.2 s): il salto resta valido anche se i ray non vedono
-  il terreno durante la corsa in salita.
-- Jump buffer 0.15 s: se premi Space poco prima di toccare terra, il salto
-  parte appena diventi grounded.
-- Snap al terreno solo entro 0.95 m (non in caduta libera).
-- JUMP_SPEED 6.0 -> 7.5.
-- Anti double-jump: buffer + coyote + hit consumati al salto.
-- Test: salti in camminata e corsa ripetuti — 0 panic, salto sempre attivo.
+- apply_cursor_for_mode: cattura cursore (Locked+nascosto) SOLO in fullscreen
+  E Playing; in Paused (menu Esc) o a finestra il cursore torna visibile e libero.
+- warp_cursor_to_center: in fullscreen+Playing riporta il cursore al centro ogni
+  frame → su X11 (Confined) la rotazione yaw resta infinita (360°), i delta
+  continuano ad arrivare anche al bordo.
+- Pitch verticale in 1a persona: ±1.54 rad (~±88°, quasi 180°): al massimo in
+  alto (cielo) o in basso (terreno) la visuale si ferma, niente ribaltamento pg.
+- Log [CURSOR] per stato cattura; [INPUT]/[EVENT] invariati.
+- Test: fullscreen cattura ON, menu Esc cursore libero, yaw 360, 0 panic.
 
-## v0.0.3.0 — Fase 3: Entità (NPC, dialogo, nemico patrol) (2026-11-05)
+## v0.0.4.7 — Cursor capture in fullscreen + log completo input (2026-11-05)
 
-- Nuovo modulo `entities.rs`: NPC (Viandante, blu) con dialogo lineare,
-  inimigo (rosso) in patrol tra waypoint con lo stesso MoveAndSlide del player.
-- Interazione: prompt "[E] Parla" quando nel range (5 m), tasto E apre il dialogo.
-- Dialogo: pannello in basso stile RPG (egui), Enter/Space avanza, Esc chiude.
-  Esc durante dialogo chiude il dialogo SENZA aprire il menu pausa.
-- Movimento libero durante il dialogo (come richiesto).
-- Reset scena include NPC e nemico (SceneNode).
-- Test: dialogo aperto/avanzato/chiuso (4 righe), movimento durante dialogo,
-  patrol nemico verificato via log — 0 panic.
+- F11 fullscreen: cursore nascosto + `CursorGrabMode::Locked` (tutti gli input
+  restano nel gioco). A finestra: cursore visibile e libero (esce e interagisce
+  col sistema). Su X11 Locked ricade su Confined (max disponibile).
+- Nuovo sistema `log_input_events`: logga TUTTI gli eventi con prefisso
+  [INPUT]/[EVENT] — key press/release, mouse button, motion, wheel, cursor moved.
+  Utile per debug via grep: `cargo run 2>&1 | grep "\[INPUT\]"`.
+- Test: log 16 eventi catturati (tasti W/Space/F11, click, movimento mouse),
+  fullscreen 4480x1440 con cursore bloccato, ritorno 1280x720 libero — 0 panic.
+
+## v0.0.4.6 — F11 fullscreen + naso allineato al crosshair (2026-11-05)
+
+- F11: toggle fullscreen nativo (`WindowMode::Fullscreen(Current, Current)`)
+  gestito dal SO (cattura input mouse/tastiera). Aggiunto alla lista comandi
+  del menu Esc. Testato: 1280x720 -> fullscreen -> 1280x720.
+- PlayerVisual (naso) ora segue il crosshair:
+  - 3a persona fermo: ruota verso la direzione della camera (yaw).
+  - 3a in movimento: ruota verso la direzione di movimento (come prima).
+  - 1a persona: rotazione = yaw+pitch della camera (corpo segue lo sguardo).
+- Test: F11 on/off verificato via dimensioni finestra, rotazione naso
+  sinistra/droite misurata via pixel gialli — 0 panic.
+
+## v0.0.4.5 — Pitch coerente 3a/1a persona (2026-11-05)
+
+- Alla transizione 3a->1a (V o RMB) il pitch viene azzerato: la mira parte
+  orizzontale, niente salto verticale (prima: guardavi giu' in 3a e vedevi
+  il cielo in 1a).
+- In 1a: `rotation_x(-pitch)`, stesso segno dy in entrambe le viste:
+  mouse giu' = guardi giu', mouse su = guardi su, coerente con la crosshair 3a.
+- Hiatus del cursore: lasciato al SO (Ctrl+Alt+Invio full-screen cattura input).
+- Test: transizione 3a(giu')->1a(orizzonte), poi 1a su/giu' — 0 panic.
+
+## v0.0.4.4 — Fix prima persona e proiezione barra nemico (2026-11-05)
+
+- Fix rotazione prima persona: `Quat::from_rotation_y(yaw) * from_rotation_x(pitch)`
+  invece di `EulerRot::ZYX` (che metteva lo yaw sull'asse Z = visuale ruotata 90°).
+- Mouse: letto via `CursorMoved` (delta) invece di `MouseMotion` raw: su X11 i
+  device events non arrivano sempre, CursorMoved sì. In 1a persona dy invertito
+  (mouse su = guarda su); in 3a persona comportamento storico invariato.
+- Player nascosto in prima persona (sia corpo che mesh), riapparso in 3a.
+- Fix proiezione barra nemico: `world_to_viewport` in Bevy 0.20 gia' restituisce
+  pixel y-down — rimossa la doppia inversione Y che la spostava sotto il nemico.
+- Test: 3a persona (orizzonte si sposta col mouse), 1a persona (mouse su = cielo,
+  destra/sinistra = yaw corretto, player invisibile) — 0 panic.
+
+## v0.0.4.2 — Fase 4.3: prima persona (RMB/V), barra enemy, barra player in basso (2026-11-05)
+
+- Camera in prima persona VERA: la camera va dentro il player (stessa posizione
+  e rotazione yaw/pitch), il pg non si vede. Crosshair centrato e sincronizzato.
+- RMB tenuto → prima persona temporanea (rilascio = torna in terza persona).
+- Tasto V → toggle lock prima persona (RMB non interferisce col lock attivo).
+- Input RMB letto via MessageReader<MouseButtonInput> raw in PreUpdate-equivalente,
+  per non essere filtrato da egui/ButtonInput.
+- Barra vita player spostata in basso a sinistra, lunghezza dimezzata (110 px).
+- Barra nemico sopra la testa: nome "enemy" + barra rossa proporzionale,
+  proiettata world→viewport con Camera::world_to_viewport.
+- Test: V lock prima persona verificato (0 pixel player = camera dentro il pg);
+  RMB/release; movimento in prima persona — 0 panic.
 
 ## v0.0.4.0 / v0.0.4.1 — Fase 4: HUD, inventario, combattimento base (2026-11-05)
 
@@ -93,100 +133,77 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 - Nessun attacco durante dialogo aperto.
 - Test: click攻击 С Chamb; 0 panic.
 
-## v0.0.4.2 — Fase 4.3: prima persona (RMB/V), barra enemy, barra player in basso (2026-11-05)
+## v0.0.3.0 — Fase 3: Entità (NPC, dialogo, nemico patrol) (2026-11-05)
 
-- Camera in prima persona VERA: la camera va dentro il player (stessa posizione
-  e rotazione yaw/pitch), il pg non si vede. Crosshair centrato e sincronizzato.
-- RMB tenuto → prima persona temporanea (rilascio = torna in terza persona).
-- Tasto V → toggle lock prima persona (RMB non interferisce col lock attivo).
-- Input RMB letto via MessageReader<MouseButtonInput> raw in PreUpdate-equivalente,
-  per non essere filtrato da egui/ButtonInput.
-- Barra vita player spostata in basso a sinistra, lunghezza dimezzata (110 px).
-- Barra nemico sopra la testa: nome "enemy" + barra rossa proporzionale,
-  proiettata world→viewport con Camera::world_to_viewport.
-- Test: V lock prima persona verificato (0 pixel player = camera dentro il pg);
-  RMB/release; movimento in prima persona — 0 panic.
+- Nuovo modulo `entities.rs`: NPC (Viandante, blu) con dialogo lineare,
+  inimigo (rosso) in patrol tra waypoint con lo stesso MoveAndSlide del player.
+- Interazione: prompt "[E] Parla" quando nel range (5 m), tasto E apre il dialogo.
+- Dialogo: pannello in basso stile RPG (egui), Enter/Space avanza, Esc chiude.
+  Esc durante dialogo chiude il dialogo SENZA aprire il menu pausa.
+- Movimento libero durante il dialogo (come richiesto).
+- Reset scena include NPC e nemico (SceneNode).
+- Test: dialogo aperto/avanzato/chiuso (4 righe), movimento durante dialogo,
+  patrol nemico verificato via log — 0 panic.
 
-## v0.0.4.4 — Fix prima persona e proiezione barra nemico (2026-11-05)
+## v0.0.2.5 — Fase 2.3: salto robusto su pendenze (multi-ray + coyote + hit-history + buffer) (2026-11-05)
 
-- Fix rotazione prima persona: `Quat::from_rotation_y(yaw) * from_rotation_x(pitch)`
-  invece di `EulerRot::ZYX` (che metteva lo yaw sull'asse Z = visuale ruotata 90°).
-- Mouse: letto via `CursorMoved` (delta) invece di `MouseMotion` raw: su X11 i
-  device events non arrivano sempre, CursorMoved sì. In 1a persona dy invertito
-  (mouse su = guarda su); in 3a persona comportamento storico invariato.
-- Player nascosto in prima persona (sia corpo che mesh), riapparso in 3a.
-- Fix proiezione barra nemico: `world_to_viewport` in Bevy 0.20 gia' restituisce
-  pixel y-down — rimossa la doppia inversione Y che la spostava sotto il nemico.
-- Test: 3a persona (orizzonte si sposta col mouse), 1a persona (mouse su = cielo,
-  destra/sinistra = yaw corretto, player invisibile) — 0 panic.
+- Ground-check multi-ray: 5 raycast (centro + 4 offset XZ) entro 1.5 m,
+  normale minima normal.y >= 0.5: rileva il terreno anche su pendenze ripide.
+- Coyote time alzato a 0.25 s + cronologia hit fisici di MoveAndSlide
+  (last_ground_hit, 0.2 s): il salto resta valido anche se i ray non vedono
+  il terreno durante la corsa in salita.
+- Jump buffer 0.15 s: se premi Space poco prima di toccare terra, il salto
+  parte appena diventi grounded.
+- Snap al terreno solo entro 0.95 m (non in caduta libera).
+- JUMP_SPEED 6.0 -> 7.5.
+- Anti double-jump: buffer + coyote + hit consumati al salto.
+- Test: salti in camminata e corsa ripetuti — 0 panic, salto sempre attivo.
 
-## v0.0.4.5 — Pitch coerente 3a/1a persona (2026-11-05)
+## v0.0.2.4 — Fase 2.2: salto affidabile con coyote time (2026-11-05)
 
-- Alla transizione 3a->1a (V o RMB) il pitch viene azzerato: la mira parte
-  orizzontale, niente salto verticale (prima: guardavi giu' in 3a e vedevi
-  il cielo in 1a).
-- In 1a: `rotation_x(-pitch)`, stesso segno dy in entrambe le viste:
-  mouse giu' = guardi giu', mouse su = guardi su, coerente con la crosshair 3a.
-- Hiatus del cursore: lasciato al SO (Ctrl+Alt+Invio full-screen cattura input).
-- Test: transizione 3a(giu')->1a(orizzonte), poi 1a su/giu' — 0 panic.
+- Nuovo `GroundedState { grounded_now, coyote_left }` sul player.
+- Coyote time 0.12 s: il salto resta valido 0.12 s dopo l'ultimo contatto
+  reale, risolvendo i salti mancati in camminata/corsa sulle pendenze.
+- Raycast ground-check esteso a 1.25 m (semi-altezza 0.85 + tolleranza 0.40)
+  e filtro sulla normale (solo superfici con normal.y >= 0.6 contano come
+  suolo: i muri non danno grounded).
+- Anti double-jump: dopo un salto valido il coyote viene consumato.
+- Tutto il movimento del player (ground-check, input, gravity, MoveAndSlide,
+  facing) spostato in FixedUpdate: pipeline unica, delta stabile.
+- JUMP_SPEED 6.0 → 7.0 per un salto visibilmente più alto.
+- Camera resta in Update dopo il FixedUpdate.
+- Test: salto da fermo, in camminata e in corsa (3 ripetizioni) — 0 panic.
 
-## v0.0.4.6 — F11 fullscreen + naso allineato al crosshair (2026-11-05)
+## v0.0.2.3 — Fase 2.1: allineamento definitivo mesh/collider (2026-11-05)
 
-- F11: toggle fullscreen nativo (`WindowMode::Fullscreen(Current, Current)`)
-  gestito dal SO (cattura input mouse/tastiera). Aggiunto alla lista comandi
-  del menu Esc. Testato: 1280x720 -> fullscreen -> 1280x720.
-- PlayerVisual (naso) ora segue il crosshair:
-  - 3a persona fermo: ruota verso la direzione della camera (yaw).
-  - 3a in movimento: ruota verso la direzione di movimento (come prima).
-  - 1a persona: rotazione = yaw+pitch della camera (corpo segue lo sguardo).
-- Test: F11 on/off verificato via dimensioni finestra, rotazione naso
-  sinistra/droite misurata via pixel gialli — 0 panic.
+- Fix definitivo: matrice collider costruita come heights[x][z] (riga=X,
+  colonna=Z), trasposta rispetto alla prima versione: ora il wireframe F3
+  copre esattamente tutta la mesh verde su tutto il terreno 100 m.
+- Sonda numerica rimossa dopo la verifica (angoli + centro heightmap).
+- Verifica: wireframe copre tutta la mesh, camminata 10 s stabile sul
+  pendio, salto, menu Esc — 0 panic.
 
-## v0.0.4.7 — Cursor capture in fullscreen + log completo input (2026-11-05)
+## v0.0.2.1 — Fase 2.1: character controller kinematico + fix collisioni terreno (2026-11-04)
 
-- F11 fullscreen: cursore nascosto + `CursorGrabMode::Locked` (tutti gli input
-  restano nel gioco). A finestra: cursore visibile e libero (esce e interagisce
-  col sistema). Su X11 Locked ricade su Confined (max disponibile).
-- Nuovo sistema `log_input_events`: logga TUTTI gli eventi con prefisso
-  [INPUT]/[EVENT] — key press/release, mouse button, motion, wheel, cursor moved.
-  Utile per debug via grep: `cargo run 2>&1 | grep "\[INPUT\]"`.
-- Test: log 16 eventi catturati (tasti W/Space/F11, click, movimento mouse),
-  fullscreen 4480x1440 con cursore bloccato, ritorno 1280x720 libero — 0 panic.
-
-## v0.0.4.8 — Cursore in fullscreen + menu + pitch 180° (2026-11-05)
-
-- apply_cursor_for_mode: cattura cursore (Locked+nascosto) SOLO in fullscreen
-  E Playing; in Paused (menu Esc) o a finestra il cursore torna visibile e libero.
-- warp_cursor_to_center: in fullscreen+Playing riporta il cursore al centro ogni
-  frame → su X11 (Confined) la rotazione yaw resta infinita (360°), i delta
-  continuano ad arrivare anche al bordo.
-- Pitch verticale in 1a persona: ±1.54 rad (~±88°, quasi 180°): al massimo in
-  alto (cielo) o in basso (terreno) la visuale si ferma, niente ribaltamento pg.
-- Log [CURSOR] per stato cattura; [INPUT]/[EVENT] invariati.
-- Test: fullscreen cattura ON, menu Esc cursore libero, yaw 360, 0 panic.
-
-## v0.0.4.9 — Avvio fullscreen + pulsante "Esci dal gioco" (2026-11-05)
-
-- Avvio a schermo intero di default (WindowMode::Fullscreen(Current, Current));
-  F11 alterna fullscreen/finestra. Cursore catturato subito in Playing.
-- Menu Esc: nuovo pulsante "Esci dal gioco" → AppExit::Success (chiusura pulita,
-  nessun kill forzato: pronto per salvataggi futuri).
-- Test: avvio fullscreen 4480x1440 verificato via screenshot; 0 panic.
-
-## v0.0.5.0 — Fase 5: Vertical slice RPG "Denaro Rubato" (2026-11-05)
-
-- Quest completa in memoria: NPC Viandante allo spawn -> dialogo -> accetta
-  "Denaro Rubato" (overlay titolo 3 s). Ladro rosso (QuestThief, 30 HP) in
-  nord-ovest: ucciderlo (morte definitiva, no respawn) -> spawn 12 monete
-  gialle (QuestCoin) -> raccolta automatica entro 2 m -> torna dal Viandante
-  -> dialogo finale -> "Missione completata".
-- Bussola sempre visibile in alto al centro: coordinate x,z + freccia rossa
-  verso il target corrente (ladro / moneta piu' vicina / NPC).
-- TAB tenuto: pannello obiettivi con checklist ([✓]/[ ] e conteggio monete).
-- Overlay titolo quest in alto (banner oro).
-- Reset scena resetta anche QuestState (full reset).
-- Nessun salvataggio su file (come da piano).
-- Test: quest accettata via log [QUEST], bussola+TAB verificati via screenshot, 0 panic.
+- Player migrato da `RigidBody::Dynamic` a character controller cinematico
+  Avian (`RigidBody::Kinematic` + `CustomPositionIntegration` + `MoveAndSlide`
+  in `FixedUpdate`): elimina sprofondamenti e cadute nel vuoto sulle pendenze
+  dell'heightfield a celle grandi (100 m / 256 = ~0.39 m).
+- Gravità manuale (20 m/s²) in `movement`; salto solo se `Grounded`.
+- Terreno allargato a 100 m (da 40 m); heightmap mappata su -1..+1 (grigio
+  medio = 0) per avere colline sopra e sotto il livello base.
+- Collider heightfield Avian corretto: matrice `heights_zx` (righe=Z, colonne=X)
+  come richiesto da Parry, allineata alla mesh.
+- Cielo procedurale in `Rgba8Unorm` (lineare) invece di Srgb: sRGB causava un
+  "double gamma" che rendeva il cielo grigio; `Tonemapping::None` sulla camera.
+- Nebbia di distanza rimossa (era troppo densa a 80 m sul terreno piccolo);
+  riattivabile in futuro con slider.
+- Luci: `GlobalAmbientLight` 80 cd/m², `DirectionalLight` 4000 lux con
+  `shadow_depth_bias 0.05` / `shadow_normal_bias 3.0` per evitare shadow acne.
+- Debug: F3 toggle wireframe collider Avian (disattivato di default).
+- Diagnostica: log `terrain diagnostics` (image size, height range) a ogni rebuild.
+- Test automatici: camminata 6 s su colline (player sempre a y≈0.85, mai nel
+  vuoto), salto, menu Esc, 0 panic.
 
 ## v0.0.2.0 — Fase 2: Scena (terreno, cielo, nebbia, hot-reload) (2026-11-04)
 

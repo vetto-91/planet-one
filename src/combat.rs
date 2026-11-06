@@ -18,7 +18,6 @@ use bevy::prelude::*;
 #[derive(Component)]
 pub struct EnemyHealth {
     pub current: f32,
-    #[allow(dead_code)]
     pub max: f32,
 }
 

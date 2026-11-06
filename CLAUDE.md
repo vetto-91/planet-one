@@ -5,7 +5,7 @@ RPG 3D open source, cel-shaded, terza persona. Rust + Bevy 0.20.1, fisica Avian 
 ## Stato e roadmap
 
 - Roadmap e stato reale delle fasi: [docs/ROADMAP.md](docs/ROADMAP.md).
-- Ultima fase completata: Fase 5, vertical slice "Denaro Rubato" (`v0.0.5.0`).
+- Ultima fase completata: Fase 5, vertical slice "Denaro Rubato" (`v0.0.5.0`); ultimo rilascio `v0.0.6.0`.
 - Storia dei rilasci: [CHANGELOG.md](CHANGELOG.md). Schema versioni: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Comandi
@@ -23,7 +23,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 
 - Formato `vMAJOR.MINOR.FEATURE.BUGFIX`.
 - `Cargo.toml` riporta solo i primi tre segmenti (es. `0.0.5` per `v0.0.5.0`). Il quarto vive nei tag e in CHANGELOG.
-- Tag solo su `master`, dopo verifica manuale della build.
+- Branch principale: `main`. Tag solo su `main`, dopo verifica manuale della build.
 
 ## Commit e branch
 
@@ -61,3 +61,8 @@ Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, 
 - Mantenere la scelta di avvio: fullscreen di default, F11 per alternare, cursore catturato solo in fullscreen e in gioco.
 - Le decisioni significative vanno in `docs/decisions/` come ADR (template nel file del registro).
 - Non ottimizzare prima della Fase 5 di performance: la priorità è la giocabilità.
+
+## Repository e sincronizzazione
+
+- Remote GitHub: repo privato `planet-one`. Non committare `target/`, `.claude/`, `context/`, log (vedi `.gitignore`).
+- Backup su Google Drive: `scripts/sync_drive.sh` (esclude `target/`, worktree e `context/`); provare prima con `--dry-run`.

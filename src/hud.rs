@@ -1,7 +1,7 @@
 //! HUD di gioco (Fase 4.1): barra vita, crosshair, inventario in basso.
 //!
 //! Tutto disegnato con egui Area dentro `EguiPrimaryContextPass`, così non
-//! servono caméra 2D né노 Text2d (coordinate world instabili con la camera orbit).
+//! servono una camera 2D né Text2d (coordinate world instabili con la camera orbit).
 
 use crate::combat::EnemyHealth;
 use crate::entities::Enemy;

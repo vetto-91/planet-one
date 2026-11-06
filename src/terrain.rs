@@ -222,17 +222,8 @@ fn build_terrain_collider(image: &Image, size: f32, height_scale: f32) -> Collid
     let width = image.width();
     let height = image.height();
 
-    // PASSO 2 DEFINITIVO (fix orientamento): la matrice Parry `heights_zx`
-    // e' indicizzata [i, j] con i = riga (asse Z) e j = colonna (asse X).
-    // La mesh usa index = z*width + x,cioè' riga=z, colonna=x.
-    // Quindi heights[z][x] = sample(x, z) allinea perfettamente i due.
-    // Verifica numerica: la mappa ASCII della heightmap mostra che NW e'
-    // basso e SE e' alto; il wireframe F3 deve mostrare la stessa forma.
-    // FIX FINALE COLLIDER: la matrice deve essere heights[x][z] (riga=X,
-    // colonna=Z) perche' Parry legge nrows->Z? NO: nrows conta le righe
-    // che scorrono su Z, ma noi vogliamo che l'indice di riga corrisponda
-    // a X perche' la mesh ha x come indice veloce. In realta' il problema
-    // e' la trasposizione: costruiamo heights[x][z] = sample(x,z).
+    // La matrice è indicizzata heights[x][z] (riga = X, colonna = Z): è la
+    // convenzione che allinea il collider alla mesh (verificabile con F3).
     let mut heights: Vec<Vec<f32>> = Vec::with_capacity(width as usize);
     for x in 0..width {
         let mut row: Vec<f32> = Vec::with_capacity(height as usize);
@@ -242,13 +233,8 @@ fn build_terrain_collider(image: &Image, size: f32, height_scale: f32) -> Collid
         heights.push(row);
     }
 
-    // PASSAGGI 1+2 (fix scala e copertura): Parry heightfield scala i vertici
-    // locali (che stanno in [-0.5, 0.5]) per `scale`, quindi l'estensione
-    // reale su XZ e' `scale.x`/`scale.z`. Per coprire `size` metri:
-    // scale.x = size, scale.z = size. Il vecchio `size/2` dimezzava il campo.
-    // Parry: i vertici locali vanno da -0.5 a 0.5 e vengono moltiplicati
-    // per `scale`, quindi l'estensione reale su XZ e' proprio `scale.x/z`.
-    // Per coprire `size` metri: scale.x = scale.z = size.
+    // Parry scala i vertici locali (in [-0.5, 0.5]) per `scale`: per coprire
+    // `size` metri su XZ serve scale.x = scale.z = size.
     Collider::heightfield(heights, Vec3::new(size, 1.0, size))
 }
 

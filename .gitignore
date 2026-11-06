@@ -1,11 +1,13 @@
 # Rust
 /target
-debug/
-release/
 **/*.rs.bk
 
-# Asset binari pesanti (usare Git LFS o release per i grandi)
-# assets/**/*.blend1
+# Locale (Claude Code, export di sessione, log)
+.claude/
+context/
+*.log
+run.log
+.env
 
 # Blender
 *.blend1
@@ -17,6 +19,3 @@ release/
 *.swp
 .DS_Store
 Thumbs.db
-
-# Variabili locali
-.env

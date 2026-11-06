@@ -26,7 +26,9 @@ Esempio: `v0.0.1.2` = nessun major, nessun minor, 1 feature, 2 bugfix.
 - `v0.0.2.0` — Fase 2: scena, terreno, cel-shading
 - `v0.0.3.0` — Fase 3: NPC, dialoghi, nemico
 - `v0.0.4.0` — Fase 4: UI, inventario, pausa
-- `v0.1.0.0` — Fase 5: vertical slice RPG giocabile
+- `v0.0.5.0` — Fase 5: vertical slice "Denaro Rubato"
+- `v0.0.6.0` — rifiniture: diario, giorno/notte, skin, UI condivisa
+- `v0.1.0.0` — prima demo completa (game over/vittoria, salvataggio)
 
 ## Branch e commit
 

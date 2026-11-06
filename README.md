@@ -2,7 +2,7 @@
 
 RPG 3D open source, cel-shaded, in terza persona. Scritto in **Rust** con il motore **[Bevy](https://bevy.org)**. Obiettivo iniziale: una **vertical slice** giocabile (1 quest, 1 NPC, 1 nemico, inventario minimale).
 
-> Stato: **Fase 5 — Vertical slice completata** (`v0.0.5.0`).
+> Stato: **Fase 5 — Vertical slice completata, con rifiniture** (`v0.0.6.0`).
 > Quest "Denaro Rubato", bussola, obiettivi (TAB), combattimento e inventario.
 > Roadmap e fasi: [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -10,6 +10,16 @@ RPG 3D open source, cel-shaded, in terza persona. Scritto in **Rust** con il mot
 
 - Rust stable (>= 1.97) — [`rustup`](https://rustup.rs)
 - Linux: `libudev`, `alsa`, `vulkan` driver (di solito già presenti su desktop)
+
+## Clonare e avviare
+
+```bash
+git clone git@github.com:<utente>/planet-one.git
+cd planet-one
+cargo run --release
+```
+
+La prima compilazione scarica e compila Bevy: servono alcuni minuti.
 
 ## Compilazione ed esecuzione
 
