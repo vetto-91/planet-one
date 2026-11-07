@@ -2,6 +2,16 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## v0.0.10.0 — Strumenti debug, oggetti veri, musica notturna (2026-11-07)
+
+- Viandante: di notte, se la luce è accesa si alza quasi subito, chiude prima porta/finestre aperte, spegne la luce e torna a letto.
+- Casetta: tetto più spesso (sottofaccia e bordo di gronda), niente luce tra tetto e muro.
+- Mappa: spostamento con frecce/WASD e trascinamento, C ricentra sul giocatore.
+- Debug F4: cursore libero in 3ª/1ª persona (tasto destro = guarda), poligono con OK, rettangolo a 4 angoli,
+  distribuzione regolare, allineamento a griglia/linea, anteprima del cerchio, strumenti Gomma e Sposta.
+- Musica notturna (`Lanterns_In_The_Grove`) dal tramonto all'alba con dissolvenza incrociata.
+- Oggetti veri (alberi, fiori, panchina, lampione con luce notturna) creati da `debug/placements.txt` (`world_props.rs`).
+
 ## v0.0.9.0 — Mappa, debug piazzamenti, casetta rifinita (2026-11-07)
 
 - Mappa in gioco (M): vista dall'alto della scena reale (camera ortografica, nord in alto), bussola in alto a sinistra,

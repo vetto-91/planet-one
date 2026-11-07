@@ -2,7 +2,7 @@
 
 RPG 3D open source, cel-shaded, in terza persona. Scritto in **Rust** con il motore **[Bevy](https://bevy.org)**. Obiettivo iniziale: una **vertical slice** giocabile (1 quest, 1 NPC, 1 nemico, inventario minimale).
 
-> Stato: **Fase 5 — Vertical slice completata, con rifiniture** (`v0.0.9.0`).
+> Stato: **Fase 5 — Vertical slice completata, con rifiniture** (`v0.0.10.0`).
 > Quest "Denaro Rubato", bussola, obiettivi (TAB), combattimento e inventario.
 > Roadmap e fasi: [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -32,12 +32,19 @@ cargo clippy         # linter
 
 ## Debug piazzamenti (F4)
 
-Per indicare dove mettere alberi o qualunque oggetto: F4 apre il pannello (tipo, modalità *singolo / gruppo-raggio /
-area-rettangolo / area-cerchio*, quantità, raggio, nota). Si indica il punto **dalla mappa (M)** con il clic
-(aree: due clic; clic destro = elimina l'oggetto più vicino) oppure **in 3D** con **P** (aggiungi dove guardi) e **X**
-(elimina il più vicino). Ogni modifica riscrive `debug/placements.txt` (blocchi `[P-nnnn]` con tipo, modalità, area,
-quantità, seed, nota e coordinate effettive; il nord è −Z) che viene riletto all'avvio. I segnaposto sono solo
-primitive colorate. In fullscreen il cursore è catturato: per usare il pannello dalla finestra premi prima M.
+Per indicare dove mettere alberi o qualunque oggetto: F4 apre il pannello. Il cursore resta libero (in 3D si
+guarda tenendo premuto il tasto destro). Si sceglie col **clic sinistro**, dalla mappa (M) o in 3D (punto del terreno
+sotto il cursore; **P** / **X** restano come scorciatoie col mirino).
+
+- **Piazza**: *singolo* (allineamento libero, a **griglia** o a **linea** con distanza uguale), *gruppo*,
+  *rettangolo* (4 angoli qualsiasi), *cerchio* (raggio in anteprima dal centro) e *poligono* (N punti, poi **OK** o
+  Invio). Per le aree si può scegliere la distribuzione *regolare* (passo uguale) o casuale; l'anteprima mostra i punti.
+- **Gomma**: clic su un oggetto per eliminarlo; dall'elenco "Elimina" toglie un intero piazzamento.
+- **Sposta**: clic su un oggetto e poi sul nuovo punto; resta parte del suo piazzamento.
+
+Ogni modifica riscrive `debug/placements.txt` (blocchi `[P-nnnn]`; il nord è −Z), riletto all'avvio. Alberi, fiori,
+panchine e lampioni diventano **oggetti veri** (anche senza F4; gli alberi evitano spawn, casetta, pozione e ladro).
+Nella mappa: frecce/WASD o tasto centrale = sposta la vista, C = su di te.
 
 ## Debug
 
@@ -65,8 +72,8 @@ grep "\[EVENT\]" run.log    # eventi finestra/cursore
 | Esc | Menu pausa (tasti, slider sensibilità, checkbox FPS, reset scena) |
 | F3 | Wireframe dei collider (debug fisico) |
 | F11 | Schermo intero on/off (in fullscreen il cursore è bloccato e nascosto) |
-| M | Mappa dall'alto (vista drone, nord in alto, bussola in alto a sinistra); rotella o +/- = zoom; M/Esc = chiudi |
-| F4 | Modalità debug piazzamenti (vedi sotto): dalla mappa clic = aggiungi / clic destro = elimina; in 3D P = aggiungi, X = elimina |
+| M | Mappa dall'alto (vista drone, nord in alto, bussola in alto a sinistra); rotella o +/- = zoom; frecce/WASD o tasto centrale = sposta, C = su di te; M/Esc = chiudi |
+| F4 | Modalità debug piazzamenti (vedi sotto): strumenti Piazza / Gomma / Sposta, clic sinistro (mappa e 3D) |
 | T | "Aspetta": fa avanzare l'ora di gioco di N ore (T o Esc per chiudere) |
 | J | Diario delle quest (tab Da fare / Completate, quest espandibili); J o Esc per chiudere |
 | TAB (tenuto) | Obiettivi della quest (solo a quest attiva) |
@@ -107,8 +114,9 @@ e va a dormire (da addormentato non parla: "Zzz…").
 
 ### Musica e audio
 
-La colonna sonora (`assets/audio/music/legacy_of_the_first_light.ogg`, brano in loop) parte
-all'avvio. Il volume delle musiche e quello delle voci dei personaggi si regolano dal menu Esc
+La colonna sonora (`assets/audio/music/legacy_of_the_first_light.ogg`, in loop) parte
+all'avvio; dal tramonto (18:00) fino a poco prima dell'alba (5:54) suona `lanterns_in_the_grove.ogg`
+con dissolvenza incrociata. Il volume delle musiche e quello delle voci dei personaggi si regolano dal menu Esc
 ("Volume musica", "Volume voci") e vengono salvati in `~/.config/planet-one/settings.txt`.
 Le voci (`assets/audio/voci/`) sono generate con `scripts/gen_tts_voci.py` (edge-tts, voci neurali
 Microsoft, richiede rete): verificarne i termini d'uso prima di distribuire il gioco. Autore e licenza del brano da indicare prima di rendere
@@ -143,6 +151,7 @@ src/      codice del gioco (ECS Bevy)
   audio.rs   musica di sottofondo e impostazioni audio
   hut.rs     casetta-chiosco: fondamenta, porta, interni, stufa e routine del Viandante
   props.rs   appoggio a terra degli oggetti di scena
+  world_props.rs alberi, fiori, panchine, lampioni da debug/placements.txt
   voice.rs   riproduzione delle voci dei personaggi
   daynight.rs orologio di gioco, sole e luna, luci e cielo
   figure.rs  personaggi a parallelepipedo con skin a sviluppo (player/ladro/viandante)

@@ -5,7 +5,7 @@ RPG 3D open source, cel-shaded, terza persona. Rust + Bevy 0.20.1, fisica Avian 
 ## Stato e roadmap
 
 - Roadmap e stato reale delle fasi: [docs/ROADMAP.md](docs/ROADMAP.md).
-- Ultima fase completata: Fase 5, vertical slice "Denaro Rubato" (`v0.0.5.0`); ultimo rilascio `v0.0.9.0`.
+- Ultima fase completata: Fase 5, vertical slice "Denaro Rubato" (`v0.0.5.0`); ultimo rilascio `v0.0.10.0`.
 - Storia dei rilasci: [CHANGELOG.md](CHANGELOG.md). Schema versioni: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Comandi
@@ -52,7 +52,8 @@ Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, 
 - `src/sky.rs`: cielo da `assets/textures/sky.png` convertito in cubemap a runtime.
 - `src/daynight.rs`: orologio (1 h = 60 s), sole/luna (luci e dischi), stato `Wait` (tasto T).
 - `src/figure.rs`: mesh a parallelepipedo con UV per faccia per le skin in `assets/textures/{player,ladro,viandante}.png`.
-- `src/audio.rs`: musica di sottofondo (OGG in `assets/audio/music/`), volume musiche salvato in `~/.config/planet-one/settings.txt`.
+- `src/world_props.rs`: alberi, fiori, panchine, lampioni veri creati da `debug/placements.txt`.
+- `src/audio.rs`: musica di sottofondo giorno/notte con dissolvenza (OGG in `assets/audio/music/`), volume musiche salvato in `~/.config/planet-one/settings.txt`.
 - `src/hut.rs`: casetta-chiosco del Viandante (mesh con UV dalla foto `assets/textures/capanna.png`, fondamenta e scale di pietra, interni, oggetti con stato `PropState`: porta, finestre, stufa con fumo, luce, serranda) e routine giornaliera del negoziante (`Keeper`). Gli oggetti si usano col mirino (`Interactable.aim`, vedi `entities::interact`).
 - `src/map.rs`: mappa (M): camera ortografica dall'alto sulla scena reale + overlay egui (bussola, segnalino); `MapView` per lo zoom.
 - `src/debug_place.rs`: modalità debug piazzamenti (F4), file `debug/placements.txt` (riletto all'avvio).

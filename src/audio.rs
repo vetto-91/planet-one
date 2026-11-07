@@ -1,15 +1,29 @@
 //! Colonna sonora e impostazioni audio.
 //!
-//! La musica di sottofondo parte all'avvio e gira in loop (non è parte della
-//! scena: sopravvive al reset). Il volume delle sole musiche si regola dal
+//! Due brani in loop (non fanno parte della scena: sopravvivono al reset):
+//! quello diurno e quello notturno, che parte al tramonto (18:00) e dura fino
+//! a poco prima dell'alba; il passaggio è una dissolvenza incrociata. Il volume
+//! delle sole musiche si regola dal
 //! menu Esc e viene salvato in `~/.config/planet-one/settings.txt`.
 
 use bevy::audio::Volume;
 use bevy::prelude::*;
 use std::path::PathBuf;
 
-/// Brano di sottofondo (OGG Vorbis in `assets/`).
+/// Brano diurno (OGG Vorbis in `assets/`).
 const MUSIC_PATH: &str = "audio/music/legacy_of_the_first_light.ogg";
+/// Brano notturno: dal tramonto fino al momento prima dell'alba.
+const NIGHT_MUSIC_PATH: &str = "audio/music/lanterns_in_the_grove.ogg";
+/// Ora di inizio e di fine (esclusa) della musica notturna.
+const NIGHT_START: f32 = 18.0;
+const NIGHT_END: f32 = 5.9;
+/// Durata (s) della dissolvenza incrociata.
+const CROSSFADE_SECS: f32 = 4.0;
+
+/// È l'ora della musica notturna?
+fn is_night_music(hour: f32) -> bool {
+    hour >= NIGHT_START || hour < NIGHT_END
+}
 /// Volume iniziale delle musiche (0..1).
 const DEFAULT_MUSIC_VOLUME: f32 = 0.6;
 /// Volume iniziale delle voci (0..1).
@@ -89,9 +103,12 @@ pub fn update_music_duck(
     duck.level += (target - duck.level) * k;
 }
 
-/// Marker della traccia musicale.
+/// Traccia musicale: `night` = brano notturno; `gain` = dissolvenza corrente (0..1).
 #[derive(Component)]
-pub struct MusicTrack;
+pub struct MusicTrack {
+    night: bool,
+    gain: f32,
+}
 
 /// `$XDG_CONFIG_HOME/planet-one/settings.txt` oppure `~/.config/planet-one/settings.txt`.
 fn settings_path() -> Option<PathBuf> {
@@ -101,29 +118,51 @@ fn settings_path() -> Option<PathBuf> {
     Some(base.join("planet-one").join("settings.txt"))
 }
 
-/// Avvia la musica di sottofondo in loop.
+/// Avvia i due brani in loop: quello dell'ora corrente a pieno volume, l'altro muto.
 pub fn start_music(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     settings: Res<AudioSettings>,
+    clock: Res<crate::daynight::GameClock>,
 ) {
-    commands.spawn((
-        MusicTrack,
-        AudioPlayer::new(asset_server.load(MUSIC_PATH)),
-        PlaybackSettings::LOOP.with_volume(Volume::Linear(settings.music_volume)),
-    ));
-    info!("[AUDIO] musica avviata: {MUSIC_PATH}");
+    let night_now = is_night_music(clock.hour);
+    for (night, path) in [(false, MUSIC_PATH), (true, NIGHT_MUSIC_PATH)] {
+        let gain = if night == night_now { 1.0 } else { 0.0 };
+        commands.spawn((
+            MusicTrack { night, gain },
+            AudioPlayer::new(asset_server.load(path)),
+            PlaybackSettings::LOOP.with_volume(Volume::Linear(settings.music_volume * gain)),
+        ));
+        info!("[AUDIO] musica caricata: {path}");
+    }
 }
 
-/// Applica il volume delle musiche alla traccia quando cambia.
+/// Dissolvenza incrociata giorno/notte e volume delle musiche (impostazioni e ducking).
 pub fn apply_music_volume(
+    time: Res<Time>,
+    clock: Res<crate::daynight::GameClock>,
     settings: Res<AudioSettings>,
     duck: Res<MusicDuck>,
-    mut tracks: Query<&mut AudioSink, With<MusicTrack>>,
+    mut tracks: Query<(&mut MusicTrack, &mut AudioSink)>,
 ) {
-    // Anche al primo frame in cui il sink compare (traccia appena caricata).
-    for mut sink in &mut tracks {
-        let target = Volume::Linear(settings.music_volume * duck.level);
+    let night_now = is_night_music(clock.hour);
+    let step = time.delta_secs() / CROSSFADE_SECS;
+    for (mut track, mut sink) in &mut tracks {
+        let want = if track.night == night_now { 1.0 } else { 0.0 };
+        track.gain = if track.gain < want {
+            (track.gain + step).min(want)
+        } else {
+            (track.gain - step).max(want)
+        };
+        // Il brano muto si ferma e riparte da dove era (non consuma e non "corre").
+        if track.gain <= 0.001 {
+            if !sink.is_paused() {
+                sink.pause();
+            }
+        } else if sink.is_paused() {
+            sink.play();
+        }
+        let target = Volume::Linear(settings.music_volume * duck.level * track.gain);
         if sink.volume() != target {
             sink.set_volume(target);
         }

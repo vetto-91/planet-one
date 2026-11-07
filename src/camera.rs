@@ -93,12 +93,20 @@ pub fn player_visibility(
 
 /// Aggiorna yaw/pitch con il movimento relativo del mouse (sempre attivo in
 /// entrambe le modalità, così la mira resta sincronizzata).
-pub fn orbit(mut cursor_events: MessageReader<CursorMoved>, mut state: ResMut<OrbitCamera>) {
+pub fn orbit(
+    mut cursor_events: MessageReader<CursorMoved>,
+    mut state: ResMut<OrbitCamera>,
+    debug: Res<crate::debug_place::DebugPlace>,
+) {
     // Usiamo CursorMoved (delta calcolato da Bevy dal WindowEvent): su X11 i
     // DeviceEvent MouseMotion possono non arrivare, CursorMoved arriva sempre.
     let mut delta = Vec2::ZERO;
     for ev in cursor_events.read() {
         delta += ev.delta.unwrap_or_default();
+    }
+    // Con il debug F4 il mouse sceglie i punti: si guarda solo tenendo premuto il tasto destro.
+    if debug.on && !state.rmb_held {
+        return;
     }
     state.yaw -= delta.x * state.sensitivity;
     // In prima persona permettiamo di guardare più in alto/giù (meno clamp alto).

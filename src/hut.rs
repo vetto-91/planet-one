@@ -34,6 +34,8 @@ const Y0: f32 = FLOOR_Y + 0.02;
 const ROOF_H: f32 = 1.1;
 const ROOF_OVER: f32 = 0.3;
 const ROOF_INSET: f32 = 0.4;
+/// Spessore del tetto (m): sottofaccia e bordo di gronda.
+const ROOF_T: f32 = 0.14;
 /// Profondità dello zoccolo della parete dentro le fondamenta (m).
 const SKIRT: f32 = 0.15;
 /// Altezza della fascia che chiude lo spazio tra parete e tetto.
@@ -371,19 +373,35 @@ fn hut_mesh() -> Mesh {
         // Falda del tetto: dalla gronda (con sbalzo) alla cima piatta.
         let (eh, ed) = (half + ROOF_OVER, dist + ROOF_OVER);
         let (th, td) = (half - ROOF_INSET, dist - ROOF_INSET);
+        let slope_uv = [
+            p(ox + 39.0, oy + 28.0),
+            p(ox + 215.0, oy + 28.0),
+            p(ox + 237.0, oy + 112.0),
+            p(ox + 24.0, oy + 112.0),
+        ];
+        let top = [
+            dir * td + left * th + up * y2,
+            dir * td - left * th + up * y2,
+            dir * ed - left * eh + up * y1,
+            dir * ed + left * eh + up * y1,
+        ];
+        b.quad(top, slope_uv);
+        // Sottofaccia: stessa falda abbassata di ROOF_T, rivolta verso il basso
+        // (il tetto non è più un foglio e la luce non passa sul bordo del muro).
+        let down = Vec3::Y * ROOF_T;
+        b.quad(
+            [top[3] - down, top[2] - down, top[1] - down, top[0] - down],
+            [slope_uv[3], slope_uv[2], slope_uv[1], slope_uv[0]],
+        );
+        // Bordo di gronda.
         b.quad(
             [
-                dir * td + left * th + up * y2,
-                dir * td - left * th + up * y2,
-                dir * ed - left * eh + up * y1,
                 dir * ed + left * eh + up * y1,
+                dir * ed - left * eh + up * y1,
+                dir * ed - left * eh + up * (y1 - ROOF_T),
+                dir * ed + left * eh + up * (y1 - ROOF_T),
             ],
-            [
-                p(ox + 39.0, oy + 28.0),
-                p(ox + 215.0, oy + 28.0),
-                p(ox + 237.0, oy + 112.0),
-                p(ox + 24.0, oy + 112.0),
-            ],
+            rect_uv(ox, oy, 60.0, 98.0, 200.0, 110.0),
         );
     }
     // Coperchio piatto del tetto.
@@ -394,6 +412,17 @@ fn hut_mesh() -> Mesh {
             Vec3::new(-tx, y2, tz),
             Vec3::new(-tx, y2, -tz),
             Vec3::new(tx, y2, -tz),
+        ],
+        rect_uv(0.0, 0.0, 70.0, 45.0, 190.0, 95.0),
+    );
+    // Sottofaccia del coperchio.
+    let yt = y2 - ROOF_T;
+    b.quad(
+        [
+            Vec3::new(tx, yt, -tz),
+            Vec3::new(-tx, yt, -tz),
+            Vec3::new(-tx, yt, tz),
+            Vec3::new(tx, yt, tz),
         ],
         rect_uv(0.0, 0.0, 70.0, 45.0, 190.0, 95.0),
     );
@@ -1496,6 +1525,8 @@ const HUB: Vec2 = Vec2::new(0.8, -0.5);
 const CLOSE_DELAY: (f32, f32) = (45.0, 180.0);
 /// Di notte si sveglia entro 1 h di gioco (60 s reali) se qualcosa è aperto.
 const NIGHT_DELAY: (f32, f32) = (10.0, 60.0);
+/// Di notte, se la luce è accesa, si alza quasi subito (3–8 s reali).
+const LIGHT_DELAY: (f32, f32) = (3.0, 8.0);
 
 /// La stufa del Viandante è accesa 6–10 e 17–21, spenta nel resto della giornata.
 fn stove_wanted(hour: f32) -> bool {
@@ -1719,11 +1750,22 @@ fn morning_steps(door_open: bool, windows_open: &[usize]) -> Steps {
     v.into()
 }
 
-/// Ronda notturna: si alza, chiude porta/finestre aperte e torna a dormire.
-fn night_check_steps(door_open: bool, windows_open: &[usize]) -> Steps {
+/// Ronda notturna: si alza, chiude prima porta/finestre aperte, poi spegne la
+/// luce (se accesa) e torna a dormire.
+fn night_check_steps(door_open: bool, windows_open: &[usize], light_on: bool) -> Steps {
     use Step::*;
     let mut v: Vec<Step> = vec![Rise, Wait(0.5), Walk(Vec2::new(-1.0, -0.6))];
     v.extend(close_trip(door_open, windows_open));
+    if light_on {
+        v.extend([
+            Walk(HUB),
+            Walk(SWITCH_STAND),
+            Face(0.0),
+            Wait(0.4),
+            Light(false),
+            Wait(0.5),
+        ]);
+    }
     v.extend([Walk(Vec2::new(-1.0, -0.6)), Walk(BED_FOOT), Lie]);
     v.into()
 }
@@ -1787,14 +1829,22 @@ pub fn keeper_routine(
             }
         }
         // Ronda notturna: se dorme e qualcosa è aperto, parte un conto (max 1 h di gioco).
-        let something_open = door_open || !windows_open.is_empty();
+        let light_on = is_on(&states, parts.light);
+        let something_open = door_open || !windows_open.is_empty() || light_on;
         if k.phase == KeeperPhase::Asleep {
             match (something_open, k.night_timer) {
                 (true, None) => {
-                    let t = k.rand_range(NIGHT_DELAY);
+                    let t = k.rand_range(if light_on { LIGHT_DELAY } else { NIGHT_DELAY });
                     k.night_timer = Some(t);
                 }
-                (true, Some(t)) => k.night_timer = Some(t - dt),
+                (true, Some(t)) => {
+                    let t = if light_on {
+                        t.min(LIGHT_DELAY.1 * k.delay_scale)
+                    } else {
+                        t
+                    };
+                    k.night_timer = Some(t - dt);
+                }
                 (false, _) => k.night_timer = None,
             }
         } else {
@@ -1852,11 +1902,13 @@ pub fn keeper_routine(
                 info!("[KEEPER] si sveglia");
             }
             KeeperPhase::Asleep if k.night_timer.is_some_and(|t| t <= 0.0) => {
-                k.steps = night_check_steps(door_open, &windows_open);
+                k.steps = night_check_steps(door_open, &windows_open, light_on);
                 k.phase = KeeperPhase::NightCheck;
                 k.night_timer = None;
                 npc.mode = NpcMode::Busy;
-                info!("[KEEPER] ronda notturna (porta: {door_open}, finestre: {windows_open:?})");
+                info!(
+                    "[KEEPER] ronda notturna (porta: {door_open}, finestre: {windows_open:?}, luce: {light_on})"
+                );
             }
             _ => {}
         }

@@ -25,6 +25,7 @@ mod terrain;
 mod ui_style;
 mod version;
 mod voice;
+mod world_props;
 
 use avian3d::prelude::*;
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
@@ -234,6 +235,13 @@ fn main() {
             (menu::ui, debug_place::debug_ui).chain(),
         )
         .add_systems(Update, debug_place::sync_markers)
+        .add_systems(
+            Update,
+            (
+                world_props::sync_world_props,
+                world_props::update_street_lamps,
+            ),
+        )
         // Toggle Esc: bidirezionale (Playing ↔ Paused), esclude Resetting.
         // (dopo advance_dialog e prima di interact: vedi `DialogState::block_interact`)
         .add_systems(
@@ -281,6 +289,7 @@ fn apply_cursor_for_mode(
     windows: Query<&Window, With<bevy::window::PrimaryWindow>>,
     mut cursor_opts: Query<&mut bevy::window::CursorOptions, With<bevy::window::PrimaryWindow>>,
     app_state: Res<State<AppState>>,
+    debug: Res<debug_place::DebugPlace>,
     mut last: Local<(Option<bevy::window::WindowMode>, bool)>,
 ) {
     use bevy::window::{CursorGrabMode, WindowMode};
@@ -290,7 +299,8 @@ fn apply_cursor_for_mode(
     let fullscreen = !matches!(window.mode, WindowMode::Windowed);
     // A schermo intero catturiamo SOLO in Playing: in Paused (menu) il cursore
     // deve tornare visibile e libero per cliccare i bottoni.
-    let capture = fullscreen && *app_state.get() == AppState::Playing;
+    // Con il debug F4 acceso il cursore resta libero per scegliere i punti.
+    let capture = fullscreen && *app_state.get() == AppState::Playing && !debug.on;
     if *last == (Some(window.mode), capture) {
         return;
     }
@@ -321,12 +331,13 @@ fn warp_cursor_to_center(
     mut commands: Commands,
     windows: Query<(Entity, &Window), With<bevy::window::PrimaryWindow>>,
     app_state: Res<State<AppState>>,
+    debug: Res<debug_place::DebugPlace>,
 ) {
     let Ok((entity, window)) = windows.single() else {
         return;
     };
     let fullscreen = !matches!(window.mode, bevy::window::WindowMode::Windowed);
-    if !fullscreen || *app_state.get() != AppState::Playing {
+    if !fullscreen || *app_state.get() != AppState::Playing || debug.on {
         return;
     }
     let size = window.resolution.size();

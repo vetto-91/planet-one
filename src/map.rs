@@ -7,9 +7,11 @@
 //! vuota), il segnalino del giocatore e le etichette.
 //!
 //! Lo zoom è predisposto in `MapView` (`zoom_in`/`zoom_out`, rotella e +/-).
+//! La vista si sposta con frecce/WASD o trascinando (tasto centrale; il sinistro
+//! quando il debug F4 è spento); C la ricentra sul giocatore.
 
 use bevy::camera::{ClearColorConfig, ScalingMode};
-use bevy::input::mouse::MouseWheel;
+use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::light::Skybox;
 use bevy::prelude::*;
 use bevy_egui::egui;
@@ -29,6 +31,8 @@ pub struct MapView {
     pub zoom: f32,
     pub min: f32,
     pub max: f32,
+    /// Centro della vista (x, z) in metri.
+    pub center: Vec2,
 }
 
 impl Default for MapView {
@@ -37,6 +41,7 @@ impl Default for MapView {
             zoom: TERRAIN_SIZE * 1.12,
             min: 20.0,
             max: 140.0,
+            center: Vec2::ZERO,
         }
     }
 }
@@ -64,7 +69,7 @@ pub struct Saved {
 /// OnEnter(Map): porta la camera sopra la scena, in ortografica, nord in alto.
 pub fn enter_map(
     mut commands: Commands,
-    view: Res<MapView>,
+    mut view: ResMut<MapView>,
     mut saved: ResMut<SavedCamera>,
     mut cameras: Query<(
         Entity,
@@ -83,6 +88,7 @@ pub fn enter_map(
         clear: cam.clear_color,
         skybox: skybox.cloned(),
     });
+    view.center = Vec2::ZERO;
     *tf = Transform::from_xyz(0.0, MAP_CAM_HEIGHT, 0.0).looking_at(Vec3::ZERO, Vec3::NEG_Z);
     *proj = Projection::Orthographic(OrthographicProjection {
         scaling_mode: ScalingMode::FixedVertical {
@@ -115,11 +121,18 @@ pub fn exit_map(
     info!("[MAP] mappa chiusa");
 }
 
-/// Zoom con rotella del mouse e tasti +/- (in mappa).
+/// Zoom (rotella, +/-) e spostamento (frecce/WASD, trascinamento, C = sul giocatore).
+#[allow(clippy::too_many_arguments)]
 pub fn map_zoom(
+    time: Res<Time>,
     keys: Res<ButtonInput<KeyCode>>,
+    buttons: Res<ButtonInput<MouseButton>>,
     mut wheel: MessageReader<MouseWheel>,
+    mut motion: MessageReader<MouseMotion>,
     mut view: ResMut<MapView>,
+    debug: Res<crate::debug_place::DebugPlace>,
+    mut contexts: bevy_egui::EguiContexts,
+    windows: Query<&Window>,
     mut cameras: Query<(&mut Projection, &mut Transform), With<Camera3d>>,
     players: Query<&GlobalTransform, With<crate::player::Player>>,
 ) {
@@ -138,26 +151,59 @@ pub fn map_zoom(
     } else if steps < 0.0 {
         view.zoom_out();
     }
+
+    let (egui_kb, egui_ptr) = contexts.ctx_mut().map_or((false, false), |c| {
+        (c.egui_wants_keyboard_input(), c.is_pointer_over_egui())
+    });
+    // Spostamento da tastiera (la velocità cresce con lo zoom).
+    let mut dir = Vec2::ZERO;
+    if !egui_kb {
+        if keys.pressed(KeyCode::ArrowLeft) || keys.pressed(KeyCode::KeyA) {
+            dir.x -= 1.0;
+        }
+        if keys.pressed(KeyCode::ArrowRight) || keys.pressed(KeyCode::KeyD) {
+            dir.x += 1.0;
+        }
+        if keys.pressed(KeyCode::ArrowUp) || keys.pressed(KeyCode::KeyW) {
+            dir.y -= 1.0; // nord = -Z
+        }
+        if keys.pressed(KeyCode::ArrowDown) || keys.pressed(KeyCode::KeyS) {
+            dir.y += 1.0;
+        }
+    }
+    let zoom = view.zoom;
+    if dir != Vec2::ZERO {
+        view.center += dir.normalize() * zoom * 0.6 * time.delta_secs();
+    }
+    // Trascinamento: tasto centrale sempre, sinistro solo a debug spento.
+    let dragging = buttons.pressed(MouseButton::Middle)
+        || (!debug.on && buttons.pressed(MouseButton::Left) && !egui_ptr);
+    let mut delta = Vec2::ZERO;
+    for ev in motion.read() {
+        delta += ev.delta;
+    }
+    if dragging && let Ok(w) = windows.single() {
+        let per_px = zoom / w.height().max(1.0);
+        view.center -= Vec2::new(delta.x, delta.y) * per_px;
+    }
+    if keys.just_pressed(KeyCode::KeyC)
+        && !egui_kb
+        && let Ok(p) = players.single()
+    {
+        view.center = Vec2::new(p.translation().x, p.translation().z);
+    }
+    let limit = TERRAIN_SIZE / 2.0;
+    view.center = view.center.clamp(Vec2::splat(-limit), Vec2::splat(limit));
+
     if let Ok((mut proj, mut tf)) = cameras.single_mut() {
         if let Projection::Orthographic(o) = &mut *proj {
             o.scaling_mode = ScalingMode::FixedVertical {
                 viewport_height: view.zoom,
             };
         }
-        // Zoomando la mappa si centra sul giocatore (limitata al terreno).
-        let center = if view.zoom < TERRAIN_SIZE * 0.95 {
-            let limit = TERRAIN_SIZE / 2.0 - view.zoom / 2.0;
-            players.single().map_or(Vec2::ZERO, |p| {
-                Vec2::new(
-                    p.translation().x.clamp(-limit.max(0.0), limit.max(0.0)),
-                    p.translation().z.clamp(-limit.max(0.0), limit.max(0.0)),
-                )
-            })
-        } else {
-            Vec2::ZERO
-        };
-        *tf = Transform::from_xyz(center.x, MAP_CAM_HEIGHT, center.y)
-            .looking_at(Vec3::new(center.x, 0.0, center.y), Vec3::NEG_Z);
+        let c = view.center;
+        *tf = Transform::from_xyz(c.x, MAP_CAM_HEIGHT, c.y)
+            .looking_at(Vec3::new(c.x, 0.0, c.y), Vec3::NEG_Z);
     }
 }
 
@@ -303,7 +349,7 @@ pub fn draw_map_overlay(
         egui::pos2(size.x / 2.0, size.y - 22.0),
         egui::Align2::CENTER_CENTER,
         format!(
-            "M / Esc = chiudi   •   Rotella o +/- = zoom ({zoom:.0} m)   •   F4 = debug piazzamenti"
+            "M / Esc = chiudi   •   Rotella o +/- = zoom ({zoom:.0} m)   •   Frecce/WASD o trascina = sposta   •   C = su di te   •   F4 = debug piazzamenti"
         ),
         egui::FontId::proportional(16.0),
         egui::Color32::from_rgb(220, 226, 240),
