@@ -5,7 +5,7 @@ RPG 3D open source, cel-shaded, terza persona. Rust + Bevy 0.20.1, fisica Avian 
 ## Stato e roadmap
 
 - Roadmap e stato reale delle fasi: [docs/ROADMAP.md](docs/ROADMAP.md).
-- Ultima fase completata: Fase 5, vertical slice "Denaro Rubato" (`v0.0.5.0`); ultimo rilascio `v0.0.7.0`.
+- Ultima fase completata: Fase 5, vertical slice "Denaro Rubato" (`v0.0.5.0`); ultimo rilascio `v0.0.8.0`.
 - Storia dei rilasci: [CHANGELOG.md](CHANGELOG.md). Schema versioni: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Comandi

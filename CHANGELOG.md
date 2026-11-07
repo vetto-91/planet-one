@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.8.0 — Interazione col mirino, casetta rifinita, routine del Viandante v2 (2026-11-07)
 
 - Prima persona: occhi a ~1,57 m da terra. Chip delle coordinate con anche la quota Y dei piedi.
 - Targhette di Viandante, Ladro e nemici solo entro 10 m dal player; i fumetti (anche "Zzz…") stanno sotto il nome.
