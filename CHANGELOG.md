@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.7.0 — Colonna sonora, casetta esplorabile, voci (2026-11-07)
 
 - Colonna sonora in loop (`audio/music/legacy_of_the_first_light.ogg`) con slider "Volume musica" nel
   menu Esc; il volume è salvato in `~/.config/planet-one/settings.txt`.

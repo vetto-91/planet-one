@@ -1,6 +1,6 @@
 [package]
 name = "planet-one"
-version = "0.0.6"
+version = "0.0.7"
 edition = "2024"
 description = "Planet One — RPG 3D open source, cel-shaded (Rust + Bevy)"
 license = "MIT OR Apache-2.0"
