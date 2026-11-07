@@ -15,6 +15,7 @@ use bevy::asset::RenderAssetUsages;
 use bevy::image::{
     ImageAddressMode, ImageFilterMode, ImageLoaderSettings, ImageSampler, ImageSamplerDescriptor,
 };
+use bevy::light::NotShadowCaster;
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
 
@@ -33,6 +34,8 @@ const Y0: f32 = FLOOR_Y + 0.02;
 const ROOF_H: f32 = 1.1;
 const ROOF_OVER: f32 = 0.3;
 const ROOF_INSET: f32 = 0.4;
+/// Profondità dello zoccolo della parete dentro le fondamenta (m).
+const SKIRT: f32 = 0.15;
 /// Altezza della fascia che chiude lo spazio tra parete e tetto.
 const SOFFIT: f32 = 0.4714;
 /// Gradini davanti alla porta (gli ultimi finiscono sotto il terreno).
@@ -133,6 +136,8 @@ pub struct HutParts {
     pub stove: Entity,
     pub light: Entity,
     pub shutter: Entity,
+    /// Maniglie delle finestre (stesso ordine di `WINDOWS`).
+    pub windows: Vec<Entity>,
 }
 
 // ----- Mesh -----
@@ -217,11 +222,96 @@ fn wall_point(side: &Side, px: (f32, f32)) -> Vec3 {
     dir * dist + left * (half * (1.0 - 2.0 * u)) + Vec3::Y * (FLOOR_Y + WALL_H - v * WALL_H)
 }
 
+/// Anta spessa (scuro) di una finestra: parallelepipedo con la texture delle
+/// imposte sulle due facce grandi (metà `uv0..uv1`) e un po' di legno sui bordi.
+/// Estensione x in [x0, x1], altezza `h` centrata su y=0, spessore verso -Z.
+fn leaf_mesh(x0: f32, x1: f32, h: f32, thick: f32, uv0: f32, uv1: f32) -> Mesh {
+    let mut b = MeshBuf::new();
+    let (hy, z0, z1) = (h / 2.0, -thick, 0.0);
+    let wood = [
+        Vec2::new(uv0 + 0.1, 0.45),
+        Vec2::new(uv0 + 0.15, 0.45),
+        Vec2::new(uv0 + 0.15, 0.5),
+        Vec2::new(uv0 + 0.1, 0.5),
+    ];
+    // Faccia esterna (-Z): da fuori la sinistra è +X.
+    b.quad(
+        [
+            Vec3::new(x1, hy, z0),
+            Vec3::new(x0, hy, z0),
+            Vec3::new(x0, -hy, z0),
+            Vec3::new(x1, -hy, z0),
+        ],
+        [
+            Vec2::new(uv0, 0.0),
+            Vec2::new(uv1, 0.0),
+            Vec2::new(uv1, 1.0),
+            Vec2::new(uv0, 1.0),
+        ],
+    );
+    // Faccia interna (+Z), vista da dentro: la sinistra è -X.
+    b.quad(
+        [
+            Vec3::new(x0, hy, z1),
+            Vec3::new(x1, hy, z1),
+            Vec3::new(x1, -hy, z1),
+            Vec3::new(x0, -hy, z1),
+        ],
+        [
+            Vec2::new(uv0, 0.0),
+            Vec2::new(uv1, 0.0),
+            Vec2::new(uv1, 1.0),
+            Vec2::new(uv0, 1.0),
+        ],
+    );
+    // Bordi: alto, basso, lato +X, lato -X.
+    b.quad(
+        [
+            Vec3::new(x1, hy, z1),
+            Vec3::new(x0, hy, z1),
+            Vec3::new(x0, hy, z0),
+            Vec3::new(x1, hy, z0),
+        ],
+        wood,
+    );
+    b.quad(
+        [
+            Vec3::new(x1, -hy, z0),
+            Vec3::new(x0, -hy, z0),
+            Vec3::new(x0, -hy, z1),
+            Vec3::new(x1, -hy, z1),
+        ],
+        wood,
+    );
+    b.quad(
+        [
+            Vec3::new(x1, hy, z1),
+            Vec3::new(x1, hy, z0),
+            Vec3::new(x1, -hy, z0),
+            Vec3::new(x1, -hy, z1),
+        ],
+        wood,
+    );
+    b.quad(
+        [
+            Vec3::new(x0, hy, z0),
+            Vec3::new(x0, hy, z1),
+            Vec3::new(x0, -hy, z1),
+            Vec3::new(x0, -hy, z0),
+        ],
+        wood,
+    );
+    b.finish()
+}
+
 /// Dimensioni (m) delle finestre apribili.
 const WIN_W: f32 = 1.0;
 const WIN_H: f32 = 0.8;
 /// Angolo di apertura delle imposte (verso l'esterno).
 const WIN_OPEN_ANGLE: f32 = 1.75;
+/// Gli scuri sono più larghi/alti del foro (sovrapposizione sulla cornice) e spessi.
+const LEAF_OVER: f32 = 0.03;
+const LEAF_THICK: f32 = 0.04;
 /// Finestre: (indice parete, centro in pixel relativi alla vista).
 const WINDOWS: [(usize, (f32, f32)); 3] = [
     (1, (156.5, 150.0)), // lato +X
@@ -256,13 +346,25 @@ fn hut_mesh() -> Mesh {
             ],
             rect_uv(ox, oy, 40.0, 113.0, 218.0, 218.0),
         );
-        // Fascia tra la parete e il tetto (sotto la paglia).
+        // Zoccolo: la parete scende di 15 cm dentro le fondamenta, così non c'è
+        // fessura (né luce che passa) tra muro e pietra.
+        b.quad(
+            [
+                c + left * half + up * y0,
+                c - left * half + up * y0,
+                c - left * half + up * (y0 - SKIRT),
+                c + left * half + up * (y0 - SKIRT),
+            ],
+            rect_uv(ox, oy, 40.0, 211.0, 218.0, 218.0),
+        );
+        // Fascia tra la parete e il tetto (sotto la paglia), con 10 cm di
+        // sovrapposizione sulla parete.
         b.quad(
             [
                 c + left * half + up * (y1 + SOFFIT),
                 c - left * half + up * (y1 + SOFFIT),
-                c - left * half + up * y1,
-                c + left * half + up * y1,
+                c - left * half + up * (y1 - 0.1),
+                c + left * half + up * (y1 - 0.1),
             ],
             rect_uv(ox, oy, 60.0, 98.0, 200.0, 110.0),
         );
@@ -519,6 +621,15 @@ pub fn spawn_hut(
         double_sided: true,
         cull_mode: None,
         perceptual_roughness: 0.9,
+        ..default()
+    });
+    let glass_pane_mat = materials.add(StandardMaterial {
+        base_color: Color::srgba(0.72, 0.86, 0.95, 0.22),
+        alpha_mode: AlphaMode::Blend,
+        perceptual_roughness: 0.08,
+        reflectance: 0.6,
+        double_sided: true,
+        cull_mode: None,
         ..default()
     });
     // Colori degli arredi.
@@ -887,6 +998,8 @@ pub fn spawn_hut(
                         intensity: 0.0,
                         range: 6.0,
                         shadow_maps_enabled: true,
+                        shadow_depth_bias: 0.012,
+                        shadow_normal_bias: 0.25,
                         ..default()
                     },
                     Transform::from_xyz(-0.15, 0.3, 0.0),
@@ -981,6 +1094,8 @@ pub fn spawn_hut(
                 intensity: 180_000.0,
                 range: 9.0,
                 shadow_maps_enabled: true,
+                shadow_depth_bias: 0.012,
+                shadow_normal_bias: 0.25,
                 ..default()
             },
             Transform::from_xyz(0.0, lamp_y - 0.1, 0.3),
@@ -1018,6 +1133,26 @@ pub fn spawn_hut(
         // Serranda del negozio: pannello che scorre in verticale dietro l'apertura del banco.
         let shutter_closed = FLOOR_Y + 1.315;
         let shutter_open = shutter_closed + 1.05;
+        // Pulsante della serranda: SOLO all'interno, sulla parete +X (alla destra del
+        // Viandante quando vende), vicino allo spigolo anteriore e ben lontano dalla
+        // finestra; placchetta ruotata di 90° rispetto alla facciata (guarda verso -X).
+        let btn = Vec3::new(hw - 0.015, FLOOR_Y + 1.3, -2.75);
+        add_box(
+            c,
+            meshes,
+            &dark_wood,
+            Vec3::new(0.03, 0.14, 0.07),
+            btn,
+            false,
+        );
+        add_box(
+            c,
+            meshes,
+            &iron,
+            Vec3::new(0.03, 0.05, 0.03),
+            btn + Vec3::new(-0.025, 0.0, 0.0),
+            false,
+        );
         let shutter_h = c
             .spawn((
                 PropKind::Shutter,
@@ -1025,22 +1160,11 @@ pub fn spawn_hut(
                 Interactable {
                     prompt: "[E] Abbassa serranda".to_string(),
                     range: 3.0,
-                    // Piccolo raggio, sul lato dell'apertura: guardare il Viandante
-                    // dietro il banco non deve attivare la serranda.
-                    aim: Some(0.3),
+                    aim: Some(0.2),
                 },
-                Transform::from_xyz(1.6, FLOOR_Y + 1.5, -hd - 0.03),
+                Transform::from_translation(btn),
             ))
             .id();
-        // Maniglia (pomello) della serranda, sul lato dell'apertura, fuori dalla parete.
-        add_box(
-            c,
-            meshes,
-            &dark_wood,
-            Vec3::new(0.1, 0.1, 0.05),
-            Vec3::new(1.6, FLOOR_Y + 1.5, -hd - 0.03),
-            false,
-        );
         c.spawn((
             Slider {
                 state: shutter_h,
@@ -1055,6 +1179,7 @@ pub fn spawn_hut(
 
         // Finestre apribili: due imposte incernierate ai bordi esterni, si aprono verso l'esterno.
         let frames = side_frames();
+        let mut window_handles: Vec<Entity> = Vec::new();
         for (side_idx, px) in WINDOWS {
             let side = &frames[side_idx];
             let (dir, left, _, _, _) = *side;
@@ -1077,23 +1202,11 @@ pub fn spawn_hut(
             // Anta sinistra: cerniera a +x, si estende verso il centro (-x).
             // Anta destra: cerniera a -x, si estende verso il centro (+x).
             for (sign, uv0, uv1) in [(1.0_f32, 0.0_f32, 0.5_f32), (-1.0, 0.5, 1.0)] {
-                let mut mb = MeshBuf::new();
-                let (xa, xb) = (0.0, -sign * leaf_w); // bordo alla cerniera, bordo libero
-                let (tl_x, tr_x) = if sign > 0.0 { (xa, xb) } else { (xb, xa) };
-                mb.quad(
-                    [
-                        Vec3::new(tl_x, WIN_H / 2.0, 0.0),
-                        Vec3::new(tr_x, WIN_H / 2.0, 0.0),
-                        Vec3::new(tr_x, -WIN_H / 2.0, 0.0),
-                        Vec3::new(tl_x, -WIN_H / 2.0, 0.0),
-                    ],
-                    [
-                        Vec2::new(uv0, 0.0),
-                        Vec2::new(uv1, 0.0),
-                        Vec2::new(uv1, 1.0),
-                        Vec2::new(uv0, 1.0),
-                    ],
-                );
+                // Dalla cerniera (x=0) verso il centro (−sign·x), con 3 cm in più su
+                // entrambi i lati (cornice e centro), e 6 cm in più in altezza.
+                let (xa, xb) = (sign * LEAF_OVER, -sign * (leaf_w + LEAF_OVER));
+                let (x0, x1) = (xa.min(xb), xa.max(xb));
+                let mesh = leaf_mesh(x0, x1, WIN_H + 2.0 * LEAF_OVER, LEAF_THICK, uv0, uv1);
                 c.spawn((
                     Hinge {
                         state: win_h,
@@ -1101,17 +1214,25 @@ pub fn spawn_hut(
                         angle: 0.0,
                         base: frame,
                     },
-                    Transform::from_translation(center + left * (sign * WIN_W / 2.0) + dir * 0.02)
+                    Transform::from_translation(center + left * (sign * WIN_W / 2.0) + dir * 0.005)
                         .with_rotation(frame),
                     Visibility::default(),
                 ))
                 .with_children(|l| {
                     l.spawn((
-                        Mesh3d(meshes.add(mb.finish())),
+                        Mesh3d(meshes.add(mesh)),
                         MeshMaterial3d(shutters_mat.clone()),
                     ));
                 });
             }
+            // Vetro fisso (sottile, azzurrino): resta anche con gli scuri aperti.
+            c.spawn((
+                Mesh3d(meshes.add(Cuboid::new(WIN_W, WIN_H, 0.01))),
+                MeshMaterial3d(glass_pane_mat.clone()),
+                NotShadowCaster,
+                Transform::from_translation(center - dir * 0.0).with_rotation(frame),
+            ));
+            window_handles.push(win_h);
         }
 
         parts = Some(HutParts {
@@ -1119,6 +1240,7 @@ pub fn spawn_hut(
             stove: stove_h,
             light: light_h,
             shutter: shutter_h,
+            windows: window_handles,
         });
     });
     if let Some(p) = parts {
@@ -1364,8 +1486,16 @@ const SHOP_XZ: Vec2 = Vec2::new(KEEPER_SHOP.x, KEEPER_SHOP.z);
 const STOVE_STAND: Vec2 = Vec2::new(0.85, 2.45);
 const DOOR_STAND: Vec2 = Vec2::new(-1.0, -2.3);
 const SWITCH_STAND: Vec2 = Vec2::new(-0.55, -2.35);
+/// Davanti al pulsante della serranda (parete +X, vicino allo spigolo), rivolto a +X.
+const SHUTTER_STAND: Vec2 = Vec2::new(1.4, -2.6);
 const BED_FOOT: Vec2 = Vec2::new(-1.3, 0.55);
 const BED_LIE: Vec3 = Vec3::new(-1.35, Y0 + 0.46 + 0.35, 1.85);
+/// Incrocio libero davanti al tavolo, da cui partono i percorsi.
+const HUB: Vec2 = Vec2::new(0.8, -0.5);
+/// Ritardo (s reali) prima che chiuda da solo porta/finestre aperte: 45 s – 3 h di gioco (1 h = 60 s).
+const CLOSE_DELAY: (f32, f32) = (45.0, 180.0);
+/// Di notte si sveglia entro 1 h di gioco (60 s reali) se qualcosa è aperto.
+const NIGHT_DELAY: (f32, f32) = (10.0, 60.0);
 
 /// La stufa del Viandante è accesa 6–10 e 17–21, spenta nel resto della giornata.
 fn stove_wanted(hour: f32) -> bool {
@@ -1377,14 +1507,16 @@ fn stove_wanted(hour: f32) -> bool {
 enum KeeperPhase {
     /// Al banco.
     Day,
-    /// Sequenza serale (stufa, serranda, luce, porta, letto).
+    /// Sequenza serale (stufa, serranda, luce, porta e finestre, letto).
     Evening,
     /// Dorme nel letto.
     Asleep,
-    /// Sequenza mattutina (luce, porta, stufa, serranda, banco).
+    /// Sequenza mattutina (luce, porta e finestre, stufa, serranda, banco).
     Morning,
-    /// Va ad accendere/spegnere la stufa durante il giorno.
-    StoveTask,
+    /// Va ad accendere/spegnere la stufa o a chiudere porta/finestre durante il giorno.
+    Task,
+    /// Di notte si alza a chiudere ciò che è stato aperto e torna a letto.
+    NightCheck,
 }
 
 /// Passo di una sequenza della routine.
@@ -1402,8 +1534,10 @@ enum Step {
     Light(bool),
     /// Alza (true) o abbassa la serranda.
     Shutter(bool),
-    /// Chiude la porta se è aperta.
+    /// Chiude la porta.
     CloseDoor,
+    /// Chiude la finestra `i` (indice in `WINDOWS`).
+    CloseWindow(usize),
     /// Si sdraia sul letto.
     Lie,
     /// Si alza e si mette in piedi accanto al letto.
@@ -1418,16 +1552,43 @@ pub struct Keeper {
     wait: f32,
     /// Il giocatore ha toccato la stufa: il Viandante non la gestisce fino al mattino.
     pub stove_manual: bool,
+    /// Conti alla rovescia (s) per chiudere porta/finestre rimaste aperte: (maniglia, secondi).
+    open_timers: Vec<(Entity, f32)>,
+    /// Conto alla rovescia (s) per la ronda notturna, se qualcosa è aperto.
+    night_timer: Option<f32>,
+    rng: u64,
+    /// Moltiplicatore dei ritardi (solo debug: `PLANET_ONE_DELAY_SCALE`).
+    delay_scale: f32,
 }
 
 impl Keeper {
     pub fn new() -> Self {
+        // Seme dall'orologio di sistema (nessuna dipendenza esterna).
+        let seed = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0x9E37_79B9_7F4A_7C15, |d| d.as_nanos() as u64)
+            | 1;
         Self {
             phase: KeeperPhase::Day,
             steps: Default::default(),
             wait: 0.0,
             stove_manual: false,
+            open_timers: Vec::new(),
+            night_timer: None,
+            rng: seed,
+            delay_scale: std::env::var("PLANET_ONE_DELAY_SCALE")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(1.0),
         }
+    }
+
+    /// Numero casuale in [lo, hi) (xorshift64).
+    fn rand_range(&mut self, (lo, hi): (f32, f32)) -> f32 {
+        self.rng ^= self.rng << 13;
+        self.rng ^= self.rng >> 7;
+        self.rng ^= self.rng << 17;
+        (lo + (self.rng >> 11) as f32 / (1u64 << 53) as f32 * (hi - lo)) * self.delay_scale
     }
 }
 
@@ -1438,11 +1599,32 @@ fn yaw_towards(d: Vec2) -> f32 {
 
 type Steps = std::collections::VecDeque<Step>;
 
-/// Passi per andare alla stufa, commutarla e tornare al banco.
+/// Posizioni da cui chiude ciascuna finestra (stesso ordine di `WINDOWS`):
+/// percorso di avvicinamento, punto finale e direzione dello sguardo (verso la finestra).
+fn window_approach(i: usize) -> (Vec<Vec2>, Vec2, Vec2) {
+    match i {
+        // Lato +X, accanto allo spigolo anteriore, a z≈-0,93.
+        0 => (vec![HUB], Vec2::new(1.35, -0.93), Vec2::new(1.0, 0.0)),
+        // Retro, tra il letto e lo scaffale.
+        1 => (
+            vec![HUB, Vec2::new(0.85, 2.0)],
+            Vec2::new(-0.65, 2.35),
+            Vec2::new(0.0, 1.0),
+        ),
+        // Lato -X, davanti al baule.
+        _ => (
+            vec![HUB, Vec2::new(-0.3, -1.2)],
+            Vec2::new(-1.3, -1.6),
+            Vec2::new(-1.0, 0.0),
+        ),
+    }
+}
+
+/// Passi per andare alla stufa, commutarla e (se richiesto) tornare al banco.
 fn stove_trip(on: bool, back_to_shop: bool) -> Vec<Step> {
     use Step::*;
     let mut v = vec![
-        Walk(Vec2::new(0.8, -0.5)),
+        Walk(HUB),
         Walk(STOVE_STAND),
         Face(yaw_towards(Vec2::new(1.0, 0.0))),
         Wait(0.6),
@@ -1450,22 +1632,51 @@ fn stove_trip(on: bool, back_to_shop: bool) -> Vec<Step> {
         Wait(0.5),
     ];
     if back_to_shop {
-        v.extend([Walk(Vec2::new(0.8, -0.5)), Walk(SHOP_XZ), Face(0.0)]);
+        v.extend([Walk(HUB), Walk(SHOP_XZ), Face(0.0)]);
     }
     v
 }
 
-/// Sera: (spegne la stufa se è sua) → serranda giù → luce spenta → porta chiusa → a letto.
-fn evening_steps(stove_to_off: bool) -> Steps {
+/// Passi per chiudere la porta (se `door`) e le finestre indicate, partendo dall'incrocio.
+fn close_trip(door: bool, windows: &[usize]) -> Vec<Step> {
+    use Step::*;
+    let mut v = Vec::new();
+    if door {
+        v.extend([
+            Walk(HUB),
+            Walk(DOOR_STAND),
+            Face(0.0),
+            Wait(0.3),
+            CloseDoor,
+            Wait(0.6),
+        ]);
+    }
+    for &i in windows {
+        let (path, stand, look) = window_approach(i);
+        v.push(Walk(HUB));
+        v.extend(path.into_iter().map(Walk));
+        v.extend([
+            Walk(stand),
+            Face(yaw_towards(look)),
+            Wait(0.3),
+            CloseWindow(i),
+            Wait(0.6),
+        ]);
+    }
+    v
+}
+
+/// Sera: (spegne la stufa se è sua) → serranda giù → luce spenta → porta e finestre chiuse → a letto.
+fn evening_steps(stove_to_off: bool, door_open: bool, windows_open: &[usize]) -> Steps {
     use Step::*;
     let mut v: Vec<Step> = Vec::new();
     if stove_to_off {
         v.extend(stove_trip(false, false));
-        v.extend([Walk(Vec2::new(0.8, -0.5)), Walk(SHOP_XZ)]);
     }
     v.extend([
-        Walk(SHOP_XZ),
-        Face(0.0),
+        Walk(HUB),
+        Walk(SHUTTER_STAND),
+        Face(yaw_towards(Vec2::new(1.0, 0.0))),
         Wait(0.5),
         Shutter(false),
         Wait(1.2),
@@ -1474,20 +1685,14 @@ fn evening_steps(stove_to_off: bool) -> Steps {
         Wait(0.4),
         Light(false),
         Wait(0.5),
-        Walk(DOOR_STAND),
-        Face(0.0),
-        Wait(0.3),
-        CloseDoor,
-        Wait(0.8),
-        Walk(Vec2::new(-1.0, -0.6)),
-        Walk(BED_FOOT),
-        Lie,
     ]);
+    v.extend(close_trip(door_open, windows_open));
+    v.extend([Walk(Vec2::new(-1.0, -0.6)), Walk(BED_FOOT), Lie]);
     v.into()
 }
 
-/// Mattina: si alza → luce accesa → porta controllata/chiusa → stufa accesa → serranda su → banco.
-fn morning_steps() -> Steps {
+/// Mattina: si alza → luce accesa → porta e finestre controllate/chiuse → stufa accesa → serranda su → banco.
+fn morning_steps(door_open: bool, windows_open: &[usize]) -> Steps {
     use Step::*;
     let mut v: Vec<Step> = vec![
         Rise,
@@ -1498,26 +1703,34 @@ fn morning_steps() -> Steps {
         Wait(0.4),
         Light(true),
         Wait(0.5),
-        Walk(DOOR_STAND),
-        Face(0.0),
-        Wait(0.3),
-        CloseDoor,
-        Wait(0.6),
     ];
+    v.extend(close_trip(door_open, windows_open));
     v.extend(stove_trip(true, false));
     v.extend([
-        Walk(Vec2::new(0.8, -0.5)),
-        Walk(SHOP_XZ),
-        Face(0.0),
+        Walk(HUB),
+        Walk(SHUTTER_STAND),
+        Face(yaw_towards(Vec2::new(1.0, 0.0))),
         Wait(0.4),
         Shutter(true),
         Wait(1.2),
+        Walk(SHOP_XZ),
+        Face(0.0),
     ]);
     v.into()
 }
 
-/// Sistema: gestisce la giornata del Viandante (stufa a orari, sera, notte,
-/// mattina). Non parte mentre c'è un dialogo aperto.
+/// Ronda notturna: si alza, chiude porta/finestre aperte e torna a dormire.
+fn night_check_steps(door_open: bool, windows_open: &[usize]) -> Steps {
+    use Step::*;
+    let mut v: Vec<Step> = vec![Rise, Wait(0.5), Walk(Vec2::new(-1.0, -0.6))];
+    v.extend(close_trip(door_open, windows_open));
+    v.extend([Walk(Vec2::new(-1.0, -0.6)), Walk(BED_FOOT), Lie]);
+    v.into()
+}
+
+/// Sistema: gestisce la giornata del Viandante (stufa a orari, chiusura di
+/// porta/finestre lasciate aperte, sera, notte, mattina). Non parte mentre
+/// c'è un dialogo aperto.
 #[allow(clippy::too_many_arguments)]
 pub fn keeper_routine(
     time: Res<Time>,
@@ -1540,13 +1753,59 @@ pub fn keeper_routine(
     let dt = time.delta_secs();
     let hour = clock.hour;
     let night = !(WAKE_HOUR..SLEEP_HOUR).contains(&hour);
+    // Stato corrente degli oggetti.
+    let is_on = |states: &Query<&mut PropState>, e: Entity| states.get(e).is_ok_and(|s| s.on);
     for (entity, mut k, mut tf, mut npc) in &mut keepers {
-        let stove_on = states.get(parts.stove).is_ok_and(|s| s.on);
+        let stove_on = is_on(&states, parts.stove);
+        let door_open = is_on(&states, parts.door);
+        let windows_open: Vec<usize> = parts
+            .windows
+            .iter()
+            .enumerate()
+            .filter(|(_, w)| is_on(&states, **w))
+            .map(|(i, _)| i)
+            .collect();
+
+        // Conti alla rovescia per porta e finestre aperte (si azzerano alla chiusura).
+        let watched: Vec<Entity> = std::iter::once(parts.door)
+            .chain(parts.windows.iter().copied())
+            .collect();
+        for e in &watched {
+            let open = is_on(&states, *e);
+            let has = k.open_timers.iter().any(|(t, _)| t == e);
+            if open && !has {
+                let delay = k.rand_range(CLOSE_DELAY);
+                k.open_timers.push((*e, delay));
+            } else if !open && has {
+                k.open_timers.retain(|(t, _)| t != e);
+            }
+        }
+        // I conti scorrono solo mentre è al banco o sveglio (non durante le sequenze).
+        if matches!(k.phase, KeeperPhase::Day) {
+            for (_, t) in k.open_timers.iter_mut() {
+                *t -= dt;
+            }
+        }
+        // Ronda notturna: se dorme e qualcosa è aperto, parte un conto (max 1 h di gioco).
+        let something_open = door_open || !windows_open.is_empty();
+        if k.phase == KeeperPhase::Asleep {
+            match (something_open, k.night_timer) {
+                (true, None) => {
+                    let t = k.rand_range(NIGHT_DELAY);
+                    k.night_timer = Some(t);
+                }
+                (true, Some(t)) => k.night_timer = Some(t - dt),
+                (false, _) => k.night_timer = None,
+            }
+        } else {
+            k.night_timer = None;
+        }
+
         // Avvio delle sequenze.
         match k.phase {
             KeeperPhase::Day if !dialog.open && night => {
                 // Spegne la stufa solo se l'aveva accesa lui (non toccata dal giocatore).
-                k.steps = evening_steps(stove_on && !k.stove_manual);
+                k.steps = evening_steps(stove_on && !k.stove_manual, door_open, &windows_open);
                 k.phase = KeeperPhase::Evening;
                 npc.mode = NpcMode::Busy;
                 commands.entity(entity).insert(ColliderDisabled);
@@ -1556,37 +1815,74 @@ pub fn keeper_routine(
                 if !dialog.open && !k.stove_manual && stove_on != stove_wanted(hour) =>
             {
                 k.steps = stove_trip(stove_wanted(hour), true).into();
-                k.phase = KeeperPhase::StoveTask;
+                k.phase = KeeperPhase::Task;
                 npc.mode = NpcMode::Busy;
                 commands.entity(entity).insert(ColliderDisabled);
                 info!("[KEEPER] va alla stufa ({})", stove_wanted(hour));
             }
+            KeeperPhase::Day if !dialog.open && k.open_timers.iter().any(|(_, t)| *t <= 0.0) => {
+                // Chiude ciò che è rimasto aperto da troppo tempo.
+                let expired: Vec<Entity> = k
+                    .open_timers
+                    .iter()
+                    .filter(|(_, t)| *t <= 0.0)
+                    .map(|(e, _)| *e)
+                    .collect();
+                let door = expired.contains(&parts.door);
+                let wins: Vec<usize> = parts
+                    .windows
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, w)| expired.contains(w))
+                    .map(|(i, _)| i)
+                    .collect();
+                let mut v = close_trip(door, &wins);
+                v.extend([Step::Walk(HUB), Step::Walk(SHOP_XZ), Step::Face(0.0)]);
+                k.steps = v.into();
+                k.phase = KeeperPhase::Task;
+                npc.mode = NpcMode::Busy;
+                commands.entity(entity).insert(ColliderDisabled);
+                info!("[KEEPER] va a chiudere (porta: {door}, finestre: {wins:?})");
+            }
             KeeperPhase::Asleep if !night => {
                 k.stove_manual = false;
-                k.steps = morning_steps();
+                k.steps = morning_steps(door_open, &windows_open);
                 k.phase = KeeperPhase::Morning;
                 npc.mode = NpcMode::Busy;
                 info!("[KEEPER] si sveglia");
+            }
+            KeeperPhase::Asleep if k.night_timer.is_some_and(|t| t <= 0.0) => {
+                k.steps = night_check_steps(door_open, &windows_open);
+                k.phase = KeeperPhase::NightCheck;
+                k.night_timer = None;
+                npc.mode = NpcMode::Busy;
+                info!("[KEEPER] ronda notturna (porta: {door_open}, finestre: {windows_open:?})");
             }
             _ => {}
         }
         if !matches!(
             k.phase,
-            KeeperPhase::Evening | KeeperPhase::Morning | KeeperPhase::StoveTask
+            KeeperPhase::Evening
+                | KeeperPhase::Morning
+                | KeeperPhase::Task
+                | KeeperPhase::NightCheck
         ) {
             continue;
         }
         let Some(step) = k.steps.front().copied() else {
             // Sequenza finita.
-            if k.phase == KeeperPhase::Evening {
-                k.phase = KeeperPhase::Asleep;
-                npc.mode = NpcMode::Asleep;
-                info!("[KEEPER] dorme");
-            } else {
-                k.phase = KeeperPhase::Day;
-                npc.mode = NpcMode::Ready;
-                commands.entity(entity).remove::<ColliderDisabled>();
-                info!("[KEEPER] al banco");
+            match k.phase {
+                KeeperPhase::Evening | KeeperPhase::NightCheck => {
+                    k.phase = KeeperPhase::Asleep;
+                    npc.mode = NpcMode::Asleep;
+                    info!("[KEEPER] dorme");
+                }
+                _ => {
+                    k.phase = KeeperPhase::Day;
+                    npc.mode = NpcMode::Ready;
+                    commands.entity(entity).remove::<ColliderDisabled>();
+                    info!("[KEEPER] al banco");
+                }
             }
             continue;
         };
@@ -1641,6 +1937,14 @@ pub fn keeper_routine(
             }
             Step::CloseDoor => {
                 if let Ok(mut s) = states.get_mut(parts.door) {
+                    s.on = false;
+                }
+                k.steps.pop_front();
+            }
+            Step::CloseWindow(i) => {
+                if let Some(w) = parts.windows.get(i)
+                    && let Ok(mut s) = states.get_mut(*w)
+                {
                     s.on = false;
                 }
                 k.steps.pop_front();

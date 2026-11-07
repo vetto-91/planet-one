@@ -6,6 +6,7 @@ use crate::{
     entities::{DialogState, NearestInteract},
     hud,
     inventory::Inventory,
+    map,
     player::PlayerHealth,
     quests::{
         Barks, ObjState, QuestEntry, QuestStatus, QuestTexts,
@@ -43,6 +44,8 @@ pub fn toggle(
             (true, AppState::Journal)
         } else if keys.just_pressed(KeyCode::KeyT) {
             (true, AppState::Wait)
+        } else if keys.just_pressed(KeyCode::KeyM) {
+            (true, AppState::Map)
         } else {
             (false, AppState::Playing)
         };
@@ -66,7 +69,9 @@ pub fn toggle(
     }
     match state.get() {
         AppState::Playing => next.set(AppState::Paused),
-        AppState::Paused | AppState::Journal | AppState::Wait => next.set(AppState::Playing),
+        AppState::Paused | AppState::Journal | AppState::Wait | AppState::Map => {
+            next.set(AppState::Playing)
+        }
         // Durante il reset ESC non fa nulla: è uno stato transitorio.
         AppState::Resetting => {}
     }
@@ -109,6 +114,7 @@ pub struct UiQueries<'w, 's> {
     pub anchors: Query<'w, 's, &'static crate::hud::NameAnchor>,
     pub styled: Local<'s, bool>,
     pub audio: ResMut<'w, crate::audio::AudioSettings>,
+    pub map_view: Res<'w, map::MapView>,
     pub clock: ResMut<'w, crate::daynight::GameClock>,
     pub wait: ResMut<'w, crate::daynight::WaitUi>,
     pub player_pos: Query<'w, 's, &'static GlobalTransform, With<crate::player::Player>>,
@@ -407,6 +413,19 @@ pub fn ui(
                 next.set(AppState::Playing);
             } else if close {
                 next.set(AppState::Playing);
+            }
+        }
+        AppState::Map => {
+            let heading = (-orbit.yaw).to_degrees().rem_euclid(360.0);
+            if let Ok(pp) = q.player_pos.single() {
+                map::draw_map_overlay(
+                    ctx,
+                    q.cameras.single().ok(),
+                    pp.translation(),
+                    heading,
+                    q.npc_pos.single().ok().map(|t| t.translation()),
+                    q.map_view.zoom,
+                );
             }
         }
         AppState::Journal => {

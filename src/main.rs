@@ -7,12 +7,14 @@ mod audio;
 mod camera;
 mod combat;
 mod daynight;
+mod debug_place;
 mod devtools;
 mod entities;
 mod figure;
 mod hud;
 mod hut;
 mod inventory;
+mod map;
 mod menu;
 mod player;
 mod props;
@@ -54,6 +56,8 @@ pub enum AppState {
     Journal,
     /// Finestra "Aspetta" aperta (T): gameplay sospeso, cursore libero.
     Wait,
+    /// Mappa aperta (M): vista dall'alto, gameplay sospeso, cursore libero.
+    Map,
     /// Reset della scena in corso (un frame, non interattivo).
     Resetting,
 }
@@ -106,6 +110,8 @@ fn main() {
         .init_resource::<quests::QuestTexts>()
         .init_resource::<quests::Barks>()
         .init_resource::<menu::JournalTab>()
+        .add_plugins(map::plugin)
+        .init_resource::<debug_place::DebugPlace>()
         .init_resource::<audio::AudioSettings>()
         .init_resource::<voice::VoiceQueue>()
         .init_resource::<audio::MusicDuck>()
@@ -223,7 +229,11 @@ fn main() {
         // Menu e overlay FPS: il disegno della UI egui DEVE girare nella
         // schedule EguiPrimaryContextPass (in egui 0.36 i font sono
         // disponibili solo durante il pass).
-        .add_systems(EguiPrimaryContextPass, menu::ui)
+        .add_systems(
+            EguiPrimaryContextPass,
+            (menu::ui, debug_place::debug_ui).chain(),
+        )
+        .add_systems(Update, debug_place::sync_markers)
         // Toggle Esc: bidirezionale (Playing ↔ Paused), esclude Resetting.
         // (dopo advance_dialog e prima di interact: vedi `DialogState::block_interact`)
         .add_systems(
@@ -243,6 +253,13 @@ fn main() {
                 apply_cursor_warp,
                 log_input_events,
             ),
+        )
+        .add_systems(OnEnter(AppState::Map), map::enter_map)
+        .add_systems(OnExit(AppState::Map), map::exit_map)
+        .add_systems(
+            Update,
+            (map::map_zoom, map::map_lighting.after(daynight::update_sky))
+                .run_if(in_state(AppState::Map)),
         )
         .add_systems(OnEnter(AppState::Resetting), scene::reset_scene)
         .run();

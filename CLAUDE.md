@@ -40,7 +40,7 @@ Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, 
 
 ## Architettura
 
-- `src/main.rs`: stati dell'app (`Playing`, `Paused`, `Journal`, `Wait`, `Resetting`) e cablaggio dei sistemi.
+- `src/main.rs`: stati dell'app (`Playing`, `Paused`, `Journal`, `Wait`, `Map`, `Resetting`) e cablaggio dei sistemi.
 - `src/scene.rs`: costruzione e reset della scena.
 - `src/terrain.rs`: heightmap → mesh e collider, hot-reload.
 - `src/player.rs`: movimento, salto, corsa, ground-check (in `FixedUpdate`, character controller kinematico).
@@ -54,6 +54,8 @@ Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, 
 - `src/figure.rs`: mesh a parallelepipedo con UV per faccia per le skin in `assets/textures/{player,ladro,viandante}.png`.
 - `src/audio.rs`: musica di sottofondo (OGG in `assets/audio/music/`), volume musiche salvato in `~/.config/planet-one/settings.txt`.
 - `src/hut.rs`: casetta-chiosco del Viandante (mesh con UV dalla foto `assets/textures/capanna.png`, fondamenta e scale di pietra, interni, oggetti con stato `PropState`: porta, finestre, stufa con fumo, luce, serranda) e routine giornaliera del negoziante (`Keeper`). Gli oggetti si usano col mirino (`Interactable.aim`, vedi `entities::interact`).
+- `src/map.rs`: mappa (M): camera ortografica dall'alto sulla scena reale + overlay egui (bussola, segnalino); `MapView` per lo zoom.
+- `src/debug_place.rs`: modalità debug piazzamenti (F4), file `debug/placements.txt` (riletto all'avvio).
 - `src/devtools.rs`: variabili d'ambiente di debug (`PLANET_ONE_HOUR/POS/LOOK`) per provare il gioco e fare screenshot.
 - `src/props.rs`: `SnapToGround` (appoggio a terra con raycast).
 - `src/voice.rs`: voci dei personaggi (`assets/audio/voci/`, mappa in `assets/quests/<quest>/voci.txt` generata da `scripts/export_voci.py`).

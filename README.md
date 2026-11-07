@@ -30,10 +30,19 @@ cargo fmt            # formatta
 cargo clippy         # linter
 ```
 
+## Debug piazzamenti (F4)
+
+Per indicare dove mettere alberi o qualunque oggetto: F4 apre il pannello (tipo, modalità *singolo / gruppo-raggio /
+area-rettangolo / area-cerchio*, quantità, raggio, nota). Si indica il punto **dalla mappa (M)** con il clic
+(aree: due clic; clic destro = elimina l'oggetto più vicino) oppure **in 3D** con **P** (aggiungi dove guardi) e **X**
+(elimina il più vicino). Ogni modifica riscrive `debug/placements.txt` (blocchi `[P-nnnn]` con tipo, modalità, area,
+quantità, seed, nota e coordinate effettive; il nord è −Z) che viene riletto all'avvio. I segnaposto sono solo
+primitive colorate. In fullscreen il cursore è catturato: per usare il pannello dalla finestra premi prima M.
+
 ## Debug
 
 Variabili d'ambiente per provare il gioco senza giocarlo: `PLANET_ONE_HOUR=21.5` (ora iniziale),
-`PLANET_ONE_POS=x,y,z` (teletrasporto del player), `PLANET_ONE_LOOK=yaw,pitch[,distanza[,1]]` (camera; 1 = prima persona).
+`PLANET_ONE_POS=x,y,z` (teletrasporto del player), `PLANET_ONE_DELAY_SCALE=0.1` (ritardi del Viandante), `PLANET_ONE_LOOK=yaw,pitch[,distanza[,1]]` (camera; 1 = prima persona).
 
 ## Debug input
 
@@ -56,6 +65,8 @@ grep "\[EVENT\]" run.log    # eventi finestra/cursore
 | Esc | Menu pausa (tasti, slider sensibilità, checkbox FPS, reset scena) |
 | F3 | Wireframe dei collider (debug fisico) |
 | F11 | Schermo intero on/off (in fullscreen il cursore è bloccato e nascosto) |
+| M | Mappa dall'alto (vista drone, nord in alto, bussola in alto a sinistra); rotella o +/- = zoom; M/Esc = chiudi |
+| F4 | Modalità debug piazzamenti (vedi sotto): dalla mappa clic = aggiungi / clic destro = elimina; in 3D P = aggiungi, X = elimina |
 | T | "Aspetta": fa avanzare l'ora di gioco di N ore (T o Esc per chiudere) |
 | J | Diario delle quest (tab Da fare / Completate, quest espandibili); J o Esc per chiudere |
 | TAB (tenuto) | Obiettivi della quest (solo a quest attiva) |
@@ -85,6 +96,9 @@ Il Viandante vende dal chiosco della casetta (3D, con fondamenta e scalini di pi
 (3), stufa, interruttore della luce e serranda del negozio (scritta CHIUSO) si usano con E **guardandoli
 col mirino**; dentro si può entrare: letto, cucinino con stufa a legna (dal camino esce il fumo), tavolo,
 baule, scaffale e lanterna; la luce delle lampade e della stufa resta dentro le pareti (ombre).
+
+Se lasci aperte porta o finestre il Viandante, dopo un ritardo casuale (45 s – 3 h di gioco), le chiude; di notte, se
+qualcosa viene aperto, si alza entro 1 h di gioco, chiude e torna a dormire. Le finestre hanno scuri spessi e vetro.
 
 Giornata del Viandante: **6:00** si alza, accende la luce, chiude la porta se aperta, accende la stufa e
 alza la serranda; la stufa è accesa 6–10 e 17–21 (se la accendi/spegni tu non la tocca più fino al mattino).

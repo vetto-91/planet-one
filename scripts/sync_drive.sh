@@ -6,6 +6,7 @@
 #   ./scripts/sync_drive.sh --dry-run          # mostra cosa verrebbe copiato/cancellato
 #   ./scripts/sync_drive.sh                    # sync reale
 #   ./scripts/sync_drive.sh --delete-excluded  # in più rimuove da Drive ciò che ora è escluso
+#   ./scripts/sync_drive.sh --copy             # solo copia nuovi/modificati: NON cancella mai nulla su Drive
 #
 # Variabili: REMOTE (default gdrive:dev/Project-One)
 set -euo pipefail
@@ -13,9 +14,16 @@ set -euo pipefail
 REMOTE="${REMOTE:-gdrive:dev/Project-One}"
 cd "$(dirname "$0")/.."
 
-exec rclone sync . "$REMOTE" --progress \
+# --copy: modalità conservativa (rclone copy), senza cancellazioni sul remoto.
+MODE=sync
+ARGS=()
+for a in "$@"; do
+  if [ "$a" = "--copy" ]; then MODE=copy; else ARGS+=("$a"); fi
+done
+
+exec rclone "$MODE" . "$REMOTE" --progress \
   --exclude-if-present CACHEDIR.TAG \
   --exclude '/target/**' \
   --exclude '/.claude/worktrees/**' \
   --exclude '/context/**' \
-  "$@"
+  ${ARGS[@]+"${ARGS[@]}"}

@@ -2,6 +2,7 @@
 //!
 //! - `PLANET_ONE_HOUR=21.5`: ora di gioco iniziale (vedi `daynight`).
 //! - `PLANET_ONE_POS=x,y,z`: teletrasporta il player (dopo ~1 s).
+//! - `PLANET_ONE_DELAY_SCALE=0.1`: moltiplica i ritardi con cui il Viandante chiude porta/finestre.
 //! - `PLANET_ONE_LOOK=yaw,pitch[,distanza[,1]]`: orientamento della camera in gradi
 //!   (il quarto valore 1 attiva la prima persona).
 //!

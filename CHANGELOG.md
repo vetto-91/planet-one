@@ -2,6 +2,18 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- Mappa in gioco (M): vista dall'alto della scena reale (camera ortografica, nord in alto), bussola in alto a sinistra,
+  segnalino del giocatore, zoom con rotella e +/- (`MapView`).
+- Modalità debug piazzamenti (F4): segnaposto singoli, in gruppo o ad area, aggiunti/eliminati dalla mappa o in 3D,
+  salvati in `debug/placements.txt` e riletti all'avvio.
+- Casetta: pulsante della serranda solo all'interno (parete +X, vicino allo spigolo), scuri spessi e più larghi, vetro
+  alle 3 finestre, giunti muro/fondamenta chiusi (niente luce dal retro), luci con bias ridotto.
+- Il Viandante chiude porta e finestre lasciate aperte dopo un ritardo casuale (45 s – 3 h di gioco); sera e mattina
+  controllano anche le finestre; di notte si alza entro 1 h di gioco se qualcosa viene aperto.
+- `scripts/sync_drive.sh --copy` (nessuna cancellazione su Drive).
+
 ## v0.0.8.0 — Interazione col mirino, casetta rifinita, routine del Viandante v2 (2026-11-07)
 
 - Prima persona: occhi a ~1,57 m da terra. Chip delle coordinate con anche la quota Y dei piedi.
