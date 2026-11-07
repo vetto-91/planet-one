@@ -58,6 +58,11 @@ impl Default for OrbitCamera {
     }
 }
 
+/// Marker dei collider che la camera in terza persona non deve attraversare
+/// (pareti e tetto della casetta).
+#[derive(Component)]
+pub struct BlocksCamera;
+
 /// Limiti dell'angolo verticale.
 const PITCH_MIN: f32 = 0.05;
 const PITCH_MAX: f32 = 1.35;
@@ -168,6 +173,8 @@ pub fn mode_input(keys: Res<ButtonInput<KeyCode>>, mut state: ResMut<OrbitCamera
 /// sua stessa direzione (crosshair sincronizzata).
 pub fn follow(
     state: Res<OrbitCamera>,
+    spatial: avian3d::prelude::SpatialQuery,
+    blockers: Query<(), With<BlocksCamera>>,
     players: Query<&GlobalTransform, With<Player>>,
     mut cameras: Query<&mut Transform, (With<Camera3d>, Without<Player>)>,
     time: Res<Time>,
@@ -186,9 +193,28 @@ pub fn follow(
                 state.pitch.cos() * state.yaw.cos(),
             ) * state.distance;
 
-            let target = focus + offset;
+            let mut target = focus + offset;
+            // Non attraversare pareti e tetto: raycast dal fuoco verso la camera.
+            let mut clipped = false;
+            if let Ok(dir) = Dir3::new(offset)
+                && let Some(hit) = spatial.cast_ray_predicate(
+                    focus,
+                    dir,
+                    state.distance,
+                    true,
+                    &avian3d::prelude::SpatialQueryFilter::default(),
+                    &|e| blockers.contains(e),
+                )
+            {
+                target = focus + *dir * (hit.distance - 0.25).max(0.4);
+                clipped = true;
+            }
             let alpha = (FOLLOW_SMOOTHNESS * time.delta_secs()).clamp(0.0, 1.0);
-            camera.translation = camera.translation.lerp(target, alpha);
+            camera.translation = if clipped {
+                target // contro un muro: subito vicino, senza passare attraverso
+            } else {
+                camera.translation.lerp(target, alpha)
+            };
             camera.look_at(focus, Vec3::Y);
         }
         CameraMode::FirstPerson => {

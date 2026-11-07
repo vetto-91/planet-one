@@ -68,6 +68,8 @@ pub struct QuestState {
     /// Direzione e distanza del ladro (es. "nord-ovest, circa 60 m"),
     /// aggiornata ogni frame; usata dal Viandante quando la quest è attiva.
     pub thief_hint: Option<String>,
+    /// Come `thief_hint` ma strutturato (nome direzione, metri arrotondati a 5): serve alle voci.
+    pub thief_hint_parts: Option<(&'static str, u32)>,
     /// Posizione in cui il ladro è stato ucciso (scritta da
     /// `combat::handle_enemy_death`, consumata da `quest_on_thief_death`).
     pub thief_killed_at: Option<Vec3>,
@@ -85,6 +87,7 @@ impl Default for QuestState {
             accepted: false,
             final_done: false,
             thief_hint: None,
+            thief_hint_parts: None,
             thief_killed_at: None,
             thief_spotted: false,
         }
@@ -354,23 +357,25 @@ pub fn update_thief_hint(
     thieves: Query<&GlobalTransform, With<QuestThief>>,
     npcs: Query<&GlobalTransform, With<crate::entities::Npc>>,
 ) {
-    let hint = match (thieves.single(), npcs.single()) {
+    let parts = match (thieves.single(), npcs.single()) {
         (Ok(t), Ok(n)) => {
             let from = n.translation();
             let to = t.translation();
-            let meters = (from.distance(to) / 5.0).round() * 5.0;
-            Some(format!("{}, circa {:.0} m", compass_name(from, to), meters))
+            let meters = ((from.distance(to) / 5.0).round() * 5.0) as u32;
+            Some((compass_name(from, to), meters))
         }
         _ => None,
     };
+    let hint = parts.map(|(name, m)| format!("{name}, circa {m} m"));
     if quest.thief_hint != hint {
         quest.thief_hint = hint;
+        quest.thief_hint_parts = parts;
     }
 }
 
 /// Battute del Viandante (righe, scelte) in base alla fase; i testi vengono
 /// dal file `dialoghi.txt`. Le scelte compaiono solo alla prima richiesta.
-pub fn npc_dialog(quest: &QuestState, d: &Dialogs) -> (Vec<String>, Vec<String>) {
+pub fn npc_dialog(quest: &QuestState, d: &Dialogs) -> (Vec<String>, Vec<String>, Vec<Vec<String>>) {
     let vars = [
         ("total", quest.coins_total.to_string()),
         ("n", quest.coins_collected.to_string()),
@@ -390,7 +395,38 @@ pub fn npc_dialog(quest: &QuestState, d: &Dialogs) -> (Vec<String>, Vec<String>)
     } else {
         Vec::new()
     };
-    (d.lines(section, &vars), choices)
+    let lines = d.lines(section, &vars);
+    let voices = (1..=lines.len())
+        .map(|i| voice_clips(d, quest, &format!("{section}.{i}")))
+        .collect();
+    (lines, choices, voices)
+}
+
+/// Clip vocali di una battuta. La voce `@hint` è composta: clip della direzione
+/// + clip della distanza più vicina tra quelle registrate.
+fn voice_clips(d: &Dialogs, quest: &QuestState, key: &str) -> Vec<String> {
+    match d.voice(key) {
+        Some("@hint") => {
+            let mut clips = Vec::new();
+            if let Some((dir, meters)) = quest.thief_hint_parts {
+                if let Some(c) = d.voice(&format!("direzione.{dir}")) {
+                    clips.push(c.to_string());
+                }
+                let nearest = (5..=200u32)
+                    .step_by(5)
+                    .filter(|m| d.voice(&format!("distanza.{m}")).is_some())
+                    .min_by_key(|m| m.abs_diff(meters));
+                if let Some(m) = nearest
+                    && let Some(c) = d.voice(&format!("distanza.{m}"))
+                {
+                    clips.push(c.to_string());
+                }
+            }
+            clips
+        }
+        Some(c) => vec![c.to_string()],
+        None => Vec::new(),
+    }
 }
 
 /// Voce del diario: `None` finché la quest non è stata accettata.
@@ -451,6 +487,7 @@ pub fn journal_entry(quest: &QuestState, d: &Dialogs) -> Option<QuestEntry> {
 pub fn thief_notice_player(
     mut quest: ResMut<QuestState>,
     mut barks: ResMut<Barks>,
+    mut voice: ResMut<crate::voice::VoiceQueue>,
     texts: Res<crate::quests::QuestTexts>,
     players: Query<&GlobalTransform, With<Player>>,
     thieves: Query<(Entity, &GlobalTransform), With<QuestThief>>,
@@ -468,6 +505,9 @@ pub fn thief_notice_player(
             "Ladro",
             texts.denaro_rubato.text("ladro_avvistato", &[]),
         );
+        if let Some(c) = texts.denaro_rubato.voice("ladro_avvistato.1") {
+            voice.play(vec![c.to_string()], crate::voice::VoiceKind::Bark);
+        }
         info!("[QUEST] il ladro ha notato il giocatore");
     }
 }

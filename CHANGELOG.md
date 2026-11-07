@@ -10,6 +10,15 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
   al posto del Viandante, che ora fa da negoziante dentro il chiosco; l'insegna dice "GUSTO DEL BOSCO".
 - NPC e casetta appoggiati al terreno (`SnapToGround`): l'NPC non è più mezzo sepolto.
 - `docs/voci/viandante.txt` e `docs/voci/ladro.txt` con tutte le battute, generati da `scripts/export_voci.py`.
+- Voci dei personaggi nel gioco (`assets/audio/voci/`, mappa in `voci.txt`): partono con ogni riga di dialogo,
+  il congedo del Viandante e la battuta del ladro; la riga con direzione/distanza del ladro è composta da due
+  clip. Slider "Volume voci" nel menu Esc.
+- Casetta esplorabile 4x6 m: fondamenta e scale di pietra (texture generata `pietra.png`), porta apribile (E),
+  interni (letto, cucinino con stufa, tavolo con sedie, baule, scaffale, lanterna), stufa accendibile con camino e fumo.
+- Camera in terza persona che non attraversa pareti e tetto della casetta.
+- Routine del Viandante: dopo le 21 accende la stufa, chiude la porta e va a dormire; alle 6 si sveglia,
+  spegne la stufa, apre la porta e torna al banco. Da addormentato risponde "Zzz…".
+- Versione del gioco in basso a destra nel menu Esc (`src/version.rs`).
 
 ## v0.0.6.0 — Rifiniture: diario, giorno/notte, skin, UI condivisa (2026-11-06)
 

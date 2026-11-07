@@ -22,15 +22,28 @@ use bevy::prelude::*;
 #[derive(Component)]
 pub struct Interactable {
     /// Testo del prompt mostrato quando il player è nel range.
-    pub prompt: &'static str,
+    pub prompt: String,
     /// Raggio di interazione (m).
     pub range: f32,
 }
 
-/// NPC: entité stazionaria con dialogo.
+/// Stato dell'NPC rispetto al dialogo.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum NpcMode {
+    /// Al suo posto: si può parlare.
+    Ready,
+    /// Impegnato nella routine (cammina, accende la stufa…): non interagibile.
+    Busy,
+    /// Dorme: "[E]" fa solo uno "Zzz…".
+    Asleep,
+}
+
+/// NPC: entità stazionaria con dialogo.
 #[derive(Component)]
 pub struct Npc {
     pub name: &'static str,
+    /// Stato: pronto a parlare, occupato (routine) o addormentato.
+    pub mode: NpcMode,
     /// Righe del dialogo, mostrate in sequenza.
     pub lines: &'static [&'static str],
 }
@@ -70,6 +83,8 @@ pub struct DialogState {
     pub selected: usize,
     /// `true` quando si mostra la domanda con le scelte (dopo l'ultima riga).
     pub choosing: bool,
+    /// Clip vocali di ogni riga (vuoto = nessuna voce), in parallelo a `lines`.
+    pub voices: Vec<Vec<String>>,
     /// Scelta confermata alla chiusura (`None` = nessuna scelta, es. Esc).
     pub result: Option<usize>,
     /// La E che chiude il dialogo non deve riaprirlo nello stesso frame.
@@ -104,7 +119,7 @@ pub fn spawn_npc(
     asset_server: &AssetServer,
     parent: Entity,
     local: Vec3,
-) {
+) -> Entity {
     let mesh = meshes.add(crate::figure::figure_mesh(
         Vec3::new(0.7, 1.6, 0.7),
         &crate::figure::FigureUv::standard(),
@@ -117,6 +132,7 @@ pub fn spawn_npc(
         .spawn((
             Npc {
                 name: "Viandante",
+                mode: NpcMode::Ready,
                 lines: &[
                     "Salve, viaggiatore! Benvenuto su Planet One.",
                     "Le colline qui intorno sono piene di sorprese... e di nemici.",
@@ -125,9 +141,10 @@ pub fn spawn_npc(
                 ],
             },
             Interactable {
-                prompt: "[E] Parla",
+                prompt: "[E] Parla".to_string(),
                 range: 5.0,
             },
+            crate::hut::Keeper::new(),
             // Collider figlio: si somma al corpo statico della casetta.
             Collider::capsule(0.35, 1.0),
             Mesh3d(mesh),
@@ -136,6 +153,7 @@ pub fn spawn_npc(
         ))
         .id();
     commands.entity(parent).add_child(npc);
+    npc
 }
 
 /// Spawn del nemico con patrol tra due waypoint.
@@ -173,12 +191,33 @@ pub fn spawn_enemy(
     ));
 }
 
+/// Interagibile più vicino: (distanza, entità, componente, NPC, proprietà).
+type BestInteract<'a> = (
+    f32,
+    Entity,
+    &'a Interactable,
+    Option<&'a Npc>,
+    Option<&'a crate::hut::PropKind>,
+);
+
 /// Sistema di interazione: trova l'`Interactable` più vicino al player entro
 /// range e, se il tasto E è premuto, apre il dialogo.
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn interact(
     keys: Res<ButtonInput<KeyCode>>,
     players: Query<&GlobalTransform, With<Player>>,
-    interactables: Query<(Entity, &GlobalTransform, &Interactable, Option<&Npc>), Without<Player>>,
+    interactables: Query<
+        (
+            Entity,
+            &GlobalTransform,
+            &Interactable,
+            Option<&Npc>,
+            Option<&crate::hut::PropKind>,
+        ),
+        Without<Player>,
+    >,
+    mut toggles: MessageWriter<crate::hut::PropToggle>,
+    mut barks: ResMut<crate::quests::Barks>,
     mut dialog: ResMut<DialogState>,
     mut nearest: ResMut<NearestInteract>,
     quest: Res<crate::quests::denaro_rubato::QuestState>,
@@ -201,32 +240,51 @@ pub fn interact(
     let p = player.translation();
 
     // Trova l'interagibile più vicino entro range.
-    let mut best: Option<(f32, Entity, &Interactable, Option<&Npc>)> = None;
-    for (e, t, inter, npc) in &interactables {
+    let mut best: Option<BestInteract> = None;
+    for (e, t, inter, npc, prop) in &interactables {
+        // L'NPC impegnato nella routine non è interagibile.
+        if npc.is_some_and(|n| n.mode == NpcMode::Busy) {
+            continue;
+        }
         let dist = t.translation().distance(p);
-        if dist <= inter.range && best.as_ref().is_none_or(|(d, _, _, _)| dist < *d) {
-            best = Some((dist, e, inter, npc));
+        if dist <= inter.range && best.as_ref().is_none_or(|b| dist < b.0) {
+            best = Some((dist, e, inter, npc, prop));
         }
     }
 
     // Aggiorna il prompt mostrato dalla UI per l'interagibile piu' vicino.
-    nearest.prompt = best
-        .as_ref()
-        .map(|(_, _, inter, _)| inter.prompt.to_string());
+    nearest.prompt = best.as_ref().map(|b| b.2.prompt.clone());
     // (log debug rimosso)
 
-    if let Some((_, entity, _, Some(npc))) = best
+    // Porta e stufa: E commuta lo stato (gestito da `hut::handle_prop_toggle`).
+    if let Some((_, entity, _, None, Some(_))) = best
+        && keys.just_pressed(KeyCode::KeyE)
+    {
+        toggles.write(crate::hut::PropToggle(entity));
+        return;
+    }
+    // L'NPC addormentato non parla: solo un "Zzz…" sopra la testa.
+    if let Some((_, entity, _, Some(npc), _)) = best
+        && npc.mode == NpcMode::Asleep
+        && keys.just_pressed(KeyCode::KeyE)
+    {
+        barks.say(entity, npc.name, "Zzz…".to_string());
+        return;
+    }
+    if let Some((_, entity, _, Some(npc), _)) = best
         && keys.just_pressed(KeyCode::KeyE)
     {
         dialog.open = true;
         dialog.speaker = npc.name.to_string();
         // Battute e scelte dalla quest (file dialoghi.txt), altrimenti default dell'NPC.
-        let (lines, choices) = crate::quests::npc_dialog(&quest, &texts);
-        dialog.lines = if lines.is_empty() {
-            npc.lines.iter().map(|s| s.to_string()).collect()
+        let (lines, choices, voices) = crate::quests::npc_dialog(&quest, &texts);
+        if lines.is_empty() {
+            dialog.lines = npc.lines.iter().map(|s| s.to_string()).collect();
+            dialog.voices = vec![Vec::new(); dialog.lines.len()];
         } else {
-            lines
-        };
+            dialog.lines = lines;
+            dialog.voices = voices;
+        }
         dialog.index = 0;
         dialog.choices = choices;
         dialog.selected = 0;
@@ -293,6 +351,7 @@ pub fn advance_dialog(keys: Res<ButtonInput<KeyCode>>, mut dialog: ResMut<Dialog
 pub fn dialog_walk_away(
     mut dialog: ResMut<DialogState>,
     mut barks: ResMut<crate::quests::Barks>,
+    mut voice: ResMut<crate::voice::VoiceQueue>,
     texts: Res<crate::quests::QuestTexts>,
     players: Query<&GlobalTransform, With<Player>>,
     npcs: Query<(&GlobalTransform, &Npc)>,
@@ -310,6 +369,9 @@ pub fn dialog_walk_away(
         close_dialog(&mut dialog, None, false);
         dialog.block_interact = false;
         barks.say(entity, npc.name, texts.denaro_rubato.text("saluto", &[]));
+        if let Some(c) = texts.denaro_rubato.voice("saluto.1") {
+            voice.play(vec![c.to_string()], crate::voice::VoiceKind::Bark);
+        }
         info!("[DIALOG] giocatore allontanato: dialogo chiuso");
     }
 }

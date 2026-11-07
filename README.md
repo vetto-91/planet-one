@@ -54,7 +54,7 @@ grep "\[EVENT\]" run.log    # eventi finestra/cursore
 | T | "Aspetta": fa avanzare l'ora di gioco di N ore (T o Esc per chiudere) |
 | J | Diario delle quest (tab Da fare / Completate, quest espandibili); J o Esc per chiudere |
 | TAB (tenuto) | Obiettivi della quest (solo a quest attiva) |
-| E | Parla con l'NPC vicino; nel dialogo continua / conferma |
+| E | Parla con l'NPC vicino; nel dialogo continua / conferma; apre/chiude la porta della casetta; accende/spegne la stufa |
 | Invio | Nel dialogo: continua / conferma (alternativa a E) |
 | Su/Giù o W/S | Nel dialogo: cambia la scelta evidenziata |
 | 1–9, 0 | Usa l'oggetto nello slot corrispondente della barra in basso (pozione: +25 HP) |
@@ -74,11 +74,21 @@ obiettivi già completati fino a quel punto.
 Se ti allontani dal Viandante durante il dialogo (oltre 8 m) il dialogo si chiude e lui saluta.
 Il ladro ti apostrofa quando ti vede da vicino (~12 m).
 
+### La casetta del Viandante
+
+Il Viandante vende dal chiosco della casetta (3D, con fondamenta e scalini di pietra). La porta si apre
+con E e dentro si può entrare: letto, cucinino con stufa a legna (E per accenderla: dal camino esce il
+fumo), tavolo, baule, scaffale e lanterna. Di giorno il Viandante è al banco; **dopo le 21** accende la
+stufa, chiude la porta e va a dormire; **alle 6** si sveglia, spegne la stufa, apre la porta e torna al
+banco (da addormentato non parla: "Zzz…").
+
 ### Musica e audio
 
 La colonna sonora (`assets/audio/music/legacy_of_the_first_light.ogg`, brano in loop) parte
-all'avvio. Il volume delle sole musiche si regola dal menu Esc ("Volume musica") e viene salvato
-in `~/.config/planet-one/settings.txt`. Autore e licenza del brano da indicare prima di rendere
+all'avvio. Il volume delle musiche e quello delle voci dei personaggi si regolano dal menu Esc
+("Volume musica", "Volume voci") e vengono salvati in `~/.config/planet-one/settings.txt`.
+Le voci (`assets/audio/voci/`) sono generate con `scripts/gen_tts_voci.py` (edge-tts, voci neurali
+Microsoft, richiede rete): verificarne i termini d'uso prima di distribuire il gioco. Autore e licenza del brano da indicare prima di rendere
 pubblico il repository.
 
 ### Giorno e notte
@@ -108,7 +118,9 @@ src/      codice del gioco (ECS Bevy)
   camera.rs orbita e follow della camera
   menu.rs   UI egui (menu Esc, hint, contatore FPS, diario)
   audio.rs   musica di sottofondo e impostazioni audio
-  props.rs   casetta-chiosco del Viandante e appoggio a terra
+  hut.rs     casetta-chiosco: fondamenta, porta, interni, stufa e routine del Viandante
+  props.rs   appoggio a terra degli oggetti di scena
+  voice.rs   riproduzione delle voci dei personaggi
   daynight.rs orologio di gioco, sole e luna, luci e cielo
   figure.rs  personaggi a parallelepipedo con skin a sviluppo (player/ladro/viandante)
   quests/   una cartella per quest (logica) + parser dialoghi e diario

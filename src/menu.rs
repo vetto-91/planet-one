@@ -235,6 +235,13 @@ pub fn ui(
             }
         }
         AppState::Paused => {
+            // Versione del gioco in basso a destra.
+            egui::Area::new(egui::Id::new("game_version"))
+                .anchor(egui::Align2::RIGHT_BOTTOM, egui::vec2(-12.0, -12.0))
+                .show(ctx, |ui| {
+                    hud_chip(ui, &format!("Planet One {}", crate::version::GAME_VERSION));
+                });
+
             // In egui 0.36 i CentralPanel si mostrano dentro una Ui radice:
             // la creiamo dal contesto con il pattern degli esempi bevy_egui.
             let mut viewport_ui = egui::Ui::new(
@@ -302,6 +309,20 @@ pub fn ui(
                             .changed()
                         {
                             q.audio.music_volume = pct / 100.0;
+                            q.audio.dirty = true;
+                        }
+
+                        // Volume delle voci dei personaggi.
+                        let mut vpct = q.audio.voice_volume * 100.0;
+                        if ui
+                            .add(
+                                egui::Slider::new(&mut vpct, 0.0..=100.0)
+                                    .text("Volume voci %")
+                                    .fixed_decimals(0),
+                            )
+                            .changed()
+                        {
+                            q.audio.voice_volume = vpct / 100.0;
                             q.audio.dirty = true;
                         }
 

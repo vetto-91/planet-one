@@ -46,5 +46,15 @@ for y in range(oy0, oy1):
     for x in range(ox0, ox1):
         px[x, y] = (0, 0, 0, 0)
 
+# --- Porta: ritaglio separato (pannello apribile) e apertura nella parete (alfa 0) ---
+dx0, dy0, dx1, dy1 = 162, 131, 206, 218
+src = im.copy()
+door = src.crop((dx0 * S, dy0 * S, dx1 * S, dy1 * S)).convert("RGB")
+door = door.resize((door.width * 2, door.height * 2), Image.LANCZOS)
+door.save("assets/textures/porta.png", optimize=True)
+for y in range((dy0 + 1) * S, (dy1 - 1) * S):
+    for x in range((dx0 + 1) * S, (dx1 - 1) * S):
+        px[x, y] = (0, 0, 0, 0)
+
 im.save(OUT, optimize=True)
 print("scritto", OUT, im.size)

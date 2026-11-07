@@ -12,12 +12,16 @@ use std::path::PathBuf;
 const MUSIC_PATH: &str = "audio/music/legacy_of_the_first_light.ogg";
 /// Volume iniziale delle musiche (0..1).
 const DEFAULT_MUSIC_VOLUME: f32 = 0.6;
+/// Volume iniziale delle voci (0..1).
+const DEFAULT_VOICE_VOLUME: f32 = 0.9;
 
 /// Impostazioni audio (resource).
 #[derive(Resource)]
 pub struct AudioSettings {
     /// Volume delle musiche, 0..1.
     pub music_volume: f32,
+    /// Volume delle voci dei personaggi, 0..1.
+    pub voice_volume: f32,
     /// Da salvare su file appena il mouse viene rilasciato.
     pub dirty: bool,
 }
@@ -26,6 +30,7 @@ impl Default for AudioSettings {
     fn default() -> Self {
         let mut s = Self {
             music_volume: DEFAULT_MUSIC_VOLUME,
+            voice_volume: DEFAULT_VOICE_VOLUME,
             dirty: false,
         };
         if let Some(text) = settings_path().and_then(|p| std::fs::read_to_string(p).ok()) {
@@ -34,6 +39,11 @@ impl Default for AudioSettings {
                     && let Ok(v) = v.trim().parse::<f32>()
                 {
                     s.music_volume = v.clamp(0.0, 1.0);
+                }
+                if let Some(v) = line.trim().strip_prefix("voice_volume=")
+                    && let Ok(v) = v.trim().parse::<f32>()
+                {
+                    s.voice_volume = v.clamp(0.0, 1.0);
                 }
             }
             info!(
@@ -100,7 +110,10 @@ pub fn save_settings(mut settings: ResMut<AudioSettings>, mouse: Res<ButtonInput
     }
     match std::fs::write(
         &path,
-        format!("music_volume={:.2}\n", settings.music_volume),
+        format!(
+            "music_volume={:.2}\nvoice_volume={:.2}\n",
+            settings.music_volume, settings.voice_volume
+        ),
     ) {
         Ok(()) => info!("[AUDIO] impostazioni salvate in {}", path.display()),
         Err(e) => warn!("[AUDIO] impossibile salvare le impostazioni: {e}"),

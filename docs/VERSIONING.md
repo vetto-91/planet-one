@@ -35,3 +35,10 @@ Esempio: `v0.0.1.2` = nessun major, nessun minor, 1 feature, 2 bugfix.
 - Branch: `feat/<slug>`, `fix/<slug>`, `chore/<slug>`
 - Commit: `feat(area): descrizione`, `fix(area): descrizione`, `chore(area): descrizione`
 - Un commit per feature/fix, messaggio in inglese (codice) con descrizione chiara.
+
+## Checklist di rilascio
+
+1. Aggiornare `version` in `Cargo.toml` (primi 3 segmenti).
+2. Aggiornare `GAME_VERSION` in `src/version.rs` (mostrata nel menu Esc).
+3. Spostare la sezione "Non rilasciato" di `CHANGELOG.md` sotto la nuova versione.
+4. Commit, poi tag `vX.Y.Z.W` su `main` dopo la verifica manuale.

@@ -10,6 +10,7 @@ mod daynight;
 mod entities;
 mod figure;
 mod hud;
+mod hut;
 mod inventory;
 mod menu;
 mod player;
@@ -19,6 +20,8 @@ mod scene;
 mod sky;
 mod terrain;
 mod ui_style;
+mod version;
+mod voice;
 
 use avian3d::prelude::*;
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
@@ -103,6 +106,8 @@ fn main() {
         .init_resource::<quests::Barks>()
         .init_resource::<menu::JournalTab>()
         .init_resource::<audio::AudioSettings>()
+        .init_resource::<voice::VoiceQueue>()
+        .add_message::<hut::PropToggle>()
         .init_resource::<daynight::GameClock>()
         .init_resource::<daynight::WaitUi>()
         .init_resource::<combat::ContactDamageCd>()
@@ -136,9 +141,18 @@ fn main() {
                 terrain::update_terrain,
                 sky::apply_sky_texture,
                 daynight::update_sky,
+                hut::handle_prop_toggle,
+                hut::update_prop_prompts,
+                hut::keeper_routine,
+                hut::animate_doors,
+                hut::stove_light,
+                hut::emit_smoke,
+                hut::update_smoke,
                 props::snap_to_ground,
                 audio::apply_music_volume,
                 audio::save_settings,
+                voice::drive_voice,
+                voice::dialog_voice,
                 daynight::tick_clock.run_if(in_state(AppState::Playing)),
             ),
         )

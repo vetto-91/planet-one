@@ -34,6 +34,8 @@ struct Section {
 #[derive(Default, Clone)]
 pub struct Dialogs {
     sections: HashMap<String, Section>,
+    /// Mappa battuta -> clip audio (da `voci.txt`): chiave `sezione.riga`.
+    voices: HashMap<String, String>,
 }
 
 impl Dialogs {
@@ -59,9 +61,24 @@ impl Dialogs {
         sections
     }
 
+    /// Parser di `voci.txt`: righe `chiave = clip`, `#` commento.
+    fn parse_voices(text: &str) -> HashMap<String, String> {
+        text.lines()
+            .filter_map(|l| {
+                let l = l.trim();
+                if l.is_empty() || l.starts_with('#') {
+                    return None;
+                }
+                let (k, v) = l.split_once('=')?;
+                Some((k.trim().to_string(), v.trim().to_string()))
+            })
+            .collect()
+    }
+
     /// Carica i testi: prima la copia incorporata (default), poi il file su
-    /// disco (se esiste) sovrascrive le sezioni che contiene.
-    pub fn load(quest_id: &str, embedded: &str) -> Self {
+    /// disco (se esiste) sovrascrive le sezioni che contiene. Stesso schema per
+    /// la mappa delle voci (`voci.txt`).
+    pub fn load(quest_id: &str, embedded: &str, embedded_voices: &str) -> Self {
         let mut sections = Self::parse(embedded);
         let rel = format!("assets/quests/{quest_id}/dialoghi.txt");
         let candidates = [
@@ -82,7 +99,25 @@ impl Dialogs {
             }
             None => info!("[QUEST] {rel} non trovato: uso i testi incorporati"),
         }
-        Self { sections }
+        let mut voices = Self::parse_voices(embedded_voices);
+        let vrel = format!("assets/quests/{quest_id}/voci.txt");
+        let vcandidates = [
+            std::path::PathBuf::from(&vrel),
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(&vrel),
+        ];
+        if let Some(file) = vcandidates
+            .iter()
+            .find_map(|p| std::fs::read_to_string(p).ok())
+        {
+            voices.extend(Self::parse_voices(&file));
+        }
+        Self { sections, voices }
+    }
+
+    /// Clip audio (relativa a `assets/audio/voci/`, senza estensione) di una
+    /// battuta: chiave `sezione.riga` (riga da 1), `direzione.<nome>`, ecc.
+    pub fn voice(&self, key: &str) -> Option<&str> {
+        self.voices.get(key).map(String::as_str)
     }
 
     /// Righe di una sezione con i segnaposto `{chiave}` sostituiti.
@@ -133,6 +168,7 @@ impl QuestTexts {
             denaro_rubato: Dialogs::load(
                 "denaro_rubato",
                 include_str!("../../assets/quests/denaro_rubato/dialoghi.txt"),
+                include_str!("../../assets/quests/denaro_rubato/voci.txt"),
             ),
         }
     }
@@ -180,8 +216,11 @@ pub fn journal_entries(quest: &QuestState, texts: &QuestTexts) -> Vec<QuestEntry
     entries
 }
 
-/// Battute del Viandante (righe, scelte) per lo stato corrente.
-pub fn npc_dialog(quest: &QuestState, texts: &QuestTexts) -> (Vec<String>, Vec<String>) {
+/// Battute del Viandante (righe, scelte, clip vocali per riga) per lo stato corrente.
+pub fn npc_dialog(
+    quest: &QuestState,
+    texts: &QuestTexts,
+) -> (Vec<String>, Vec<String>, Vec<Vec<String>>) {
     denaro_rubato::npc_dialog(quest, &texts.denaro_rubato)
 }
 
