@@ -2,18 +2,12 @@
 #
 # Come leggere questo file
 # - Coordinate in metri sul piano del terreno: x = Est (+) / Ovest (-), z = Sud (+) / Nord (-)
-#   (il nord è -Z, come la bussola del gioco). Il terreno va da -50 a +50 su entrambi gli assi.
+#   (il nord è -Z, come la bussola del gioco). Il terreno (isola) va da -150 a +150 su entrambi gli assi.
 # - Lo spawn del giocatore è (0, 0). La capanna del Viandante è centrata a circa (6.5, 0.7).
 # - Ogni blocco [P-nnnn] è una richiesta: 'tipo' è l'oggetto da piazzare, 'modalità' come è stato
 #   indicato (singolo, gruppo-raggio, area-rettangolo, area-cerchio), 'punti' le coordinate
 #   effettive (x,z) di ogni oggetto (fonte di verità), 'nota' un commento dell'utente.
 # - File riscritto dal gioco a ogni modifica e riletto all'avvio: non rinominare le chiavi.
-
-[P-0005] tipo: panchina | modalità: singolo
-quando: 2026-11-07 19:38 UTC (ora di gioco 10:56)
-punto: x 4.68, z -1.89
-quantità: 1   seed: 859900
-punti: (4.68,-1.89)
 
 [P-0007] tipo: lampione | modalità: singolo
 quando: 2026-11-07 19:39 UTC (ora di gioco 10:56)
@@ -48,5 +42,25 @@ punti: (10.47,-0.63)
 [P-0026] tipo: albero | modalità: area-cerchio
 quando: 2026-11-07 19:52 UTC (ora di gioco 14:15)
 centro: x 27.45, z -26.89   raggio: 21.6
-quantità: 50   seed: 510805
-punti: (44.70,-26.89) (32.20,-23.27) (14.33,-16.44) (21.12,-43.43) (15.56,-15.17) (44.78,-37.38) (30.74,-5.97) (13.74,-37.70) (9.09,-28.16) (44.31,-13.66) (23.33,-29.62) (21.08,-8.96) (34.57,-18.28) (24.73,-35.58) (19.26,-43.97) (27.37,-43.25) (18.12,-24.24) (39.93,-18.01) (29.28,-10.39) (18.49,-22.32) (31.14,-41.29) (25.46,-45.82) (17.17,-33.51) (46.69,-35.88) (33.11,-42.90) (32.99,-18.13) (39.91,-15.03) (34.88,-37.71) (29.70,-5.82) (26.93,-41.57) (33.23,-43.39) (33.84,-18.04) (12.15,-13.01) (19.47,-32.27) (30.56,-38.21) (32.71,-8.20) (43.31,-14.46) (17.30,-21.34) (15.25,-28.24) (15.05,-37.27) (38.60,-23.93) (21.05,-32.38) (45.55,-18.80) (40.04,-31.55) (25.51,-19.21) (23.65,-32.68) (22.88,-30.93) (34.86,-13.64) (20.29,-14.11) (44.90,-14.28)
+quantità: 49   seed: 510805
+punti: (44.70,-26.89) (32.20,-23.27) (12.91,-19.12) (23.13,-41.03) (15.56,-15.17) (44.78,-37.38) (26.12,-7.67) (13.74,-37.70) (9.09,-28.16) (24.59,-13.52) (23.73,-24.84) (21.08,-8.96) (36.41,-20.54) (24.73,-35.58) (19.26,-43.97) (30.42,-45.00) (12.00,-32.74) (39.93,-18.01) (29.28,-10.39) (31.14,-41.29) (25.46,-45.82) (17.17,-33.51) (45.43,-33.47) (36.17,-42.67) (29.10,-15.89) (39.16,-12.94) (34.88,-37.71) (11.75,-23.75) (26.93,-41.57) (38.30,-39.63) (33.84,-18.04) (12.15,-13.01) (19.47,-32.27) (30.56,-38.21) (32.71,-8.20) (42.61,-22.17) (17.30,-21.34) (15.25,-28.24) (20.83,-37.79) (38.60,-23.93) (21.82,-28.13) (45.55,-18.80) (40.04,-31.55) (25.51,-19.21) (34.01,-30.45) (27.42,-27.89) (34.86,-13.64) (20.29,-14.11) (44.90,-14.28)
+
+[P-0027] tipo: albero | modalità: area-rettangolo
+quando: 2026-11-07 20:36 UTC (ora di gioco 19:39)
+angoli: (49.41,-49.44) (49.67,-33.11) (42.67,-43.49) (30.96,-49.66)
+quantità: 10   seed: 68649
+punti: (44.92,-49.00) (41.22,-45.54) (47.84,-43.71) (40.36,-48.65) (44.43,-43.71) (47.97,-48.16) (36.27,-49.00) (45.62,-39.89) (38.24,-46.64) (48.68,-38.76)
+
+[P-0041] tipo: albero | modalità: singolo
+quando: 2026-11-07 21:27 UTC (ora di gioco 15:09)
+punto: x 2.64, z 8.50
+quantità: 1   seed: 605355
+punti: (2.64,8.50)
+rotazioni: 0
+
+[P-0042] tipo: panchina | modalità: singolo
+quando: 2026-11-07 21:28 UTC (ora di gioco 15:33)
+punto: x 4.37, z -2.80
+quantità: 1   seed: 66748
+punti: (4.13,-2.33)
+rotazioni: 180

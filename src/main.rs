@@ -239,6 +239,10 @@ fn main() {
         .add_systems(Update, debug_place::sync_markers)
         .add_systems(
             Update,
+            (hut::update_los_blockers, terrain::terrain_debug_gizmos),
+        )
+        .add_systems(
+            Update,
             (
                 world_props::sync_world_props,
                 world_props::update_street_lamps,

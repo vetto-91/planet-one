@@ -271,7 +271,8 @@ pub fn interact(
             )
             .is_none_or(|hit| hit.distance >= dist - 0.08)
     };
-    let eye = p + Vec3::Y * 1.5;
+    // Occhi: 0,72 m sopra il centro della capsula (come la prima persona).
+    let eye = p + Vec3::Y * 0.72;
 
     // 1) Oggetti (porta, stufa, interruttore…): solo se GUARDATI col mirino
     //    (centro schermo), entro 3 m dal giocatore e non dietro un muro.

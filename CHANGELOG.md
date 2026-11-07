@@ -2,6 +2,16 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- Casetta: porta, interruttore, stufa, serranda e finestre di nuovo usabili da dentro (gli occhi del giocatore erano dentro il collider del tetto);
+  finestre a due stadi da dentro (alza il vetro, poi apri gli scuri); apertura del banco e vani delle finestre senza collider pieni, quindi il
+  Viandante si vede (etichetta) e gli si parla dal finestrone e dai vetri; serranda abbassata e scuri chiusi bloccano la vista.
+- Lampioni: la luce non attraversa più le pareti (ombre per i 3 più vicini).
+- Isola: il mare è solo attorno all'isola (niente acqua nelle depressioni interne), barriera di riva che segue la costa, spiaggia con la texture
+  sabbia che sfuma nel prato.
+- F3: il collider del terreno non viene più disegnato per intero (60 → 7 FPS): griglia sparsa e paletti rossi sulla riva attorno al giocatore.
+
 ## v0.0.11.0 — Isola, debug con mirino, oggetti ruotabili (2026-11-07)
 
 - Isola: terreno esteso a 300 m con costa irregolare, mare attorno e muro invisibile sulla riva; il quadrato della heightmap resta al centro.

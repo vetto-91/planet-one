@@ -21,7 +21,7 @@ use bevy::image::{
 };
 use bevy::math::{Affine2, UVec3, Vec2};
 use bevy::prelude::*;
-use bevy::render::mesh::VertexAttributeValues;
+use bevy::render::mesh::{Indices, PrimitiveTopology, VertexAttributeValues};
 
 /// Estensione del terreno sul piano XZ (m): il piano è centrato in origine.
 /// È un'isola: il quadrato centrale di `HEIGHTMAP_SIZE` m usa la heightmap, il
@@ -54,13 +54,20 @@ pub struct TerrainAssets {
 #[derive(Component)]
 pub struct TerrainMesh;
 
-/// Muro invisibile lungo la riva (il giocatore non entra in acqua).
+/// Parti generate con il terreno (mare, sabbia, barriera di riva): si rifanno insieme a lui.
 #[derive(Component)]
-pub struct ShoreWall;
+pub struct TerrainExtra;
 
-/// Piano d'acqua del mare.
-#[derive(Component)]
-struct Sea;
+/// Dati del terreno per il debug (F3): altezze e punti della riva.
+#[derive(Resource)]
+pub struct TerrainDebugData {
+    n: usize,
+    h: Vec<f32>,
+    shore: Vec<Vec2>,
+}
+
+/// Lato (m) di una piastrella della texture sabbia.
+const SAND_TILE_M: f32 = 8.0;
 
 /// Carica la heightmap e inserisce la resource [`TerrainAssets`].
 ///
@@ -105,30 +112,14 @@ pub fn spawn_terrain(
         ..Default::default()
     });
 
-    // Mare: piano enorme, senza collider, semitrasparente.
-    commands.spawn((
-        SceneNode,
-        Sea,
-        Mesh3d(meshes.add(Plane3d {
-            half_size: Vec2::splat(4000.0),
-            ..Default::default()
-        })),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::srgba(0.12, 0.38, 0.55, 0.82),
-            alpha_mode: AlphaMode::Blend,
-            perceptual_roughness: 0.15,
-            metallic: 0.0,
-            ..Default::default()
-        })),
-        Transform::from_xyz(0.0, SEA_LEVEL, 0.0),
-        bevy::light::NotShadowCaster,
-    ));
-
     commands.spawn((
         SceneNode,
         Ground,
         TerrainMesh,
         RigidBody::Static,
+        // Il wireframe di F3 sul terreno (720.000 triangoli) è troppo pesante: lo sostituisce
+        // `terrain_debug_gizmos`.
+        DebugRender::none(),
         Collider::cuboid(TERRAIN_SIZE, 1.0, TERRAIN_SIZE),
         Mesh3d(placeholder_mesh),
         MeshMaterial3d(materials.add(StandardMaterial {
@@ -147,14 +138,17 @@ pub fn spawn_terrain(
 /// - al primo caricamento della heightmap;
 /// - dopo un reset della scena (il segnaposto è di nuovo attivo);
 /// - dopo un hot-reload dell’asset (`AssetEvent::Modified`).
+#[allow(clippy::too_many_arguments)]
 pub fn update_terrain(
     mut commands: Commands,
     mut assets: ResMut<TerrainAssets>,
     images: Res<Assets<Image>>,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
     mut events: MessageReader<AssetEvent<Image>>,
     terrains: Query<(Entity, &Mesh3d), With<TerrainMesh>>,
-    walls: Query<Entity, With<ShoreWall>>,
+    extras: Query<Entity, With<TerrainExtra>>,
 ) {
     // Hot-reload: se la heightmap è stata modificata, invalida il mesh attuale.
     for event in events.read() {
@@ -198,36 +192,151 @@ pub fn update_terrain(
         "terrain diagnostics: island {n}x{n} vertices, height range [{h_min:.2}, {h_max:.2}] m, size {TERRAIN_SIZE} m"
     );
 
+    // Mare solo attorno all'isola (flood-fill dal bordo), sabbia sfumata, barriera di riva.
+    let ocean = flood_ocean(&field, SEA_LEVEL);
+    let shore_mask = flood_ocean(&field, SHORE_LEVEL);
+    let sand_w = sand_weights(&field, &ocean);
+    let sand_mesh = build_sand_mesh(&mesh, &sand_w);
+    let sea_mesh = build_sea_mesh(&field, &ocean);
+    let barrier = build_barrier(&field, &shore_mask);
+    let shore = shore_points(&field, &shore_mask);
+    info!(
+        "[TERRAIN] riva: {} punti; sabbia: {} vertici",
+        shore.len(),
+        sand_w.iter().filter(|w| **w > 0.02).count()
+    );
+    commands.insert_resource(TerrainDebugData {
+        n,
+        h: field.h.clone(),
+        shore,
+    });
+
     let mesh_handle = meshes.add(mesh);
     assets.built_mesh = Some(mesh_handle.clone());
 
-    // Muro invisibile lungo la riva (ricostruito a ogni rigenerazione del terreno).
-    for w in &walls {
-        commands.entity(w).despawn();
+    for e in &extras {
+        commands.entity(e).despawn();
     }
-    let segments = shore_segments(&field);
-    info!("[TERRAIN] muro di riva: {} segmenti", segments.len());
+    let sand_tex = asset_server
+        .load_builder()
+        .with_settings(|s: &mut ImageLoaderSettings| {
+            s.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
+                address_mode_u: ImageAddressMode::Repeat,
+                address_mode_v: ImageAddressMode::Repeat,
+                mag_filter: ImageFilterMode::Linear,
+                min_filter: ImageFilterMode::Linear,
+                mipmap_filter: ImageFilterMode::Linear,
+                anisotropy_clamp: 16,
+                ..Default::default()
+            });
+        })
+        .load("textures/sand.png");
+    commands.spawn((
+        SceneNode,
+        TerrainExtra,
+        Mesh3d(meshes.add(sand_mesh)),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::WHITE,
+            base_color_texture: Some(sand_tex),
+            uv_transform: Affine2::from_scale(Vec2::splat(TERRAIN_SIZE / SAND_TILE_M)),
+            perceptual_roughness: 0.95,
+            alpha_mode: AlphaMode::Blend,
+            depth_bias: 0.5,
+            ..Default::default()
+        })),
+        Transform::default(),
+        bevy::light::NotShadowCaster,
+    ));
+    commands.spawn((
+        SceneNode,
+        TerrainExtra,
+        Mesh3d(meshes.add(sea_mesh)),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::srgba(0.12, 0.38, 0.55, 0.82),
+            alpha_mode: AlphaMode::Blend,
+            perceptual_roughness: 0.15,
+            metallic: 0.0,
+            ..Default::default()
+        })),
+        Transform::from_xyz(0.0, SEA_LEVEL, 0.0),
+        bevy::light::NotShadowCaster,
+    ));
+    // Barriera invisibile lungo la riva: un heightfield con "muro" sul mare.
+    commands.spawn((
+        SceneNode,
+        TerrainExtra,
+        RigidBody::Static,
+        barrier,
+        DebugRender::none(),
+        Transform::default(),
+    ));
     commands
         .entity(entity)
-        .insert((Mesh3d(mesh_handle), collider))
-        .with_children(|c| {
-            for (mid, len, yaw) in segments {
-                c.spawn((
-                    ShoreWall,
-                    Collider::cuboid(len, 8.0, 1.0),
-                    Transform::from_xyz(mid.x, 3.0, mid.y)
-                        .with_rotation(Quat::from_rotation_y(yaw)),
-                ));
+        .insert((Mesh3d(mesh_handle), collider));
+}
+
+/// Debug F3: griglia sparsa di collisione attorno al giocatore e recinto della riva
+/// (al posto del wireframe completo del terreno, che costa 7 FPS).
+pub fn terrain_debug_gizmos(
+    mut gizmos: Gizmos,
+    store: Res<GizmoConfigStore>,
+    data: Option<Res<TerrainDebugData>>,
+    players: Query<&GlobalTransform, With<crate::player::Player>>,
+) {
+    let (cfg, _) = store.config::<avian3d::prelude::PhysicsGizmos>();
+    let (Some(data), true, Ok(p)) = (data, cfg.enabled, players.single()) else {
+        return;
+    };
+    let pos = p.translation();
+    let n = data.n;
+    let at = |ix: usize, iz: usize| data.h[iz * n + ix];
+    let world = |i: usize| -TERRAIN_SIZE / 2.0 + i as f32 * STEP;
+    let idx = |w: f32| (((w + TERRAIN_SIZE / 2.0) / STEP).round().max(0.0) as usize).min(n - 1);
+    let (cx, cz) = (idx(pos.x), idx(pos.z));
+    let r = (35.0 / STEP) as usize;
+    let skip = (2.0 / STEP) as usize; // passo 2 m
+    let color = Color::srgb(1.0, 0.6, 0.1);
+    let (x0, x1) = (cx.saturating_sub(r) / skip * skip, (cx + r).min(n - 1));
+    let (z0, z1) = (cz.saturating_sub(r) / skip * skip, (cz + r).min(n - 1));
+    let mut z = z0;
+    while z <= z1 {
+        let mut x = x0;
+        while x <= x1 {
+            let a = Vec3::new(world(x), at(x, z), world(z));
+            if x + skip < n {
+                gizmos.line(
+                    a,
+                    Vec3::new(world(x + skip), at(x + skip, z), world(z)),
+                    color,
+                );
             }
-        });
+            if z + skip < n {
+                gizmos.line(
+                    a,
+                    Vec3::new(world(x), at(x, z + skip), world(z + skip)),
+                    color,
+                );
+            }
+            x += skip;
+        }
+        z += skip;
+    }
+    // Recinto della riva (barriera invisibile): paletti rossi.
+    let red = Color::srgb(1.0, 0.1, 0.1);
+    for s in data
+        .shore
+        .iter()
+        .filter(|s| s.distance(Vec2::new(pos.x, pos.z)) < 60.0)
+    {
+        let y = at(idx(s.x), idx(s.y));
+        gizmos.line(Vec3::new(s.x, y, s.y), Vec3::new(s.x, y + 3.0, s.y), red);
+    }
 }
 
 /// Campo di altezze dell'isola: `n`×`n` vertici, indice `z * n + x`.
 struct Field {
     n: usize,
     h: Vec<f32>,
-    /// Colore di vertice (sabbia sulla riva).
-    color: Vec<[f32; 4]>,
 }
 
 impl Field {
@@ -306,24 +415,14 @@ fn island_height(image: &Image, x: f32, z: f32) -> f32 {
 fn build_field(image: &Image) -> Field {
     let n = (TERRAIN_SIZE / STEP) as usize + 1;
     let mut h = Vec::with_capacity(n * n);
-    let mut color = Vec::with_capacity(n * n);
     for iz in 0..n {
         for ix in 0..n {
             let x = -TERRAIN_SIZE / 2.0 + ix as f32 * STEP;
             let z = -TERRAIN_SIZE / 2.0 + iz as f32 * STEP;
-            let y = island_height(image, x, z);
-            h.push(y);
-            // Sabbia vicino al livello del mare, erba altrove.
-            let sand = 1.0 - smooth(SEA_LEVEL + 0.2, SEA_LEVEL + 1.1, y);
-            color.push([
-                1.0 + (0.95 - 1.0) * sand,
-                1.0 + (0.85 - 1.0) * sand,
-                1.0 + (0.55 - 1.0) * sand,
-                1.0,
-            ]);
+            h.push(island_height(image, x, z));
         }
     }
-    Field { n, h, color }
+    Field { n, h }
 }
 
 /// Costruisce il mesh del terreno dal campo di altezze.
@@ -350,7 +449,6 @@ fn build_terrain_mesh(field: &Field) -> Mesh {
             position[1] = field.h[index];
         }
     }
-    mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, field.color.clone());
     mesh.compute_normals();
     mesh
 }
@@ -364,34 +462,190 @@ fn build_terrain_collider(field: &Field) -> Collider {
     Collider::heightfield(heights, Vec3::new(TERRAIN_SIZE, 1.0, TERRAIN_SIZE))
 }
 
-/// Segmenti del muro di riva: (punto medio (x,z), lunghezza, rotazione Y). Si segue la
-/// linea di costa (livello `SHORE_LEVEL`) con 180 raggi dal centro.
-fn shore_segments(field: &Field) -> Vec<(Vec2, f32, f32)> {
-    let sample = |x: f32, z: f32| -> f32 {
-        let fx = ((x + TERRAIN_SIZE / 2.0) / STEP).clamp(0.0, (field.n - 1) as f32);
-        let fz = ((z + TERRAIN_SIZE / 2.0) / STEP).clamp(0.0, (field.n - 1) as f32);
-        field.at(fx.round() as usize, fz.round() as usize)
-    };
-    let count = 180;
-    let mut pts: Vec<Vec2> = Vec::with_capacity(count);
-    for i in 0..count {
-        let a = i as f32 / count as f32 * std::f32::consts::TAU;
-        let dir = Vec2::new(a.cos(), a.sin());
-        // Dal centro verso l'esterno: primo punto sotto la riva.
-        let mut r = 60.0;
-        while r < TERRAIN_SIZE / 2.0 && sample(dir.x * r, dir.y * r) > SHORE_LEVEL {
-            r += 0.5;
+/// Celle collegate al mare: flood-fill 4-connesso dal bordo sulle quote sotto `thr`.
+fn flood_ocean(field: &Field, thr: f32) -> Vec<bool> {
+    let n = field.n;
+    let mut mask = vec![false; n * n];
+    let mut stack: Vec<usize> = Vec::new();
+    for i in 0..n {
+        for idx in [i, (n - 1) * n + i, i * n, i * n + n - 1] {
+            if field.h[idx] < thr && !mask[idx] {
+                mask[idx] = true;
+                stack.push(idx);
+            }
         }
-        pts.push(dir * r);
     }
-    (0..count)
+    while let Some(i) = stack.pop() {
+        let (x, z) = (i % n, i / n);
+        let mut push = |j: usize| {
+            if field.h[j] < thr && !mask[j] {
+                mask[j] = true;
+                stack.push(j);
+            }
+        };
+        if x > 0 {
+            push(i - 1);
+        }
+        if x + 1 < n {
+            push(i + 1);
+        }
+        if z > 0 {
+            push(i - n);
+        }
+        if z + 1 < n {
+            push(i + n);
+        }
+    }
+    mask
+}
+
+/// Peso (0..1) della sabbia in ogni vertice: 1 vicino al mare, sfuma nel prato.
+fn sand_weights(field: &Field, ocean: &[bool]) -> Vec<f32> {
+    let n = field.n;
+    let max_d = 40u16; // celle (20 m)
+    let mut dist = vec![u16::MAX; n * n];
+    let mut queue = std::collections::VecDeque::new();
+    for (i, o) in ocean.iter().enumerate() {
+        if *o {
+            dist[i] = 0;
+            queue.push_back(i);
+        }
+    }
+    while let Some(i) = queue.pop_front() {
+        let d = dist[i];
+        if d >= max_d {
+            continue;
+        }
+        let (x, z) = (i % n, i / n);
+        let mut visit = |j: usize| {
+            if dist[j] == u16::MAX {
+                dist[j] = d + 1;
+                queue.push_back(j);
+            }
+        };
+        if x > 0 {
+            visit(i - 1);
+        }
+        if x + 1 < n {
+            visit(i + 1);
+        }
+        if z > 0 {
+            visit(i - n);
+        }
+        if z + 1 < n {
+            visit(i + n);
+        }
+    }
+    (0..n * n)
         .map(|i| {
-            let (a, b) = (pts[i], pts[(i + 1) % count]);
-            let d = b - a;
-            // Il muro è lungo un po' di più per non lasciare fessure; yaw: asse X locale lungo d.
-            ((a + b) / 2.0, d.length() + 0.6, (-d.y).atan2(d.x))
+            if dist[i] == u16::MAX {
+                return 0.0;
+            }
+            let (x, z) = (
+                -TERRAIN_SIZE / 2.0 + (i % n) as f32 * STEP,
+                -TERRAIN_SIZE / 2.0 + (i / n) as f32 * STEP,
+            );
+            // Bordo irregolare: la distanza è modulata da rumore.
+            let d = dist[i] as f32 * STEP + (noise2(x * 0.09 + 5.0, z * 0.09 + 9.0) - 0.5) * 7.0;
+            let by_dist = 1.0 - smooth(5.0, 15.0, d);
+            let by_height = 1.0 - smooth(SEA_LEVEL + 2.5, SEA_LEVEL + 4.5, field.h[i]);
+            by_dist * by_height
         })
         .collect()
+}
+
+/// Mesh della sabbia: gli stessi vertici del terreno, solo i triangoli con sabbia, alfa = peso.
+fn build_sand_mesh(terrain: &Mesh, weights: &[f32]) -> Mesh {
+    let mut mesh = terrain.clone();
+    let colors: Vec<[f32; 4]> = weights.iter().map(|w| [1.0, 1.0, 1.0, *w]).collect();
+    mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
+    if let Some(Indices::U32(idx)) = terrain.indices() {
+        let mut keep: Vec<u32> = Vec::new();
+        for t in idx.as_chunks::<3>().0 {
+            if t.iter().any(|v| weights[*v as usize] > 0.02) {
+                keep.extend_from_slice(&t[..]);
+            }
+        }
+        mesh.insert_indices(Indices::U32(keep));
+    }
+    mesh
+}
+
+/// Mesh del mare (y = 0 locale): solo i blocchi 1×1 m collegati all'oceano, uniti per
+/// righe, più una cornice enorme fuori dal terreno.
+fn build_sea_mesh(field: &Field, ocean: &[bool]) -> Mesh {
+    let n = field.n;
+    let blocks = (n - 1) / 2;
+    let mut pos: Vec<[f32; 3]> = Vec::new();
+    let mut idx: Vec<u32> = Vec::new();
+    let mut quad = |x0: f32, z0: f32, x1: f32, z1: f32| {
+        let b = pos.len() as u32;
+        pos.extend([[x0, 0.0, z0], [x1, 0.0, z0], [x1, 0.0, z1], [x0, 0.0, z1]]);
+        idx.extend([b, b + 2, b + 1, b, b + 3, b + 2]);
+    };
+    let w = |i: usize| -TERRAIN_SIZE / 2.0 + i as f32 * 2.0 * STEP;
+    for bz in 0..blocks {
+        let mut run: Option<usize> = None;
+        for bx in 0..=blocks {
+            let sea = bx < blocks
+                && (0..3).any(|dz| (0..3).any(|dx| ocean[(2 * bz + dz) * n + 2 * bx + dx]));
+            match (sea, run) {
+                (true, None) => run = Some(bx),
+                (false, Some(r0)) => {
+                    quad(w(r0), w(bz), w(bx), w(bz + 1));
+                    run = None;
+                }
+                _ => {}
+            }
+        }
+    }
+    let (h, big) = (TERRAIN_SIZE / 2.0, 4000.0);
+    quad(-big, -big, big, -h);
+    quad(-big, h, big, big);
+    quad(-big, -h, -h, h);
+    quad(h, -h, big, h);
+    let count = pos.len();
+    let mut mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        bevy::asset::RenderAssetUsages::default(),
+    );
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, pos);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[0.0, 1.0, 0.0]; count]);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, vec![[0.0, 0.0]; count]);
+    mesh.insert_indices(Indices::U32(idx));
+    mesh
+}
+
+/// Barriera di riva: heightfield con +12 m sul mare (soglia `SHORE_LEVEL`) e −40 m altrove.
+fn build_barrier(field: &Field, shore_mask: &[bool]) -> Collider {
+    let n = field.n;
+    let heights: Vec<Vec<f32>> = (0..n)
+        .map(|x| {
+            (0..n)
+                .map(|z| if shore_mask[z * n + x] { 12.0 } else { -40.0 })
+                .collect()
+        })
+        .collect();
+    Collider::heightfield(heights, Vec3::new(TERRAIN_SIZE, 1.0, TERRAIN_SIZE))
+}
+
+/// Punti della linea di riva (per i paletti del debug): metà tra una cella di mare e una di terra.
+fn shore_points(field: &Field, mask: &[bool]) -> Vec<Vec2> {
+    let n = field.n;
+    let w = |i: usize| -TERRAIN_SIZE / 2.0 + i as f32 * STEP;
+    let mut v = Vec::new();
+    for z in 0..n - 1 {
+        for x in 0..n - 1 {
+            let m = mask[z * n + x];
+            if m != mask[z * n + x + 1] {
+                v.push(Vec2::new(w(x) + STEP / 2.0, w(z)));
+            }
+            if m != mask[(z + 1) * n + x] {
+                v.push(Vec2::new(w(x), w(z) + STEP / 2.0));
+            }
+        }
+    }
+    v
 }
 
 /// Campiona la heightmap come valore -1..+1 (centrata sul grigio medio).

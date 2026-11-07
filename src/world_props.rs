@@ -269,6 +269,8 @@ pub fn sync_world_props(
                                     intensity: 0.0,
                                     range: 11.0,
                                     shadow_maps_enabled: false,
+                                    shadow_depth_bias: 0.012,
+                                    shadow_normal_bias: 0.25,
                                     ..default()
                                 },
                                 Transform::from_xyz(0.0, 3.1, 0.0),
@@ -292,14 +294,30 @@ pub fn sync_world_props(
 pub fn update_street_lamps(
     time: Res<Time>,
     clock: Res<GameClock>,
-    mut lights: Query<&mut PointLight, With<LampLight>>,
+    mut lights: Query<(&GlobalTransform, &mut PointLight), With<LampLight>>,
+    cameras: Query<&GlobalTransform, With<Camera3d>>,
     bulbs: Query<&LampBulb>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let on = clock.hour >= 17.5 || clock.hour < 6.2;
     let k = (time.delta_secs() * 1.5).min(1.0);
     let mut level = 0.0;
-    for mut l in &mut lights {
+    // Le ombre (luce che non passa le pareti) solo per i 3 lampioni più vicini alla camera, entro 30 m.
+    let cam = cameras
+        .single()
+        .map(|c| c.translation())
+        .unwrap_or_default();
+    let mut dists: Vec<f32> = lights
+        .iter()
+        .map(|(t, _)| t.translation().distance(cam))
+        .collect();
+    dists.sort_by(|a, b| a.total_cmp(b));
+    let limit = dists.get(2).copied().unwrap_or(f32::MAX).min(30.0);
+    for (t, mut l) in &mut lights {
+        let shadows = t.translation().distance(cam) <= limit;
+        if l.shadow_maps_enabled != shadows {
+            l.shadow_maps_enabled = shadows;
+        }
         let target = if on { 220_000.0 } else { 0.0 };
         l.intensity += (target - l.intensity) * k;
         level = l.intensity / 220_000.0;

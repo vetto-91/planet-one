@@ -69,6 +69,10 @@ pub enum PropKind {
     Light,
     /// Serranda del negozio.
     Shutter,
+    /// Vetro scorrevole di una finestra (maniglia interna): `on` = alzato.
+    WindowGlass,
+    /// Scuri di una finestra comandati da dentro (serve il vetro alzato).
+    WindowInner,
 }
 
 /// Stato di un oggetto, sull'entità "maniglia" (quella con `PropKind` e
@@ -96,6 +100,21 @@ pub struct Slider {
     pub closed_y: f32,
     pub open_y: f32,
     pub y: f32,
+}
+
+/// Collegamento delle maniglie interne di una finestra: scuri (maniglia esterna) e vetro.
+#[derive(Component)]
+pub struct WindowLink {
+    pub shutters: Entity,
+    pub glass: Entity,
+}
+
+/// Collider che blocca la vista (`BlocksCamera`) solo quando lo stato di `state`
+/// vale `active_when_on` (serranda abbassata, scuri chiusi).
+#[derive(Component)]
+pub struct LosBlocker {
+    pub state: Entity,
+    pub active_when_on: bool,
 }
 
 /// Collider del pannello della porta (disattivato quando è aperta).
@@ -138,8 +157,10 @@ pub struct HutParts {
     pub stove: Entity,
     pub light: Entity,
     pub shutter: Entity,
-    /// Maniglie delle finestre (stesso ordine di `WINDOWS`).
+    /// Maniglie degli scuri delle finestre (stesso ordine di `WINDOWS`).
     pub windows: Vec<Entity>,
+    /// Maniglie del vetro scorrevole delle finestre (stesso ordine).
+    pub glass: Vec<Entity>,
 }
 
 // ----- Mesh -----
@@ -591,6 +612,37 @@ fn add_wall(parent: &mut ChildSpawnerCommands, size: Vec3, pos: Vec3) {
     ));
 }
 
+/// Muro (collider) con un foro per la finestra: quattro blocchi attorno al vano.
+/// `along_x`: il muro corre lungo X (piano a z = `plane`), altrimenti lungo Z.
+fn wall_with_hole(
+    c: &mut ChildSpawnerCommands,
+    along_x: bool,
+    plane: f32,
+    len: f32,
+    hole_c: f32,
+    hole_y: f32,
+) {
+    let (hwid, hh) = (WIN_W / 2.0, WIN_H / 2.0);
+    let (y0, y1) = (FLOOR_Y, FLOOR_Y + WALL_H);
+    let half = len / 2.0;
+    let mut piece = |a0: f32, a1: f32, b0: f32, b1: f32| {
+        let (l, h) = (a1 - a0, b1 - b0);
+        if l <= 0.001 || h <= 0.001 {
+            return;
+        }
+        let (ac, yc) = ((a0 + a1) / 2.0, (b0 + b1) / 2.0);
+        if along_x {
+            add_wall(c, Vec3::new(l, h, 0.2), Vec3::new(ac, yc, plane));
+        } else {
+            add_wall(c, Vec3::new(0.2, h, l), Vec3::new(plane, yc, ac));
+        }
+    };
+    piece(-half, hole_c - hwid, y0, y1);
+    piece(hole_c + hwid, half, y0, y1);
+    piece(hole_c - hwid, hole_c + hwid, y0, hole_y - hh);
+    piece(hole_c - hwid, hole_c + hwid, hole_y + hh, y1);
+}
+
 /// Crea la casetta in `pos` con il fronte ruotato di `yaw`. Restituisce
 /// l'entità radice (a cui agganciare il negoziante).
 pub fn spawn_hut(
@@ -725,26 +777,35 @@ pub fn spawn_hut(
             BlocksCamera,
         ));
         // Muri.
+        // Muri laterali e retro con il vano delle finestre (si vede attraverso, i vetri sono a parte).
+        let frames_c = side_frames();
+        let win_c = |i: usize| wall_point(&frames_c[WINDOWS[i].0], WINDOWS[i].1);
+        let (w0, w1, w2) = (win_c(0), win_c(1), win_c(2));
+        wall_with_hole(c, false, hw - 0.1, D, w0.z, w0.y); // lato +X
+        wall_with_hole(c, true, hd - 0.1, W, w1.x, w1.y); // retro
+        wall_with_hole(c, false, -hw + 0.1, D, w2.z, w2.y); // lato -X
+        // Facciata a blocchi: davanzale e architrave attorno all'apertura del banco
+        // (x da -0,38 a 1,86, y da +0,865 a +1,765), montanti, fianco, architrave sopra la porta.
+        let (ap_lo, ap_hi) = (FLOOR_Y + 0.865, FLOOR_Y + 1.765);
         add_wall(
             c,
-            Vec3::new(W, WALL_H, 0.2),
-            Vec3::new(0.0, wall_y, hd - 0.1),
-        ); // retro
+            Vec3::new(2.24, ap_lo - FLOOR_Y, 0.2),
+            Vec3::new(0.74, (FLOOR_Y + ap_lo) / 2.0, -hd + 0.1),
+        ); // davanzale
         add_wall(
             c,
-            Vec3::new(0.2, WALL_H, D),
-            Vec3::new(hw - 0.1, wall_y, 0.0),
-        ); // lato +X
+            Vec3::new(2.24, FLOOR_Y + WALL_H - ap_hi, 0.2),
+            Vec3::new(0.74, (ap_hi + FLOOR_Y + WALL_H) / 2.0, -hd + 0.1),
+        ); // architrave
         add_wall(
             c,
-            Vec3::new(0.2, WALL_H, D),
-            Vec3::new(-hw + 0.1, wall_y, 0.0),
-        ); // lato -X
-        // Facciata a blocchi: banco (pieno), montante, fianco, architrave sopra la porta.
+            Vec3::new(0.07, WALL_H, 0.2),
+            Vec3::new(-0.415, wall_y, -hd + 0.1),
+        );
         add_wall(
             c,
-            Vec3::new(2.45, WALL_H, 0.2),
-            Vec3::new(0.775, wall_y, -hd + 0.1),
+            Vec3::new(0.14, WALL_H, 0.2),
+            Vec3::new(1.93, wall_y, -hd + 0.1),
         );
         add_wall(
             c,
@@ -1204,11 +1265,24 @@ pub fn spawn_hut(
             Mesh3d(meshes.add(Cuboid::new(2.24, 0.9, 0.04))),
             MeshMaterial3d(shutter_mat),
             Transform::from_xyz(0.74, shutter_open, -hd + 0.06),
-        ));
+        ))
+        .with_children(|p| {
+            // Abbassata blocca la vista (e il passaggio); alzata no.
+            p.spawn((
+                Collider::cuboid(2.24, 0.9, 0.1),
+                BlocksCamera,
+                LosBlocker {
+                    state: shutter_h,
+                    active_when_on: false,
+                },
+                Transform::default(),
+            ));
+        });
 
         // Finestre apribili: due imposte incernierate ai bordi esterni, si aprono verso l'esterno.
         let frames = side_frames();
         let mut window_handles: Vec<Entity> = Vec::new();
+        let mut glass_handles: Vec<Entity> = Vec::new();
         for (side_idx, px) in WINDOWS {
             let side = &frames[side_idx];
             let (dir, left, _, _, _) = *side;
@@ -1222,11 +1296,50 @@ pub fn spawn_hut(
                     Interactable {
                         prompt: "[E] Apri finestra".to_string(),
                         range: 3.0,
-                        aim: Some(0.55),
+                        aim: Some(0.45),
                     },
-                    Transform::from_translation(center),
+                    // Maniglia degli scuri: 12 cm FUORI dal muro (si usa da fuori).
+                    Transform::from_translation(center + dir * 0.12),
                 ))
                 .id();
+            // Dentro: vetro scorrevole (maniglia in basso) e scuri (maniglia in alto).
+            let inner = center - dir * 0.12;
+            let glass_h = c
+                .spawn((
+                    PropKind::WindowGlass,
+                    PropState { on: false },
+                    Interactable {
+                        prompt: "[E] Alza vetro".to_string(),
+                        range: 3.0,
+                        aim: Some(0.22),
+                    },
+                    Transform::from_translation(inner - Vec3::Y * 0.22),
+                ))
+                .id();
+            c.spawn((
+                PropKind::WindowInner,
+                PropState { on: false },
+                WindowLink {
+                    shutters: win_h,
+                    glass: glass_h,
+                },
+                Interactable {
+                    prompt: "[E] Apri scuri".to_string(),
+                    range: 3.0,
+                    aim: Some(0.22),
+                },
+                Transform::from_translation(inner + Vec3::Y * 0.2),
+            ));
+            for dy in [-0.22_f32, 0.2] {
+                add_box(
+                    c,
+                    meshes,
+                    &iron,
+                    Vec3::splat(0.045),
+                    center - dir * 0.03 + Vec3::Y * dy,
+                    false,
+                );
+            }
             let leaf_w = WIN_W / 2.0;
             // Anta sinistra: cerniera a +x, si estende verso il centro (-x).
             // Anta destra: cerniera a -x, si estende verso il centro (+x).
@@ -1254,13 +1367,40 @@ pub fn spawn_hut(
                     ));
                 });
             }
-            // Vetro fisso (sottile, azzurrino): resta anche con gli scuri aperti.
+            // Vetro scorrevole (sottile, azzurrino): sale lungo la faccia interna del muro.
+            let pane_pos = center - dir * 0.03;
             c.spawn((
+                Slider {
+                    state: glass_h,
+                    closed_y: pane_pos.y,
+                    open_y: pane_pos.y + WIN_H * 0.9,
+                    y: pane_pos.y,
+                },
                 Mesh3d(meshes.add(Cuboid::new(WIN_W, WIN_H, 0.01))),
                 MeshMaterial3d(glass_pane_mat.clone()),
                 NotShadowCaster,
-                Transform::from_translation(center - dir * 0.0).with_rotation(frame),
+                Transform::from_translation(pane_pos).with_rotation(frame),
             ));
+            // Vano: il vetro (fisico) resta, non blocca la vista; gli scuri chiusi sì.
+            let size = if dir.x.abs() > 0.5 {
+                Vec3::new(0.1, WIN_H, WIN_W)
+            } else {
+                Vec3::new(WIN_W, WIN_H, 0.1)
+            };
+            c.spawn((
+                Collider::cuboid(size.x, size.y, size.z),
+                Transform::from_translation(center - dir * 0.05),
+            ));
+            c.spawn((
+                Collider::cuboid(size.x, size.y, size.z),
+                BlocksCamera,
+                LosBlocker {
+                    state: win_h,
+                    active_when_on: false,
+                },
+                Transform::from_translation(center - dir * 0.05),
+            ));
+            glass_handles.push(glass_h);
             window_handles.push(win_h);
         }
 
@@ -1270,6 +1410,7 @@ pub fn spawn_hut(
             light: light_h,
             shutter: shutter_h,
             windows: window_handles,
+            glass: glass_handles,
         });
     });
     if let Some(p) = parts {
@@ -1285,10 +1426,23 @@ pub fn spawn_hut(
 pub fn handle_prop_toggle(
     mut reader: MessageReader<PropToggle>,
     mut states: Query<(&PropKind, &mut PropState)>,
+    links: Query<&WindowLink>,
     mut keepers: Query<&mut Keeper>,
 ) {
     for PropToggle(handle) in reader.read() {
-        let Ok((kind, mut st)) = states.get_mut(*handle) else {
+        // Scuri comandati da dentro: servono il vetro alzato; si agisce sulla maniglia esterna.
+        let mut target = *handle;
+        if let Ok(link) = links.get(*handle)
+            && states
+                .get(*handle)
+                .is_ok_and(|(k, _)| *k == PropKind::WindowInner)
+        {
+            if !states.get(link.glass).is_ok_and(|(_, s)| s.on) {
+                continue; // vetro abbassato: gli scuri non si raggiungono
+            }
+            target = link.shutters;
+        }
+        let Ok((kind, mut st)) = states.get_mut(target) else {
             continue;
         };
         st.on = !st.on;
@@ -1302,22 +1456,61 @@ pub fn handle_prop_toggle(
 }
 
 /// Aggiorna il testo del prompt di ogni oggetto secondo il suo stato.
-pub fn update_prop_prompts(mut handles: Query<(&PropKind, &PropState, &mut Interactable)>) {
-    for (kind, st, mut inter) in &mut handles {
+pub fn update_prop_prompts(
+    states: Query<&PropState>,
+    mut handles: Query<(
+        &PropKind,
+        &PropState,
+        &mut Interactable,
+        Option<&WindowLink>,
+    )>,
+) {
+    for (kind, st, mut inter, link) in &mut handles {
         let text = match (kind, st.on) {
             (PropKind::Door, true) => "[E] Chiudi porta",
             (PropKind::Door, false) => "[E] Apri porta",
-            (PropKind::Window, true) => "[E] Chiudi finestra",
-            (PropKind::Window, false) => "[E] Apri finestra",
+            (PropKind::Window, true) => "[E] Chiudi scuri",
+            (PropKind::Window, false) => "[E] Apri scuri",
             (PropKind::Stove, true) => "[E] Spegni stufa",
             (PropKind::Stove, false) => "[E] Accendi stufa",
             (PropKind::Light, true) => "[E] Spegni luce",
             (PropKind::Light, false) => "[E] Accendi luce",
             (PropKind::Shutter, true) => "[E] Abbassa serranda",
             (PropKind::Shutter, false) => "[E] Alza serranda",
+            (PropKind::WindowGlass, true) => "[E] Abbassa vetro",
+            (PropKind::WindowGlass, false) => "[E] Alza vetro",
+            (PropKind::WindowInner, _) => {
+                let glass_up = link.is_some_and(|l| states.get(l.glass).is_ok_and(|s| s.on));
+                let shutters_open =
+                    link.is_some_and(|l| states.get(l.shutters).is_ok_and(|s| s.on));
+                match (glass_up, shutters_open) {
+                    (false, _) => "Alza il vetro per raggiungere gli scuri",
+                    (true, true) => "[E] Chiudi scuri",
+                    (true, false) => "[E] Apri scuri",
+                }
+            }
         };
         if inter.prompt != text {
             inter.prompt = text.to_string();
+        }
+    }
+}
+
+/// Collider che blocca la vista solo in certi stati (serranda abbassata, scuri chiusi).
+pub fn update_los_blockers(
+    mut commands: Commands,
+    states: Query<&PropState>,
+    blockers: Query<(Entity, &LosBlocker, Has<ColliderDisabled>)>,
+) {
+    for (e, b, disabled) in &blockers {
+        let Ok(st) = states.get(b.state) else {
+            continue;
+        };
+        let active = st.on == b.active_when_on;
+        if active && disabled {
+            commands.entity(e).remove::<ColliderDisabled>();
+        } else if !active && !disabled {
+            commands.entity(e).insert(ColliderDisabled);
         }
     }
 }
@@ -1800,25 +1993,30 @@ pub fn keeper_routine(
     for (entity, mut k, mut tf, mut npc) in &mut keepers {
         let stove_on = is_on(&states, parts.stove);
         let door_open = is_on(&states, parts.door);
-        let windows_open: Vec<usize> = parts
-            .windows
-            .iter()
-            .enumerate()
-            .filter(|(_, w)| is_on(&states, **w))
-            .map(|(i, _)| i)
+        // Finestra "aperta" = scuri aperti oppure vetro alzato.
+        let win_open = |states: &Query<&mut PropState>, i: usize| {
+            is_on(states, parts.windows[i]) || parts.glass.get(i).is_some_and(|g| is_on(states, *g))
+        };
+        let windows_open: Vec<usize> = (0..parts.windows.len())
+            .filter(|&i| win_open(&states, i))
             .collect();
 
         // Conti alla rovescia per porta e finestre aperte (si azzerano alla chiusura).
-        let watched: Vec<Entity> = std::iter::once(parts.door)
-            .chain(parts.windows.iter().copied())
+        let watched: Vec<(Entity, bool)> = std::iter::once((parts.door, door_open))
+            .chain(
+                parts
+                    .windows
+                    .iter()
+                    .enumerate()
+                    .map(|(i, w)| (*w, windows_open.contains(&i))),
+            )
             .collect();
-        for e in &watched {
-            let open = is_on(&states, *e);
+        for (e, open) in &watched {
             let has = k.open_timers.iter().any(|(t, _)| t == e);
-            if open && !has {
+            if *open && !has {
                 let delay = k.rand_range(CLOSE_DELAY);
                 k.open_timers.push((*e, delay));
-            } else if !open && has {
+            } else if !*open && has {
                 k.open_timers.retain(|(t, _)| t != e);
             }
         }
@@ -1994,10 +2192,13 @@ pub fn keeper_routine(
                 k.steps.pop_front();
             }
             Step::CloseWindow(i) => {
-                if let Some(w) = parts.windows.get(i)
-                    && let Ok(mut s) = states.get_mut(*w)
+                for e in [parts.windows.get(i), parts.glass.get(i)]
+                    .into_iter()
+                    .flatten()
                 {
-                    s.on = false;
+                    if let Ok(mut s) = states.get_mut(*e) {
+                        s.on = false;
+                    }
                 }
                 k.steps.pop_front();
             }
