@@ -88,6 +88,7 @@ pub struct UiQueries<'w, 's> {
         'w,
         's,
         (
+            Entity,
             &'static GlobalTransform,
             &'static crate::combat::EnemyHealth,
             Option<&'static crate::quests::denaro_rubato::QuestThief>,
@@ -96,7 +97,16 @@ pub struct UiQueries<'w, 's> {
     >,
     pub cameras: Query<'w, 's, (&'static Camera, &'static GlobalTransform)>,
     pub transforms: Query<'w, 's, &'static GlobalTransform>,
-    pub npcs: Query<'w, 's, (&'static GlobalTransform, &'static crate::entities::Npc)>,
+    pub npcs: Query<
+        'w,
+        's,
+        (
+            Entity,
+            &'static GlobalTransform,
+            &'static crate::entities::Npc,
+        ),
+    >,
+    pub anchors: Query<'w, 's, &'static crate::hud::NameAnchor>,
     pub styled: Local<'s, bool>,
     pub audio: ResMut<'w, crate::audio::AudioSettings>,
     pub clock: ResMut<'w, crate::daynight::GameClock>,
@@ -188,8 +198,10 @@ pub fn ui(
             }
 
             // Barre vita dei nemici sopra le loro teste (proiezione world→screen).
-            hud::draw_enemy_bars(ctx, &q.enemies, &q.cameras);
-            hud::draw_npc_labels(ctx, &q.npcs, &q.cameras);
+            if let Ok(pp) = q.player_pos.single() {
+                hud::draw_enemy_bars(ctx, &q.enemies, &q.cameras, pp.translation(), &barks);
+                hud::draw_npc_labels(ctx, &q.npcs, &q.cameras, pp.translation(), &barks);
+            }
 
             // Bussola in alto al centro + titolo quest + obiettivi (TAB).
             if let Ok(pp) = q.player_pos.single() {
@@ -217,7 +229,7 @@ pub fn ui(
             {
                 draw_objectives(ctx, &entry);
             }
-            draw_barks(ctx, &barks, &q.transforms, &q.cameras);
+            draw_barks(ctx, &barks, &q.transforms, &q.cameras, &q.anchors);
 
             // Contatore FPS in alto a destra (se attivato dal menu).
             if show_fps.0
@@ -709,7 +721,12 @@ fn draw_coords(ctx: &egui::Context, player_pos: Vec3) {
         .show(ctx, |ui| {
             hud_chip(
                 ui,
-                &format!("X {:.1}   Z {:.1}", player_pos.x, player_pos.z),
+                &format!(
+                    "X {:.1}   Y {:.1}   Z {:.1}",
+                    player_pos.x,
+                    player_pos.y - 0.85, // quota dei piedi (centro capsula - metà altezza)
+                    player_pos.z
+                ),
             );
         });
 }
@@ -928,6 +945,7 @@ fn draw_barks(
     barks: &Barks,
     transforms: &Query<&GlobalTransform>,
     cameras: &Query<(&Camera, &GlobalTransform)>,
+    anchors: &Query<&crate::hud::NameAnchor>,
 ) {
     let Ok((camera, cam_t)) = cameras.single() else {
         return;
@@ -936,12 +954,14 @@ fn draw_barks(
         let Ok(t) = transforms.get(b.entity) else {
             continue;
         };
-        let Ok(screen) = camera.world_to_viewport(cam_t, t.translation() + Vec3::Y * 2.6) else {
+        // Il fumetto sta SOTTO la targhetta del nome (stesso punto di ancoraggio).
+        let h = anchors.get(b.entity).map_or(1.3, |a| a.0);
+        let Ok(screen) = camera.world_to_viewport(cam_t, t.translation() + Vec3::Y * h) else {
             continue;
         };
         egui::Area::new(egui::Id::new(("bark", i)))
-            .pivot(egui::Align2::CENTER_BOTTOM)
-            .fixed_pos(egui::pos2(screen.x, screen.y))
+            .pivot(egui::Align2::CENTER_TOP)
+            .fixed_pos(egui::pos2(screen.x, screen.y + 8.0))
             .show(ctx, |ui| {
                 egui::Frame::default()
                     .fill(egui::Color32::from_rgba_unmultiplied(14, 18, 28, 235))

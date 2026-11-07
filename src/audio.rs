@@ -55,6 +55,40 @@ impl Default for AudioSettings {
     }
 }
 
+/// Abbassamento temporaneo della musica mentre parla un personaggio (ducking).
+#[derive(Resource)]
+pub struct MusicDuck {
+    /// Moltiplicatore corrente del volume della musica (1 = normale).
+    pub level: f32,
+}
+
+impl Default for MusicDuck {
+    fn default() -> Self {
+        Self { level: 1.0 }
+    }
+}
+
+/// Livello della musica mentre parla un personaggio.
+const DUCK_LEVEL: f32 = 0.35;
+/// Costante di tempo (s) della dissolvenza del ducking.
+const DUCK_TAU: f32 = 0.25;
+
+/// Sistema: porta `MusicDuck.level` verso `DUCK_LEVEL` mentre c'è una voce, altrimenti verso 1.
+pub fn update_music_duck(
+    time: Res<Time>,
+    voice: Res<crate::voice::VoiceQueue>,
+    clips: Query<(), With<crate::voice::VoiceClip>>,
+    mut duck: ResMut<MusicDuck>,
+) {
+    let target = if voice.busy() || !clips.is_empty() {
+        DUCK_LEVEL
+    } else {
+        1.0
+    };
+    let k = 1.0 - (-time.delta_secs() / DUCK_TAU).exp();
+    duck.level += (target - duck.level) * k;
+}
+
 /// Marker della traccia musicale.
 #[derive(Component)]
 pub struct MusicTrack;
@@ -84,11 +118,12 @@ pub fn start_music(
 /// Applica il volume delle musiche alla traccia quando cambia.
 pub fn apply_music_volume(
     settings: Res<AudioSettings>,
+    duck: Res<MusicDuck>,
     mut tracks: Query<&mut AudioSink, With<MusicTrack>>,
 ) {
     // Anche al primo frame in cui il sink compare (traccia appena caricata).
     for mut sink in &mut tracks {
-        let target = Volume::Linear(settings.music_volume);
+        let target = Volume::Linear(settings.music_volume * duck.level);
         if sink.volume() != target {
             sink.set_volume(target);
         }

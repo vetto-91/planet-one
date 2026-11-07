@@ -23,8 +23,13 @@ use bevy::prelude::*;
 pub struct Interactable {
     /// Testo del prompt mostrato quando il player è nel range.
     pub prompt: String,
-    /// Raggio di interazione (m).
+    /// Raggio di interazione (m): per gli NPC è la prossimità, per gli oggetti
+    /// (`aim: Some`) la distanza massima dal giocatore.
     pub range: f32,
+    /// `Some(raggio)`: l'oggetto si usa solo **guardandolo** col mirino (raggio in
+    /// metri attorno al suo punto di interazione) e ha priorità sull'NPC finché
+    /// è guardato. `None`: solo prossimità (NPC).
+    pub aim: Option<f32>,
 }
 
 /// Stato dell'NPC rispetto al dialogo.
@@ -142,8 +147,11 @@ pub fn spawn_npc(
             },
             Interactable {
                 prompt: "[E] Parla".to_string(),
-                range: 5.0,
+                // Solo in prossimità del Viandante (porta/stufa si usano col mirino).
+                range: 3.0,
+                aim: None,
             },
+            crate::hud::NameAnchor(1.3),
             crate::hut::Keeper::new(),
             // Collider figlio: si somma al corpo statico della casetta.
             Collider::capsule(0.35, 1.0),
@@ -191,6 +199,9 @@ pub fn spawn_enemy(
     ));
 }
 
+/// Distanza massima (m) dal giocatore per usare un oggetto guardato col mirino.
+const AIM_REACH: f32 = 3.0;
+
 /// Interagibile più vicino: (distanza, entità, componente, NPC, proprietà).
 type BestInteract<'a> = (
     f32,
@@ -222,6 +233,9 @@ pub fn interact(
     mut nearest: ResMut<NearestInteract>,
     quest: Res<crate::quests::denaro_rubato::QuestState>,
     texts: Res<crate::quests::QuestTexts>,
+    cameras: Query<&GlobalTransform, With<Camera3d>>,
+    spatial: SpatialQuery,
+    blockers: Query<(), With<crate::camera::BlocksCamera>>,
 ) {
     // Se un dialogo è già aperto non riaprire.
     if dialog.open {
@@ -239,16 +253,60 @@ pub fn interact(
     };
     let p = player.translation();
 
-    // Trova l'interagibile più vicino entro range.
+    // 1) Oggetti (porta, stufa, interruttore…): solo se GUARDATI col mirino
+    //    (centro schermo), entro 3 m dal giocatore e non dietro un muro.
+    //    Hanno priorità su tutto finché sono guardati.
     let mut best: Option<BestInteract> = None;
-    for (e, t, inter, npc, prop) in &interactables {
-        // L'NPC impegnato nella routine non è interagibile.
-        if npc.is_some_and(|n| n.mode == NpcMode::Busy) {
-            continue;
+    if let Ok(cam) = cameras.single() {
+        let origin = cam.translation();
+        let dir = cam.forward();
+        let mut best_off = f32::MAX;
+        for (e, t, inter, npc, prop) in &interactables {
+            let Some(radius) = inter.aim else {
+                continue;
+            };
+            let pos = t.translation();
+            let to = pos - origin;
+            let along = to.dot(*dir);
+            if along <= 0.0 || pos.distance(p) > AIM_REACH {
+                continue;
+            }
+            let off = (pos - (origin + *dir * along)).length();
+            if off > radius || off >= best_off {
+                continue;
+            }
+            // Dietro un muro (collider della casetta) non si può usare.
+            if let Ok(d) = Dir3::new(to)
+                && let Some(hit) = spatial.cast_ray_predicate(
+                    origin,
+                    d,
+                    along,
+                    true,
+                    &SpatialQueryFilter::default(),
+                    &|ent| blockers.contains(ent),
+                )
+                && hit.distance < along - 0.35
+            {
+                continue;
+            }
+            best_off = off;
+            best = Some((off, e, inter, npc, prop));
         }
-        let dist = t.translation().distance(p);
-        if dist <= inter.range && best.as_ref().is_none_or(|b| dist < b.0) {
-            best = Some((dist, e, inter, npc, prop));
+    }
+    // 2) Altrimenti l'NPC più vicino, solo per prossimità.
+    if best.is_none() {
+        for (e, t, inter, npc, prop) in &interactables {
+            if inter.aim.is_some() {
+                continue;
+            }
+            // L'NPC impegnato nella routine non è interagibile.
+            if npc.is_some_and(|n| n.mode == NpcMode::Busy) {
+                continue;
+            }
+            let dist = t.translation().distance(p);
+            if dist <= inter.range && best.as_ref().is_none_or(|b| dist < b.0) {
+                best = Some((dist, e, inter, npc, prop));
+            }
         }
     }
 

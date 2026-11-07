@@ -241,6 +241,11 @@ pub struct Bark {
 pub struct Barks(pub Vec<Bark>);
 
 impl Barks {
+    /// Ha un fumetto attivo?
+    pub fn has(&self, entity: Entity) -> bool {
+        self.0.iter().any(|b| b.entity == entity)
+    }
+
     pub fn say(&mut self, entity: Entity, speaker: &str, text: String) {
         self.0.retain(|b| b.entity != entity);
         self.0.push(Bark {

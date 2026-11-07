@@ -532,6 +532,7 @@ pub fn spawn_thief(
         crate::scene::SceneNode,
         crate::entities::Enemy,
         QuestThief,
+        crate::hud::NameAnchor(1.1),
         crate::combat::EnemyHealth {
             current: 30.0,
             max: 30.0,

@@ -30,6 +30,11 @@ cargo fmt            # formatta
 cargo clippy         # linter
 ```
 
+## Debug
+
+Variabili d'ambiente per provare il gioco senza giocarlo: `PLANET_ONE_HOUR=21.5` (ora iniziale),
+`PLANET_ONE_POS=x,y,z` (teletrasporto del player), `PLANET_ONE_LOOK=yaw,pitch[,distanza[,1]]` (camera; 1 = prima persona).
+
 ## Debug input
 
 Tutti gli eventi di tastiera/mouse vengono loggati con prefisso `[INPUT]`/`[EVENT]`:
@@ -54,7 +59,7 @@ grep "\[EVENT\]" run.log    # eventi finestra/cursore
 | T | "Aspetta": fa avanzare l'ora di gioco di N ore (T o Esc per chiudere) |
 | J | Diario delle quest (tab Da fare / Completate, quest espandibili); J o Esc per chiudere |
 | TAB (tenuto) | Obiettivi della quest (solo a quest attiva) |
-| E | Parla con l'NPC vicino; nel dialogo continua / conferma; apre/chiude la porta della casetta; accende/spegne la stufa |
+| E | Parla con l'NPC vicino (entro 3 m); nel dialogo continua / conferma; **guardando un oggetto col mirino** (entro 3 m) lo usa: porta, finestre, stufa, interruttore della luce, serranda del negozio |
 | Invio | Nel dialogo: continua / conferma (alternativa a E) |
 | Su/Giù o W/S | Nel dialogo: cambia la scelta evidenziata |
 | 1–9, 0 | Usa l'oggetto nello slot corrispondente della barra in basso (pozione: +25 HP) |
@@ -76,11 +81,15 @@ Il ladro ti apostrofa quando ti vede da vicino (~12 m).
 
 ### La casetta del Viandante
 
-Il Viandante vende dal chiosco della casetta (3D, con fondamenta e scalini di pietra). La porta si apre
-con E e dentro si può entrare: letto, cucinino con stufa a legna (E per accenderla: dal camino esce il
-fumo), tavolo, baule, scaffale e lanterna. Di giorno il Viandante è al banco; **dopo le 21** accende la
-stufa, chiude la porta e va a dormire; **alle 6** si sveglia, spegne la stufa, apre la porta e torna al
-banco (da addormentato non parla: "Zzz…").
+Il Viandante vende dal chiosco della casetta (3D, con fondamenta e scalini di pietra). Porta, finestre
+(3), stufa, interruttore della luce e serranda del negozio (scritta CHIUSO) si usano con E **guardandoli
+col mirino**; dentro si può entrare: letto, cucinino con stufa a legna (dal camino esce il fumo), tavolo,
+baule, scaffale e lanterna; la luce delle lampade e della stufa resta dentro le pareti (ombre).
+
+Giornata del Viandante: **6:00** si alza, accende la luce, chiude la porta se aperta, accende la stufa e
+alza la serranda; la stufa è accesa 6–10 e 17–21 (se la accendi/spegni tu non la tocca più fino al mattino).
+**Dopo le 21** spegne la stufa (se l'aveva accesa lui), abbassa la serranda, spegne la luce, chiude la porta
+e va a dormire (da addormentato non parla: "Zzz…").
 
 ### Musica e audio
 

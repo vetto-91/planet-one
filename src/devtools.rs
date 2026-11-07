@@ -1,0 +1,47 @@
+//! Variabili d'ambiente di debug per provare il gioco senza giocarlo.
+//!
+//! - `PLANET_ONE_HOUR=21.5`: ora di gioco iniziale (vedi `daynight`).
+//! - `PLANET_ONE_POS=x,y,z`: teletrasporta il player (dopo ~1 s).
+//! - `PLANET_ONE_LOOK=yaw,pitch[,distanza[,1]]`: orientamento della camera in gradi
+//!   (il quarto valore 1 attiva la prima persona).
+//!
+//! Se le variabili non sono impostate non succede nulla.
+
+use crate::camera::OrbitCamera;
+use crate::player::Player;
+use bevy::prelude::*;
+
+/// Sistema (Update): applica una sola volta posizione e orientamento di debug.
+pub fn apply_debug_env(
+    mut orbit: ResMut<OrbitCamera>,
+    mut players: Query<&mut Transform, With<Player>>,
+    mut frames: Local<u32>,
+) {
+    *frames += 1;
+    if *frames != 60 {
+        return;
+    }
+    let parse = |name: &str| -> Option<Vec<f32>> {
+        let v = std::env::var(name).ok()?;
+        Some(v.split(',').filter_map(|x| x.trim().parse().ok()).collect())
+    };
+    if let Some(p) = parse("PLANET_ONE_LOOK")
+        && p.len() >= 2
+    {
+        orbit.yaw = p[0].to_radians();
+        orbit.pitch = p[1].to_radians();
+        if let Some(d) = p.get(2) {
+            orbit.distance = *d;
+        }
+        if p.get(3) == Some(&1.0) {
+            orbit.first_person_lock = true;
+            orbit.mode = crate::camera::CameraMode::FirstPerson;
+        }
+    }
+    if let Some(p) = parse("PLANET_ONE_POS")
+        && p.len() == 3
+        && let Ok(mut t) = players.single_mut()
+    {
+        t.translation = Vec3::new(p[0], p[1], p[2]);
+    }
+}

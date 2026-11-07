@@ -159,12 +159,21 @@ pub fn draw_hud(ctx: &egui::Context, health: &PlayerHealth, inventory: &Inventor
     }
 }
 
+/// Distanza (m) dal player entro cui compaiono le targhette dei personaggi.
+const LABEL_DIST: f32 = 10.0;
+
+/// Altezza (m, sopra il centro) del punto di ancoraggio della targhetta del
+/// nome; il fumetto di chi parla si ancora allo stesso punto, sotto la targhetta.
+#[derive(Component)]
+pub struct NameAnchor(pub f32);
+
 /// Disegna sopra ogni nemico: nome "enemy" + barra vita rossa.
 /// Usa la proiezione camera→viewport per mettere la barra sopra la testa.
 pub fn draw_enemy_bars(
     ctx: &egui::Context,
     enemies: &Query<
         (
+            Entity,
             &GlobalTransform,
             &EnemyHealth,
             Option<&crate::quests::denaro_rubato::QuestThief>,
@@ -172,6 +181,8 @@ pub fn draw_enemy_bars(
         With<Enemy>,
     >,
     cameras: &Query<(&Camera, &GlobalTransform)>,
+    player_pos: Vec3,
+    barks: &crate::quests::Barks,
 ) {
     let Ok((camera, cam_t)) = cameras.single() else {
         return;
@@ -179,7 +190,11 @@ pub fn draw_enemy_bars(
     let viewport = ctx.viewport_rect();
 
     let painter = ctx.layer_painter(egui::LayerId::background());
-    for (t, hp, thief) in enemies.iter() {
+    for (entity, t, hp, thief) in enemies.iter() {
+        // Solo in prossimità del player (o se sta parlando).
+        if t.translation().distance(player_pos) > LABEL_DIST && !barks.has(entity) {
+            continue;
+        }
         // Punto sopra la testa del nemico: il cubo e' alto 1.2 m, quindi
         // il top e' a +0.6; aggiungiamo margine per nome+barra (1.1 m).
         let world_pos = t.translation() + Vec3::Y * 1.1;
@@ -234,19 +249,21 @@ pub fn draw_enemy_bars(
     }
 }
 
-/// Targhetta con il nome sopra ogni NPC vicino (entro 25 m).
+/// Targhetta con il nome sopra ogni NPC vicino al player.
 pub fn draw_npc_labels(
     ctx: &egui::Context,
-    npcs: &Query<(&GlobalTransform, &crate::entities::Npc)>,
+    npcs: &Query<(Entity, &GlobalTransform, &crate::entities::Npc)>,
     cameras: &Query<(&Camera, &GlobalTransform)>,
+    player_pos: Vec3,
+    barks: &crate::quests::Barks,
 ) {
     let Ok((camera, cam_t)) = cameras.single() else {
         return;
     };
     let viewport = ctx.viewport_rect();
     let painter = ctx.layer_painter(egui::LayerId::background());
-    for (t, npc) in npcs.iter() {
-        if t.translation().distance(cam_t.translation()) > 25.0 {
+    for (entity, t, npc) in npcs.iter() {
+        if t.translation().distance(player_pos) > LABEL_DIST && !barks.has(entity) {
             continue;
         }
         let Ok(screen) = camera.world_to_viewport(cam_t, t.translation() + Vec3::Y * 1.3) else {

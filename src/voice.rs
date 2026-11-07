@@ -11,6 +11,9 @@ use bevy::audio::Volume;
 use bevy::prelude::*;
 use std::collections::VecDeque;
 
+/// Guadagno delle voci rispetto allo slider (le voci devono sovrastare la musica).
+const VOICE_GAIN: f32 = 1.4;
+
 /// Origine della voce: la voce di un dialogo si ferma alla chiusura del
 /// dialogo, quella di un fumetto (congedo, battuta del ladro) no.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -33,6 +36,11 @@ impl VoiceQueue {
         self.pending = clips.into();
         self.kind = Some(kind);
         self.interrupt = true;
+    }
+
+    /// C'è una voce in coda (o appena richiesta)?
+    pub fn busy(&self) -> bool {
+        !self.pending.is_empty() || self.interrupt
     }
 
     /// Ferma la voce se è del tipo indicato.
@@ -72,7 +80,8 @@ pub fn drive_voice(
         commands.spawn((
             VoiceClip,
             AudioPlayer::new(asset_server.load(format!("audio/voci/{clip}.ogg"))),
-            PlaybackSettings::DESPAWN.with_volume(Volume::Linear(settings.voice_volume)),
+            PlaybackSettings::DESPAWN
+                .with_volume(Volume::Linear(settings.voice_volume * VOICE_GAIN)),
         ));
         info!("[VOICE] clip avviata: {clip}");
     } else {

@@ -2,6 +2,19 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- Prima persona: occhi a ~1,57 m da terra. Chip delle coordinate con anche la quota Y dei piedi.
+- Targhette di Viandante, Ladro e nemici solo entro 10 m dal player; i fumetti (anche "Zzz…") stanno sotto il nome.
+- Interazione: gli oggetti (porta, finestre, stufa, interruttore, serranda) si usano solo **guardandoli col mirino**
+  (entro 3 m, non dietro un muro) e hanno la priorità sull'NPC; il Viandante si parla solo entro 3 m.
+- Casetta più bassa (affondata di 30 cm). Luci interne con ombre (la luce non attraversa i muri).
+  Nuovi oggetti: interruttore della luce, serranda del negozio con scritta CHIUSO, 3 finestre apribili con imposte.
+- Routine del Viandante v2: stufa 6–10 e 17–21 (non toccata se l'ha cambiata il giocatore), mattina (luce, porta,
+  stufa, serranda), sera (stufa, serranda, luce, porta, letto).
+- Voci: clip troppo basse normalizzate (`scripts/normalize_voci.py`), guadagno ×1,4 e musica abbassata mentre parla un personaggio.
+- Variabili d'ambiente di debug (`PLANET_ONE_POS`, `PLANET_ONE_LOOK`).
+
 ## v0.0.7.0 — Colonna sonora, casetta esplorabile, voci (2026-11-07)
 
 - Colonna sonora in loop (`audio/music/legacy_of_the_first_light.ogg`) con slider "Volume musica" nel

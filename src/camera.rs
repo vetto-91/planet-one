@@ -70,6 +70,8 @@ const PITCH_MAX: f32 = 1.35;
 const FOLLOW_SMOOTHNESS: f32 = 8.0;
 /// Offset verticale del punto osservato in terza persona (petto del pg).
 const LOOK_AT_HEIGHT: f32 = 1.0;
+/// Offset degli occhi rispetto al centro della capsula del player (prima persona).
+const FIRST_PERSON_EYE: f32 = 0.72;
 
 /// Nasconde/mostra il mesh visivo del player: in prima persona non si deve vedere.
 #[allow(clippy::type_complexity)]
@@ -226,7 +228,8 @@ pub fn follow(
             // Mouse giu' -> pitch aumenta -> -pitch diminuisce -> guardi giu'.
             // La mira resta coerente con la crosshair della 3a persona.
             let rot = Quat::from_rotation_y(state.yaw) * Quat::from_rotation_x(-state.pitch);
-            camera.translation = player.translation();
+            // Occhi a ~1,57 m da terra (il centro della capsula è a 0,85 m).
+            camera.translation = player.translation() + Vec3::Y * FIRST_PERSON_EYE;
             camera.rotation = rot;
         }
     }

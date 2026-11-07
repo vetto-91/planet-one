@@ -7,6 +7,7 @@ mod audio;
 mod camera;
 mod combat;
 mod daynight;
+mod devtools;
 mod entities;
 mod figure;
 mod hud;
@@ -107,6 +108,7 @@ fn main() {
         .init_resource::<menu::JournalTab>()
         .init_resource::<audio::AudioSettings>()
         .init_resource::<voice::VoiceQueue>()
+        .init_resource::<audio::MusicDuck>()
         .add_message::<hut::PropToggle>()
         .init_resource::<daynight::GameClock>()
         .init_resource::<daynight::WaitUi>()
@@ -141,14 +143,18 @@ fn main() {
                 terrain::update_terrain,
                 sky::apply_sky_texture,
                 daynight::update_sky,
+                devtools::apply_debug_env,
                 hut::handle_prop_toggle,
                 hut::update_prop_prompts,
                 hut::keeper_routine,
-                hut::animate_doors,
+                hut::animate_hinges,
+                hut::animate_sliders,
+                hut::apply_house_light,
                 hut::stove_light,
                 hut::emit_smoke,
                 hut::update_smoke,
                 props::snap_to_ground,
+                audio::update_music_duck,
                 audio::apply_music_volume,
                 audio::save_settings,
                 voice::drive_voice,

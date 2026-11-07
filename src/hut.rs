@@ -22,6 +22,9 @@ use bevy::prelude::*;
 const W: f32 = 4.0;
 const D: f32 = 6.0;
 const WALL_H: f32 = 2.36;
+/// Di quanto il blocco della casetta è affondato nel terreno più basso (m): banco e
+/// pavimento più vicini al giocatore.
+const HUT_SINK: f32 = 0.30;
 /// Quota del pavimento sopra il terreno più basso (le fondamenta lo reggono).
 const FLOOR_Y: f32 = 0.5;
 /// Superficie calpestabile (assi) appena sopra il pavimento.
@@ -55,33 +58,57 @@ const CHIMNEY_TOP_Y: f32 = FLOOR_Y + WALL_H + ROOF_H + 0.7;
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum PropKind {
     Door,
+    Window,
     Stove,
+    /// Interruttore della luce di casa.
+    Light,
+    /// Serranda del negozio.
+    Shutter,
 }
 
-/// Entità (porta o stufa) a cui l'interagibile fa riferimento.
+/// Stato di un oggetto, sull'entità "maniglia" (quella con `PropKind` e
+/// `Interactable`). `on`: porta/finestra/serranda = aperta, stufa/luce = accesa.
 #[derive(Component)]
-pub struct PropTarget(pub Entity);
+pub struct PropState {
+    pub on: bool,
+}
 
-/// Porta (sull'entità cerniera): stato e angolo corrente.
+/// Anta incernierata (porta o imposta): ruota verso `open_angle` quando lo
+/// stato della maniglia `state` è `on`.
 #[derive(Component)]
-pub struct Door {
-    pub open: bool,
+pub struct Hinge {
+    pub state: Entity,
+    pub open_angle: f32,
     pub angle: f32,
+    /// Rotazione di base del pivot (orientamento della parete).
+    pub base: Quat,
+}
+
+/// Pannello che scorre in verticale (serranda): `y` locale tra chiusa e aperta.
+#[derive(Component)]
+pub struct Slider {
+    pub state: Entity,
+    pub closed_y: f32,
+    pub open_y: f32,
+    pub y: f32,
 }
 
 /// Collider del pannello della porta (disattivato quando è aperta).
 #[derive(Component)]
 pub struct DoorCollider;
 
-/// Stufa a legna.
-#[derive(Component)]
-pub struct Stove {
-    pub lit: bool,
-}
-
 /// Luce della stufa (bagliore quando accesa).
 #[derive(Component)]
 pub struct StoveLight;
+
+/// Lampada di casa: mesh emissivo e luce, seguono l'interruttore.
+#[derive(Component)]
+pub struct HouseLamp;
+#[derive(Component)]
+pub struct HouseLampLight;
+/// Levetta dell'interruttore.
+#[derive(Component)]
+pub struct SwitchLever;
 
 /// Punta del camino: da qui esce il fumo.
 #[derive(Component)]
@@ -95,9 +122,18 @@ pub struct SmokePuff {
     drift: Vec2,
 }
 
-/// Richiesta di commutare porta/stufa (inviata da `entities::interact`).
+/// Richiesta di commutare un oggetto (inviata da `entities::interact`).
 #[derive(Message)]
 pub struct PropToggle(pub Entity);
+
+/// Le maniglie degli oggetti della casetta (per la routine del Viandante).
+#[derive(Resource)]
+pub struct HutParts {
+    pub door: Entity,
+    pub stove: Entity,
+    pub light: Entity,
+    pub shutter: Entity,
+}
 
 // ----- Mesh -----
 
@@ -158,6 +194,40 @@ fn rect_uv(ox: f32, oy: f32, x0: f32, y0: f32, x1: f32, y1: f32) -> [Vec2; 4] {
         p(ox + x0, oy + y1),
     ]
 }
+
+/// Le 4 pareti: (direzione verso l'esterno, "sinistra" vista da fuori, mezza
+/// lunghezza, distanza dal centro, origine della vista nella foto).
+type Side = (Vec3, Vec3, f32, f32, (f32, f32));
+
+fn side_frames() -> [Side; 4] {
+    let (hw, hd) = (W / 2.0, D / 2.0);
+    [
+        (Vec3::NEG_Z, Vec3::X, hw, hd, (0.0, 0.0)), // 0 fronte: banco e porta
+        (Vec3::X, Vec3::Z, hd, hw, (256.0, 256.0)), // 1 lato +X
+        (Vec3::Z, Vec3::NEG_X, hw, hd, (0.0, 256.0)), // 2 retro
+        (Vec3::NEG_X, Vec3::NEG_Z, hd, hw, (256.0, 0.0)), // 3 lato -X
+    ]
+}
+
+/// Punto sulla parete corrispondente a un pixel (relativo alla vista) della foto.
+fn wall_point(side: &Side, px: (f32, f32)) -> Vec3 {
+    let (dir, left, half, dist, _) = *side;
+    let u = (px.0 - 40.0) / 178.0;
+    let v = (px.1 - 113.0) / 105.0;
+    dir * dist + left * (half * (1.0 - 2.0 * u)) + Vec3::Y * (FLOOR_Y + WALL_H - v * WALL_H)
+}
+
+/// Dimensioni (m) delle finestre apribili.
+const WIN_W: f32 = 1.0;
+const WIN_H: f32 = 0.8;
+/// Angolo di apertura delle imposte (verso l'esterno).
+const WIN_OPEN_ANGLE: f32 = 1.75;
+/// Finestre: (indice parete, centro in pixel relativi alla vista).
+const WINDOWS: [(usize, (f32, f32)); 3] = [
+    (1, (156.5, 150.0)), // lato +X
+    (2, (94.5, 150.0)),  // retro
+    (3, (90.0, 158.0)),  // lato -X
+];
 
 /// Pareti, fascia sotto il tetto, tetto a padiglione, coperchio e pavimento.
 #[allow(clippy::type_complexity)]
@@ -437,6 +507,20 @@ pub fn spawn_hut(
         perceptual_roughness: 0.9,
         ..default()
     });
+    let shutter_mat = materials.add(StandardMaterial {
+        base_color: Color::WHITE,
+        base_color_texture: Some(asset_server.load("textures/serranda.png")),
+        perceptual_roughness: 0.9,
+        ..default()
+    });
+    let shutters_mat = materials.add(StandardMaterial {
+        base_color: Color::WHITE,
+        base_color_texture: Some(asset_server.load("textures/imposte.png")),
+        double_sided: true,
+        cull_mode: None,
+        perceptual_roughness: 0.9,
+        ..default()
+    });
     // Colori degli arredi.
     let wood = solid(materials, Color::srgb(0.45, 0.30, 0.18), 0.85, 0.0);
     let dark_wood = solid(materials, Color::srgb(0.28, 0.18, 0.11), 0.85, 0.0);
@@ -474,7 +558,7 @@ pub fn spawn_hut(
         .spawn((
             SceneNode,
             SnapToGround {
-                offset: 0.0,
+                offset: -HUT_SINK,
                 half: Vec2::new(hw + 0.3, hd + 0.3),
             },
             RigidBody::Static,
@@ -483,6 +567,7 @@ pub fn spawn_hut(
         ))
         .id();
 
+    let mut parts: Option<HutParts> = None;
     commands.entity(root).with_children(|c| {
         // Pareti e tetto, fondamenta e gradini.
         c.spawn((Mesh3d(hut_mesh), MeshMaterial3d(hut_mat)));
@@ -563,54 +648,56 @@ pub fn spawn_hut(
                 .with_rotation(Quat::from_rotation_x(-ang)),
         ));
 
-        // --- Porta apribile (pivot sulla cerniera) ---
-        let hinge = Vec3::new(DOOR_X_HINGE, FLOOR_Y, -hd);
-        let pivot = c
+        // --- Porta apribile: stato sulla maniglia, pivot sulla cerniera ---
+        // Punto di interazione sul piano della porta: si usa da fuori e da dentro.
+        let door_h = c
             .spawn((
-                Door {
-                    open: true,
-                    angle: DOOR_OPEN_ANGLE,
+                PropKind::Door,
+                PropState { on: false },
+                Interactable {
+                    prompt: "[E] Apri porta".to_string(),
+                    range: 3.0,
+                    aim: Some(0.7),
                 },
-                Transform::from_translation(hinge)
-                    .with_rotation(Quat::from_rotation_y(DOOR_OPEN_ANGLE)),
-                Visibility::default(),
+                Transform::from_xyz(door_cx, FLOOR_Y + 1.0, -hd),
             ))
-            .with_children(|d| {
-                // Pannello: x locale 0..DOOR_W (la cerniera è a x=0), visto da fuori il bordo sinistro è +X.
-                let mut mb = MeshBuf::new();
-                mb.quad(
-                    [
-                        Vec3::new(DOOR_W, DOOR_H, 0.0),
-                        Vec3::new(0.0, DOOR_H, 0.0),
-                        Vec3::new(0.0, 0.0, 0.0),
-                        Vec3::new(DOOR_W, 0.0, 0.0),
-                    ],
-                    [
-                        Vec2::new(0.0, 0.0),
-                        Vec2::new(1.0, 0.0),
-                        Vec2::new(1.0, 1.0),
-                        Vec2::new(0.0, 1.0),
-                    ],
-                );
-                d.spawn((Mesh3d(meshes.add(mb.finish())), MeshMaterial3d(door_mat)));
-                d.spawn((
-                    DoorCollider,
-                    Collider::cuboid(DOOR_W, DOOR_H, 0.1),
-                    Transform::from_xyz(DOOR_W / 2.0, DOOR_H / 2.0, 0.0),
-                    BlocksCamera,
-                ));
-            })
             .id();
-        // Punto di interazione della porta (davanti, fisso).
+        let hinge = Vec3::new(DOOR_X_HINGE, FLOOR_Y, -hd);
         c.spawn((
-            PropKind::Door,
-            PropTarget(pivot),
-            Interactable {
-                prompt: "[E] Chiudi porta".to_string(),
-                range: 2.4,
+            Hinge {
+                state: door_h,
+                open_angle: DOOR_OPEN_ANGLE,
+                angle: 0.0,
+                base: Quat::IDENTITY,
             },
-            Transform::from_xyz(door_cx, FLOOR_Y + 1.0, -hd - 0.3),
-        ));
+            Transform::from_translation(hinge),
+            Visibility::default(),
+        ))
+        .with_children(|d| {
+            // Pannello: x locale 0..DOOR_W (la cerniera è a x=0), visto da fuori il bordo sinistro è +X.
+            let mut mb = MeshBuf::new();
+            mb.quad(
+                [
+                    Vec3::new(DOOR_W, DOOR_H, 0.0),
+                    Vec3::new(0.0, DOOR_H, 0.0),
+                    Vec3::new(0.0, 0.0, 0.0),
+                    Vec3::new(DOOR_W, 0.0, 0.0),
+                ],
+                [
+                    Vec2::new(0.0, 0.0),
+                    Vec2::new(1.0, 0.0),
+                    Vec2::new(1.0, 1.0),
+                    Vec2::new(0.0, 1.0),
+                ],
+            );
+            d.spawn((Mesh3d(meshes.add(mb.finish())), MeshMaterial3d(door_mat)));
+            d.spawn((
+                DoorCollider,
+                Collider::cuboid(DOOR_W, DOOR_H, 0.1),
+                Transform::from_xyz(DOOR_W / 2.0, DOOR_H / 2.0, 0.0),
+                BlocksCamera,
+            ));
+        });
 
         // --- Interni (pavimento a Y0) ---
         // Letto lungo la parete -X, testata al fondo.
@@ -780,9 +867,18 @@ pub fn spawn_hut(
             Chimney,
             Transform::from_xyz(CHIMNEY_XZ.x, CHIMNEY_TOP_Y + 0.15, CHIMNEY_XZ.y),
         ));
-        // Interagibile e luce della stufa.
-        let stove = c
-            .spawn((Stove { lit: false }, Transform::from_translation(stove_pos)))
+        // Stufa: maniglia con stato, luce con ombre (resta dentro la casa).
+        let stove_h = c
+            .spawn((
+                PropKind::Stove,
+                PropState { on: false },
+                Interactable {
+                    prompt: "[E] Accendi stufa".to_string(),
+                    range: 3.0,
+                    aim: Some(0.55),
+                },
+                Transform::from_xyz(CHIMNEY_XZ.x - 0.35, Y0 + 0.6, CHIMNEY_XZ.y),
+            ))
             .with_children(|s| {
                 s.spawn((
                     StoveLight,
@@ -790,22 +886,13 @@ pub fn spawn_hut(
                         color: Color::srgb(1.0, 0.55, 0.25),
                         intensity: 0.0,
                         range: 6.0,
-                        shadow_maps_enabled: false,
+                        shadow_maps_enabled: true,
                         ..default()
                     },
-                    Transform::from_xyz(-0.5, 0.1, 0.0),
+                    Transform::from_xyz(-0.15, 0.3, 0.0),
                 ));
             })
             .id();
-        c.spawn((
-            PropKind::Stove,
-            PropTarget(stove),
-            Interactable {
-                prompt: "[E] Accendi stufa".to_string(),
-                range: 1.7,
-            },
-            Transform::from_xyz(CHIMNEY_XZ.x - 0.7, Y0 + 0.8, CHIMNEY_XZ.y),
-        ));
         // Mensola con pentole e barattoli.
         add_box(
             c,
@@ -871,7 +958,7 @@ pub fn spawn_hut(
                 false,
             );
         }
-        // Lanterna appesa al soffitto con luce calda.
+        // Lanterna appesa al soffitto: mesh e luce seguono l'interruttore.
         let lamp_y = Y0 + 2.1;
         add_cyl(
             c,
@@ -881,74 +968,202 @@ pub fn spawn_hut(
             roof_top - lamp_y,
             Vec3::new(0.0, lamp_y + (roof_top - lamp_y) / 2.0, 0.3),
         );
-        add_box(
-            c,
-            meshes,
-            &lamp_mat,
-            Vec3::new(0.16, 0.2, 0.16),
-            Vec3::new(0.0, lamp_y, 0.3),
-            false,
-        );
         c.spawn((
+            HouseLamp,
+            Mesh3d(meshes.add(Cuboid::new(0.16, 0.2, 0.16))),
+            MeshMaterial3d(lamp_mat),
+            Transform::from_xyz(0.0, lamp_y, 0.3),
+        ));
+        c.spawn((
+            HouseLampLight,
             PointLight {
                 color: Color::srgb(1.0, 0.78, 0.5),
                 intensity: 180_000.0,
                 range: 9.0,
-                shadow_maps_enabled: false,
+                shadow_maps_enabled: true,
                 ..default()
             },
             Transform::from_xyz(0.0, lamp_y - 0.1, 0.3),
         ));
+
+        // Interruttore della luce: sul montante tra porta e finestra del negozio, lato interno.
+        let sw = Vec3::new(-0.55, FLOOR_Y + 1.3, -hd + 0.015);
+        add_box(
+            c,
+            meshes,
+            &dark_wood,
+            Vec3::new(0.12, 0.18, 0.03),
+            sw,
+            false,
+        );
+        c.spawn((
+            SwitchLever,
+            Mesh3d(meshes.add(Cuboid::new(0.03, 0.09, 0.03))),
+            MeshMaterial3d(iron.clone()),
+            Transform::from_translation(sw + Vec3::new(0.0, 0.0, 0.03)),
+        ));
+        let light_h = c
+            .spawn((
+                PropKind::Light,
+                PropState { on: true },
+                Interactable {
+                    prompt: "[E] Spegni luce".to_string(),
+                    range: 3.0,
+                    aim: Some(0.3),
+                },
+                Transform::from_translation(sw),
+            ))
+            .id();
+
+        // Serranda del negozio: pannello che scorre in verticale dietro l'apertura del banco.
+        let shutter_closed = FLOOR_Y + 1.315;
+        let shutter_open = shutter_closed + 1.05;
+        let shutter_h = c
+            .spawn((
+                PropKind::Shutter,
+                PropState { on: true },
+                Interactable {
+                    prompt: "[E] Abbassa serranda".to_string(),
+                    range: 3.0,
+                    // Piccolo raggio, sul lato dell'apertura: guardare il Viandante
+                    // dietro il banco non deve attivare la serranda.
+                    aim: Some(0.3),
+                },
+                Transform::from_xyz(1.6, FLOOR_Y + 1.5, -hd - 0.03),
+            ))
+            .id();
+        // Maniglia (pomello) della serranda, sul lato dell'apertura, fuori dalla parete.
+        add_box(
+            c,
+            meshes,
+            &dark_wood,
+            Vec3::new(0.1, 0.1, 0.05),
+            Vec3::new(1.6, FLOOR_Y + 1.5, -hd - 0.03),
+            false,
+        );
+        c.spawn((
+            Slider {
+                state: shutter_h,
+                closed_y: shutter_closed,
+                open_y: shutter_open,
+                y: shutter_open,
+            },
+            Mesh3d(meshes.add(Cuboid::new(2.24, 0.9, 0.04))),
+            MeshMaterial3d(shutter_mat),
+            Transform::from_xyz(0.74, shutter_open, -hd + 0.06),
+        ));
+
+        // Finestre apribili: due imposte incernierate ai bordi esterni, si aprono verso l'esterno.
+        let frames = side_frames();
+        for (side_idx, px) in WINDOWS {
+            let side = &frames[side_idx];
+            let (dir, left, _, _, _) = *side;
+            let center = wall_point(side, px);
+            // Sistema locale: x = "sinistra" vista da fuori, y = su, z = verso l'interno.
+            let frame = Quat::from_mat3(&Mat3::from_cols(left, Vec3::Y, -dir));
+            let win_h = c
+                .spawn((
+                    PropKind::Window,
+                    PropState { on: false },
+                    Interactable {
+                        prompt: "[E] Apri finestra".to_string(),
+                        range: 3.0,
+                        aim: Some(0.55),
+                    },
+                    Transform::from_translation(center),
+                ))
+                .id();
+            let leaf_w = WIN_W / 2.0;
+            // Anta sinistra: cerniera a +x, si estende verso il centro (-x).
+            // Anta destra: cerniera a -x, si estende verso il centro (+x).
+            for (sign, uv0, uv1) in [(1.0_f32, 0.0_f32, 0.5_f32), (-1.0, 0.5, 1.0)] {
+                let mut mb = MeshBuf::new();
+                let (xa, xb) = (0.0, -sign * leaf_w); // bordo alla cerniera, bordo libero
+                let (tl_x, tr_x) = if sign > 0.0 { (xa, xb) } else { (xb, xa) };
+                mb.quad(
+                    [
+                        Vec3::new(tl_x, WIN_H / 2.0, 0.0),
+                        Vec3::new(tr_x, WIN_H / 2.0, 0.0),
+                        Vec3::new(tr_x, -WIN_H / 2.0, 0.0),
+                        Vec3::new(tl_x, -WIN_H / 2.0, 0.0),
+                    ],
+                    [
+                        Vec2::new(uv0, 0.0),
+                        Vec2::new(uv1, 0.0),
+                        Vec2::new(uv1, 1.0),
+                        Vec2::new(uv0, 1.0),
+                    ],
+                );
+                c.spawn((
+                    Hinge {
+                        state: win_h,
+                        open_angle: -sign * WIN_OPEN_ANGLE,
+                        angle: 0.0,
+                        base: frame,
+                    },
+                    Transform::from_translation(center + left * (sign * WIN_W / 2.0) + dir * 0.02)
+                        .with_rotation(frame),
+                    Visibility::default(),
+                ))
+                .with_children(|l| {
+                    l.spawn((
+                        Mesh3d(meshes.add(mb.finish())),
+                        MeshMaterial3d(shutters_mat.clone()),
+                    ));
+                });
+            }
+        }
+
+        parts = Some(HutParts {
+            door: door_h,
+            stove: stove_h,
+            light: light_h,
+            shutter: shutter_h,
+        });
     });
+    if let Some(p) = parts {
+        commands.insert_resource(p);
+    }
     root
 }
 
 // ----- Sistemi -----
 
-/// Commuta porta/stufa quando il giocatore preme E sul rispettivo punto.
+/// Commuta l'oggetto quando il giocatore preme E guardandolo. Se è la stufa, il
+/// Viandante da quel momento non la gestisce più fino al mattino dopo.
 pub fn handle_prop_toggle(
     mut reader: MessageReader<PropToggle>,
-    handles: Query<(&PropKind, &PropTarget)>,
-    mut doors: Query<&mut Door>,
-    mut stoves: Query<&mut Stove>,
+    mut states: Query<(&PropKind, &mut PropState)>,
+    mut keepers: Query<&mut Keeper>,
 ) {
     for PropToggle(handle) in reader.read() {
-        let Ok((kind, target)) = handles.get(*handle) else {
+        let Ok((kind, mut st)) = states.get_mut(*handle) else {
             continue;
         };
-        match kind {
-            PropKind::Door => {
-                if let Ok(mut d) = doors.get_mut(target.0) {
-                    d.open = !d.open;
-                    info!("[HUT] porta {}", if d.open { "aperta" } else { "chiusa" });
-                }
-            }
-            PropKind::Stove => {
-                if let Ok(mut s) = stoves.get_mut(target.0) {
-                    s.lit = !s.lit;
-                    info!("[HUT] stufa {}", if s.lit { "accesa" } else { "spenta" });
-                }
+        st.on = !st.on;
+        info!("[HUT] {:?}: {}", kind, if st.on { "on" } else { "off" });
+        if *kind == PropKind::Stove {
+            for mut k in &mut keepers {
+                k.stove_manual = true;
             }
         }
     }
 }
 
-/// Aggiorna il testo del prompt di porta e stufa secondo lo stato.
-pub fn update_prop_prompts(
-    mut handles: Query<(&PropKind, &PropTarget, &mut Interactable)>,
-    doors: Query<&Door>,
-    stoves: Query<&Stove>,
-) {
-    for (kind, target, mut inter) in &mut handles {
-        let text = match kind {
-            PropKind::Door => match doors.get(target.0) {
-                Ok(d) if d.open => "[E] Chiudi porta",
-                _ => "[E] Apri porta",
-            },
-            PropKind::Stove => match stoves.get(target.0) {
-                Ok(s) if s.lit => "[E] Spegni stufa",
-                _ => "[E] Accendi stufa",
-            },
+/// Aggiorna il testo del prompt di ogni oggetto secondo il suo stato.
+pub fn update_prop_prompts(mut handles: Query<(&PropKind, &PropState, &mut Interactable)>) {
+    for (kind, st, mut inter) in &mut handles {
+        let text = match (kind, st.on) {
+            (PropKind::Door, true) => "[E] Chiudi porta",
+            (PropKind::Door, false) => "[E] Apri porta",
+            (PropKind::Window, true) => "[E] Chiudi finestra",
+            (PropKind::Window, false) => "[E] Apri finestra",
+            (PropKind::Stove, true) => "[E] Spegni stufa",
+            (PropKind::Stove, false) => "[E] Accendi stufa",
+            (PropKind::Light, true) => "[E] Spegni luce",
+            (PropKind::Light, false) => "[E] Accendi luce",
+            (PropKind::Shutter, true) => "[E] Abbassa serranda",
+            (PropKind::Shutter, false) => "[E] Alza serranda",
         };
         if inter.prompt != text {
             inter.prompt = text.to_string();
@@ -956,42 +1171,100 @@ pub fn update_prop_prompts(
     }
 }
 
-/// Anima l'apertura/chiusura della porta e ne attiva/disattiva il collider.
-pub fn animate_doors(
+/// Anima porta e imposte; attiva/disattiva il collider del pannello della porta.
+pub fn animate_hinges(
     time: Res<Time>,
     mut commands: Commands,
-    mut doors: Query<(&mut Door, &mut Transform, &Children)>,
+    states: Query<&PropState>,
+    mut hinges: Query<(&mut Hinge, &mut Transform, Option<&Children>)>,
     colliders: Query<(), With<DoorCollider>>,
 ) {
-    for (mut door, mut tf, children) in &mut doors {
-        let target = if door.open { DOOR_OPEN_ANGLE } else { 0.0 };
+    for (mut h, mut tf, children) in &mut hinges {
+        let Ok(st) = states.get(h.state) else {
+            continue;
+        };
+        let target = if st.on { h.open_angle } else { 0.0 };
         let step = 2.6 * time.delta_secs();
-        door.angle += (target - door.angle).clamp(-step, step);
-        tf.rotation = Quat::from_rotation_y(door.angle);
-        let blocking = !door.open && door.angle.abs() < 0.05;
-        for child in children.iter() {
-            if colliders.contains(child) {
-                if blocking {
-                    commands.entity(child).remove::<ColliderDisabled>();
-                } else {
-                    commands.entity(child).insert(ColliderDisabled);
+        h.angle += (target - h.angle).clamp(-step, step);
+        tf.rotation = h.base * Quat::from_rotation_y(h.angle);
+        if let Some(children) = children {
+            let blocking = !st.on && h.angle.abs() < 0.05;
+            for child in children.iter() {
+                if colliders.contains(child) {
+                    if blocking {
+                        commands.entity(child).remove::<ColliderDisabled>();
+                    } else {
+                        commands.entity(child).insert(ColliderDisabled);
+                    }
                 }
             }
         }
     }
 }
 
+/// Anima la serranda (scorrimento verticale).
+pub fn animate_sliders(
+    time: Res<Time>,
+    states: Query<&PropState>,
+    mut sliders: Query<(&mut Slider, &mut Transform)>,
+) {
+    for (mut sl, mut tf) in &mut sliders {
+        let Ok(st) = states.get(sl.state) else {
+            continue;
+        };
+        let target = if st.on { sl.open_y } else { sl.closed_y };
+        let step = 1.1 * time.delta_secs();
+        sl.y += (target - sl.y).clamp(-step, step);
+        tf.translation.y = sl.y;
+    }
+}
+
+/// Luce di casa: lampada (emissivo e luce) e levetta seguono l'interruttore.
+pub fn apply_house_light(
+    switches: Query<(&PropKind, &PropState)>,
+    mut lights: Query<&mut PointLight, With<HouseLampLight>>,
+    lamps: Query<&MeshMaterial3d<StandardMaterial>, With<HouseLamp>>,
+    mut levers: Query<&mut Transform, With<SwitchLever>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let Some(on) = switches
+        .iter()
+        .find(|(k, _)| **k == PropKind::Light)
+        .map(|(_, s)| s.on)
+    else {
+        return;
+    };
+    for mut l in &mut lights {
+        l.intensity = if on { 180_000.0 } else { 0.0 };
+    }
+    for m in &lamps {
+        if let Some(mut mat) = materials.get_mut(&m.0) {
+            mat.emissive = if on {
+                LinearRgba::new(1.4, 0.9, 0.35, 1.0)
+            } else {
+                LinearRgba::BLACK
+            };
+        }
+    }
+    for mut tf in &mut levers {
+        tf.rotation = Quat::from_rotation_x(if on { 0.5 } else { -0.5 });
+    }
+}
+
 /// Bagliore tremolante della stufa accesa.
 pub fn stove_light(
     time: Res<Time>,
-    stoves: Query<(&Stove, &Children)>,
+    stoves: Query<(&PropKind, &PropState, &Children)>,
     mut lights: Query<&mut PointLight, With<StoveLight>>,
 ) {
     let t = time.elapsed_secs();
-    for (stove, children) in &stoves {
+    for (kind, st, children) in &stoves {
+        if *kind != PropKind::Stove {
+            continue;
+        }
         for child in children.iter() {
             if let Ok(mut l) = lights.get_mut(child) {
-                l.intensity = if stove.lit {
+                l.intensity = if st.on {
                     60_000.0 * (1.0 + 0.2 * (t * 9.0).sin() * (t * 3.7).cos())
                 } else {
                     0.0
@@ -1008,13 +1281,13 @@ pub fn emit_smoke(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    stoves: Query<&Stove>,
+    stoves: Query<(&PropKind, &PropState)>,
     chimneys: Query<&GlobalTransform, With<Chimney>>,
     puffs: Query<(), With<SmokePuff>>,
     mut timer: Local<f32>,
     mut mesh: Local<Option<Handle<Mesh>>>,
 ) {
-    let lit = stoves.iter().any(|s| s.lit);
+    let lit = stoves.iter().any(|(k, s)| *k == PropKind::Stove && s.on);
     if !lit {
         *timer = 0.0;
         return;
@@ -1078,7 +1351,7 @@ pub fn update_smoke(
     }
 }
 
-// ----- Routine del Viandante (sera/notte/mattina) -----
+// ----- Routine del Viandante (giorno, sera, notte, mattina) -----
 
 /// Ore: dopo le 21 va a dormire, alle 6 si sveglia.
 const SLEEP_HOUR: f32 = 21.0;
@@ -1087,22 +1360,31 @@ const WAKE_HOUR: f32 = 6.0;
 const KEEPER_SPEED: f32 = 1.5;
 const STAND_Y: f32 = Y0 + 0.85;
 /// Punti (x, z locali) della routine.
+const SHOP_XZ: Vec2 = Vec2::new(KEEPER_SHOP.x, KEEPER_SHOP.z);
 const STOVE_STAND: Vec2 = Vec2::new(0.85, 2.45);
 const DOOR_STAND: Vec2 = Vec2::new(-1.0, -2.3);
+const SWITCH_STAND: Vec2 = Vec2::new(-0.55, -2.35);
 const BED_FOOT: Vec2 = Vec2::new(-1.3, 0.55);
 const BED_LIE: Vec3 = Vec3::new(-1.35, Y0 + 0.46 + 0.35, 1.85);
+
+/// La stufa del Viandante è accesa 6–10 e 17–21, spenta nel resto della giornata.
+fn stove_wanted(hour: f32) -> bool {
+    (6.0..10.0).contains(&hour) || (17.0..21.0).contains(&hour)
+}
 
 /// Fase della giornata del negoziante.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum KeeperPhase {
-    /// Al banco (6:00–21:00).
+    /// Al banco.
     Day,
-    /// Sta facendo la sequenza serale.
+    /// Sequenza serale (stufa, serranda, luce, porta, letto).
     Evening,
-    /// Dorme nel letto (21:00–6:00).
+    /// Dorme nel letto.
     Asleep,
-    /// Sta facendo la sequenza mattutina.
+    /// Sequenza mattutina (luce, porta, stufa, serranda, banco).
     Morning,
+    /// Va ad accendere/spegnere la stufa durante il giorno.
+    StoveTask,
 }
 
 /// Passo di una sequenza della routine.
@@ -1116,8 +1398,12 @@ enum Step {
     Wait(f32),
     /// Accende (true) o spegne la stufa.
     Stove(bool),
-    /// Apre (true) o chiude la porta.
-    Door(bool),
+    /// Accende (true) o spegne la luce di casa.
+    Light(bool),
+    /// Alza (true) o abbassa la serranda.
+    Shutter(bool),
+    /// Chiude la porta se è aperta.
+    CloseDoor,
     /// Si sdraia sul letto.
     Lie,
     /// Si alza e si mette in piedi accanto al letto.
@@ -1130,6 +1416,8 @@ pub struct Keeper {
     phase: KeeperPhase,
     steps: std::collections::VecDeque<Step>,
     wait: f32,
+    /// Il giocatore ha toccato la stufa: il Viandante non la gestisce fino al mattino.
+    pub stove_manual: bool,
 }
 
 impl Keeper {
@@ -1138,6 +1426,7 @@ impl Keeper {
             phase: KeeperPhase::Day,
             steps: Default::default(),
             wait: 0.0,
+            stove_manual: false,
         }
     }
 }
@@ -1147,60 +1436,94 @@ fn yaw_towards(d: Vec2) -> f32 {
     (-d.x).atan2(-d.y)
 }
 
-/// Sequenza della sera: stufa accesa, porta chiusa, a letto.
-fn evening_steps() -> std::collections::VecDeque<Step> {
+type Steps = std::collections::VecDeque<Step>;
+
+/// Passi per andare alla stufa, commutarla e tornare al banco.
+fn stove_trip(on: bool, back_to_shop: bool) -> Vec<Step> {
     use Step::*;
-    [
+    let mut v = vec![
         Walk(Vec2::new(0.8, -0.5)),
-        Walk(Vec2::new(0.85, 2.45)),
+        Walk(STOVE_STAND),
         Face(yaw_towards(Vec2::new(1.0, 0.0))),
         Wait(0.6),
-        Stove(true),
+        Stove(on),
         Wait(0.5),
-        Walk(Vec2::new(0.8, -0.2)),
-        Walk(DOOR_STAND),
+    ];
+    if back_to_shop {
+        v.extend([Walk(Vec2::new(0.8, -0.5)), Walk(SHOP_XZ), Face(0.0)]);
+    }
+    v
+}
+
+/// Sera: (spegne la stufa se è sua) → serranda giù → luce spenta → porta chiusa → a letto.
+fn evening_steps(stove_to_off: bool) -> Steps {
+    use Step::*;
+    let mut v: Vec<Step> = Vec::new();
+    if stove_to_off {
+        v.extend(stove_trip(false, false));
+        v.extend([Walk(Vec2::new(0.8, -0.5)), Walk(SHOP_XZ)]);
+    }
+    v.extend([
+        Walk(SHOP_XZ),
         Face(0.0),
         Wait(0.5),
-        Door(false),
+        Shutter(false),
+        Wait(1.2),
+        Walk(SWITCH_STAND),
+        Face(0.0),
+        Wait(0.4),
+        Light(false),
+        Wait(0.5),
+        Walk(DOOR_STAND),
+        Face(0.0),
+        Wait(0.3),
+        CloseDoor,
         Wait(0.8),
         Walk(Vec2::new(-1.0, -0.6)),
         Walk(BED_FOOT),
         Lie,
-    ]
-    .into()
+    ]);
+    v.into()
 }
 
-/// Sequenza del mattino: si alza, spegne la stufa, apre la porta, torna al banco.
-fn morning_steps() -> std::collections::VecDeque<Step> {
+/// Mattina: si alza → luce accesa → porta controllata/chiusa → stufa accesa → serranda su → banco.
+fn morning_steps() -> Steps {
     use Step::*;
-    [
+    let mut v: Vec<Step> = vec![
         Rise,
         Wait(0.5),
         Walk(Vec2::new(-1.0, -0.6)),
-        Walk(DOOR_STAND),
+        Walk(SWITCH_STAND),
         Face(0.0),
         Wait(0.4),
-        Door(true),
-        Wait(0.6),
-        Walk(Vec2::new(0.8, -0.2)),
-        Walk(STOVE_STAND),
-        Face(yaw_towards(Vec2::new(1.0, 0.0))),
+        Light(true),
         Wait(0.5),
-        Stove(false),
-        Wait(0.5),
-        Walk(Vec2::new(0.8, -0.5)),
-        Walk(Vec2::new(KEEPER_SHOP.x, KEEPER_SHOP.z)),
+        Walk(DOOR_STAND),
         Face(0.0),
-    ]
-    .into()
+        Wait(0.3),
+        CloseDoor,
+        Wait(0.6),
+    ];
+    v.extend(stove_trip(true, false));
+    v.extend([
+        Walk(Vec2::new(0.8, -0.5)),
+        Walk(SHOP_XZ),
+        Face(0.0),
+        Wait(0.4),
+        Shutter(true),
+        Wait(1.2),
+    ]);
+    v.into()
 }
 
-/// Sistema: sera → stufa accesa, porta chiusa, a dormire; mattina → si sveglia
-/// e torna al banco. Non parte mentre c'è un dialogo aperto.
+/// Sistema: gestisce la giornata del Viandante (stufa a orari, sera, notte,
+/// mattina). Non parte mentre c'è un dialogo aperto.
+#[allow(clippy::too_many_arguments)]
 pub fn keeper_routine(
     time: Res<Time>,
     clock: Res<crate::daynight::GameClock>,
     dialog: Res<crate::entities::DialogState>,
+    parts: Option<Res<HutParts>>,
     mut commands: Commands,
     mut keepers: Query<(
         Entity,
@@ -1208,32 +1531,49 @@ pub fn keeper_routine(
         &mut Transform,
         &mut crate::entities::Npc,
     )>,
-    mut doors: Query<&mut Door>,
-    mut stoves: Query<&mut Stove>,
+    mut states: Query<&mut PropState>,
 ) {
     use crate::entities::NpcMode;
+    let Some(parts) = parts else {
+        return;
+    };
     let dt = time.delta_secs();
     let hour = clock.hour;
     let night = !(WAKE_HOUR..SLEEP_HOUR).contains(&hour);
     for (entity, mut k, mut tf, mut npc) in &mut keepers {
+        let stove_on = states.get(parts.stove).is_ok_and(|s| s.on);
         // Avvio delle sequenze.
         match k.phase {
-            KeeperPhase::Day if night && !dialog.open => {
+            KeeperPhase::Day if !dialog.open && night => {
+                // Spegne la stufa solo se l'aveva accesa lui (non toccata dal giocatore).
+                k.steps = evening_steps(stove_on && !k.stove_manual);
                 k.phase = KeeperPhase::Evening;
-                k.steps = evening_steps();
                 npc.mode = NpcMode::Busy;
                 commands.entity(entity).insert(ColliderDisabled);
                 info!("[KEEPER] inizia la sera");
             }
+            KeeperPhase::Day
+                if !dialog.open && !k.stove_manual && stove_on != stove_wanted(hour) =>
+            {
+                k.steps = stove_trip(stove_wanted(hour), true).into();
+                k.phase = KeeperPhase::StoveTask;
+                npc.mode = NpcMode::Busy;
+                commands.entity(entity).insert(ColliderDisabled);
+                info!("[KEEPER] va alla stufa ({})", stove_wanted(hour));
+            }
             KeeperPhase::Asleep if !night => {
-                k.phase = KeeperPhase::Morning;
+                k.stove_manual = false;
                 k.steps = morning_steps();
+                k.phase = KeeperPhase::Morning;
                 npc.mode = NpcMode::Busy;
                 info!("[KEEPER] si sveglia");
             }
             _ => {}
         }
-        if !matches!(k.phase, KeeperPhase::Evening | KeeperPhase::Morning) {
+        if !matches!(
+            k.phase,
+            KeeperPhase::Evening | KeeperPhase::Morning | KeeperPhase::StoveTask
+        ) {
             continue;
         }
         let Some(step) = k.steps.front().copied() else {
@@ -1282,14 +1622,26 @@ pub fn keeper_routine(
                 }
             }
             Step::Stove(on) => {
-                if let Ok(mut s) = stoves.single_mut() {
-                    s.lit = on;
+                if let Ok(mut s) = states.get_mut(parts.stove) {
+                    s.on = on;
                 }
                 k.steps.pop_front();
             }
-            Step::Door(open) => {
-                if let Ok(mut d) = doors.single_mut() {
-                    d.open = open;
+            Step::Light(on) => {
+                if let Ok(mut s) = states.get_mut(parts.light) {
+                    s.on = on;
+                }
+                k.steps.pop_front();
+            }
+            Step::Shutter(open) => {
+                if let Ok(mut s) = states.get_mut(parts.shutter) {
+                    s.on = open;
+                }
+                k.steps.pop_front();
+            }
+            Step::CloseDoor => {
+                if let Ok(mut s) = states.get_mut(parts.door) {
+                    s.on = false;
                 }
                 k.steps.pop_front();
             }

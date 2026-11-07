@@ -56,5 +56,22 @@ for y in range((dy0 + 1) * S, (dy1 - 1) * S):
     for x in range((dx0 + 1) * S, (dx1 - 1) * S):
         px[x, y] = (0, 0, 0, 0)
 
+# --- Finestre apribili: foro (alfa 0) al posto delle finestre dipinte + ritaglio delle imposte ---
+# Finestre da 1,0 x 0,8 m: centro e semi-dimensioni in pixel della foto (pareti da 6 m e da 4 m).
+WIN_HALF_H = 0.4 / 2.36 * 105  # metà altezza (px)
+windows = [
+    ((346.0, 158.0), 0.5 / 6.0 * 178),   # lato -X (vista in alto a destra, imposte chiuse)
+    ((94.5, 406.0), 0.5 / 4.0 * 178),    # retro (vista in basso a sinistra)
+    ((412.5, 406.0), 0.5 / 6.0 * 178),   # lato +X (vista in basso a destra)
+]
+for (cx, cy), half_w in windows:
+    for y in range(int((cy - WIN_HALF_H) * S), int((cy + WIN_HALF_H) * S)):
+        for x in range(int((cx - half_w) * S), int((cx + half_w) * S)):
+            px[x, y] = (0, 0, 0, 0)
+# Imposte (due ante affiancate): la finestra con imposte chiuse della vista in alto a destra.
+shut = src.crop((331 * S, 140 * S, 361 * S, 176 * S)).convert("RGB")
+shut = shut.resize((shut.width * 3, shut.height * 3), Image.LANCZOS)
+shut.save("assets/textures/imposte.png", optimize=True)
+
 im.save(OUT, optimize=True)
 print("scritto", OUT, im.size)

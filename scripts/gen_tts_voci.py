@@ -75,6 +75,10 @@ def convert_to_ogg(in_mp3: Path, out_ogg: Path):
         str(out_ogg),
     ]
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+    # loudnorm non è affidabile sulle clip brevi: si alza a mano se il picco è basso.
+    from normalize_voci import normalize_file
+
+    normalize_file(out_ogg)
 
 
 async def main():
