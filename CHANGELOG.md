@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.11.0 — Isola, debug con mirino, oggetti ruotabili (2026-11-07)
 
 - Isola: terreno esteso a 300 m con costa irregolare, mare attorno e muro invisibile sulla riva; il quadrato della heightmap resta al centro.
 - Debug F4: mirino al centro per piazzare (Ctrl tenuto libera il mouse per il pannello), rotazione con freccia rossa (trascina, R, strumento Ruota),
