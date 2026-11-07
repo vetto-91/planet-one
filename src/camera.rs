@@ -97,6 +97,7 @@ pub fn orbit(
     mut cursor_events: MessageReader<CursorMoved>,
     mut state: ResMut<OrbitCamera>,
     debug: Res<crate::debug_place::DebugPlace>,
+    keys: Res<ButtonInput<KeyCode>>,
 ) {
     // Usiamo CursorMoved (delta calcolato da Bevy dal WindowEvent): su X11 i
     // DeviceEvent MouseMotion possono non arrivare, CursorMoved arriva sempre.
@@ -104,8 +105,8 @@ pub fn orbit(
     for ev in cursor_events.read() {
         delta += ev.delta.unwrap_or_default();
     }
-    // Con il debug F4 il mouse sceglie i punti: si guarda solo tenendo premuto il tasto destro.
-    if debug.on && !state.rmb_held {
+    // Con F4 la visuale resta normale; solo con Ctrl (cursore libero sul pannello) non ruota.
+    if crate::debug_place::cursor_free(debug.on, &keys) {
         return;
     }
     state.yaw -= delta.x * state.sensitivity;

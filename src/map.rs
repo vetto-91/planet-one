@@ -16,8 +16,8 @@ use bevy::light::Skybox;
 use bevy::prelude::*;
 use bevy_egui::egui;
 
-/// Lato (m) del terreno: la mappa lo mostra interamente alla vista iniziale.
-const TERRAIN_SIZE: f32 = 100.0;
+/// Lato (m) del terreno (isola + mare attorno).
+const TERRAIN_SIZE: f32 = crate::terrain::TERRAIN_SIZE;
 /// Altezza della camera sopra il terreno.
 const MAP_CAM_HEIGHT: f32 = 300.0;
 /// Fondo della mappa (carta scura) al posto del cielo.
@@ -38,9 +38,9 @@ pub struct MapView {
 impl Default for MapView {
     fn default() -> Self {
         Self {
-            zoom: TERRAIN_SIZE * 1.12,
+            zoom: 180.0,
             min: 20.0,
-            max: 140.0,
+            max: TERRAIN_SIZE * 1.3,
             center: Vec2::ZERO,
         }
     }

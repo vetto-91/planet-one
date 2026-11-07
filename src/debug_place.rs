@@ -38,7 +38,7 @@ const KINDS: [&str; 9] = [
     "altro",
 ];
 /// Limite del terreno (±m) per i punti generati.
-const TERRAIN_HALF: f32 = 49.0;
+const TERRAIN_HALF: f32 = 149.0;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum PlaceMode {
@@ -88,6 +88,15 @@ enum Tool {
     Place,
     Erase,
     Move,
+    Rotate,
+}
+
+/// Direzione degli oggetti di un'area.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum DirMode {
+    Random,
+    Fixed,
+    Center,
 }
 
 /// Allineamento del piazzamento singolo.
@@ -116,6 +125,45 @@ pub struct Placement {
     pub when: String,
     /// Coordinate effettive (x, z) di ogni oggetto: è la fonte di verità.
     pub points: Vec<Vec2>,
+    /// Direzione del "davanti" di ogni oggetto (radianti, 0 = +Z, verso (sin, cos)).
+    /// Vuoto = valore di default per tipo (vedi [`Placement::yaw`]).
+    pub yaws: Vec<f32>,
+}
+
+impl Placement {
+    /// Direzione dell'oggetto `j`: salvata, oppure di default (alberi e fiori
+    /// casuali ma stabili, il resto a 0).
+    pub fn yaw(&self, j: usize) -> f32 {
+        self.yaws.get(j).copied().unwrap_or_else(|| {
+            match (self.kind.as_str(), self.points.get(j)) {
+                ("albero" | "fiori", Some(p)) => {
+                    crate::world_props::hash01(*p, 1.0) * std::f32::consts::TAU
+                }
+                _ => 0.0,
+            }
+        })
+    }
+
+    /// Rende esplicite le direzioni (una per punto).
+    fn fix_yaws(&mut self) {
+        if self.yaws.len() != self.points.len() {
+            self.yaws = (0..self.points.len()).map(|j| self.yaw(j)).collect();
+        }
+    }
+}
+
+/// Ingombro (raggio, m) di un oggetto sul terreno: serve a non farli compenetrare.
+pub fn footprint(kind: &str) -> f32 {
+    match kind {
+        "albero" => 1.2,
+        "panchina" => 0.9,
+        "lampione" => 0.3,
+        "fiori" => 0.25,
+        "roccia" => 0.8,
+        "cespuglio" => 0.6,
+        "casa" => 3.0,
+        _ => 0.5,
+    }
 }
 
 #[derive(Resource)]
@@ -149,6 +197,17 @@ pub struct DebugPlace {
     markers_dirty: bool,
     /// Il pulsante OK del poligono è stato premuto.
     finish_requested: bool,
+    /// Direzione corrente per i nuovi oggetti (radianti) e modalità per le aree.
+    cur_yaw: f32,
+    dir_mode: DirMode,
+    /// Punto iniziale di un trascinamento (piazza / ruota) e oggetto che si ruota.
+    drag_start: Option<Vec2>,
+    drag_obj: Option<(usize, usize)>,
+    /// Messaggio breve per l'utente (es. "troppo vicino").
+    msg: String,
+    /// Piazzamento da ridistribuire (pulsante nell'elenco) e quantità nell'anteprima.
+    redistribute_req: Option<u32>,
+    preview_n: usize,
     /// Aumenta a ogni modifica dei piazzamenti (gli oggetti veri si rigenerano).
     revision: u32,
 }
@@ -185,6 +244,13 @@ impl Default for DebugPlace {
             cur_seed: new_seed(),
             markers_dirty: true,
             finish_requested: false,
+            cur_yaw: 0.0,
+            dir_mode: DirMode::Random,
+            drag_start: None,
+            drag_obj: None,
+            msg: String::new(),
+            redistribute_req: None,
+            preview_n: 0,
             revision: 1,
         };
         d.items = read_file();
@@ -218,6 +284,8 @@ impl DebugPlace {
     fn reset_pending(&mut self) {
         self.pending.clear();
         self.grabbed = None;
+        self.drag_start = None;
+        self.drag_obj = None;
     }
 }
 
@@ -248,32 +316,44 @@ fn in_poly(poly: &[Vec2], p: Vec2) -> bool {
     inside
 }
 
-/// Riempie una regione (riquadro + test di appartenenza) con `count` punti:
-/// regolari (griglia a passo uguale, centrata) oppure casuali.
-fn fill_region(
-    lo: Vec2,
-    hi: Vec2,
-    inside: &dyn Fn(Vec2) -> bool,
+/// Parametri di generazione dei punti di un piazzamento.
+struct Gen<'a> {
+    mode: PlaceMode,
+    a: Vec2,
+    b: Vec2,
+    poly: &'a [Vec2],
+    radius: f32,
     count: u32,
     regular: bool,
     seed: u64,
-) -> Vec<Vec2> {
-    let count = count.max(1) as usize;
+    /// Ingombro (raggio) di ogni oggetto nuovo.
+    r_obj: f32,
+    /// Oggetti già presenti (centro, ingombro) da non sovrapporre.
+    avoid: &'a [(Vec2, f32)],
+}
+
+/// Riempie una regione (riquadro + test di appartenenza) con al più `count` punti,
+/// senza compenetrazioni: regolari (griglia a passo uguale, centrata) o casuali
+/// (campionamento con distanza minima).
+fn fill_region(lo: Vec2, hi: Vec2, inside: &dyn Fn(Vec2) -> bool, g: &Gen) -> Vec<Vec2> {
+    let count = g.count.max(1) as usize;
     let size = hi - lo;
+    let free = |p: Vec2| g.avoid.iter().all(|(c, r)| c.distance(p) >= g.r_obj + r);
     if size.x < 0.01 || size.y < 0.01 {
-        return vec![(lo + hi) / 2.0];
+        let c = (lo + hi) / 2.0;
+        return if free(c) { vec![c] } else { Vec::new() };
     }
-    if !regular {
-        let mut st = seed | 1;
-        let mut out = Vec::with_capacity(count);
+    if !g.regular {
+        let mut st = g.seed | 1;
+        let mut out: Vec<Vec2> = Vec::with_capacity(count);
         let mut tries = 0;
-        while out.len() < count && tries < count * 400 {
+        while out.len() < count && tries < count * 600 {
             tries += 1;
             let p = Vec2::new(
                 lo.x + xorshift(&mut st) * size.x,
                 lo.y + xorshift(&mut st) * size.y,
             );
-            if inside(p) {
+            if inside(p) && free(p) && out.iter().all(|q| q.distance(p) >= 2.0 * g.r_obj) {
                 out.push(p);
             }
         }
@@ -286,7 +366,7 @@ fn fill_region(
             let mut x = lo.x + s / 2.0;
             while x < hi.x {
                 let p = Vec2::new(x, z);
-                if inside(p) {
+                if inside(p) && free(p) {
                     v.push(p);
                 }
                 x += s;
@@ -295,8 +375,10 @@ fn fill_region(
         }
         v
     };
-    let mut s_lo = (size.x * size.y / (count as f32 * 30.0)).sqrt().max(0.05);
-    let mut s_hi = size.x.max(size.y);
+    // Il passo non scende sotto il diametro dell'ingombro: niente compenetrazioni.
+    let s_min = (2.0 * g.r_obj).max(0.05);
+    let mut s_lo = (size.x * size.y / (count as f32 * 30.0)).sqrt().max(s_min);
+    let mut s_hi = size.x.max(size.y).max(s_lo);
     if grid(s_lo).len() < count {
         return grid(s_lo);
     }
@@ -324,43 +406,62 @@ fn poly_bounds(poly: &[Vec2]) -> (Vec2, Vec2) {
 }
 
 /// Punti di un piazzamento (anteprima e risultato usano la stessa funzione).
-#[allow(clippy::too_many_arguments)]
-fn gen_points(
-    mode: PlaceMode,
-    a: Vec2,
-    b: Vec2,
-    poly: &[Vec2],
-    radius: f32,
-    count: u32,
-    regular: bool,
-    seed: u64,
-) -> Vec<Vec2> {
-    let pts = match mode {
-        PlaceMode::Single => vec![a],
+fn gen_points(g: &Gen) -> Vec<Vec2> {
+    let pts = match g.mode {
+        PlaceMode::Single => vec![g.a],
         PlaceMode::Group | PlaceMode::Circle => {
-            let r = if mode == PlaceMode::Circle {
-                a.distance(b)
-            } else {
-                radius
-            };
+            let (a, r) = (
+                g.a,
+                if g.mode == PlaceMode::Circle {
+                    g.a.distance(g.b)
+                } else {
+                    g.radius
+                },
+            );
             fill_region(
                 a - Vec2::splat(r),
                 a + Vec2::splat(r),
                 &|p| p.distance(a) <= r,
-                count,
-                regular,
-                seed,
+                g,
             )
         }
         PlaceMode::Rect | PlaceMode::Poly => {
-            if poly.len() < 3 {
+            if g.poly.len() < 3 {
                 return Vec::new();
             }
-            let (lo, hi) = poly_bounds(poly);
-            fill_region(lo, hi, &|p| in_poly(poly, p), count, regular, seed)
+            let (lo, hi) = poly_bounds(g.poly);
+            fill_region(lo, hi, &|p| in_poly(g.poly, p), g)
         }
     };
     pts.into_iter().map(clamp_terrain).collect()
+}
+
+/// Oggetti già presenti da non sovrapporre a un nuovo oggetto di tipo `kind`
+/// (`skip` = un oggetto escluso, es. quello che si sta spostando; `skip_id` =
+/// un intero piazzamento escluso, es. quello che si ridistribuisce).
+fn avoid_list(
+    items: &[Placement],
+    kind: &str,
+    skip: Option<(usize, usize)>,
+    skip_id: Option<u32>,
+) -> Vec<(Vec2, f32)> {
+    let mut v = Vec::new();
+    for (i, p) in items.iter().enumerate() {
+        if skip_id == Some(p.id) {
+            continue;
+        }
+        let r = footprint(&p.kind);
+        for (j, q) in p.points.iter().enumerate() {
+            if skip != Some((i, j)) {
+                v.push((*q, r));
+            }
+        }
+    }
+    // Zone dove gli alberi non vengono creati (spawn, casetta, ladro…).
+    if kind == "albero" {
+        v.extend(crate::world_props::tree_keep_out());
+    }
+    v
 }
 
 // --------------------------------------------------------------------- file
@@ -402,7 +503,7 @@ const HEADER: &str = "\
 #
 # Come leggere questo file
 # - Coordinate in metri sul piano del terreno: x = Est (+) / Ovest (-), z = Sud (+) / Nord (-)
-#   (il nord è -Z, come la bussola del gioco). Il terreno va da -50 a +50 su entrambi gli assi.
+#   (il nord è -Z, come la bussola del gioco). Il terreno (isola) va da -150 a +150 su entrambi gli assi.
 # - Lo spawn del giocatore è (0, 0). La capanna del Viandante è centrata a circa (6.5, 0.7).
 # - Ogni blocco [P-nnnn] è una richiesta: 'tipo' è l'oggetto da piazzare, 'modalità' come è stato
 #   indicato (singolo, gruppo-raggio, area-rettangolo, area-cerchio), 'punti' le coordinate
@@ -460,6 +561,14 @@ fn write_file(items: &[Placement]) {
             .map(|q| format!("({:.2},{:.2})", q.x, q.y))
             .collect();
         let _ = writeln!(out, "punti: {}", pts.join(" "));
+        if p.yaws.len() == p.points.len() && !p.yaws.is_empty() {
+            let ys: Vec<String> = p
+                .yaws
+                .iter()
+                .map(|y| format!("{:.0}", y.to_degrees().rem_euclid(360.0)))
+                .collect();
+            let _ = writeln!(out, "rotazioni: {}", ys.join(" "));
+        }
     }
     let path = file_path();
     if let Some(dir) = path.parent() {
@@ -528,6 +637,7 @@ fn read_file() -> Vec<Placement> {
                 b: Vec2::ZERO,
                 radius: 0.0,
                 poly: Vec::new(),
+                yaws: Vec::new(),
                 seed: 1,
                 note: String::new(),
                 when: String::new(),
@@ -577,6 +687,12 @@ fn read_file() -> Vec<Placement> {
             p.a = p.poly.first().copied().unwrap_or_default();
         } else if let Some(v) = line.strip_prefix("quantità:") {
             p.seed = num_after(v, "seed:").unwrap_or(1.0) as u64;
+        } else if let Some(v) = line.strip_prefix("rotazioni:") {
+            p.yaws = v
+                .split_whitespace()
+                .filter_map(|t| t.parse::<f32>().ok())
+                .map(f32::to_radians)
+                .collect();
         } else if let Some(v) = line.strip_prefix("punti:") {
             p.points = parse_points(v);
         }
@@ -716,10 +832,17 @@ pub struct DebugCtx<'w, 's> {
     contexts: EguiContexts<'w, 's>,
     state: Res<'w, State<AppState>>,
     keys: Res<'w, ButtonInput<KeyCode>>,
+    mouse: Res<'w, ButtonInput<MouseButton>>,
     cameras: Query<'w, 's, (&'static Camera, &'static GlobalTransform), With<Camera3d>>,
     spatial: SpatialQuery<'w, 's>,
     grounds: Query<'w, 's, (), With<Ground>>,
     clock: Res<'w, GameClock>,
+    windows: Query<'w, 's, &'static Window, With<bevy::window::PrimaryWindow>>,
+}
+
+/// Con F4 acceso, Ctrl tenuto libera il cursore per usare il pannello.
+pub fn cursor_free(on: bool, keys: &ButtonInput<KeyCode>) -> bool {
+    on && (keys.pressed(KeyCode::ControlLeft) || keys.pressed(KeyCode::ControlRight))
 }
 
 /// Allinea il punto indicato (solo piazzamento singolo).
@@ -754,6 +877,13 @@ fn snap(dbg: &DebugPlace, w: Vec2) -> Vec2 {
 
 const ORANGE: egui::Color32 = egui::Color32::from_rgb(255, 160, 60);
 const YELLOW: egui::Color32 = egui::Color32::from_rgb(255, 235, 120);
+const RED: egui::Color32 = egui::Color32::from_rgb(235, 40, 40);
+
+/// Direzione (radianti) da `from` a `to` sul piano: 0 = +Z, verso (sin, cos).
+fn yaw_to(from: Vec2, to: Vec2) -> Option<f32> {
+    let d = to - from;
+    (d.length() > 0.2).then(|| d.x.atan2(d.y))
+}
 
 /// Sistema (EguiPrimaryContextPass): tasto F4, pannello, strumenti e anteprime.
 pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
@@ -772,68 +902,132 @@ pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
         return;
     }
     let in_map = state == AppState::Map;
+    let free = !in_map && cursor_free(true, &cx.keys);
+    let windowed = cx
+        .windows
+        .single()
+        .is_ok_and(|w| matches!(w.mode, bevy::window::WindowMode::Windowed));
     let Ok(ctx) = cx.contexts.ctx_mut() else {
         return;
     };
     let ctx = ctx.clone();
     let camera = cx.cameras.single().ok();
     let hour = cx.clock.label();
+    let screen_h = ctx.viewport_rect().height();
 
     // --- Pannello ---
     egui::Window::new("Debug piazzamenti")
-        .anchor(egui::Align2::RIGHT_BOTTOM, egui::vec2(-12.0, -50.0))
+        .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-12.0, 60.0))
         .resizable(false)
-        .show(&ctx, |ui| panel(ui, &mut dbg, in_map, &hour));
-
+        .max_height((screen_h - 140.0).max(200.0))
+        .show(&ctx, |ui| {
+            egui::ScrollArea::vertical().show(ui, |ui| panel(ui, &mut dbg, in_map, &hour));
+        });
     if std::mem::take(&mut dbg.finish_requested) {
         finish_poly(&mut dbg, &hour);
     }
+    if let Some(id) = dbg.redistribute_req.take() {
+        redistribute(&mut dbg, id);
+    }
 
-    // --- Punto sotto il cursore ---
+    // --- Punto indicato e pulsanti ---
+    // Mappa: cursore (egui). 3D: il mirino (centro schermo) e i pulsanti del mouse;
+    // con Ctrl il cursore è libero per il pannello e non si piazza nulla.
     let over_ui = ctx.is_pointer_over_egui();
-    let looking = !in_map && ctx.input(|i| i.pointer.secondary_down());
-    let hover: Option<Vec2> = if over_ui || looking {
-        None
-    } else {
-        camera.and_then(|cam| {
-            let pos = ctx.input(|i| i.pointer.latest_pos())?;
-            if in_map {
-                cursor_ground(cam, pos)
-            } else {
-                let ray = cam
-                    .0
-                    .viewport_to_world(cam.1, Vec2::new(pos.x, pos.y))
-                    .ok()?;
-                cx.spatial
-                    .cast_ray_predicate(
-                        ray.origin,
-                        ray.direction,
-                        200.0,
-                        true,
-                        &SpatialQueryFilter::default(),
-                        &|e| cx.grounds.contains(e),
-                    )
-                    .map(|h| {
-                        let p = ray.origin + *ray.direction * h.distance;
-                        Vec2::new(p.x, p.z)
-                    })
-            }
-        })
+    let ground_ray = |origin: Vec3, dir: Dir3| -> Option<Vec2> {
+        cx.spatial
+            .cast_ray_predicate(
+                origin,
+                dir,
+                200.0,
+                true,
+                &SpatialQueryFilter::default(),
+                &|e| cx.grounds.contains(e),
+            )
+            .map(|h| {
+                let p = origin + *dir * h.distance;
+                Vec2::new(p.x, p.z)
+            })
     };
+    let (hover, pressed, down, released, right_pressed) = if in_map {
+        let hover = (!over_ui)
+            .then(|| {
+                camera.and_then(|cam| {
+                    let pos = ctx.input(|i| i.pointer.latest_pos())?;
+                    cursor_ground(cam, pos)
+                })
+            })
+            .flatten();
+        let (pr, dn, re, rp) = ctx.input(|i| {
+            (
+                i.pointer.primary_pressed(),
+                i.pointer.primary_down(),
+                i.pointer.primary_released(),
+                i.pointer.secondary_pressed(),
+            )
+        });
+        (hover, pr && !over_ui, dn, re, rp && !over_ui)
+    } else if free {
+        (None, false, false, false, false)
+    } else {
+        let hover = camera.and_then(|(_, t)| ground_ray(t.translation(), t.forward()));
+        let blocked = windowed && over_ui;
+        (
+            hover,
+            !blocked && cx.mouse.just_pressed(MouseButton::Left),
+            cx.mouse.pressed(MouseButton::Left),
+            cx.mouse.just_released(MouseButton::Left),
+            !blocked && cx.mouse.just_pressed(MouseButton::Right),
+        )
+    };
+    let reach = if in_map { 2.5 } else { 2.0 };
     let snapped = hover.map(|w| snap(&dbg, w));
-    let reach = if in_map { 2.5 } else { 1.5 };
 
     if let Some(w) = snapped {
-        if ctx.input(|i| i.pointer.primary_clicked()) {
+        let single_place = dbg.tool == Tool::Place && dbg.mode == PlaceMode::Single;
+        if single_place {
+            // Clic = posizione, trascinamento = direzione (freccia rossa), rilascio = piazza.
+            if pressed {
+                dbg.drag_start = Some(w);
+            }
+            if down
+                && let Some(st) = dbg.drag_start
+                && let Some(y) = yaw_to(st, w)
+            {
+                dbg.cur_yaw = y;
+            }
+            if released && let Some(st) = dbg.drag_start.take() {
+                click(&mut dbg, st, reach, &hour);
+            }
+        } else if dbg.tool == Tool::Rotate {
+            if pressed {
+                dbg.drag_obj = nearest(&dbg, w, reach);
+            }
+            if down
+                && let Some((i, j)) = dbg.drag_obj
+                && let Some(y) = yaw_to(dbg.items[i].points[j], w)
+            {
+                dbg.cur_yaw = y;
+            }
+            if released && let Some((i, j)) = dbg.drag_obj.take() {
+                let y = dbg.cur_yaw;
+                dbg.items[i].fix_yaws();
+                dbg.items[i].yaws[j] = y;
+                dbg.changed();
+            }
+        } else if pressed {
             click(&mut dbg, w, reach, &hour);
         }
-        if in_map && ctx.input(|i| i.pointer.secondary_clicked()) {
+        if in_map && right_pressed {
             if !dbg.pending.is_empty() || dbg.grabbed.is_some() {
                 dbg.reset_pending();
-            } else {
+            } else if dbg.tool == Tool::Place {
                 remove_nearest(&mut dbg, w, reach);
             }
         }
+    }
+    if !in_map && right_pressed {
+        dbg.reset_pending();
     }
     if !ctx.egui_wants_keyboard_input() {
         if cx.keys.just_pressed(KeyCode::Enter) || cx.keys.just_pressed(KeyCode::NumpadEnter) {
@@ -842,44 +1036,61 @@ pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
         if cx.keys.just_pressed(KeyCode::Backspace) {
             dbg.pending.pop();
         }
-        // Scorciatoie 3D col mirino (P = aggiungi, X = elimina).
-        if !in_map && let Some((_, t)) = camera {
-            let target = cx
-                .spatial
-                .cast_ray_predicate(
-                    t.translation(),
-                    t.forward(),
-                    90.0,
-                    true,
-                    &SpatialQueryFilter::default(),
-                    &|e| cx.grounds.contains(e),
-                )
-                .map(|h| {
-                    let p = t.translation() + *t.forward() * h.distance;
-                    Vec2::new(p.x, p.z)
-                });
-            if let Some(w) = target {
-                if cx.keys.just_pressed(KeyCode::KeyP) {
-                    let w = snap(&dbg, w);
-                    click(&mut dbg, w, reach, &hour);
-                }
-                if cx.keys.just_pressed(KeyCode::KeyX) {
-                    remove_nearest(&mut dbg, w, 3.0);
-                }
+        // R / Maiusc+R: ruota di 15°.
+        if cx.keys.just_pressed(KeyCode::KeyR) {
+            let step = 15f32.to_radians()
+                * if cx.keys.pressed(KeyCode::ShiftLeft) || cx.keys.pressed(KeyCode::ShiftRight) {
+                    -1.0
+                } else {
+                    1.0
+                };
+            if dbg.tool == Tool::Rotate
+                && let Some(w) = hover
+                && let Some((i, j)) = nearest(&dbg, w, reach)
+            {
+                dbg.items[i].fix_yaws();
+                dbg.items[i].yaws[j] += step;
+                dbg.changed();
+            } else {
+                dbg.cur_yaw += step;
             }
+        }
+        // Scorciatoia 3D: X = elimina l'oggetto più vicino al mirino.
+        if !in_map
+            && let Some(w) = hover
+            && cx.keys.just_pressed(KeyCode::KeyX)
+        {
+            remove_nearest(&mut dbg, w, 3.0);
         }
     }
 
-    // --- Disegno: etichette, contorni, anteprime ---
+    // --- Disegno: etichette, contorni, anteprime (sotto al pannello) ---
     let Some((cam, cam_t)) = camera else {
         return;
     };
     let painter = ctx.layer_painter(egui::LayerId::new(
-        egui::Order::Foreground,
+        egui::Order::Background,
         egui::Id::new("debug_labels"),
     ));
+    // Quota di un punto: nella mappa piatta, in 3D sul terreno (così non "galleggia").
+    let lift = |p: Vec2| -> f32 {
+        if in_map {
+            0.5
+        } else {
+            cx.spatial
+                .cast_ray_predicate(
+                    Vec3::new(p.x, 40.0, p.y),
+                    Dir3::NEG_Y,
+                    100.0,
+                    true,
+                    &SpatialQueryFilter::default(),
+                    &|e| cx.grounds.contains(e),
+                )
+                .map_or(0.5, |h| 40.0 - h.distance + 0.12)
+        }
+    };
     let proj = |p: Vec2| {
-        cam.world_to_viewport(cam_t, Vec3::new(p.x, 0.5, p.y))
+        cam.world_to_viewport(cam_t, Vec3::new(p.x, lift(p), p.y))
             .ok()
             .map(|s| egui::pos2(s.x, s.y))
     };
@@ -900,6 +1111,31 @@ pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
             })
             .collect()
     };
+    // Freccia rossa: indica il davanti dell'oggetto.
+    let arrow = |p: Vec2, yaw: f32| {
+        let dir = Vec2::new(yaw.sin(), yaw.cos());
+        let len = if in_map { 3.0 } else { 1.3 };
+        let (Some(a), Some(b)) = (proj(p), proj(p + dir * len)) else {
+            return;
+        };
+        let v = b - a;
+        if v.length() < 4.0 {
+            return;
+        }
+        let u = v / v.length();
+        let n = egui::vec2(-u.y, u.x);
+        let head = (v.length() * 0.35).clamp(6.0, 16.0);
+        painter.line_segment([a, b], egui::Stroke::new(3.0, RED));
+        painter.add(egui::Shape::convex_polygon(
+            vec![
+                b + u * head * 0.6,
+                b - u * head * 0.6 + n * head * 0.6,
+                b - u * head * 0.6 - n * head * 0.6,
+            ],
+            RED,
+            egui::Stroke::new(1.0, egui::Color32::WHITE),
+        ));
+    };
     let stroke = egui::Stroke::new(1.5, YELLOW);
     for pl in &dbg.items {
         let Some(first) = pl.points.first() else {
@@ -913,9 +1149,14 @@ pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
         if !near {
             continue;
         }
-        if let Some(s) =
-            proj(pl.points.iter().fold(Vec2::ZERO, |a, b| a + *b) / pl.points.len() as f32)
-        {
+        if let Ok(s) = cam.world_to_viewport(
+            cam_t,
+            Vec3::new(0.0, 0.5, 0.0)
+                + pl.points
+                    .iter()
+                    .fold(Vec3::ZERO, |a, b| a + Vec3::new(b.x, 0.0, b.y))
+                    / pl.points.len() as f32,
+        ) {
             painter.text(
                 egui::pos2(s.x, s.y - 14.0),
                 egui::Align2::CENTER_BOTTOM,
@@ -930,6 +1171,14 @@ pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
             PlaceMode::Group => line(&circle_pts(pl.a, pl.radius), true, stroke),
             PlaceMode::Single => {}
         }
+        if dbg.tool == Tool::Rotate {
+            for (j, q) in pl.points.iter().enumerate() {
+                if near && (in_map || cam_t.translation().distance(Vec3::new(q.x, 0.0, q.y)) < 25.0)
+                {
+                    arrow(*q, pl.yaw(j));
+                }
+            }
+        }
     }
     if let Some((i, j)) = dbg.grabbed
         && let Some(q) = dbg.items.get(i).and_then(|p| p.points.get(j))
@@ -937,17 +1186,44 @@ pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
     {
         painter.circle_stroke(s, 12.0, egui::Stroke::new(3.0, ORANGE));
     }
+    if let Some((i, j)) = dbg.drag_obj {
+        arrow(dbg.items[i].points[j], dbg.cur_yaw);
+    }
     if dbg.tool != Tool::Place {
-        // Gomma/Sposta: evidenzia l'oggetto più vicino al cursore.
+        // Gomma/Sposta/Ruota: evidenzia (e mostra la freccia del) l'oggetto più vicino al cursore.
         if let Some(w) = hover
             && let Some((i, j)) = nearest(&dbg, w, reach)
             && let Some(s) = proj(dbg.items[i].points[j])
         {
             painter.circle_stroke(s, 10.0, egui::Stroke::new(2.0, egui::Color32::LIGHT_RED));
+            if dbg.tool != Tool::Erase && dbg.drag_obj.is_none() {
+                arrow(dbg.items[i].points[j], dbg.items[i].yaw(j));
+            }
+        }
+        if dbg.tool == Tool::Move
+            && let Some((i, j)) = dbg.grabbed
+            && let Some(w) = snapped
+        {
+            // Fantasma nel punto di arrivo, rosso se si sovrappone.
+            let kind = dbg.items[i].kind.clone();
+            let r = footprint(&kind);
+            let bad = avoid_list(&dbg.items, &kind, Some((i, j)), None)
+                .iter()
+                .any(|(c, rr)| c.distance(w) < r + rr);
+            if let Some(s) = proj(w) {
+                painter.circle_stroke(
+                    s,
+                    9.0,
+                    egui::Stroke::new(2.5, if bad { RED } else { ORANGE }),
+                );
+            }
         }
         return;
     }
     // Anteprime dello strumento Piazza.
+    let kind = dbg.kind();
+    let r_obj = footprint(&kind);
+    let avoid = avoid_list(&dbg.items, &kind, None, None);
     let pv = egui::Stroke::new(2.0, ORANGE);
     let dots = |pts: &[Vec2]| {
         for p in pts {
@@ -961,23 +1237,34 @@ pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
             painter.circle_filled(s, 6.0, egui::Color32::from_rgb(255, 120, 60));
         }
     }
-    let preview_pts = |mode, a, b, poly: &[Vec2]| {
-        gen_points(
+    let preview = |mode, a, b, poly: &[Vec2]| {
+        gen_points(&Gen {
             mode,
             a,
             b,
             poly,
-            dbg.radius,
-            dbg.count,
-            dbg.regular,
-            dbg.cur_seed,
-        )
+            radius: dbg.radius,
+            count: dbg.count,
+            regular: dbg.regular,
+            seed: dbg.cur_seed,
+            r_obj,
+            avoid: &avoid,
+        })
     };
+    let mut n_preview = 0;
     match (dbg.mode, snapped) {
         (PlaceMode::Single, Some(w)) => {
-            if let Some(s) = proj(w) {
-                painter.circle_stroke(s, 8.0, pv);
+            let yaw = dbg.cur_yaw;
+            let at = dbg.drag_start.unwrap_or(w);
+            let bad = avoid.iter().any(|(c, rr)| c.distance(at) < r_obj + rr);
+            if let Some(s) = proj(at) {
+                painter.circle_stroke(
+                    s,
+                    8.0,
+                    egui::Stroke::new(2.0, if bad { RED } else { ORANGE }),
+                );
             }
+            arrow(at, yaw);
             if dbg.align == Align::Line
                 && let Some(a) = dbg.line_anchor
             {
@@ -986,7 +1273,9 @@ pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
         }
         (PlaceMode::Group, Some(w)) => {
             line(&circle_pts(w, dbg.radius), true, pv);
-            dots(&preview_pts(PlaceMode::Group, w, w, &[]));
+            let pts = preview(PlaceMode::Group, w, w, &[]);
+            n_preview = pts.len();
+            dots(&pts);
         }
         (PlaceMode::Circle, w) => {
             if let Some(&c) = dbg.pending.first() {
@@ -995,7 +1284,9 @@ pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
                 let r = c.distance(edge);
                 line(&circle_pts(c, r), true, pv);
                 line(&[c, edge], false, pv);
-                dots(&preview_pts(PlaceMode::Circle, c, edge, &[]));
+                let pts = preview(PlaceMode::Circle, c, edge, &[]);
+                n_preview = pts.len();
+                dots(&pts);
                 if let Some(s) = proj(edge) {
                     painter.text(
                         egui::pos2(s.x + 12.0, s.y - 12.0),
@@ -1014,22 +1305,26 @@ pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
             }
             line(&shape, shape.len() >= 3, pv);
             if shape.len() >= 3 {
-                dots(&preview_pts(m, shape[0], shape[0], &shape));
+                let pts = preview(m, shape[0], shape[0], &shape);
+                n_preview = pts.len();
+                dots(&pts);
             }
         }
         _ => {}
     }
+    dbg.preview_n = n_preview;
 }
 
 /// Contenuto del pannello.
 fn panel(ui: &mut egui::Ui, dbg: &mut DebugPlace, in_map: bool, hour: &str) {
     // Pannello compatto: caratteri più piccoli del resto dell'interfaccia.
     ui.style_mut().override_font_id = Some(egui::FontId::proportional(14.0));
-    ui.horizontal(|ui| {
+    ui.horizontal_wrapped(|ui| {
         for (t, label) in [
             (Tool::Place, "Piazza"),
             (Tool::Erase, "Gomma"),
             (Tool::Move, "Sposta"),
+            (Tool::Rotate, "Ruota"),
         ] {
             if ui.selectable_label(dbg.tool == t, label).clicked() {
                 dbg.tool = t;
@@ -1048,12 +1343,18 @@ fn panel(ui: &mut egui::Ui, dbg: &mut DebugPlace, in_map: bool, hour: &str) {
                 "Clic su un oggetto per prenderlo, poi clic dove metterlo."
             });
         }
+        Tool::Rotate => {
+            ui.label("Clic e trascina da un oggetto: la freccia rossa è il suo davanti. R / Maiusc+R = ±15°.");
+        }
         Tool::Place => place_panel(ui, dbg),
     }
+    if !dbg.msg.is_empty() {
+        ui.colored_label(egui::Color32::from_rgb(255, 120, 100), dbg.msg.clone());
+    }
     ui.label(if in_map {
-        "Mappa: clic sinistro = scegli, clic destro = annulla / elimina, tasto centrale = sposta la vista"
+        "Mappa: clic sinistro = scegli, trascina = direzione, clic destro = annulla / elimina, tasto centrale = sposta la vista"
     } else {
-        "3D: clic sinistro = scegli sul terreno, tasto destro tenuto = guarda, P / X = col mirino"
+        "3D: mirino + clic sinistro = scegli, trascina = direzione, R = ruota; tieni Ctrl per liberare il mouse (pannello); X = elimina al mirino"
     });
     ui.separator();
     ui.horizontal(|ui| {
@@ -1067,14 +1368,19 @@ fn panel(ui: &mut egui::Ui, dbg: &mut DebugPlace, in_map: bool, hour: &str) {
         }
     });
     let mut del: Option<u32> = None;
+    let mut redo: Option<u32> = None;
     egui::ScrollArea::vertical()
-        .max_height(160.0)
+        .id_salt("debug_list")
+        .max_height(150.0)
         .show(ui, |ui| {
             for p in &dbg.items {
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     ui.label(format!("P-{:04} {} ×{}", p.id, p.kind, p.points.len()));
                     if ui.small_button("Elimina").clicked() {
                         del = Some(p.id);
+                    }
+                    if p.mode != PlaceMode::Single && ui.small_button("Ridistribuisci").clicked() {
+                        redo = Some(p.id);
                     }
                 });
             }
@@ -1082,6 +1388,9 @@ fn panel(ui: &mut egui::Ui, dbg: &mut DebugPlace, in_map: bool, hour: &str) {
     if let Some(id) = del {
         dbg.items.retain(|p| p.id != id);
         dbg.changed();
+    }
+    if redo.is_some() {
+        dbg.redistribute_req = redo;
     }
     ui.label(format!("File: {FILE}  (ora di gioco {hour})"));
 }
@@ -1158,6 +1467,19 @@ fn place_panel(ui: &mut egui::Ui, dbg: &mut DebugPlace) {
                 }
                 Align::Free => {}
             }
+            let mut deg = dbg.cur_yaw.to_degrees().rem_euclid(360.0);
+            if ui
+                .add(
+                    egui::DragValue::new(&mut deg)
+                        .range(0.0..=360.0)
+                        .speed(1.0)
+                        .prefix("davanti ")
+                        .suffix("°"),
+                )
+                .changed()
+            {
+                dbg.cur_yaw = deg.to_radians();
+            }
         }
         PlaceMode::Group => {
             ui.add(
@@ -1178,6 +1500,38 @@ fn place_panel(ui: &mut egui::Ui, dbg: &mut DebugPlace) {
             );
             ui.checkbox(&mut dbg.regular, "regolare");
         });
+        if dbg.preview_n > 0 && dbg.preview_n != dbg.count as usize {
+            ui.label(format!(
+                "Entrano {} oggetti senza sovrapporsi",
+                dbg.preview_n
+            ));
+        }
+        ui.horizontal(|ui| {
+            ui.label("Direzione:");
+            for (m, label) in [
+                (DirMode::Random, "casuale"),
+                (DirMode::Fixed, "fissa"),
+                (DirMode::Center, "al centro"),
+            ] {
+                if ui.selectable_label(dbg.dir_mode == m, label).clicked() {
+                    dbg.dir_mode = m;
+                }
+            }
+        });
+        if dbg.dir_mode == DirMode::Fixed {
+            let mut deg = dbg.cur_yaw.to_degrees().rem_euclid(360.0);
+            if ui
+                .add(
+                    egui::DragValue::new(&mut deg)
+                        .range(0.0..=360.0)
+                        .prefix("davanti ")
+                        .suffix("°"),
+                )
+                .changed()
+            {
+                dbg.cur_yaw = deg.to_radians();
+            }
+        }
     }
     ui.add(egui::TextEdit::singleline(&mut dbg.note).hint_text("nota (facoltativa)"));
     let hint = match (dbg.mode, dbg.pending.len()) {
@@ -1187,7 +1541,7 @@ fn place_panel(ui: &mut egui::Ui, dbg: &mut DebugPlace) {
         (PlaceMode::Poly, 0) => "Poligono: indica i punti, poi OK".to_string(),
         (PlaceMode::Poly, n) => format!("Poligono: {n} punti (servono almeno 3), poi OK"),
         (PlaceMode::Group, _) => "Indica il centro del gruppo".to_string(),
-        _ => "Indica il punto".to_string(),
+        _ => "Indica il punto (trascina per la direzione)".to_string(),
     };
     ui.label(hint);
     if matches!(
@@ -1228,12 +1582,24 @@ fn nearest(dbg: &DebugPlace, w: Vec2, max_d: f32) -> Option<(usize, usize)> {
 
 /// Clic sinistro con lo strumento attivo.
 fn click(dbg: &mut DebugPlace, w: Vec2, reach: f32, hour: &str) {
+    dbg.msg.clear();
     match dbg.tool {
         Tool::Erase => remove_nearest(dbg, w, reach),
+        // La rotazione è gestita dal trascinamento in `debug_ui`.
+        Tool::Rotate => {}
         Tool::Move => match dbg.grabbed {
             None => dbg.grabbed = nearest(dbg, w, reach.max(2.0)),
             Some((i, j)) => {
-                if let Some(q) = dbg.items.get_mut(i).and_then(|p| p.points.get_mut(j)) {
+                let kind = dbg.items[i].kind.clone();
+                let r = footprint(&kind);
+                if avoid_list(&dbg.items, &kind, Some((i, j)), None)
+                    .iter()
+                    .any(|(c, rr)| c.distance(w) < r + rr)
+                {
+                    dbg.msg = "Troppo vicino a un altro oggetto".into();
+                    return;
+                }
+                if let Some(q) = dbg.items[i].points.get_mut(j) {
                     *q = clamp_terrain(w);
                     let id = dbg.items[i].id;
                     info!(
@@ -1246,11 +1612,13 @@ fn click(dbg: &mut DebugPlace, w: Vec2, reach: f32, hour: &str) {
         },
         Tool::Place => match dbg.mode {
             PlaceMode::Single => {
-                if dbg
-                    .items
+                let kind = dbg.kind();
+                let r = footprint(&kind);
+                if avoid_list(&dbg.items, &kind, None, None)
                     .iter()
-                    .any(|p| p.points.iter().any(|q| q.distance(w) < 0.05))
+                    .any(|(c, rr)| c.distance(w) < r + rr)
                 {
+                    dbg.msg = "Troppo vicino a un altro oggetto (o zona vietata)".into();
                     return;
                 }
                 if dbg.align == Align::Line {
@@ -1292,6 +1660,22 @@ fn finish_poly(dbg: &mut DebugPlace, hour: &str) {
     }
 }
 
+/// Direzioni dei nuovi oggetti secondo la modalità scelta.
+fn make_yaws(dbg: &DebugPlace, mode: PlaceMode, a: Vec2, poly: &[Vec2], pts: &[Vec2]) -> Vec<f32> {
+    if mode == PlaceMode::Single || dbg.dir_mode == DirMode::Fixed {
+        return vec![dbg.cur_yaw; pts.len()];
+    }
+    if dbg.dir_mode == DirMode::Center {
+        let c = if poly.is_empty() {
+            a
+        } else {
+            poly.iter().fold(Vec2::ZERO, |s, p| s + *p) / poly.len() as f32
+        };
+        return pts.iter().map(|p| yaw_to(*p, c).unwrap_or(0.0)).collect();
+    }
+    Vec::new()
+}
+
 /// Aggiunge un piazzamento e genera i suoi oggetti.
 fn add_placement(
     dbg: &mut DebugPlace,
@@ -1301,16 +1685,30 @@ fn add_placement(
     poly: Vec<Vec2>,
     hour: &str,
 ) {
+    let kind = dbg.kind();
     let seed = dbg.cur_seed;
-    let points = gen_points(mode, a, b, &poly, dbg.radius, dbg.count, dbg.regular, seed);
+    let avoid = avoid_list(&dbg.items, &kind, None, None);
+    let points = gen_points(&Gen {
+        mode,
+        a,
+        b,
+        poly: &poly,
+        radius: dbg.radius,
+        count: dbg.count,
+        regular: dbg.regular,
+        seed,
+        r_obj: footprint(&kind),
+        avoid: &avoid,
+    });
     if points.is_empty() {
+        dbg.msg = "Nessun oggetto entra senza sovrapporsi".into();
         return;
     }
+    let yaws = make_yaws(dbg, mode, a, &poly, &points);
     let id = dbg.next_id;
     dbg.next_id += 1;
     let note = dbg.note.trim().to_string();
     let when = format!("{} (ora di gioco {hour})", utc_now());
-    let kind = dbg.kind();
     info!(
         "[DEBUG] P-{id:04} {kind} {} ×{}",
         mode.label(),
@@ -1324,6 +1722,7 @@ fn add_placement(
         b,
         radius: dbg.radius,
         poly,
+        yaws,
         seed,
         note,
         when,
@@ -1334,11 +1733,49 @@ fn add_placement(
     dbg.changed();
 }
 
+/// Rigenera i punti di un piazzamento ad area (nuovo seme, senza sovrapposizioni).
+fn redistribute(dbg: &mut DebugPlace, id: u32) {
+    let Some(idx) = dbg.items.iter().position(|p| p.id == id) else {
+        return;
+    };
+    let pl = dbg.items[idx].clone();
+    let avoid = avoid_list(&dbg.items, &pl.kind, None, Some(id));
+    let seed = new_seed();
+    let points = gen_points(&Gen {
+        mode: pl.mode,
+        a: pl.a,
+        b: pl.b,
+        poly: &pl.poly,
+        radius: pl.radius,
+        count: pl.points.len().max(1) as u32,
+        regular: dbg.regular,
+        seed,
+        r_obj: footprint(&pl.kind),
+        avoid: &avoid,
+    });
+    if points.is_empty() {
+        dbg.msg = "Nessun oggetto entra senza sovrapporsi".into();
+        return;
+    }
+    info!(
+        "[DEBUG] P-{id:04} ridistribuito: {} -> {} oggetti",
+        pl.points.len(),
+        points.len()
+    );
+    let it = &mut dbg.items[idx];
+    it.points = points;
+    it.yaws.clear();
+    it.seed = seed;
+    dbg.changed();
+}
+
 /// Elimina il punto più vicino a `w` entro `max_d` metri (un singolo oggetto).
 fn remove_nearest(dbg: &mut DebugPlace, w: Vec2, max_d: f32) {
     if let Some((i, j)) = nearest(dbg, w, max_d) {
         let id = dbg.items[i].id;
+        dbg.items[i].fix_yaws();
         dbg.items[i].points.remove(j);
+        dbg.items[i].yaws.remove(j);
         if dbg.items[i].points.is_empty() {
             dbg.items.remove(i);
         }

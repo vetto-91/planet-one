@@ -2,6 +2,14 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- Isola: terreno esteso a 300 m con costa irregolare, mare attorno e muro invisibile sulla riva; il quadrato della heightmap resta al centro.
+- Debug F4: mirino al centro per piazzare (Ctrl tenuto libera il mouse per il pannello), rotazione con freccia rossa (trascina, R, strumento Ruota),
+  niente compenetrazioni (anche tra aree), "Ridistribuisci", pannello sopra le linee e a scorrimento.
+- Oggetti piazzati affondano nel terreno (niente basi sospese sui rilievi).
+- Niente interazioni, dialoghi, etichette o barre vita di NPC attraverso i muri.
+
 ## v0.0.10.0 — Strumenti debug, oggetti veri, musica notturna (2026-11-07)
 
 - Viandante: di notte, se la luce è accesa si alza quasi subito, chiude prima porta/finestre aperte, spegne la luce e torna a letto.

@@ -162,6 +162,49 @@ pub fn draw_hud(ctx: &egui::Context, health: &PlayerHealth, inventory: &Inventor
 /// Distanza (m) dal player entro cui compaiono le targhette dei personaggi.
 const LABEL_DIST: f32 = 10.0;
 
+/// Entità (NPC, nemici) nascoste alla camera da un muro: niente targhetta né barra vita.
+#[derive(Resource, Default)]
+pub struct Occluded(pub std::collections::HashSet<Entity>);
+
+/// Sistema: calcola quali NPC/nemici sono dietro un muro (raycast camera → corpo,
+/// su tre altezze: occluso solo se tutte e tre sono bloccate).
+type Occludable = Or<(With<crate::entities::Npc>, With<crate::entities::Enemy>)>;
+
+pub fn update_occlusion(
+    cameras: Query<&GlobalTransform, With<Camera3d>>,
+    targets: Query<(Entity, &GlobalTransform), Occludable>,
+    spatial: avian3d::prelude::SpatialQuery,
+    blockers: Query<(), With<crate::camera::BlocksCamera>>,
+    mut occluded: ResMut<Occluded>,
+) {
+    occluded.0.clear();
+    let Ok(cam) = cameras.single() else {
+        return;
+    };
+    let origin = cam.translation();
+    for (e, t) in &targets {
+        let hidden = [0.3, 0.9, 1.4].into_iter().all(|h| {
+            let to = t.translation() + Vec3::Y * h - origin;
+            let dist = to.length();
+            Dir3::new(to).is_ok_and(|d| {
+                spatial
+                    .cast_ray_predicate(
+                        origin,
+                        d,
+                        dist,
+                        true,
+                        &avian3d::prelude::SpatialQueryFilter::default(),
+                        &|ent| blockers.contains(ent),
+                    )
+                    .is_some_and(|hit| hit.distance < dist - 0.15)
+            })
+        });
+        if hidden {
+            occluded.0.insert(e);
+        }
+    }
+}
+
 /// Altezza (m, sopra il centro) del punto di ancoraggio della targhetta del
 /// nome; il fumetto di chi parla si ancora allo stesso punto, sotto la targhetta.
 #[derive(Component)]
@@ -183,6 +226,7 @@ pub fn draw_enemy_bars(
     cameras: &Query<(&Camera, &GlobalTransform)>,
     player_pos: Vec3,
     barks: &crate::quests::Barks,
+    occluded: &Occluded,
 ) {
     let Ok((camera, cam_t)) = cameras.single() else {
         return;
@@ -191,6 +235,9 @@ pub fn draw_enemy_bars(
 
     let painter = ctx.layer_painter(egui::LayerId::background());
     for (entity, t, hp, thief) in enemies.iter() {
+        if occluded.0.contains(&entity) {
+            continue;
+        }
         // Solo in prossimità del player (o se sta parlando).
         if t.translation().distance(player_pos) > LABEL_DIST && !barks.has(entity) {
             continue;
@@ -256,6 +303,7 @@ pub fn draw_npc_labels(
     cameras: &Query<(&Camera, &GlobalTransform)>,
     player_pos: Vec3,
     barks: &crate::quests::Barks,
+    occluded: &Occluded,
 ) {
     let Ok((camera, cam_t)) = cameras.single() else {
         return;
@@ -263,6 +311,9 @@ pub fn draw_npc_labels(
     let viewport = ctx.viewport_rect();
     let painter = ctx.layer_painter(egui::LayerId::background());
     for (entity, t, npc) in npcs.iter() {
+        if occluded.0.contains(&entity) {
+            continue;
+        }
         if t.translation().distance(player_pos) > LABEL_DIST && !barks.has(entity) {
             continue;
         }

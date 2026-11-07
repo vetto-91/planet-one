@@ -253,6 +253,26 @@ pub fn interact(
     };
     let p = player.translation();
 
+    // Linea di vista libera da muri (`BlocksCamera`) tra due punti.
+    let clear = |from: Vec3, to: Vec3| -> bool {
+        let v = to - from;
+        let dist = v.length();
+        let Ok(d) = Dir3::new(v) else {
+            return true;
+        };
+        spatial
+            .cast_ray_predicate(
+                from,
+                d,
+                dist,
+                true,
+                &SpatialQueryFilter::default(),
+                &|ent| blockers.contains(ent),
+            )
+            .is_none_or(|hit| hit.distance >= dist - 0.08)
+    };
+    let eye = p + Vec3::Y * 1.5;
+
     // 1) Oggetti (porta, stufa, interruttore…): solo se GUARDATI col mirino
     //    (centro schermo), entro 3 m dal giocatore e non dietro un muro.
     //    Hanno priorità su tutto finché sono guardati.
@@ -275,18 +295,10 @@ pub fn interact(
             if off > radius || off >= best_off {
                 continue;
             }
-            // Dietro un muro (collider della casetta) non si può usare.
-            if let Ok(d) = Dir3::new(to)
-                && let Some(hit) = spatial.cast_ray_predicate(
-                    origin,
-                    d,
-                    along,
-                    true,
-                    &SpatialQueryFilter::default(),
-                    &|ent| blockers.contains(ent),
-                )
-                && hit.distance < along - 0.35
-            {
+            // Dietro un muro (collider della casetta) non si può usare: né dalla
+            // camera né dagli occhi del giocatore (tolleranza minima: lo spessore
+            // del muro è 20 cm, il pulsante sta sulla sua faccia interna).
+            if !clear(origin, pos) || !clear(eye, pos) {
                 continue;
             }
             best_off = off;
@@ -304,7 +316,13 @@ pub fn interact(
                 continue;
             }
             let dist = t.translation().distance(p);
-            if dist <= inter.range && best.as_ref().is_none_or(|b| dist < b.0) {
+            // Niente dialogo attraverso un muro: serve linea di vista (testa, petto o piedi).
+            if dist <= inter.range
+                && best.as_ref().is_none_or(|b| dist < b.0)
+                && [0.4, 1.0, 1.5]
+                    .iter()
+                    .any(|h| clear(eye, t.translation() + Vec3::Y * *h))
+            {
                 best = Some((dist, e, inter, npc, prop));
             }
         }

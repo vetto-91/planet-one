@@ -113,6 +113,7 @@ fn main() {
         .init_resource::<menu::JournalTab>()
         .add_plugins(map::plugin)
         .init_resource::<debug_place::DebugPlace>()
+        .init_resource::<hud::Occluded>()
         .init_resource::<audio::AudioSettings>()
         .init_resource::<voice::VoiceQueue>()
         .init_resource::<audio::MusicDuck>()
@@ -218,6 +219,7 @@ fn main() {
                 // non deve anche avanzarlo nello stesso frame.
                 entities::advance_dialog.before(entities::interact),
                 entities::interact,
+                hud::update_occlusion,
                 inventory::collect_pickups,
                 inventory::use_hotbar_items,
                 combat::player_attack,
@@ -290,6 +292,7 @@ fn apply_cursor_for_mode(
     mut cursor_opts: Query<&mut bevy::window::CursorOptions, With<bevy::window::PrimaryWindow>>,
     app_state: Res<State<AppState>>,
     debug: Res<debug_place::DebugPlace>,
+    keys: Res<ButtonInput<KeyCode>>,
     mut last: Local<(Option<bevy::window::WindowMode>, bool)>,
 ) {
     use bevy::window::{CursorGrabMode, WindowMode};
@@ -299,8 +302,10 @@ fn apply_cursor_for_mode(
     let fullscreen = !matches!(window.mode, WindowMode::Windowed);
     // A schermo intero catturiamo SOLO in Playing: in Paused (menu) il cursore
     // deve tornare visibile e libero per cliccare i bottoni.
-    // Con il debug F4 acceso il cursore resta libero per scegliere i punti.
-    let capture = fullscreen && *app_state.get() == AppState::Playing && !debug.on;
+    // Con il debug F4 il mirino sceglie i punti; Ctrl tenuto libera il cursore per il pannello.
+    let capture = fullscreen
+        && *app_state.get() == AppState::Playing
+        && !debug_place::cursor_free(debug.on, &keys);
     if *last == (Some(window.mode), capture) {
         return;
     }
@@ -332,12 +337,16 @@ fn warp_cursor_to_center(
     windows: Query<(Entity, &Window), With<bevy::window::PrimaryWindow>>,
     app_state: Res<State<AppState>>,
     debug: Res<debug_place::DebugPlace>,
+    keys: Res<ButtonInput<KeyCode>>,
 ) {
     let Ok((entity, window)) = windows.single() else {
         return;
     };
     let fullscreen = !matches!(window.mode, bevy::window::WindowMode::Windowed);
-    if !fullscreen || *app_state.get() != AppState::Playing || debug.on {
+    if !fullscreen
+        || *app_state.get() != AppState::Playing
+        || debug_place::cursor_free(debug.on, &keys)
+    {
         return;
     }
     let size = window.resolution.size();

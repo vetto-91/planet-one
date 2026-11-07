@@ -114,6 +114,7 @@ pub struct UiQueries<'w, 's> {
     pub anchors: Query<'w, 's, &'static crate::hud::NameAnchor>,
     pub styled: Local<'s, bool>,
     pub audio: ResMut<'w, crate::audio::AudioSettings>,
+    pub occluded: Res<'w, hud::Occluded>,
     pub map_view: Res<'w, map::MapView>,
     pub clock: ResMut<'w, crate::daynight::GameClock>,
     pub wait: ResMut<'w, crate::daynight::WaitUi>,
@@ -205,8 +206,22 @@ pub fn ui(
 
             // Barre vita dei nemici sopra le loro teste (proiezione world→screen).
             if let Ok(pp) = q.player_pos.single() {
-                hud::draw_enemy_bars(ctx, &q.enemies, &q.cameras, pp.translation(), &barks);
-                hud::draw_npc_labels(ctx, &q.npcs, &q.cameras, pp.translation(), &barks);
+                hud::draw_enemy_bars(
+                    ctx,
+                    &q.enemies,
+                    &q.cameras,
+                    pp.translation(),
+                    &barks,
+                    &q.occluded,
+                );
+                hud::draw_npc_labels(
+                    ctx,
+                    &q.npcs,
+                    &q.cameras,
+                    pp.translation(),
+                    &barks,
+                    &q.occluded,
+                );
             }
 
             // Bussola in alto al centro + titolo quest + obiettivi (TAB).

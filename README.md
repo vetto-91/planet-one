@@ -32,15 +32,15 @@ cargo clippy         # linter
 
 ## Debug piazzamenti (F4)
 
-Per indicare dove mettere alberi o qualunque oggetto: F4 apre il pannello. Il cursore resta libero (in 3D si
-guarda tenendo premuto il tasto destro). Si sceglie col **clic sinistro**, dalla mappa (M) o in 3D (punto del terreno
-sotto il cursore; **P** / **X** restano come scorciatoie col mirino).
+Per indicare dove mettere alberi o qualunque oggetto: F4 apre il pannello. In 3D il punto è quello del **mirino** (clic sinistro conferma, trascina = direzione, **R** = ruota 15°);
+**Ctrl tenuto** libera il mouse per usare il pannello. Nella mappa (M) si sceglie col clic sinistro; **X** elimina al mirino.
 
 - **Piazza**: *singolo* (allineamento libero, a **griglia** o a **linea** con distanza uguale), *gruppo*,
   *rettangolo* (4 angoli qualsiasi), *cerchio* (raggio in anteprima dal centro) e *poligono* (N punti, poi **OK** o
   Invio). Per le aree si può scegliere la distribuzione *regolare* (passo uguale) o casuale; l'anteprima mostra i punti.
 - **Gomma**: clic su un oggetto per eliminarlo; dall'elenco "Elimina" toglie un intero piazzamento.
 - **Sposta**: clic su un oggetto e poi sul nuovo punto; resta parte del suo piazzamento.
+- **Ruota**: clic e trascina da un oggetto; la freccia rossa indica il suo davanti. Gli oggetti non si compenetrano; "Ridistribuisci" rigenera un'area.
 
 Ogni modifica riscrive `debug/placements.txt` (blocchi `[P-nnnn]`; il nord è −Z), riletto all'avvio. Alberi, fiori,
 panchine e lampioni diventano **oggetti veri** (anche senza F4; gli alberi evitano spawn, casetta, pozione e ladro).

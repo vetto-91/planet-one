@@ -39,6 +39,14 @@ const TREE_KEEP_OUT: [(Vec2, f32, &str); 5] = [
     (Vec2::new(27.2, -34.9), 3.0, "percorso del ladro"),
 ];
 
+/// Zone vietate agli alberi come (centro, raggio) per il debug F4 (ingombro albero già dedotto).
+pub fn tree_keep_out() -> Vec<(Vec2, f32)> {
+    TREE_KEEP_OUT
+        .iter()
+        .map(|(c, r, _)| (*c, (*r - 1.2).max(0.0)))
+        .collect()
+}
+
 fn tree_blocked(p: Vec2) -> Option<&'static str> {
     TREE_KEEP_OUT
         .iter()
@@ -47,7 +55,7 @@ fn tree_blocked(p: Vec2) -> Option<&'static str> {
 }
 
 /// Numero pseudo-casuale stabile in 0..1 dalle coordinate (stessa variazione a ogni avvio).
-fn hash01(p: Vec2, salt: f32) -> f32 {
+pub fn hash01(p: Vec2, salt: f32) -> f32 {
     ((p.x * 12.9898 + p.y * 78.233 + salt * 37.719).sin() * 43_758.545)
         .fract()
         .abs()
@@ -100,33 +108,48 @@ pub fn sync_world_props(
         emissive: LinearRgba::rgb(0.2, 0.15, 0.05),
         ..default()
     });
-    let trunk_mesh = meshes.add(Cylinder::new(0.2, 1.7));
+    let trunk_mesh = meshes.add(Cylinder::new(0.2, 2.1));
     let cones = [
         meshes.add(Cone::new(1.35, 1.9)),
         meshes.add(Cone::new(1.05, 1.7)),
         meshes.add(Cone::new(0.72, 1.5)),
     ];
-    let stem_mesh = meshes.add(Cylinder::new(0.015, 0.35));
+    let stem_mesh = meshes.add(Cylinder::new(0.015, 0.41));
     let head_mesh = meshes.add(Sphere::new(0.09));
     let seat_mesh = meshes.add(Cuboid::new(1.5, 0.08, 0.45));
     let back_mesh = meshes.add(Cuboid::new(1.5, 0.36, 0.06));
-    let leg_mesh = meshes.add(Cuboid::new(0.08, 0.45, 0.08));
-    let pole_mesh = meshes.add(Cylinder::new(0.06, 3.0));
-    let base_mesh = meshes.add(Cylinder::new(0.15, 0.3));
+    let leg_mesh = meshes.add(Cuboid::new(0.08, 0.7, 0.08));
+    let pole_mesh = meshes.add(Cylinder::new(0.06, 3.4));
+    let base_mesh = meshes.add(Cylinder::new(0.15, 0.7));
     let lantern_mesh = meshes.add(Cuboid::new(0.28, 0.4, 0.28));
     let cap_mesh = meshes.add(Cone::new(0.26, 0.22));
 
     let (mut spawned, mut skipped) = (0usize, 0usize);
     for pl in &dbg.items {
-        for &p in &pl.points {
+        for (j, &p) in pl.points.iter().enumerate() {
+            if crate::terrain::is_water(p.x, p.y) {
+                info!(
+                    "[PROPS] oggetto in ({:.1},{:.1}) saltato: in mare",
+                    p.x, p.y
+                );
+                skipped += 1;
+                continue;
+            }
+            let yaw = pl.yaw(j);
+            let half = match pl.kind.as_str() {
+                "panchina" => Vec2::new(0.75, 0.25),
+                "albero" => Vec2::splat(0.3),
+                "lampione" => Vec2::splat(0.15),
+                _ => Vec2::ZERO,
+            };
             let root = (
                 WorldProp,
                 SceneNode,
                 SnapToGround {
-                    offset: 0.0,
-                    half: Vec2::ZERO,
+                    offset: -0.05,
+                    half,
                 },
-                Transform::from_xyz(p.x, 0.0, p.y),
+                Transform::from_xyz(p.x, 0.0, p.y).with_rotation(Quat::from_rotation_y(yaw)),
                 Visibility::default(),
             );
             let h = hash01(p, 1.0);
@@ -143,14 +166,14 @@ pub fn sync_world_props(
                         .spawn((root, RigidBody::Static))
                         .insert(
                             Transform::from_xyz(p.x, 0.0, p.y)
-                                .with_rotation(Quat::from_rotation_y(h * std::f32::consts::TAU))
+                                .with_rotation(Quat::from_rotation_y(yaw))
                                 .with_scale(Vec3::splat(scale)),
                         )
                         .with_children(|c| {
                             c.spawn((
                                 Mesh3d(trunk_mesh.clone()),
                                 MeshMaterial3d(trunk.clone()),
-                                Transform::from_xyz(0.0, 0.85, 0.0),
+                                Transform::from_xyz(0.0, 0.65, 0.0),
                             ));
                             for (i, (cone, y)) in cones.iter().zip([2.3, 3.2, 4.0]).enumerate() {
                                 let _ = i;
@@ -161,8 +184,8 @@ pub fn sync_world_props(
                                 ));
                             }
                             c.spawn((
-                                Collider::cylinder(0.3, 2.0),
-                                Transform::from_xyz(0.0, 1.0, 0.0),
+                                Collider::cylinder(0.3, 2.4),
+                                Transform::from_xyz(0.0, 0.8, 0.0),
                             ));
                         });
                 }
@@ -175,7 +198,7 @@ pub fn sync_world_props(
                             c.spawn((
                                 Mesh3d(stem_mesh.clone()),
                                 MeshMaterial3d(stem.clone()),
-                                Transform::from_translation(off + Vec3::Y * 0.175),
+                                Transform::from_translation(off + Vec3::Y * 0.145),
                             ));
                             c.spawn((
                                 Mesh3d(head_mesh.clone()),
@@ -188,9 +211,6 @@ pub fn sync_world_props(
                 "panchina" => {
                     commands
                         .spawn((root, RigidBody::Static))
-                        .insert(Transform::from_xyz(p.x, 0.0, p.y).with_rotation(
-                            Quat::from_rotation_y((h * 4.0).floor() * std::f32::consts::FRAC_PI_2),
-                        ))
                         .with_children(|c| {
                             c.spawn((
                                 Mesh3d(seat_mesh.clone()),
@@ -207,13 +227,13 @@ pub fn sync_world_props(
                                     c.spawn((
                                         Mesh3d(leg_mesh.clone()),
                                         MeshMaterial3d(iron.clone()),
-                                        Transform::from_xyz(x, 0.22, z),
+                                        Transform::from_xyz(x, 0.1, z),
                                     ));
                                 }
                             }
                             c.spawn((
-                                Collider::cuboid(1.5, 0.9, 0.5),
-                                Transform::from_xyz(0.0, 0.45, 0.0),
+                                Collider::cuboid(1.5, 1.15, 0.5),
+                                Transform::from_xyz(0.0, 0.325, 0.0),
                             ));
                         });
                 }
@@ -224,12 +244,12 @@ pub fn sync_world_props(
                             c.spawn((
                                 Mesh3d(base_mesh.clone()),
                                 MeshMaterial3d(iron.clone()),
-                                Transform::from_xyz(0.0, 0.15, 0.0),
+                                Transform::from_xyz(0.0, -0.05, 0.0),
                             ));
                             c.spawn((
                                 Mesh3d(pole_mesh.clone()),
                                 MeshMaterial3d(iron.clone()),
-                                Transform::from_xyz(0.0, 1.5, 0.0),
+                                Transform::from_xyz(0.0, 1.3, 0.0),
                             ));
                             c.spawn((
                                 LampBulb(bulb_mat.clone()),
@@ -254,8 +274,8 @@ pub fn sync_world_props(
                                 Transform::from_xyz(0.0, 3.1, 0.0),
                             ));
                             c.spawn((
-                                Collider::cylinder(0.12, 3.0),
-                                Transform::from_xyz(0.0, 1.5, 0.0),
+                                Collider::cylinder(0.12, 3.4),
+                                Transform::from_xyz(0.0, 1.3, 0.0),
                             ));
                         });
                 }
