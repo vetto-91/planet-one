@@ -30,6 +30,7 @@ Esempio: `v0.0.1.2` = nessun major, nessun minor, 1 feature, 2 bugfix.
 - `v0.0.6.0` — rifiniture: diario, giorno/notte, skin, UI condivisa
 - `v0.0.7.0` — musica, casetta esplorabile con routine del Viandante, voci
 - `v0.0.8.0` — interazione col mirino, casetta rifinita (serranda, luce, finestre), routine del Viandante v2
+- `v0.0.9.0` — mappa (M), debug piazzamenti (F4), casetta con vetri e routine che chiude porta/finestre
 - `v0.1.0.0` — prima demo completa (game over/vittoria, salvataggio)
 
 ## Branch e commit

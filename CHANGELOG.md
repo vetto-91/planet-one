@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.9.0 — Mappa, debug piazzamenti, casetta rifinita (2026-11-07)
 
 - Mappa in gioco (M): vista dall'alto della scena reale (camera ortografica, nord in alto), bussola in alto a sinistra,
   segnalino del giocatore, zoom con rotella e +/- (`MapView`).
