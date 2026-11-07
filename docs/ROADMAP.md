@@ -24,7 +24,7 @@ Strategia: **vertical slice prima**. Una demo giocabile (1 quest, 1 NPC, 1 nemic
 - **Game over / schermata di vittoria**: non ancora implementate nella slice.
 - **Salvataggio su file** (serde): rimandato; la slice non salva su disco.
 - **Input gamepad**: opzionale.
-- **Audio**: motore da scegliere (bevy_audio o kira).
+- **Audio**: musica di sottofondo con volume nel menu (bevy_audio) fatta; restano effetti sonori e voci dei personaggi (testi in `docs/voci/`).
 - **UI**: restano da valutare i confini tra egui (attuale) e bevy_ui.
 - **Asset**: sostituire i placeholder con modelli glTF CC0 (Kenney, Quaternius) esportati da Blender con shading cel.
 - **Fuori scope v1**: multiplayer. Web build (WASM) da valutare dopo la stabilità su Linux.

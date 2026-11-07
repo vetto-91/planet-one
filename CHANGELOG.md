@@ -2,6 +2,15 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- Colonna sonora in loop (`audio/music/legacy_of_the_first_light.ogg`) con slider "Volume musica" nel
+  menu Esc; il volume è salvato in `~/.config/planet-one/settings.txt`.
+- Casetta-chiosco (mesh con le 4 viste della foto, tetto a padiglione, apertura del banco trasparente)
+  al posto del Viandante, che ora fa da negoziante dentro il chiosco; l'insegna dice "GUSTO DEL BOSCO".
+- NPC e casetta appoggiati al terreno (`SnapToGround`): l'NPC non è più mezzo sepolto.
+- `docs/voci/viandante.txt` e `docs/voci/ladro.txt` con tutte le battute, generati da `scripts/export_voci.py`.
+
 ## v0.0.6.0 — Rifiniture: diario, giorno/notte, skin, UI condivisa (2026-11-06)
 
 - Diario delle quest (J) con tab "Da fare" / "Completate" e quest espandibili; pannello TAB

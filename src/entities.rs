@@ -94,13 +94,16 @@ fn close_dialog(dialog: &mut DialogState, result: Option<usize>, finished: bool)
     dialog.block_interact = true;
 }
 
-/// Spawn dell'NPC a una posizione data, con dialogo.
+/// Spawn dell'NPC (Viandante) come figlio di `parent` (la casetta), alla
+/// posizione locale `local`. Il fronte (-Z) segue quello del genitore. Non è
+/// `SceneNode`: il despawn ricorsivo del genitore lo elimina.
 pub fn spawn_npc(
     commands: &mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
     asset_server: &AssetServer,
-    position: Vec3,
+    parent: Entity,
+    local: Vec3,
 ) {
     let mesh = meshes.add(crate::figure::figure_mesh(
         Vec3::new(0.7, 1.6, 0.7),
@@ -110,29 +113,29 @@ pub fn spawn_npc(
         asset_server.load("textures/viandante.png"),
     ));
 
-    commands.spawn((
-        SceneNode,
-        Npc {
-            name: "Viandante",
-            lines: &[
-                "Salve, viaggiatore! Benvenuto su Planet One.",
-                "Le colline qui intorno sono piene di sorprese... e di nemici.",
-                "Prova a saltare con Space mentre corri: il coyote time ti aiuta!",
-                "Se premi Esc trovi il menu. Buona fortuna!",
-            ],
-        },
-        Interactable {
-            prompt: "[E] Parla",
-            range: 5.0,
-        },
-        RigidBody::Static,
-        Collider::capsule(0.35, 1.0),
-        Mesh3d(mesh),
-        MeshMaterial3d(mat),
-        // Il fronte (-Z) guarda verso il giocatore, che parte a -X.
-        Transform::from_translation(position)
-            .with_rotation(Quat::from_rotation_y(std::f32::consts::FRAC_PI_2)),
-    ));
+    let npc = commands
+        .spawn((
+            Npc {
+                name: "Viandante",
+                lines: &[
+                    "Salve, viaggiatore! Benvenuto su Planet One.",
+                    "Le colline qui intorno sono piene di sorprese... e di nemici.",
+                    "Prova a saltare con Space mentre corri: il coyote time ti aiuta!",
+                    "Se premi Esc trovi il menu. Buona fortuna!",
+                ],
+            },
+            Interactable {
+                prompt: "[E] Parla",
+                range: 5.0,
+            },
+            // Collider figlio: si somma al corpo statico della casetta.
+            Collider::capsule(0.35, 1.0),
+            Mesh3d(mesh),
+            MeshMaterial3d(mat),
+            Transform::from_translation(local),
+        ))
+        .id();
+    commands.entity(parent).add_child(npc);
 }
 
 /// Spawn del nemico con patrol tra due waypoint.

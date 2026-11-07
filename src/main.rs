@@ -3,6 +3,7 @@
 //! Fase 2.1: character controller cinematico (Avian MoveAndSlide),
 //! terreno 100 m, debug wireframe collider (F3).
 
+mod audio;
 mod camera;
 mod combat;
 mod daynight;
@@ -12,6 +13,7 @@ mod hud;
 mod inventory;
 mod menu;
 mod player;
+mod props;
 mod quests;
 mod scene;
 mod sky;
@@ -100,6 +102,7 @@ fn main() {
         .init_resource::<quests::QuestTexts>()
         .init_resource::<quests::Barks>()
         .init_resource::<menu::JournalTab>()
+        .init_resource::<audio::AudioSettings>()
         .init_resource::<daynight::GameClock>()
         .init_resource::<daynight::WaitUi>()
         .init_resource::<combat::ContactDamageCd>()
@@ -110,6 +113,7 @@ fn main() {
                 scene::spawn_camera,
                 scene::spawn_world_startup,
                 daynight::spawn_sky_discs,
+                audio::start_music,
                 terrain::setup_assets,
             ),
         )
@@ -132,6 +136,9 @@ fn main() {
                 terrain::update_terrain,
                 sky::apply_sky_texture,
                 daynight::update_sky,
+                props::snap_to_ground,
+                audio::apply_music_volume,
+                audio::save_settings,
                 daynight::tick_clock.run_if(in_state(AppState::Playing)),
             ),
         )

@@ -13,8 +13,8 @@
 //! sia durante il reset).
 
 use crate::{
-    AppState, camera::OrbitCamera, entities, inventory, player, quests::denaro_rubato as quest,
-    sky, terrain,
+    AppState, camera::OrbitCamera, entities, inventory, player, props,
+    quests::denaro_rubato as quest, sky, terrain,
 };
 use bevy::image::Image;
 use bevy::light::Skybox;
@@ -109,15 +109,24 @@ pub fn spawn_world(
     // --- Player ---
     player::spawn(commands, meshes, materials, asset_server);
 
-    // --- NPC con dialogo (vicino allo spawn del player) ---
-    // NPC vicino allo spawn del player (0,0,0): a (3, 0, -2) così si vede subito.
-    // NPC a 2.5 m dallo spawn del player: subito nel range di interazione.
+    // --- Casetta-chiosco con il Viandante come negoziante. Il fronte (-Z locale,
+    //     con il banco) guarda verso il player, che parte a -X; la quota viene
+    //     appoggiata al terreno da `props::snap_to_ground`. ---
+    let hut = props::spawn_hut(
+        commands,
+        meshes,
+        materials,
+        asset_server,
+        Vec3::new(5.5, 0.0, 0.7),
+        std::f32::consts::FRAC_PI_2,
+    );
     entities::spawn_npc(
         commands,
         meshes,
         materials,
         asset_server,
-        Vec3::new(2.5, 0.0, 0.0),
+        hut,
+        props::KEEPER_LOCAL,
     );
 
     // --- Pickup: pozione sparsa (le monete a terra sono solo quelle della quest) ---

@@ -62,7 +62,7 @@ grep "\[EVENT\]" run.log    # eventi finestra/cursore
 
 ## Quest: "Denaro Rubato"
 
-Parla con il **Viandante** (NPC blu) allo spawn: alla fine del dialogo scegli
+Parla con il **Viandante**, il negoziante nel chiosco della casetta vicino allo spawn: alla fine del dialogo scegli
 "Sì, ti aiuto" per far partire la quest ("Ora non ho tempo" la rimanda).
 Trova il **ladro** (cubo rosso, lontano, oltre le colline; il segnalino rosso sulla bussola
 in alto indica la sua direzione), uccidilo, raccogli le **12 monete d'oro** che lascia,
@@ -73,6 +73,13 @@ Se uccidi il ladro prima di parlare col Viandante, la quest si attiva da sola co
 obiettivi già completati fino a quel punto.
 Se ti allontani dal Viandante durante il dialogo (oltre 8 m) il dialogo si chiude e lui saluta.
 Il ladro ti apostrofa quando ti vede da vicino (~12 m).
+
+### Musica e audio
+
+La colonna sonora (`assets/audio/music/legacy_of_the_first_light.ogg`, brano in loop) parte
+all'avvio. Il volume delle sole musiche si regola dal menu Esc ("Volume musica") e viene salvato
+in `~/.config/planet-one/settings.txt`. Autore e licenza del brano da indicare prima di rendere
+pubblico il repository.
 
 ### Giorno e notte
 
@@ -100,11 +107,13 @@ src/      codice del gioco (ECS Bevy)
   player.rs movimento, salto, corsa, facing, ground-check
   camera.rs orbita e follow della camera
   menu.rs   UI egui (menu Esc, hint, contatore FPS, diario)
+  audio.rs   musica di sottofondo e impostazioni audio
+  props.rs   casetta-chiosco del Viandante e appoggio a terra
   daynight.rs orologio di gioco, sole e luna, luci e cielo
   figure.rs  personaggi a parallelepipedo con skin a sviluppo (player/ladro/viandante)
   quests/   una cartella per quest (logica) + parser dialoghi e diario
 assets/quests/<quest>/dialoghi.txt   testi della quest, modificabili a mano
-docs/     decisioni (ADR) e convenzioni
+docs/     decisioni (ADR), convenzioni e battute per le voci (docs/voci/, generate da scripts/export_voci.py)
 .github/  template issue e PR
 ```
 

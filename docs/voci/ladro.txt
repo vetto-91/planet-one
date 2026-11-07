@@ -1,0 +1,12 @@
+LADRO: battute per la voce
+========================================
+Formato: ID | quando viene detta | testo esatto
+Le battute sono in ordine di storia. Il testo è quello del gioco, da leggere così com'è.
+Suggerimento di tono (modificabile): voce sfrontata e beffarda, sicura di sé, un po' teatrale.
+File generato da scripts/export_voci.py a partire da assets/quests/denaro_rubato/dialoghi.txt.
+Non modificare a mano: cambia i dialoghi nel gioco e rilancia lo script.
+
+L-001 | Appena vede il giocatore, a una dozzina di metri (fumetto, una sola volta) | Mi hai beccato! Fatti sotto!
+
+--- Battute future (non ancora nel gioco) ---
+Nessuna per ora: aggiungerle in assets/quests/denaro_rubato/dialoghi.txt e rilanciare lo script.

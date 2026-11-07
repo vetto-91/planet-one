@@ -98,6 +98,7 @@ pub struct UiQueries<'w, 's> {
     pub transforms: Query<'w, 's, &'static GlobalTransform>,
     pub npcs: Query<'w, 's, (&'static GlobalTransform, &'static crate::entities::Npc)>,
     pub styled: Local<'s, bool>,
+    pub audio: ResMut<'w, crate::audio::AudioSettings>,
     pub clock: ResMut<'w, crate::daynight::GameClock>,
     pub wait: ResMut<'w, crate::daynight::WaitUi>,
     pub player_pos: Query<'w, 's, &'static GlobalTransform, With<crate::player::Player>>,
@@ -289,6 +290,20 @@ pub fn ui(
                             egui::Slider::new(&mut orbit.sensitivity, 0.0005..=0.010)
                                 .text("Sensibilità mouse"),
                         );
+
+                        // Volume delle sole musiche (salvato su file).
+                        let mut pct = q.audio.music_volume * 100.0;
+                        if ui
+                            .add(
+                                egui::Slider::new(&mut pct, 0.0..=100.0)
+                                    .text("Volume musica %")
+                                    .fixed_decimals(0),
+                            )
+                            .changed()
+                        {
+                            q.audio.music_volume = pct / 100.0;
+                            q.audio.dirty = true;
+                        }
 
                         // Toggle contatore FPS.
                         ui.checkbox(&mut show_fps.0, "Mostra FPS");
