@@ -20,6 +20,7 @@ Strategia: **vertical slice prima**. Una demo giocabile (1 quest, 1 NPC, 1 nemic
 | 5.x — Rifiniture | Diario quest (J), quest in cartelle con dialoghi in file, texture erba e cielo, fumetti NPC/ladro, ciclo giorno/notte (T Aspetta), skin dei personaggi, targhette, tema UI | `v0.0.6.0` |
 | 5.y — Isola e rifiniture debug | Terreno a isola (300 m) con mare, F4 col mirino e Ctrl, rotazione con freccia rossa, niente compenetrazioni, niente interazioni attraverso i muri | `v0.0.11.0` |
 | 5.z — Casetta e costa | Interazioni da dentro, finestre a vetro scorrevole + scuri, vista attraverso banco e vetri, mare solo attorno all'isola, barriera di riva, spiaggia di sabbia, F3 leggero | `v0.0.12.0` |
+| 5.w2 — Interazioni e appoggio | Oggetti a parete con lato d'uso, dialoghi solo col mirino, appoggio a terra esatto all'avvio, pannello F4 stabile | `v0.0.13.0` |
 | 5.y — Mondo vivo | Colonna sonora con volume, casetta-chiosco esplorabile (porta, interni, stufa con fumo), routine giorno/notte del Viandante, voci dei personaggi, versione nel menu | `v0.0.7.0` |
 | 5.z — Mondo vivo, rifiniture | Interazione col mirino, casetta con serranda/interruttore/finestre e luci con ombre, routine del Viandante v2, voci normalizzate con ducking della musica | `v0.0.8.0` |
 | 5.w — Mappa e strumenti | Mappa dall'alto (M) con bussola e zoom, modalità debug piazzamenti (F4) con file `debug/placements.txt`, vetri e scuri spessi, il Viandante chiude porta e finestre | `v0.0.9.0` |

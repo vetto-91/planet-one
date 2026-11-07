@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.13.0 — Interazioni col mirino e oggetti a terra (2026-11-07)
 
 - Interruttore luce, pulsante serranda e maniglie interne delle finestre usabili col mirino da dentro (e non da fuori): ogni oggetto a parete ha il suo lato d'uso.
 - Si parla con il Viandante (e gli altri personaggi) solo guardandolo col mirino.
