@@ -919,9 +919,15 @@ pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
     egui::Window::new("Debug piazzamenti")
         .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-12.0, 60.0))
         .resizable(false)
+        // Larghezza fissa: con la larghezza automatica la riga degli strumenti andava a capo
+        // e tornava su a ogni frame (tremolio al passaggio del mouse).
+        .min_width(350.0)
+        .max_width(350.0)
         .max_height((screen_h - 140.0).max(200.0))
         .show(&ctx, |ui| {
-            egui::ScrollArea::vertical().show(ui, |ui| panel(ui, &mut dbg, in_map, &hour));
+            egui::ScrollArea::vertical()
+                .auto_shrink([false, true])
+                .show(ui, |ui| panel(ui, &mut dbg, in_map, &hour));
         });
     if std::mem::take(&mut dbg.finish_requested) {
         finish_poly(&mut dbg, &hour);

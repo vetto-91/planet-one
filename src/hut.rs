@@ -859,6 +859,7 @@ pub fn spawn_hut(
                     prompt: "[E] Apri porta".to_string(),
                     range: 3.0,
                     aim: Some(0.7),
+                    use_from: None,
                 },
                 Transform::from_xyz(door_cx, FLOOR_Y + 1.0, -hd),
             ))
@@ -1077,6 +1078,7 @@ pub fn spawn_hut(
                     prompt: "[E] Accendi stufa".to_string(),
                     range: 3.0,
                     aim: Some(0.55),
+                    use_from: None,
                 },
                 Transform::from_xyz(CHIMNEY_XZ.x - 0.35, Y0 + 0.6, CHIMNEY_XZ.y),
             ))
@@ -1215,6 +1217,7 @@ pub fn spawn_hut(
                     prompt: "[E] Spegni luce".to_string(),
                     range: 3.0,
                     aim: Some(0.3),
+                    use_from: Some(Vec3::Z),
                 },
                 Transform::from_translation(sw),
             ))
@@ -1251,6 +1254,7 @@ pub fn spawn_hut(
                     prompt: "[E] Abbassa serranda".to_string(),
                     range: 3.0,
                     aim: Some(0.2),
+                    use_from: Some(Vec3::NEG_X),
                 },
                 Transform::from_translation(btn),
             ))
@@ -1297,6 +1301,7 @@ pub fn spawn_hut(
                         prompt: "[E] Apri finestra".to_string(),
                         range: 3.0,
                         aim: Some(0.45),
+                        use_from: Some(dir),
                     },
                     // Maniglia degli scuri: 12 cm FUORI dal muro (si usa da fuori).
                     Transform::from_translation(center + dir * 0.12),
@@ -1312,6 +1317,7 @@ pub fn spawn_hut(
                         prompt: "[E] Alza vetro".to_string(),
                         range: 3.0,
                         aim: Some(0.22),
+                        use_from: Some(-dir),
                     },
                     Transform::from_translation(inner - Vec3::Y * 0.22),
                 ))
@@ -1327,19 +1333,10 @@ pub fn spawn_hut(
                     prompt: "[E] Apri scuri".to_string(),
                     range: 3.0,
                     aim: Some(0.22),
+                    use_from: Some(-dir),
                 },
                 Transform::from_translation(inner + Vec3::Y * 0.2),
             ));
-            for dy in [-0.22_f32, 0.2] {
-                add_box(
-                    c,
-                    meshes,
-                    &iron,
-                    Vec3::splat(0.045),
-                    center - dir * 0.03 + Vec3::Y * dy,
-                    false,
-                );
-            }
             let leaf_w = WIN_W / 2.0;
             // Anta sinistra: cerniera a +x, si estende verso il centro (-x).
             // Anta destra: cerniera a -x, si estende verso il centro (+x).

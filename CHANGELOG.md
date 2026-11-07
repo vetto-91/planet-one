@@ -2,6 +2,13 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- Interruttore luce, pulsante serranda e maniglie interne delle finestre usabili col mirino da dentro (e non da fuori): ogni oggetto a parete ha il suo lato d'uso.
+- Si parla con il Viandante (e gli altri personaggi) solo guardandolo col mirino.
+- Oggetti piazzati (alberi, lampioni, fiori…) appoggiati subito al terreno vero all'avvio (prima restavano a y = 0,5 finché non si ricostruivano).
+- Pannello F4 a larghezza fissa (niente tremolio sopra "Ruota"); maniglie delle finestre invisibili.
+
 ## v0.0.12.0 — Casetta da dentro, finestre a vetro scorrevole, spiaggia (2026-11-07)
 
 - Casetta: porta, interruttore, stufa, serranda e finestre di nuovo usabili da dentro (gli occhi del giocatore erano dentro il collider del tetto);

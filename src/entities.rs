@@ -30,6 +30,9 @@ pub struct Interactable {
     /// metri attorno al suo punto di interazione) e ha priorità sull'NPC finché
     /// è guardato. `None`: solo prossimità (NPC).
     pub aim: Option<f32>,
+    /// Per gli oggetti montati a parete: direzione (locale al genitore) verso il lato da cui si
+    /// usano. Serve il giocatore da quel lato e linea di vista libera verso il punto davanti.
+    pub use_from: Option<Vec3>,
 }
 
 /// Stato dell'NPC rispetto al dialogo.
@@ -149,7 +152,9 @@ pub fn spawn_npc(
                 prompt: "[E] Parla".to_string(),
                 // Solo in prossimità del Viandante (porta/stufa si usano col mirino).
                 range: 3.0,
-                aim: None,
+                // Si parla solo guardandolo col mirino.
+                aim: Some(0.5),
+                use_from: None,
             },
             crate::hud::NameAnchor(1.3),
             crate::hut::Keeper::new(),
@@ -198,9 +203,6 @@ pub fn spawn_enemy(
         Transform::from_translation(start),
     ));
 }
-
-/// Distanza massima (m) dal giocatore per usare un oggetto guardato col mirino.
-const AIM_REACH: f32 = 3.0;
 
 /// Interagibile più vicino: (distanza, entità, componente, NPC, proprietà).
 type BestInteract<'a> = (
@@ -286,46 +288,39 @@ pub fn interact(
             let Some(radius) = inter.aim else {
                 continue;
             };
+            // L'NPC impegnato nella routine non è interagibile.
+            if npc.is_some_and(|n| n.mode == NpcMode::Busy) {
+                continue;
+            }
             let pos = t.translation();
             let to = pos - origin;
             let along = to.dot(*dir);
-            if along <= 0.0 || pos.distance(p) > AIM_REACH {
+            if along <= 0.0 || pos.distance(p) > inter.range {
                 continue;
             }
             let off = (pos - (origin + *dir * along)).length();
             if off > radius || off >= best_off {
                 continue;
             }
-            // Dietro un muro (collider della casetta) non si può usare: né dalla
-            // camera né dagli occhi del giocatore (tolleranza minima: lo spessore
-            // del muro è 20 cm, il pulsante sta sulla sua faccia interna).
-            if !clear(origin, pos) || !clear(eye, pos) {
+            // Visibilità: niente uso attraverso i muri.
+            let visible = if let Some(local_n) = inter.use_from {
+                // Oggetto a parete: giocatore dal lato giusto e linea libera verso il punto
+                // davanti al collider (i muri spessi 20 cm inglobano il pulsante).
+                let n = (t.compute_transform().rotation * local_n).normalize_or_zero();
+                (eye - pos).dot(n) > 0.0 && clear(eye, pos + n * 0.3)
+            } else if npc.is_some() {
+                // NPC: basta vederne testa, petto o piedi (anche da una finestra).
+                [0.4, 1.0, 1.5]
+                    .iter()
+                    .any(|h| clear(eye, pos + Vec3::Y * (*h - 0.85)))
+            } else {
+                clear(origin, pos) && clear(eye, pos)
+            };
+            if !visible {
                 continue;
             }
             best_off = off;
             best = Some((off, e, inter, npc, prop));
-        }
-    }
-    // 2) Altrimenti l'NPC più vicino, solo per prossimità.
-    if best.is_none() {
-        for (e, t, inter, npc, prop) in &interactables {
-            if inter.aim.is_some() {
-                continue;
-            }
-            // L'NPC impegnato nella routine non è interagibile.
-            if npc.is_some_and(|n| n.mode == NpcMode::Busy) {
-                continue;
-            }
-            let dist = t.translation().distance(p);
-            // Niente dialogo attraverso un muro: serve linea di vista (testa, petto o piedi).
-            if dist <= inter.range
-                && best.as_ref().is_none_or(|b| dist < b.0)
-                && [0.4, 1.0, 1.5]
-                    .iter()
-                    .any(|h| clear(eye, t.translation() + Vec3::Y * *h))
-            {
-                best = Some((dist, e, inter, npc, prop));
-            }
         }
     }
 

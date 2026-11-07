@@ -58,12 +58,29 @@ pub struct TerrainMesh;
 #[derive(Component)]
 pub struct TerrainExtra;
 
-/// Dati del terreno per il debug (F3): altezze e punti della riva.
+/// Campo di altezze del terreno (dopo la generazione) e punti della riva per il debug F3.
+/// Serve ad appoggiare gli oggetti a terra senza dipendere dalla fisica.
 #[derive(Resource)]
-pub struct TerrainDebugData {
+pub struct TerrainField {
     n: usize,
     h: Vec<f32>,
     shore: Vec<Vec2>,
+}
+
+impl TerrainField {
+    /// Quota (m) del terreno in (x, z), interpolazione bilineare tra i vertici.
+    pub fn height_at(&self, x: f32, z: f32) -> f32 {
+        let max = (self.n - 1) as f32;
+        let fx = ((x + TERRAIN_SIZE / 2.0) / STEP).clamp(0.0, max);
+        let fz = ((z + TERRAIN_SIZE / 2.0) / STEP).clamp(0.0, max);
+        let (x0, z0) = (fx.floor() as usize, fz.floor() as usize);
+        let (x1, z1) = ((x0 + 1).min(self.n - 1), (z0 + 1).min(self.n - 1));
+        let (u, v) = (fx - x0 as f32, fz - z0 as f32);
+        let at = |x: usize, z: usize| self.h[z * self.n + x];
+        let top = at(x0, z0) * (1.0 - u) + at(x1, z0) * u;
+        let bot = at(x0, z1) * (1.0 - u) + at(x1, z1) * u;
+        top * (1.0 - v) + bot * v
+    }
 }
 
 /// Lato (m) di una piastrella della texture sabbia.
@@ -205,7 +222,7 @@ pub fn update_terrain(
         shore.len(),
         sand_w.iter().filter(|w| **w > 0.02).count()
     );
-    commands.insert_resource(TerrainDebugData {
+    commands.insert_resource(TerrainField {
         n,
         h: field.h.clone(),
         shore,
@@ -280,7 +297,7 @@ pub fn update_terrain(
 pub fn terrain_debug_gizmos(
     mut gizmos: Gizmos,
     store: Res<GizmoConfigStore>,
-    data: Option<Res<TerrainDebugData>>,
+    data: Option<Res<TerrainField>>,
     players: Query<&GlobalTransform, With<crate::player::Player>>,
 ) {
     let (cfg, _) = store.config::<avian3d::prelude::PhysicsGizmos>();
