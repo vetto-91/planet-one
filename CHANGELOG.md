@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.12.0 — Casetta da dentro, finestre a vetro scorrevole, spiaggia (2026-11-07)
 
 - Casetta: porta, interruttore, stufa, serranda e finestre di nuovo usabili da dentro (gli occhi del giocatore erano dentro il collider del tetto);
   finestre a due stadi da dentro (alza il vetro, poi apri gli scuri); apertura del banco e vani delle finestre senza collider pieni, quindi il
