@@ -14,15 +14,12 @@ use std::path::PathBuf;
 const MUSIC_PATH: &str = "audio/music/legacy_of_the_first_light.ogg";
 /// Brano notturno: dal tramonto fino al momento prima dell'alba.
 const NIGHT_MUSIC_PATH: &str = "audio/music/lanterns_in_the_grove.ogg";
-/// Ora di inizio e di fine (esclusa) della musica notturna.
-const NIGHT_START: f32 = 18.0;
-const NIGHT_END: f32 = 5.9;
 /// Durata (s) della dissolvenza incrociata.
 const CROSSFADE_SECS: f32 = 4.0;
 
-/// È l'ora della musica notturna?
-fn is_night_music(hour: f32) -> bool {
-    hour >= NIGHT_START || hour < NIGHT_END
+/// È l'ora della musica notturna? Dal tramonto a poco prima dell'alba (seguono la stagione).
+fn is_night_music(clock: &crate::daynight::GameClock) -> bool {
+    clock.hour >= clock.sunset || clock.hour < clock.sunrise - 0.1
 }
 /// Volume iniziale delle musiche (0..1).
 const DEFAULT_MUSIC_VOLUME: f32 = 0.6;
@@ -182,7 +179,7 @@ pub fn start_music(
     settings: Res<AudioSettings>,
     clock: Res<crate::daynight::GameClock>,
 ) {
-    let night_now = is_night_music(clock.hour);
+    let night_now = is_night_music(&clock);
     for (night, path) in [(false, MUSIC_PATH), (true, NIGHT_MUSIC_PATH)] {
         let gain = if night == night_now { 1.0 } else { 0.0 };
         commands.spawn((
@@ -202,7 +199,7 @@ pub fn apply_music_volume(
     duck: Res<MusicDuck>,
     mut tracks: Query<(&mut MusicTrack, &mut AudioSink)>,
 ) {
-    let night_now = is_night_music(clock.hour);
+    let night_now = is_night_music(&clock);
     let step = time.delta_secs() / CROSSFADE_SECS;
     for (mut track, mut sink) in &mut tracks {
         let want = if track.night == night_now { 1.0 } else { 0.0 };
