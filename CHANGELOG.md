@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.16.0 — Voce IA locale con Piper, fase 2 (2026-11-08)
 
 - Voce IA (fase 2): le risposte dei dialoghi IA sono lette ad alta voce con Piper **in locale** (programma esterno, senza rete); voce per personaggio,
   casella "Voce IA" e scelta della voce nel menu, `PLANET_ONE_TTS_MOCK=1` per provare (ADR 0006).
