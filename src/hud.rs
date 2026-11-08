@@ -12,7 +12,12 @@ use bevy_egui::egui;
 
 /// Disegna l'HUD in `Playing`: barra vita in alto a sinistra, crosshair al
 /// centro, slot inventario in basso al centro.
-pub fn draw_hud(ctx: &egui::Context, health: &PlayerHealth, inventory: &Inventory) {
+pub fn draw_hud(
+    ctx: &egui::Context,
+    health: &PlayerHealth,
+    inventory: &Inventory,
+    equip: &crate::inventory::Equipment,
+) {
     let size = ctx.viewport_rect().size();
 
     // --- Barra vita del player: in basso a sinistra, meta' lunghezza ---
@@ -105,10 +110,16 @@ pub fn draw_hud(ctx: &egui::Context, health: &PlayerHealth, inventory: &Inventor
                             egui::CornerRadius::same(4),
                             egui::Color32::from_rgba_unmultiplied(25, 28, 38, 230),
                         );
+                        let equipped = equip.weapon == Some(stack.kind)
+                            || (stack.kind == crate::inventory::ItemKind::Shield && equip.shield);
                         ui.painter().rect_stroke(
                             rect,
                             egui::CornerRadius::same(4),
-                            egui::Stroke::new(1.0, egui::Color32::from_rgb(90, 100, 130)),
+                            if equipped {
+                                egui::Stroke::new(2.5, egui::Color32::from_rgb(255, 214, 102))
+                            } else {
+                                egui::Stroke::new(1.0, egui::Color32::from_rgb(90, 100, 130))
+                            },
                             egui::StrokeKind::Inside,
                         );
                         // Tasto associato allo slot: 1..9, poi 0 (10 slot in tutto).

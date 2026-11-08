@@ -45,9 +45,6 @@ pub struct EnemyRespawn {
 }
 
 /// Costanti di combattimento.
-pub const ATTACK_COOLDOWN: f32 = 0.6;
-pub const ATTACK_RANGE: f32 = 2.5;
-pub const ATTACK_DAMAGE: f32 = 4.0;
 pub const CONTACT_DAMAGE_COOLDOWN: f32 = 0.8;
 pub const CONTACT_DAMAGE: f32 = 5.0;
 pub const CONTACT_RANGE: f32 = 1.2;
@@ -60,17 +57,51 @@ pub struct ContactDamageCd {
     pub left: f32,
 }
 
-/// Attacco melee del player su click sinistro.
+/// Durata (s) della finestra di oscillazione dell'arma (animazione).
+pub const SWING_TIME: f32 = 0.28;
+
+/// Tempo residuo dell'oscillazione dell'arma impugnata (vedi `equipment.rs`).
+#[derive(Resource, Default)]
+pub struct SwingTimer(pub f32);
+
+/// Freccia in volo.
+#[derive(Component)]
+pub struct Arrow {
+    vel: Vec3,
+    life: f32,
+}
+
+/// Cose contro cui si ferma una freccia: terreno ed edifici.
+type ArrowSolids = Or<(
+    With<crate::scene::Ground>,
+    With<crate::camera::BlocksCamera>,
+)>;
+
+/// Danno di una freccia e raggio di impatto sul nemico.
+const ARROW_DAMAGE: f32 = 10.0;
+const ARROW_SPEED: f32 = 38.0;
+
+/// Attacco del player su click sinistro, secondo l'arma impugnata: a mani nude, spada
+/// corta/lunga, ascia (colpisce più nemici) oppure arco (consuma una freccia).
 /// Gira in Update (input), solo in Playing e se nessun dialogo è aperto.
+#[allow(clippy::too_many_arguments)]
 pub fn player_attack(
     mouse: Res<ButtonInput<MouseButton>>,
     mut raw_mouse: MessageReader<bevy::input::mouse::MouseButtonInput>,
     mut combat: Query<&mut CombatState, With<Player>>,
     players: Query<&GlobalTransform, With<Player>>,
     mut enemies: Query<(&GlobalTransform, &mut EnemyHealth, Entity), With<Enemy>>,
+    cameras: Query<&GlobalTransform, With<Camera3d>>,
     dialog: Res<crate::entities::DialogState>,
+    equip: Res<crate::inventory::Equipment>,
+    mut inventory: ResMut<crate::inventory::Inventory>,
+    mut swing: ResMut<SwingTimer>,
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
     time: Res<Time>,
 ) {
+    swing.0 = (swing.0 - time.delta_secs()).max(0.0);
     if dialog.open {
         return;
     }
@@ -89,39 +120,123 @@ pub fn player_attack(
     if !clicked || combat.attack_cd > 0.0 {
         return;
     }
-    info!("click sinistro: attacco!");
-
+    let stats = crate::inventory::weapon_stats(equip.weapon);
     let Ok(player) = players.single() else {
         return;
     };
     let p = player.translation();
     let pf = *player.forward();
 
-    // Nemico più vicino entro range e nel cono frontale (dot > 0.3).
-    let mut best: Option<(f32, Entity, f32)> = None; // (dist, entity, new_hp)
-    for (t, hp, entity) in &mut enemies {
-        let to = t.translation() - p;
-        let dist = to.length();
-        let dir = to.normalize_or_zero();
-        if dist > ATTACK_RANGE {
-            continue;
+    // Arco: una freccia verso il mirino.
+    if stats.ranged {
+        if inventory.qty(crate::inventory::ItemKind::Arrow) == 0 {
+            info!("arco: niente frecce");
+            return;
         }
-        if dir.dot(pf) < 0.3 {
-            continue;
-        }
-        let new_hp = (hp.current - ATTACK_DAMAGE).max(0.0);
-        match &best {
-            Some((bd, _, _)) if dist >= *bd => {}
-            _ => best = Some((dist, entity, new_hp)),
-        }
+        let Ok(cam) = cameras.single() else {
+            return;
+        };
+        inventory.consume(crate::inventory::ItemKind::Arrow, 1);
+        combat.attack_cd = stats.cooldown;
+        swing.0 = SWING_TIME;
+        let dir = cam.forward();
+        let start = p + Vec3::Y * 0.4 + *dir * 0.8;
+        commands.spawn((
+            crate::scene::SceneNode,
+            Arrow {
+                vel: *dir * ARROW_SPEED,
+                life: 3.0,
+            },
+            Mesh3d(meshes.add(Cuboid::new(0.04, 0.04, 0.7))),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: Color::srgb(0.85, 0.78, 0.55),
+                ..default()
+            })),
+            Transform::from_translation(start).looking_to(dir, Vec3::Y),
+        ));
+        return;
     }
 
-    if let Some((_, entity, new_hp)) = best {
-        if let Ok((_, mut hp, _)) = enemies.get_mut(entity) {
-            hp.current = new_hp;
+    // Mischia: nemico più vicino (o tutti nel cono con l'ascia) entro il raggio dell'arma.
+    let mut hit: Vec<(f32, Entity)> = Vec::new();
+    for (t, _, entity) in &enemies {
+        let to = t.translation() - p;
+        let dist = to.length();
+        if dist > stats.range || to.normalize_or_zero().dot(pf) < 0.3 {
+            continue;
         }
-        combat.attack_cd = ATTACK_COOLDOWN;
-        info!("attacco su enemy {entity:?}: vita -> {:.0}", new_hp);
+        hit.push((dist, entity));
+    }
+    hit.sort_by(|a, b| a.0.total_cmp(&b.0));
+    if !stats.cleave {
+        hit.truncate(1);
+    }
+    swing.0 = SWING_TIME;
+    if hit.is_empty() {
+        return;
+    }
+    combat.attack_cd = stats.cooldown;
+    for (_, entity) in hit {
+        if let Ok((_, mut hp, _)) = enemies.get_mut(entity) {
+            hp.current = (hp.current - stats.damage).max(0.0);
+            info!("attacco su enemy {entity:?}: vita -> {:.0}", hp.current);
+        }
+    }
+}
+
+/// Sistema: muove le frecce (con una lieve caduta), le ferma contro terreno/edifici e
+/// danneggia i nemici che colpiscono.
+#[allow(clippy::too_many_arguments)]
+pub fn update_arrows(
+    mut commands: Commands,
+    time: Res<Time>,
+    spatial: avian3d::prelude::SpatialQuery,
+    solids: Query<(), ArrowSolids>,
+    mut arrows: Query<(Entity, &mut Transform, &mut Arrow)>,
+    mut enemies: Query<(&GlobalTransform, &mut EnemyHealth), With<Enemy>>,
+) {
+    let dt = time.delta_secs();
+    for (e, mut tf, mut a) in &mut arrows {
+        a.life -= dt;
+        if a.life <= 0.0 {
+            commands.entity(e).despawn();
+            continue;
+        }
+        a.vel.y -= 6.0 * dt;
+        let step = a.vel * dt;
+        let from = tf.translation;
+        // Impatto contro il mondo.
+        if let Ok(dir) = Dir3::new(step)
+            && spatial
+                .cast_ray_predicate(
+                    from,
+                    dir,
+                    step.length(),
+                    true,
+                    &avian3d::prelude::SpatialQueryFilter::default(),
+                    &|ent| solids.contains(ent),
+                )
+                .is_some()
+        {
+            commands.entity(e).despawn();
+            continue;
+        }
+        tf.translation += step;
+        tf.look_to(a.vel, Vec3::Y);
+        // Impatto contro un nemico (distanza dal punto medio del tratto).
+        let mid = from + step / 2.0;
+        let mut hit = false;
+        for (et, mut hp) in &mut enemies {
+            if et.translation().distance(mid) < 1.1 {
+                hp.current = (hp.current - ARROW_DAMAGE).max(0.0);
+                info!("freccia su nemico: vita -> {:.0}", hp.current);
+                hit = true;
+                break;
+            }
+        }
+        if hit {
+            commands.entity(e).despawn();
+        }
     }
 }
 
@@ -140,6 +255,7 @@ pub fn contact_damage(
     mut cd: ResMut<ContactDamageCd>,
     time: Res<Time>,
     mut orbit: ResMut<crate::camera::OrbitCamera>,
+    equip: Res<crate::inventory::Equipment>,
 ) {
     let Ok((pt, mut hp, mut combat, mut transform)) = player.single_mut() else {
         return;
@@ -154,7 +270,12 @@ pub fn contact_damage(
     let p = pt.translation();
     for et in &enemies {
         if et.translation().distance(p) <= CONTACT_RANGE {
-            hp.current -= CONTACT_DAMAGE;
+            let factor = if equip.shield {
+                crate::inventory::SHIELD_FACTOR
+            } else {
+                1.0
+            };
+            hp.current -= CONTACT_DAMAGE * factor;
             combat.iframe = PLAYER_IFRAME;
             cd.left = CONTACT_DAMAGE_COOLDOWN;
             info!("colpito: player vita {:.0}", hp.current);
@@ -190,6 +311,8 @@ pub fn handle_enemy_death(
     mut commands: Commands,
     mut quest: ResMut<crate::quests::denaro_rubato::QuestState>,
     enemies: EnemiesQuery,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     for (entity, hp, patrol, transform, is_thief) in &enemies {
         if hp.current <= 0.0 {
@@ -201,6 +324,15 @@ pub fn handle_enemy_death(
                 quest.thief_killed_at = Some(transform.translation());
             }
             if is_thief.is_none() {
+                // I nemici comuni lasciano qualche moneta.
+                crate::inventory::spawn_pickup(
+                    &mut commands,
+                    &mut meshes,
+                    &mut materials,
+                    crate::inventory::ItemKind::Coin,
+                    4,
+                    transform.translation() + Vec3::Y * 0.2,
+                );
                 let wps = patrol.waypoints.clone();
                 commands.spawn((
                     crate::scene::SceneNode,

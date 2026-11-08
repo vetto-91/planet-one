@@ -15,6 +15,7 @@ mod daynight;
 mod debug_place;
 mod devtools;
 mod entities;
+mod equipment;
 mod figure;
 mod hud;
 mod hut;
@@ -25,6 +26,7 @@ mod player;
 mod props;
 mod quests;
 mod scene;
+mod shop;
 mod sky;
 mod terrain;
 mod ui_style;
@@ -68,6 +70,8 @@ pub enum AppState {
     Map,
     /// Chat con la IA locale dopo un dialogo: gameplay sospeso, cursore libero.
     Chat,
+    /// Negozio aperto (acquisto con le monete): gameplay sospeso, cursore libero.
+    Shop,
     /// Reset della scena in corso (un frame, non interattivo).
     Resetting,
 }
@@ -124,6 +128,7 @@ fn main() {
         .add_plugins(ai::plugin)
         .add_plugins(village::plugin)
         .add_plugins(villagers::plugin)
+        .add_plugins(shop::plugin)
         .init_resource::<debug_place::DebugPlace>()
         .init_resource::<hud::Occluded>()
         .init_resource::<audio::AudioSettings>()
@@ -133,6 +138,8 @@ fn main() {
         .init_resource::<daynight::GameClock>()
         .init_resource::<daynight::WaitUi>()
         .init_resource::<combat::ContactDamageCd>()
+        .init_resource::<combat::SwingTimer>()
+        .init_resource::<inventory::Equipment>()
         // Asset del terreno: heightmap PNG + handle del mesh generato.
         .add_systems(
             Startup,
@@ -251,7 +258,13 @@ fn main() {
         .add_systems(Update, debug_place::sync_markers)
         .add_systems(
             Update,
-            (hut::update_los_blockers, terrain::terrain_debug_gizmos),
+            (
+                hut::update_los_blockers,
+                terrain::terrain_debug_gizmos,
+                combat::update_arrows.run_if(in_state(AppState::Playing)),
+                equipment::update_held_items,
+                equipment::animate_swing,
+            ),
         )
         .add_systems(
             Update,

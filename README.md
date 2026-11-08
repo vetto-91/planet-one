@@ -188,6 +188,21 @@ al loro posto, la sera si ritrovano in piazza (camminando sulle strade), di nott
 con la lanterna accesa di notte. I dati sono in `assets/world/abitanti.txt` (posto, orari, aspetto) e `assets/ai/<nome>.txt` (persona, voce,
 saluto); le skin si generano con `scripts/make_skin_abitanti.py`.
 
+### Negozi, mercato, armi e campi
+
+Si compra con le monete (all'inizio ne hai 30; i nemici ne lasciano qualcuna). Parlando con un venditore, a fine dialogo compare
+**"Vorrei comprare qualcosa"**: pannello con articoli e prezzi, clic su "Compra", Esc per uscire. Venditori: il **Viandante** (pozioni, 12),
+l'**armaiolo** Ferruccio (spada corta 45, spada lunga 90, ascia 70, scudo 55), l'**arciera** Silvia (arco 80, 10 frecce 15) e, al mercato in
+piazza, Agnese (pozioni 10), Tonio (mele 2) e Nina (pesce 4).
+
+Gli oggetti stanno nella barra in basso (tasti 1–9, 0): le pozioni, le mele e il pesce curano; **spade, ascia e arco si impugnano** premendo il
+loro tasto (di nuovo per rimetterli via; il bordo dorato indica ciò che è equipaggiato), lo **scudo** riduce il danno subito del 60%. Clic sinistro =
+attacco: spada corta 9 danni veloce, spada lunga 14 con più raggio, ascia 18 lenta che colpisce più nemici, arco 10 da lontano (una freccia a colpo,
+verso il mirino). A mani nude 4. Per provare: `PLANET_ONE_GIVE=1` mette tutto in inventario.
+
+Fuori dalle mura ci sono **campi** di grano e un orto (tipi `campo`, `orto` in F4: si disegnano come aree con distribuzione regolare), pagliai e
+spaventapasseri. `scripts/gen_mercato.py` aggiunge mercato, botteghe e campi senza toccare il resto.
+
 ### Giorno e notte
 
 Il giorno di gioco dura 24 minuti reali (1 ora = 1 minuto); sole e luna attraversano il cielo

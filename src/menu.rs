@@ -39,7 +39,7 @@ pub fn toggle(
     mut next: ResMut<NextState<AppState>>,
 ) {
     // J: diario, T: "Aspetta" (non durante un dialogo).
-    if !dialog.open && *state.get() != AppState::Chat {
+    if !dialog.open && !matches!(*state.get(), AppState::Chat | AppState::Shop) {
         let (key, panel) = if keys.just_pressed(KeyCode::KeyJ) {
             (true, AppState::Journal)
         } else if keys.just_pressed(KeyCode::KeyT) {
@@ -69,9 +69,12 @@ pub fn toggle(
     }
     match state.get() {
         AppState::Playing => next.set(AppState::Paused),
-        AppState::Paused | AppState::Journal | AppState::Wait | AppState::Map | AppState::Chat => {
-            next.set(AppState::Playing)
-        }
+        AppState::Paused
+        | AppState::Journal
+        | AppState::Wait
+        | AppState::Map
+        | AppState::Chat
+        | AppState::Shop => next.set(AppState::Playing),
         // Durante il reset ESC non fa nulla: è uno stato transitorio.
         AppState::Resetting => {}
     }
@@ -118,6 +121,8 @@ pub struct UiQueries<'w, 's> {
     pub ai: Res<'w, crate::ai::AiState>,
     pub tts: Res<'w, crate::ai::tts::TtsState>,
     pub village: Res<'w, crate::village::VillageInfo>,
+    pub equip: Res<'w, crate::inventory::Equipment>,
+    pub shop: ResMut<'w, crate::shop::ShopState>,
     pub occluded: Res<'w, hud::Occluded>,
     pub map_view: Res<'w, map::MapView>,
     pub clock: ResMut<'w, crate::daynight::GameClock>,
@@ -205,7 +210,7 @@ pub fn ui(
 
             // HUD di gioco: barra vita (basso-sx), crosshair, inventario.
             if let Ok(hp) = q.health.single() {
-                hud::draw_hud(ctx, hp, &inventory);
+                hud::draw_hud(ctx, hp, &inventory, &q.equip);
             }
 
             // Barre vita dei nemici sopra le loro teste (proiezione world→screen).
@@ -513,6 +518,10 @@ pub fn ui(
         AppState::Journal => {
             let entries = crate::quests::journal_entries(&quest, &texts);
             draw_journal(ctx, &entries, &mut tab);
+        }
+        AppState::Shop => {
+            let coins = inventory.qty(crate::inventory::ItemKind::Coin);
+            crate::shop::shop_panel(ctx, &mut q.shop, coins);
         }
         AppState::Chat => {
             let status = q.ai.status.clone();

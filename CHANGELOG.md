@@ -2,6 +2,14 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Negozi e mercato**: pannello di acquisto con le monete (30 iniziali, i nemici ne lasciano); venditori: Viandante (pozioni), armaiolo Ferruccio, arciera Silvia e tre bancarelle in
+  piazza (pozioni, mele, pesce). Nuovi oggetti: spada corta, spada lunga, ascia, scudo, arco, frecce, mela, pesce (ADR 0009).
+- **Armi e scudo**: si impugnano dalla barra, con attacco e statistiche proprie; l'arco spara frecce verso il mirino; lo scudo riduce i danni. `PLANET_ONE_GIVE=1` per provare.
+- **Campi** di grano e orto fuori dalle mura, pagliai, spaventapasseri; nuovi tipi F4 (`arcere`, `bancarella-*`, `campo`, `orto`, `pagliaio`, `spaventapasseri`).
+- Cancelli: solo due ante piene; i bottoni stanno sui piloni (dentro e fuori) e si usano col mirino; le guardie stanno accanto ai cancelli.
+
 ## v0.0.18.0 — Abitanti e guardie, correzioni al villaggio (2026-11-08)
 
 - **Abitanti e guardie** di Fontevivo (6 + 4) con saluto scritto e chat con la IA locale (carattere e voce propri), routine giornaliera (lavoro, piazza la sera,

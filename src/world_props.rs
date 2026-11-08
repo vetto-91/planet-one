@@ -17,7 +17,7 @@ use bevy::prelude::*;
 pub fn has_model(kind: &str) -> bool {
     matches!(
         kind,
-        "albero" | "fiori" | "panchina" | "lampione" | "muro" | "cartello"
+        "albero" | "fiori" | "panchina" | "lampione" | "muro" | "cartello" | "campo" | "orto"
     ) || crate::buildings::is_building(kind)
 }
 
@@ -81,9 +81,14 @@ pub fn sync_world_props(
     mut materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
     village: Res<crate::village::VillageInfo>,
+    field: Option<Res<crate::terrain::TerrainField>>,
     props: Query<Entity, With<WorldProp>>,
     mut built: Local<(Option<u32>, usize)>,
 ) {
+    // Prima che il terreno esista non si può appoggiare nulla: si aspetta.
+    let Some(field) = field else {
+        return;
+    };
     let stale = built.0 != Some(dbg.revision());
     let wiped = props.is_empty() && built.1 > 0;
     if !stale && !wiped {
@@ -136,6 +141,27 @@ pub fn sync_world_props(
     });
     let (mut spawned, mut skipped) = (0usize, 0usize);
     for pl in &dbg.items {
+        if matches!(pl.kind.as_str(), "campo" | "orto") {
+            // Campo coltivato: una sola mesh per tutto il piazzamento.
+            let pts: Vec<Vec2> = pl
+                .points
+                .iter()
+                .copied()
+                .filter(|p| !crate::terrain::is_water(p.x, p.y))
+                .collect();
+            let mesh =
+                crate::buildings::crop_field_mesh(&pl.kind, &pts, &|p| field.height_at(p.x, p.y));
+            commands.spawn((
+                WorldProp,
+                SceneNode,
+                Mesh3d(meshes.add(mesh)),
+                MeshMaterial3d(building_mat.clone()),
+                Transform::default(),
+                Visibility::default(),
+            ));
+            spawned += pts.len();
+            continue;
+        }
         for (j, &p) in pl.points.iter().enumerate() {
             if crate::terrain::is_water(p.x, p.y) {
                 info!(

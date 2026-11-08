@@ -48,22 +48,57 @@ orari: 6 18 22
 ruolo: guardia
 skin: guardia
 guardia: si
-lavoro: -3.0 -6.9 1 0
+lavoro: -4.4 -6.4 1 0
 
 [Guardia Bruno]
 ruolo: guardia
 skin: guardia
 guardia: si
-lavoro: 3.6 -6.9 -1 0
+lavoro: 4.8 -6.4 -1 0
 
 [Guardia Carlo]
 ruolo: guardia
 skin: guardia
 guardia: si
-lavoro: -3.2 25.0 1 0
+lavoro: -4.4 25.0 1 0
 
 [Guardia Dino]
 ruolo: guardia
 skin: guardia
 guardia: si
-lavoro: 3.8 25.0 -1 0
+lavoro: 4.8 25.0 -1 0
+
+[Ferruccio]
+ruolo: fabbro
+skin: rosso
+negozio: armaiolo
+lavoro: -8.4 -1.5 0 1
+orari: 7 19 21
+
+[Silvia]
+ruolo: arciera
+skin: verde
+negozio: arciere
+lavoro: -17.5 -0.9 0 1
+orari: 7 19 21
+
+[Agnese]
+ruolo: erborista
+skin: viola
+negozio: erborista
+lavoro: -6.4 7.4 1 0
+orari: 7 18 20
+
+[Tonio]
+ruolo: fruttivendolo
+skin: ocra
+negozio: frutta
+lavoro: 4.8 8.6 -1 0
+orari: 7 18 20
+
+[Nina]
+ruolo: pescivendola
+skin: rosa
+negozio: pesce
+lavoro: -6.4 15.4 1 0
+orari: 7 18 20

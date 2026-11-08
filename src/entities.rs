@@ -54,6 +54,8 @@ pub struct Npc {
     pub mode: NpcMode,
     /// Righe del dialogo, mostrate in sequenza.
     pub lines: &'static [&'static str],
+    /// Chiave dell'assortimento se è un venditore (vedi `shop.rs`).
+    pub shop: Option<&'static str>,
 }
 
 /// Nemico: patriglia tra waypoint.
@@ -104,6 +106,18 @@ pub struct DialogState {
     pub finished: bool,
     /// Le scelte mostrate sono l'offerta della IA ("Parliamo d'altro…"), non una scelta di quest.
     pub ai_offer: bool,
+    /// Azioni dell'offerta finale (stesso ordine di `choices`).
+    pub offer_actions: Vec<Offer>,
+    /// Assortimento del venditore con cui si parla (se c'è).
+    pub shop: Option<&'static str>,
+}
+
+/// Azione dell'offerta mostrata a fine dialogo.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Offer {
+    Shop,
+    Chat,
+    Bye,
 }
 
 /// Distanza (m) oltre cui il dialogo si chiude da solo (range interazione: 5 m).
@@ -144,6 +158,7 @@ pub fn spawn_npc(
             Npc {
                 name: "Viandante",
                 mode: NpcMode::Ready,
+                shop: Some("viandante"),
                 lines: &[
                     "Salve, viaggiatore! Benvenuto su Planet One.",
                     "Le colline qui intorno sono piene di sorprese... e di nemici.",
@@ -372,6 +387,7 @@ pub fn interact(
         dialog.result = None;
         dialog.finished = false;
         dialog.ai_offer = false;
+        dialog.shop = npc.shop;
         dialog.speaker_entity = Some(entity);
         info!("dialogo aperto con {}", npc.name);
     }
@@ -388,6 +404,7 @@ pub fn advance_dialog(
     ai: Res<crate::ai::AiState>,
     settings: Res<crate::audio::AudioSettings>,
     mut chat: ResMut<crate::ai::AiChat>,
+    mut shop: ResMut<crate::shop::ShopState>,
     mut next: ResMut<NextState<crate::AppState>>,
 ) {
     if !dialog.open {
@@ -414,13 +431,22 @@ pub fn advance_dialog(
         if confirm {
             let choice = dialog.selected;
             if dialog.ai_offer {
-                // Offerta della IA (non una scelta di quest): il dialogo scritto si chiude
-                // normalmente (la quest avanza), poi eventualmente si apre la chat.
+                // Offerta finale (non una scelta di quest): il dialogo scritto si chiude
+                // normalmente (la quest avanza), poi eventualmente si apre negozio o chat.
                 let name = dialog.speaker.clone();
+                let action = dialog.offer_actions.get(choice).copied();
+                let key = dialog.shop;
                 close_dialog(&mut dialog, None, true);
-                if choice == 0 {
-                    chat.begin(&name);
-                    next.set(crate::AppState::Chat);
+                match (action, key) {
+                    (Some(Offer::Shop), Some(k)) => {
+                        shop.begin(&name, k);
+                        next.set(crate::AppState::Shop);
+                    }
+                    (Some(Offer::Chat), _) => {
+                        chat.begin(&name);
+                        next.set(crate::AppState::Chat);
+                    }
+                    _ => {}
                 }
                 return;
             }
@@ -434,17 +460,35 @@ pub fn advance_dialog(
         dialog.index += 1;
         if dialog.index >= dialog.lines.len() {
             if dialog.choices.is_empty() {
-                // Dialogo scritto finito, nessuna scelta di quest in sospeso: se la IA locale
-                // è attiva e pronta, si offre di chiacchierare ancora.
+                // Dialogo scritto finito, nessuna scelta di quest in sospeso: si offre di comprare
+                // (se è un venditore) e/o di chiacchierare (se la IA locale è attiva e pronta).
+                let mut actions = Vec::new();
+                if dialog.shop.is_some() {
+                    actions.push(Offer::Shop);
+                }
                 if settings.ai_enabled && ai.status == crate::ai::AiStatus::Ready {
+                    actions.push(Offer::Chat);
+                }
+                if actions.is_empty() {
+                    close_dialog(&mut dialog, None, true);
+                } else {
+                    actions.push(Offer::Bye);
                     dialog.index = dialog.lines.len().saturating_sub(1);
-                    dialog.choices =
-                        vec!["Parliamo d'altro…".to_string(), "Arrivederci".to_string()];
+                    dialog.choices = actions
+                        .iter()
+                        .map(|a| {
+                            match a {
+                                Offer::Shop => "Vorrei comprare qualcosa",
+                                Offer::Chat => "Parliamo d'altro…",
+                                Offer::Bye => "Arrivederci",
+                            }
+                            .to_string()
+                        })
+                        .collect();
+                    dialog.offer_actions = actions;
                     dialog.ai_offer = true;
                     dialog.choosing = true;
                     dialog.selected = 0;
-                } else {
-                    close_dialog(&mut dialog, None, true);
                 }
             } else {
                 // Resta sull'ultima riga e mostra le scelte.

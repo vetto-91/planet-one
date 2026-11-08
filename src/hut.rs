@@ -1428,9 +1428,12 @@ pub fn handle_prop_toggle(
     mut reader: MessageReader<PropToggle>,
     mut states: Query<(&PropKind, &mut PropState)>,
     links: Query<&WindowLink>,
+    buttons: Query<&crate::village::GateButton>,
     mut keepers: Query<&mut Keeper>,
 ) {
     for PropToggle(handle) in reader.read() {
+        // I bottoni dei cancelli commutano lo stato del cancello.
+        let handle = &buttons.get(*handle).map_or(*handle, |b| b.0);
         // Scuri comandati da dentro: servono il vetro alzato; si agisce sulla maniglia esterna.
         let mut target = *handle;
         if let Ok(link) = links.get(*handle)
@@ -1459,15 +1462,23 @@ pub fn handle_prop_toggle(
 /// Aggiorna il testo del prompt di ogni oggetto secondo il suo stato.
 pub fn update_prop_prompts(
     states: Query<&PropState>,
+    buttons: Query<&crate::village::GateButton>,
     mut handles: Query<(
+        Entity,
         &PropKind,
         &PropState,
         &mut Interactable,
         Option<&WindowLink>,
     )>,
 ) {
-    for (kind, st, mut inter, link) in &mut handles {
-        let text = match (kind, st.on) {
+    for (e, kind, st, mut inter, link) in &mut handles {
+        // Un bottone mostra lo stato del suo cancello.
+        let st_on = buttons
+            .get(e)
+            .ok()
+            .and_then(|b| states.get(b.0).ok())
+            .map_or(st.on, |s| s.on);
+        let text = match (kind, st_on) {
             (PropKind::Door, true) => "[E] Chiudi porta",
             (PropKind::Door, false) => "[E] Apri porta",
             (PropKind::Window, true) => "[E] Chiudi scuri",

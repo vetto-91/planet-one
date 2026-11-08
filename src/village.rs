@@ -272,9 +272,13 @@ pub fn init_village(mut commands: Commands, dbg: Res<DebugPlace>) {
 #[derive(Component)]
 pub struct VillageWall;
 
-/// Maniglia di un cancello (stato aperto/chiuso).
+/// Maniglia (stato aperto/chiuso) di un cancello.
 #[derive(Component)]
 pub struct GateHandle;
+
+/// Bottone su un pilone: commuta lo stato del cancello `0`.
+#[derive(Component)]
+pub struct GateButton(pub Entity);
 
 fn tint(c: Col, k: f32) -> Col {
     [c[0] * k, c[1] * k, c[2] * k, c[3]]
@@ -471,7 +475,8 @@ pub fn sync_village(
             Vec3::new(2.0 * GATE_HALF + 0.2, 1.2, 1.6),
             yaw,
         ));
-        // Battenti: due ante grandi e una porticina centrale, ognuna con la sua maniglia (stato).
+        // Battenti: due ante piene (2,2 m ciascuna) che si chiudono al centro. Lo stato sta su
+        // una maniglia invisibile; i bottoni sui piloni (dentro e fuori) lo commutano.
         let open_now = (OPEN_HOUR..CLOSE_HOUR).contains(&clock.hour);
         let inward3 = Vec3::new(gate.inward.x, 0.0, gate.inward.y);
         let frame_z = frame * Vec3::Z;
@@ -480,46 +485,35 @@ pub fn sync_village(
         } else {
             1.0
         };
-        // (cardine lungo la tangente, larghezza, verso in cui si estende, raggio di mira)
-        let leaves = [
-            (-GATE_HALF, 1.7f32, 1.0f32, 0.9f32),
-            (GATE_HALF, 1.7, -1.0, 0.9),
-            (-0.5, 1.0, 1.0, 0.5),
-        ];
-        for (hx, w, dir, aim) in leaves {
-            let hinge_pos = g + t * hx;
+        let state = commands
+            .spawn((
+                VillageWall,
+                SceneNode,
+                GateHandle,
+                PropKind::Gate,
+                PropState { on: open_now },
+                Transform::from_xyz(g.x, gy + 1.6, g.y),
+            ))
+            .id();
+        gate_entities.push(state);
+        for s in [-1.0f32, 1.0] {
+            // s = -1: anta sinistra (cardine a g - t*GATE_HALF, si estende verso +t).
+            let hinge_pos = g + t * (s * GATE_HALF);
             let hy = ground(hinge_pos).min(gy);
-            let mid = hinge_pos + t * (dir * w / 2.0);
-            let handle = commands
-                .spawn((
-                    VillageWall,
-                    SceneNode,
-                    GateHandle,
-                    PropKind::Gate,
-                    PropState { on: open_now },
-                    Interactable {
-                        prompt: "[E] Chiudi cancello".to_string(),
-                        range: 5.0,
-                        aim: Some(aim),
-                        use_from: None,
-                    },
-                    Transform::from_xyz(mid.x, gy + 1.6, mid.y),
-                ))
-                .id();
-            gate_entities.push(handle);
-            let angle = if dir > 0.0 {
+            let dir = -s;
+            let angle = if s < 0.0 {
                 sign_in * 1.55
             } else {
                 -sign_in * 1.55
             };
-            let leaf = Cuboid::new(w, 3.1, 0.14);
+            let leaf = Cuboid::new(GATE_HALF, 3.1, 0.14);
             commands
                 .spawn((
                     VillageWall,
                     SceneNode,
                     RigidBody::Static,
                     Hinge {
-                        state: handle,
+                        state,
                         open_angle: angle,
                         angle: 0.0,
                         base: frame,
@@ -531,15 +525,40 @@ pub fn sync_village(
                     d.spawn((
                         Mesh3d(meshes.add(leaf)),
                         MeshMaterial3d(wood.clone()),
-                        Transform::from_xyz(dir * w / 2.0, 1.55, 0.0),
+                        Transform::from_xyz(dir * GATE_HALF / 2.0, 1.55, 0.0),
                     ));
                     d.spawn((
                         DoorCollider,
-                        Collider::cuboid(w, 3.1, 0.3),
+                        Collider::cuboid(GATE_HALF, 3.1, 0.3),
                         BlocksCamera,
-                        Transform::from_xyz(dir * w / 2.0, 1.55, 0.0),
+                        Transform::from_xyz(dir * GATE_HALF / 2.0, 1.55, 0.0),
                     ));
                 });
+        }
+        // Bottoni: sulle facce dei piloni verso il villaggio e verso l'esterno (uno per lato).
+        let button = meshes.add(Cuboid::new(0.2, 0.34, 0.12));
+        for pier in [-1.0f32, 1.0] {
+            for (side, normal) in [(1.0f32, inward3), (-1.0, -inward3)] {
+                let c = g + t * (pier * (GATE_HALF + PIER_HALF)) + gate.inward * (side * 0.95);
+                let pos = Vec3::new(c.x, gy + 1.5, c.y);
+                commands.spawn((
+                    VillageWall,
+                    SceneNode,
+                    GateButton(state),
+                    PropKind::Gate,
+                    PropState { on: open_now },
+                    Interactable {
+                        prompt: "[E] Apri/chiudi cancello".to_string(),
+                        range: 4.0,
+                        aim: Some(0.35),
+                        // `use_from` è locale all'entità (che ha la rotazione del muro).
+                        use_from: Some(frame.inverse() * normal),
+                    },
+                    Mesh3d(button.clone()),
+                    MeshMaterial3d(wood.clone()),
+                    Transform::from_translation(pos).with_rotation(Quat::from_rotation_y(yaw)),
+                ));
+            }
         }
     }
 

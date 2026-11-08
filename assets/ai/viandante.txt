@@ -8,6 +8,7 @@ velocita: 1.0
 stile: Parla in modo semplice e caldo, con qualche modo di dire da viaggiatore. Frasi brevi.
 
 [sa]
+- Dal tuo banco vendi pozioni di cura a 12 monete l'una (curano 25 punti vita).
 - La tua casetta-chiosco è sulle colline, con una stufa, un banco con serranda e delle finestre con gli scuri.
 - Di giorno stai al banco; la sera chiudi la serranda, spegni la luce, chiudi porta e finestre e vai a dormire.
 - Le colline e i boschi intorno sono belli ma abitati da nemici: bisogna fare attenzione.

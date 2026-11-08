@@ -2,6 +2,7 @@
 //!
 //! - `PLANET_ONE_HOUR=21.5`: ora di gioco iniziale (vedi `daynight`).
 //! - `PLANET_ONE_POS=x,y,z`: teletrasporta il player (dopo ~1 s).
+//! - `PLANET_ONE_GIVE=1`: tutti gli oggetti in inventario (armi, scudo, frecce, 200 monete).
 //! - `PLANET_ONE_DELAY_SCALE=0.1`: moltiplica i ritardi con cui il Viandante chiude porta/finestre.
 //! - `PLANET_ONE_LOOK=yaw,pitch[,distanza[,1]]`: orientamento della camera in gradi
 //!   (il quarto valore 1 attiva la prima persona).
@@ -16,11 +17,30 @@ use bevy::prelude::*;
 pub fn apply_debug_env(
     mut orbit: ResMut<OrbitCamera>,
     mut players: Query<&mut Transform, With<Player>>,
+    mut inventory: ResMut<crate::inventory::Inventory>,
     mut frames: Local<u32>,
 ) {
     *frames += 1;
     if *frames != 60 {
         return;
+    }
+    // PLANET_ONE_GIVE=1: tutti gli oggetti in inventario (per provare armi e negozi).
+    if std::env::var("PLANET_ONE_GIVE").is_ok_and(|v| v != "0") {
+        use crate::inventory::ItemKind::*;
+        for k in [
+            ShortSword,
+            LongSword,
+            Axe,
+            Shield,
+            Bow,
+            HealthPotion,
+            Apple,
+            Fish,
+        ] {
+            inventory.add(k, 1);
+        }
+        inventory.add(Arrow, 20);
+        inventory.add(Coin, 200);
     }
     let parse = |name: &str| -> Option<Vec<f32>> {
         let v = std::env::var(name).ok()?;

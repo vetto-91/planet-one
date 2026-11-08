@@ -555,6 +555,84 @@ fn church(b: &mut B, r: &mut Rng) -> Vec<(Vec3, Vec3)> {
     ]
 }
 
+/// Insegna a bandiera accanto alla porta (bottega).
+fn sign_arm(b: &mut B, col: Col) {
+    b.cuboid_c(Vec3::new(1.9, 3.1, 3.0), Vec3::new(0.08, 0.08, 1.0), TIMBER);
+    b.cuboid_c(Vec3::new(1.9, 2.65, 3.45), Vec3::new(0.08, 0.7, 0.9), col);
+    b.cuboid_c(
+        Vec3::new(1.9, 2.65, 3.5),
+        Vec3::new(0.1, 0.1, 0.55),
+        [0.95, 0.9, 0.7, 1.0],
+    );
+}
+
+/// Bancarella di mercato: bancone, tendone a strisce, montanti e merce (`kind` dà il tipo).
+fn stall(b: &mut B, kind: &str) -> Vec<(Vec3, Vec3)> {
+    let (c1, goods): (Col, Col) = match kind {
+        "bancarella-frutta" => ([0.78, 0.2, 0.18, 1.0], [0.85, 0.2, 0.2, 1.0]),
+        "bancarella-pesce" => ([0.25, 0.45, 0.75, 1.0], [0.75, 0.8, 0.85, 1.0]),
+        _ => ([0.25, 0.55, 0.3, 1.0], [0.4, 0.7, 0.3, 1.0]),
+    };
+    let c2: Col = [0.95, 0.93, 0.85, 1.0];
+    // Zoccolo e bancone.
+    b.cuboid(
+        Vec3::new(-1.5, -1.0, -1.2),
+        Vec3::new(1.5, 0.1, 1.2),
+        STONE_DARK,
+    );
+    b.cuboid(Vec3::new(-1.4, 0.0, 0.0), Vec3::new(1.4, 0.95, 0.9), TIMBER);
+    b.cuboid(
+        Vec3::new(-1.45, 0.95, -0.05),
+        Vec3::new(1.45, 1.02, 0.95),
+        [0.55, 0.38, 0.22, 1.0],
+    );
+    // Montanti.
+    for (x, z, h) in [
+        (-1.4, 0.95, 2.2),
+        (1.4, 0.95, 2.2),
+        (-1.4, -1.1, 2.7),
+        (1.4, -1.1, 2.7),
+    ] {
+        b.cuboid_c(Vec3::new(x, h / 2.0, z), Vec3::new(0.1, h, 0.1), TIMBER);
+    }
+    // Tendone inclinato a strisce alternate.
+    let n = 7;
+    for i in 0..n {
+        let (x0, x1) = (
+            -1.6 + 3.2 * i as f32 / n as f32,
+            -1.6 + 3.2 * (i + 1) as f32 / n as f32,
+        );
+        let col = if i % 2 == 0 { c1 } else { c2 };
+        b.quad(
+            Vec3::new(x0, 2.7, -1.3),
+            Vec3::new(x1, 2.7, -1.3),
+            Vec3::new(x1, 2.2, 1.35),
+            Vec3::new(x0, 2.2, 1.35),
+            Vec3::Y,
+            col,
+        );
+    }
+    // Merce sul bancone e casse dietro.
+    for i in 0..6 {
+        let x = -1.1 + 0.44 * i as f32;
+        b.cuboid_c(Vec3::new(x, 1.12, 0.45), Vec3::new(0.28, 0.2, 0.28), goods);
+    }
+    b.cuboid_c(
+        Vec3::new(-0.9, 0.3, -0.8),
+        Vec3::new(0.7, 0.6, 0.6),
+        [0.55, 0.4, 0.25, 1.0],
+    );
+    b.cuboid_c(
+        Vec3::new(0.9, 0.3, -0.8),
+        Vec3::new(0.7, 0.6, 0.6),
+        [0.5, 0.36, 0.22, 1.0],
+    );
+    vec![
+        (Vec3::new(0.0, 0.5, 0.45), Vec3::new(2.9, 1.1, 0.95)),
+        (Vec3::new(0.0, 0.5, -0.8), Vec3::new(2.9, 1.1, 0.7)),
+    ]
+}
+
 /// Pozzo: anello di pietra, due montanti, piccolo tetto e secchio.
 fn well(b: &mut B) -> Vec<(Vec3, Vec3)> {
     b.cuboid(Vec3::new(-1.2, -1.0, -1.2), Vec3::new(1.2, 0.9, 1.2), STONE);
@@ -617,6 +695,7 @@ pub fn model(kind: &str, seed: u32) -> Building {
         }
         "fabbro" => {
             house(&mut b, &mut r, 6.5, 5.0, 3.0, 1, false, 0);
+            sign_arm(&mut b, [0.35, 0.36, 0.4, 1.0]);
             chimney(&mut b, 2.3, -1.2, 2.6, 5.6);
             b.cuboid(
                 Vec3::new(3.25, 0.0, -1.5),
@@ -641,6 +720,61 @@ pub fn model(kind: &str, seed: u32) -> Building {
             );
             (9.0, 5.0, body_colliders(9.0, 5.0, 2.4))
         }
+        "arcere" => {
+            house(&mut b, &mut r, 6.2, 5.0, 3.5, 2, true, 1);
+            sign_arm(&mut b, [0.25, 0.5, 0.3, 1.0]);
+            (6.2, 5.0, body_colliders(6.2, 5.0, 3.5))
+        }
+        "bancarella-erbe" | "bancarella-frutta" | "bancarella-pesce" => {
+            let c = stall(&mut b, kind);
+            (3.0, 2.8, c)
+        }
+        "pagliaio" => {
+            b.cuboid(
+                Vec3::new(-0.9, -0.2, -0.9),
+                Vec3::new(0.9, 1.1, 0.9),
+                [0.85, 0.7, 0.3, 1.0],
+            );
+            b.pyramid(Vec3::new(0.0, 1.1, 0.0), 1.15, 1.4, [0.8, 0.62, 0.22, 1.0]);
+            (
+                1.8,
+                1.8,
+                vec![(Vec3::new(0.0, 0.8, 0.0), Vec3::new(1.8, 1.8, 1.8))],
+            )
+        }
+        "spaventapasseri" => {
+            b.cuboid_c(Vec3::new(0.0, 0.9, 0.0), Vec3::new(0.08, 2.0, 0.08), TIMBER);
+            b.cuboid_c(
+                Vec3::new(0.0, 1.45, 0.0),
+                Vec3::new(1.2, 0.08, 0.08),
+                TIMBER,
+            );
+            b.cuboid_c(
+                Vec3::new(0.0, 1.25, 0.04),
+                Vec3::new(0.5, 0.6, 0.12),
+                [0.55, 0.42, 0.3, 1.0],
+            );
+            b.cuboid_c(
+                Vec3::new(0.0, 1.85, 0.0),
+                Vec3::new(0.3, 0.3, 0.3),
+                [0.85, 0.75, 0.5, 1.0],
+            );
+            b.cuboid_c(
+                Vec3::new(0.0, 2.08, 0.0),
+                Vec3::new(0.5, 0.06, 0.5),
+                [0.35, 0.25, 0.15, 1.0],
+            );
+            b.cuboid_c(
+                Vec3::new(0.0, 2.22, 0.0),
+                Vec3::new(0.28, 0.24, 0.28),
+                [0.35, 0.25, 0.15, 1.0],
+            );
+            (
+                0.6,
+                0.6,
+                vec![(Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.3, 2.0, 0.3))],
+            )
+        }
         "chiesa" => {
             let c = church(&mut b, &mut r);
             (7.4, 17.0, c)
@@ -658,4 +792,56 @@ pub fn model(kind: &str, seed: u32) -> Building {
         colliders,
         half: Vec2::new(w / 2.0, d / 2.0),
     }
+}
+
+/// Mesh unica di un campo coltivato: una zolla di terra e una pianta per ogni punto
+/// (`kind` = "campo" grano, "orto" cavoli). `height` dà la quota del terreno in un punto.
+pub fn crop_field_mesh(kind: &str, pts: &[Vec2], height: &dyn Fn(Vec2) -> f32) -> Mesh {
+    let mut b = B::default();
+    let soil: Col = [0.4, 0.28, 0.17, 1.0];
+    for (i, p) in pts.iter().enumerate() {
+        let y = height(*p);
+        let j = |k: u32| {
+            ((i as u32).wrapping_mul(2_654_435_761u32).rotate_left(k) % 100) as f32 / 100.0 - 0.5
+        };
+        b.cuboid(
+            Vec3::new(p.x - 0.4, y - 0.1, p.y - 0.4),
+            Vec3::new(p.x + 0.4, y + 0.05, p.y + 0.4),
+            soil,
+        );
+        if kind == "orto" {
+            b.cuboid_c(
+                Vec3::new(p.x, y + 0.08, p.y),
+                Vec3::new(0.55, 0.05, 0.55),
+                [0.22, 0.5, 0.22, 1.0],
+            );
+            b.cuboid_c(
+                Vec3::new(p.x, y + 0.24, p.y),
+                Vec3::new(0.34, 0.3, 0.34),
+                [0.4, 0.7, 0.32, 1.0],
+            );
+        } else {
+            for (dx, dz) in [
+                (-0.2, -0.2),
+                (0.2, -0.2),
+                (-0.2, 0.2),
+                (0.2, 0.2),
+                (0.0, 0.0),
+            ] {
+                let (x, z) = (p.x + dx + j(3) * 0.08, p.y + dz + j(7) * 0.08);
+                let h = 0.65 + (j(11) + 0.5) * 0.15;
+                b.cuboid_c(
+                    Vec3::new(x, y + h / 2.0, z),
+                    Vec3::new(0.035, h, 0.035),
+                    [0.62, 0.62, 0.22, 1.0],
+                );
+                b.cuboid_c(
+                    Vec3::new(x, y + h + 0.07, z),
+                    Vec3::new(0.07, 0.17, 0.07),
+                    [0.88, 0.72, 0.2, 1.0],
+                );
+            }
+        }
+    }
+    b.finish()
 }

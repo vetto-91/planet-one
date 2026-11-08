@@ -26,6 +26,8 @@ pub struct VillagerDef {
     pub role: String,
     pub skin: String,
     pub guard: bool,
+    /// Assortimento del negozio (chiave di `shop.rs`), se è un venditore.
+    pub shop: Option<String>,
     /// Posto di lavoro e direzione dello sguardo (dx, dz).
     pub work: (Vec2, Vec2),
     /// Posto serale (se diverso) e sguardo.
@@ -62,6 +64,7 @@ fn parse(text: &str) -> Vec<VillagerDef> {
             "ruolo" => d.role = val.trim().to_string(),
             "skin" => d.skin = val.trim().to_string(),
             "guardia" => d.guard = val.trim() == "si",
+            "negozio" => d.shop = Some(val.trim().to_string()),
             "lavoro" => {
                 if let Some(p) = pos(&nums) {
                     d.work = p;
@@ -173,6 +176,8 @@ pub fn spawn_villagers(
         ));
         let (pos, look) = def.work;
         let guard = def.guard;
+        let shop_key: Option<&'static str> =
+            def.shop.clone().map(|k| &*Box::leak(k.into_boxed_str()));
         let lantern_mesh = meshes.add(Cuboid::new(0.14, 0.2, 0.14));
         let lantern_mat = materials.add(StandardMaterial {
             base_color: Color::srgb(1.0, 0.8, 0.45),
@@ -189,6 +194,7 @@ pub fn spawn_villagers(
                     name,
                     mode: NpcMode::Ready,
                     lines,
+                    shop: shop_key,
                 },
                 Interactable {
                     prompt: "[E] Parla".to_string(),

@@ -1,0 +1,181 @@
+//! Armi e scudo impugnati: modelli semplici attaccati al player, con oscillazione all'attacco.
+
+use crate::combat::{SWING_TIME, SwingTimer};
+use crate::inventory::{Equipment, ItemKind};
+use crate::player::PlayerVisual;
+use bevy::prelude::*;
+
+/// Marker dei pezzi impugnati (arma e scudo).
+#[derive(Component)]
+pub struct HeldItem;
+
+/// Radice dell'arma impugnata (ruota nell'oscillazione).
+#[derive(Component)]
+pub struct HeldWeapon;
+
+/// Inclinazione a riposo dell'arma (la lama punta un po' in avanti).
+const REST_TILT: f32 = -0.25;
+
+/// Sistema: ricrea i modelli impugnati quando cambia l'equipaggiamento.
+pub fn update_held_items(
+    mut commands: Commands,
+    equip: Res<Equipment>,
+    visuals: Query<Entity, With<PlayerVisual>>,
+    held: Query<Entity, With<HeldItem>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut last: Local<Option<(Option<ItemKind>, bool)>>,
+) {
+    let state = (equip.weapon, equip.shield);
+    let Ok(visual) = visuals.single() else {
+        return;
+    };
+    // Dopo un reset della scena il player è nuovo e senza modelli: si ricostruiscono.
+    let missing = held.is_empty() && (state.0.is_some() || state.1);
+    if *last == Some(state) && !missing {
+        return;
+    }
+    *last = Some(state);
+    for e in &held {
+        commands.entity(e).despawn();
+    }
+    let mut mat = |c: Color, metal: f32| {
+        materials.add(StandardMaterial {
+            base_color: c,
+            metallic: metal,
+            perceptual_roughness: 0.55,
+            ..default()
+        })
+    };
+    let steel = mat(Color::srgb(0.78, 0.8, 0.86), 0.7);
+    let wood = mat(Color::srgb(0.42, 0.28, 0.15), 0.0);
+    let gold = mat(Color::srgb(0.85, 0.7, 0.25), 0.4);
+    if let Some(w) = equip.weapon {
+        let mut blade = |len: f32, w: f32| meshes.add(Cuboid::new(w, len, 0.025));
+        let root = commands
+            .spawn((
+                HeldItem,
+                HeldWeapon,
+                Transform::from_xyz(0.5, -0.05, -0.15)
+                    .with_rotation(Quat::from_rotation_x(REST_TILT)),
+                Visibility::default(),
+            ))
+            .id();
+        commands.entity(visual).add_child(root);
+        let add = |c: &mut Commands,
+                   mesh: Handle<Mesh>,
+                   m: &Handle<StandardMaterial>,
+                   at: Vec3,
+                   rot: Quat| {
+            let child = c
+                .spawn((
+                    Mesh3d(mesh),
+                    MeshMaterial3d(m.clone()),
+                    Transform::from_translation(at).with_rotation(rot),
+                ))
+                .id();
+            c.entity(root).add_child(child);
+        };
+        match w {
+            ItemKind::ShortSword | ItemKind::LongSword => {
+                let len = if w == ItemKind::LongSword { 1.05 } else { 0.7 };
+                add(
+                    &mut commands,
+                    blade(len, 0.08),
+                    &steel,
+                    Vec3::new(0.0, 0.18 + len / 2.0, 0.0),
+                    Quat::IDENTITY,
+                );
+                add(
+                    &mut commands,
+                    meshes.add(Cuboid::new(0.32, 0.05, 0.06)),
+                    &gold,
+                    Vec3::new(0.0, 0.15, 0.0),
+                    Quat::IDENTITY,
+                );
+                add(
+                    &mut commands,
+                    meshes.add(Cuboid::new(0.05, 0.22, 0.05)),
+                    &wood,
+                    Vec3::new(0.0, 0.03, 0.0),
+                    Quat::IDENTITY,
+                );
+            }
+            ItemKind::Axe => {
+                add(
+                    &mut commands,
+                    meshes.add(Cuboid::new(0.05, 0.95, 0.05)),
+                    &wood,
+                    Vec3::new(0.0, 0.35, 0.0),
+                    Quat::IDENTITY,
+                );
+                add(
+                    &mut commands,
+                    meshes.add(Cuboid::new(0.34, 0.3, 0.05)),
+                    &steel,
+                    Vec3::new(0.15, 0.72, 0.0),
+                    Quat::IDENTITY,
+                );
+            }
+            ItemKind::Bow => {
+                add(
+                    &mut commands,
+                    meshes.add(Cuboid::new(0.05, 0.7, 0.05)),
+                    &wood,
+                    Vec3::new(0.0, 0.3, 0.0),
+                    Quat::IDENTITY,
+                );
+                for s in [-1.0f32, 1.0] {
+                    add(
+                        &mut commands,
+                        meshes.add(Cuboid::new(0.05, 0.5, 0.05)),
+                        &wood,
+                        Vec3::new(0.0, 0.3 + s * 0.52, -s.abs() * 0.0 + 0.1),
+                        Quat::from_rotation_x(s * 0.45),
+                    );
+                }
+                add(
+                    &mut commands,
+                    meshes.add(Cuboid::new(0.012, 1.5, 0.012)),
+                    &steel,
+                    Vec3::new(0.0, 0.3, 0.22),
+                    Quat::IDENTITY,
+                );
+            }
+            _ => {}
+        }
+    }
+    if equip.shield {
+        let shield = commands
+            .spawn((
+                HeldItem,
+                Mesh3d(meshes.add(Cuboid::new(0.07, 0.75, 0.55))),
+                MeshMaterial3d(mat(Color::srgb(0.25, 0.4, 0.75), 0.1)),
+                Transform::from_xyz(-0.47, 0.0, -0.25),
+                Visibility::default(),
+            ))
+            .id();
+        let boss = commands
+            .spawn((
+                Mesh3d(meshes.add(Cuboid::new(0.05, 0.18, 0.18))),
+                MeshMaterial3d(gold.clone()),
+                Transform::from_xyz(-0.06, 0.0, 0.0),
+            ))
+            .id();
+        commands.entity(shield).add_child(boss);
+        commands.entity(visual).add_child(shield);
+    }
+}
+
+/// Sistema: oscillazione dell'arma quando si attacca.
+pub fn animate_swing(swing: Res<SwingTimer>, mut q: Query<&mut Transform, With<HeldWeapon>>) {
+    for mut tf in &mut q {
+        let angle = if swing.0 > 0.0 {
+            let t = 1.0 - swing.0 / SWING_TIME;
+            REST_TILT - (t * std::f32::consts::PI).sin() * 1.9
+        } else {
+            REST_TILT
+        };
+        tf.rotation = Quat::from_rotation_x(angle);
+    }
+}

@@ -33,3 +33,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0006 | Voce dei dialoghi IA con Piper locale | accettato |
 | 0007 | Villaggio murato con edifici procedurali | accettato |
 | 0008 | Abitanti e guardie con dialoghi IA | accettato |
+| 0009 | Negozi, armi e mercato | accettato |
