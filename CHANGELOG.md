@@ -2,6 +2,12 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Meteo (Fase 3)**: sereno, nuvoloso, pioggia, temporale (lampi e tuoni), nebbia e neve, deterministici per data con probabilità per mese; temperatura e meteo nel chip sotto la data;
+  nebbia di distanza, luce più cupa, pioggia e neve come particelle nel mondo, neve che si accumula e si scioglie, vento, suoni di pioggia/vento/tuono sintetizzati in locale;
+  gli abitanti si riparano in casa con pioggia o neve forti, la stufa del Viandante resta accesa sotto gli 8 °C, i lampioni si accendono col temporale (ADR 0014).
+
 ## v0.0.23.0 — Guardie con turni, casa delle guardie e mura percorribili (2026-11-08)
 
 - **Guardie con turni**: 6 guardie ai cancelli su tre turni (6–14, 14–22, 22–6), sempre almeno una per cancello, posti subito oltre l'anta aperta; chi finisce il turno va alla

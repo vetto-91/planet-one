@@ -219,6 +219,10 @@ volume dipende dalla distanza dal campanile (si sente anche fuori dalle mura, pi
 Il giorno di gioco dura 24 minuti reali (1 ora = 1 minuto); sole e luna attraversano il cielo
 e luce e cielo cambiano con l'ora. L'ora e la data (si parte dal 21 marzo, anno 0) sono nel chip in alto a sinistra; il sole sale più in alto d'estate e più in basso d'inverno,
 con giorni lunghi o corti. T apre "Aspetta" (avanza anche i giorni); la velocità del tempo (×1–×8) si sceglie nel menu Esc.
+Il **meteo** cambia da un giorno all'altro (sereno, nuvoloso, pioggia, temporale con lampi e tuoni, nebbia, neve) secondo le probabilità del mese; con la temperatura
+(≈0 °C a gennaio, ≈20 °C a luglio) e il vento. Meteo e temperatura sono nel chip sotto la data; con pioggia o neve forti gli abitanti si riparano in casa (le guardie restano),
+la neve si accumula a terra e si scioglie, la stufa del Viandante resta accesa sotto gli 8 °C. Suoni di pioggia, vento e tuono sono sintetizzati in locale. Per provarlo:
+`PLANET_ONE_WEATHER=pioggia|temporale|nebbia|neve|nuvoloso|sereno`.
 Le stagioni si vedono: erba verde in primavera, secca d'estate, ocra d'autunno con foglie che cadono, neve a terra, sui tetti e sugli alberi d'inverno; i fiori sbocciano da primavera. Per provarle: `PLANET_ONE_DATE=0,1,15` (anno,mese,giorno).
 Per provare un'ora precisa: `PLANET_ONE_HOUR=21 cargo run`.
 

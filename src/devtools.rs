@@ -2,6 +2,7 @@
 //!
 //! - `PLANET_ONE_HOUR=21.5`: ora di gioco iniziale (vedi `daynight`).
 //! - `PLANET_ONE_DATE=anno,mese,giorno`: data di gioco iniziale (es. `0,12,21`, solstizio d'inverno).
+//! - `PLANET_ONE_WEATHER=sereno|nuvoloso|pioggia|temporale|nebbia|neve`: forza il meteo (anche in sviluppo).
 //! - `PLANET_ONE_POS=x,y,z`: teletrasporta il player (dopo ~1 s).
 //! - `PLANET_ONE_GIVE=1`: tutti gli oggetti in inventario (armi, scudo, frecce, 200 monete).
 //! - `PLANET_ONE_DELAY_SCALE=0.1`: moltiplica i ritardi con cui il Viandante chiude porta/finestre.

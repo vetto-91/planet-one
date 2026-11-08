@@ -139,12 +139,16 @@ pub fn on_duty(shift: u8, hour: f32) -> bool {
     (a..b).contains(&hour) || (a..b).contains(&(hour + 24.0))
 }
 
-fn desired_phase(def: &VillagerDef, hour: f32) -> Phase {
+fn desired_phase(def: &VillagerDef, hour: f32, shelter: bool) -> Phase {
     if def.guard {
         return match def.shift {
             Some(t) if !on_duty(t, hour) => Phase::Rest,
             _ => Phase::Work,
         };
+    }
+    // Con pioggia o neve forti gli abitanti si riparano in casa.
+    if shelter {
+        return Phase::Night;
     }
     let (start, end, night) = def.hours;
     if hour >= start && hour < end {
@@ -443,6 +447,7 @@ pub fn villager_routine(
     mut commands: Commands,
     time: Res<Time>,
     clock: Res<GameClock>,
+    weather: Res<crate::weather::WeatherState>,
     field: Option<Res<TerrainField>>,
     dbg: Res<crate::debug_place::DebugPlace>,
     info: Res<VillageInfo>,
@@ -472,7 +477,7 @@ pub fn villager_routine(
         l.intensity += (target - l.intensity) * (dt * 2.0).min(1.0);
     }
     for (entity, mut tf, mut npc, mut v, mut vis) in &mut q {
-        let want = desired_phase(&v.def, hour);
+        let want = desired_phase(&v.def, hour, weather.shelter);
         let here = Vec2::new(tf.translation.x, tf.translation.z);
         // Primo frame: si mette direttamente nella fase giusta.
         if !v.placed {
@@ -626,10 +631,10 @@ mod tests {
             hours: (6.0, 18.0, 22.0),
             ..Default::default()
         };
-        assert_eq!(desired_phase(&d, 10.0), Phase::Work);
-        assert_eq!(desired_phase(&d, 19.0), Phase::Evening);
-        assert_eq!(desired_phase(&d, 23.0), Phase::Night);
-        assert_eq!(desired_phase(&d, 3.0), Phase::Night);
+        assert_eq!(desired_phase(&d, 10.0, false), Phase::Work);
+        assert_eq!(desired_phase(&d, 19.0, false), Phase::Evening);
+        assert_eq!(desired_phase(&d, 23.0, false), Phase::Night);
+        assert_eq!(desired_phase(&d, 3.0, false), Phase::Night);
     }
 
     #[test]
@@ -646,6 +651,20 @@ mod tests {
         let r = g.route(Vec2::new(0.5, 1.0), Vec2::new(9.5, 10.0));
         assert!(r.len() >= 3);
         assert_eq!(*r.back().unwrap(), Vec2::new(9.5, 10.0));
+    }
+
+    #[test]
+    fn villagers_shelter_from_bad_weather_but_guards_stay() {
+        let d = VillagerDef {
+            hours: (6.0, 18.0, 22.0),
+            ..Default::default()
+        };
+        assert_eq!(desired_phase(&d, 10.0, true), Phase::Night);
+        let g = VillagerDef {
+            guard: true,
+            ..Default::default()
+        };
+        assert_eq!(desired_phase(&g, 10.0, true), Phase::Work);
     }
 
     #[test]

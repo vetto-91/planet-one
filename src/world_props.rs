@@ -485,12 +485,14 @@ pub fn sync_world_props(
 pub fn update_street_lamps(
     time: Res<Time>,
     clock: Res<GameClock>,
+    weather: Res<crate::weather::WeatherState>,
     mut lights: Query<(&GlobalTransform, &mut PointLight), With<LampLight>>,
     cameras: Query<&GlobalTransform, With<Camera3d>>,
     bulbs: Query<&LampBulb>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let on = clock.lamps_on();
+    // Accesi anche con il cielo molto scuro (temporale).
+    let on = clock.lamps_on() || weather.cloud > 0.95;
     let k = (time.delta_secs() * 1.5).min(1.0);
     let mut level = 0.0;
     // Le ombre (luce che non passa le pareti) solo per i 3 lampioni più vicini alla camera, entro 30 m.

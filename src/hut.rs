@@ -1733,8 +1733,11 @@ const NIGHT_DELAY: (f32, f32) = (10.0, 60.0);
 const LIGHT_DELAY: (f32, f32) = (3.0, 8.0);
 
 /// La stufa del Viandante è accesa 6–10 e 17–21, spenta nel resto della giornata.
-fn stove_wanted(hour: f32) -> bool {
-    (6.0..10.0).contains(&hour) || (17.0..21.0).contains(&hour)
+fn stove_wanted(hour: f32, cold: bool) -> bool {
+    // Sotto gli 8 °C resta accesa tutto il giorno.
+    (6.0..10.0).contains(&hour)
+        || (17.0..21.0).contains(&hour)
+        || (cold && (6.0..21.0).contains(&hour))
 }
 
 /// Fase della giornata del negoziante.
@@ -1981,6 +1984,7 @@ fn night_check_steps(door_open: bool, windows_open: &[usize], light_on: bool) ->
 pub fn keeper_routine(
     time: Res<Time>,
     clock: Res<crate::daynight::GameClock>,
+    weather: Res<crate::weather::WeatherState>,
     dialog: Res<crate::entities::DialogState>,
     parts: Option<Res<HutParts>>,
     mut commands: Commands,
@@ -1999,6 +2003,7 @@ pub fn keeper_routine(
     let dt = time.delta_secs();
     let hour = clock.hour;
     let night = !clock.awake();
+    let cold = weather.temp < 8.0;
     // Stato corrente degli oggetti.
     let is_on = |states: &Query<&mut PropState>, e: Entity| states.get(e).is_ok_and(|s| s.on);
     for (entity, mut k, mut tf, mut npc) in &mut keepers {
@@ -2071,13 +2076,13 @@ pub fn keeper_routine(
                 info!("[KEEPER] inizia la sera");
             }
             KeeperPhase::Day
-                if !dialog.open && !k.stove_manual && stove_on != stove_wanted(hour) =>
+                if !dialog.open && !k.stove_manual && stove_on != stove_wanted(hour, cold) =>
             {
-                k.steps = stove_trip(stove_wanted(hour), true).into();
+                k.steps = stove_trip(stove_wanted(hour, cold), true).into();
                 k.phase = KeeperPhase::Task;
                 npc.mode = NpcMode::Busy;
                 commands.entity(entity).insert(ColliderDisabled);
-                info!("[KEEPER] va alla stufa ({})", stove_wanted(hour));
+                info!("[KEEPER] va alla stufa ({})", stove_wanted(hour, cold));
             }
             KeeperPhase::Day if !dialog.open && k.open_timers.iter().any(|(_, t)| *t <= 0.0) => {
                 // Chiude ciò che è rimasto aperto da troppo tempo.

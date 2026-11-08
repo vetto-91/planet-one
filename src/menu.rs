@@ -120,6 +120,7 @@ pub struct UiQueries<'w, 's> {
     pub audio: ResMut<'w, crate::audio::AudioSettings>,
     pub chat: ResMut<'w, crate::ai::AiChat>,
     pub ai: Res<'w, crate::ai::AiState>,
+    pub weather: Res<'w, crate::weather::WeatherState>,
     pub tts: Res<'w, crate::ai::tts::TtsState>,
     pub village: Res<'w, crate::village::VillageInfo>,
     pub equip: Res<'w, crate::inventory::Equipment>,
@@ -189,6 +190,11 @@ pub fn ui(
                 .fixed_pos(egui::pos2(12.0, 58.0))
                 .show(ctx, |ui| {
                     hud_chip(ui, &format!("Monete: {coins}"));
+                });
+            egui::Area::new(egui::Id::new("weather"))
+                .fixed_pos(egui::pos2(12.0, 150.0))
+                .show(ctx, |ui| {
+                    hud_chip(ui, &q.weather.label());
                 });
             egui::Area::new(egui::Id::new("clock"))
                 .fixed_pos(egui::pos2(12.0, 104.0))

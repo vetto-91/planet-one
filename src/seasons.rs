@@ -297,6 +297,7 @@ pub fn update_look(clock: Res<GameClock>, mut season: ResMut<SeasonLook>, mut la
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn apply_season(
     season: Res<SeasonLook>,
+    cover: Res<crate::weather::SnowCover>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     ground: Query<(&SeasonGround, &MeshMaterial3d<StandardMaterial>)>,
     leaves: Query<(&SeasonLeaf, &MeshMaterial3d<StandardMaterial>)>,
@@ -317,10 +318,13 @@ pub fn apply_season(
         )>,
     >,
 ) {
-    if !season.is_changed() && fresh.is_empty() {
+    if !season.is_changed() && !cover.is_changed() && fresh.is_empty() {
         return;
     }
-    let l = season.0;
+    // La neve caduta (meteo) si somma a quella stagionale.
+    let mut l = season.0;
+    l.snow = l.snow.max(cover.0);
+    l.cap = l.cap.max(cover.0 * 0.9);
     for (g, m) in &ground {
         if let Some(mut mat) = materials.get_mut(&m.0) {
             let mix = if g.sand { 0.35 } else { 1.0 };

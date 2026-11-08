@@ -36,6 +36,7 @@ mod version;
 mod village;
 mod villagers;
 mod voice;
+mod weather;
 mod world_props;
 
 use avian3d::prelude::*;
@@ -133,6 +134,7 @@ fn main() {
         .add_plugins(shop::plugin)
         .add_plugins(bells::plugin)
         .add_plugins(seasons::plugin)
+        .add_plugins(weather::plugin)
         .init_resource::<debug_place::DebugPlace>()
         .init_resource::<hud::Occluded>()
         .init_resource::<audio::AudioSettings>()

@@ -324,6 +324,7 @@ pub fn update_sky(
     mut skyboxes: Query<&mut Skybox>,
     mut ambient: ResMut<GlobalAmbientLight>,
     season: Res<crate::seasons::SeasonLook>,
+    weather: Res<crate::weather::WeatherState>,
 ) {
     let dir = sun_dir(clock.day_fraction().floor(), clock.hour);
     let elev = dir.y;
@@ -333,9 +334,10 @@ pub fn update_sky(
 
     if let Ok((mut t, mut light)) = sun.single_mut() {
         *t = Transform::from_translation(dir * 20.0).looking_at(Vec3::ZERO, Vec3::Y);
-        light.illuminance = 4000.0 * day;
+        light.illuminance = 4000.0 * day * (1.0 - 0.78 * weather.cloud) + weather.flash * 9000.0;
         let c = Vec3::new(1.0, 0.95, 0.85).lerp(Vec3::new(1.0, 0.55, 0.3), warm)
             * Vec3::from(season.0.sun);
+        let c = c.lerp(Vec3::new(0.8, 0.85, 0.9), 0.6 * weather.cloud);
         light.color = Color::srgb(c.x, c.y, c.z);
     }
     if let Ok((mut t, mut light)) = moon.single_mut() {
@@ -345,11 +347,15 @@ pub fn update_sky(
 
     let amb = Vec3::new(0.35, 0.42, 0.7).lerp(Vec3::new(0.9, 0.92, 0.98), day);
     ambient.color = Color::srgb(amb.x, amb.y, amb.z);
-    ambient.brightness = (70.0 + (80.0 - 70.0) * day) * season.0.ambient;
+    ambient.brightness =
+        (70.0 + (80.0 - 70.0) * day) * season.0.ambient * (1.0 - 0.15 * weather.cloud)
+            + weather.flash * 700.0;
 
     let sky = smoothstep(-0.15, 0.3, elev);
     for mut s in &mut skyboxes {
-        s.brightness = 80.0 + (1000.0 - 80.0) * sky;
+        s.brightness = (80.0 + (1000.0 - 80.0) * sky)
+            * (1.0 - 0.6 * weather.cloud.max(weather.fog))
+            + weather.flash * 1500.0;
     }
 
     let cam = cameras.single().map(|t| t.translation).unwrap_or_default();
