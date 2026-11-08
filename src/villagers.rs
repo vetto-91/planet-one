@@ -152,6 +152,7 @@ pub fn spawn_villagers(
         Vec3::new(0.7, 1.6, 0.7),
         &crate::figure::FigureUv::standard(),
     ));
+    let hands = crate::figure::HandAssets::new(meshes, materials);
     let steel = materials.add(StandardMaterial {
         base_color: Color::srgb(0.55, 0.56, 0.6),
         metallic: 0.5,
@@ -218,6 +219,7 @@ pub fn spawn_villagers(
                 Visibility::default(),
             ))
             .with_children(|c| {
+                hands.spawn(c, Vec3::new(0.7, 1.6, 0.7));
                 if guard {
                     c.spawn((
                         Mesh3d(helmet.clone()),
@@ -342,6 +344,26 @@ impl RoadGraph {
     }
 }
 
+/// Quota del piano di un molo se (x, z) ne cade nell'impronta (ponte: x ±1,2, z da -2 a 12).
+pub fn pier_deck_at(items: &[crate::debug_place::Placement], x: f32, z: f32) -> Option<f32> {
+    for pl in items.iter().filter(|p| p.kind == "molo") {
+        for (j, &p) in pl.points.iter().enumerate() {
+            let d = Vec3::new(x - p.x, 0.0, z - p.y);
+            let l = Quat::from_rotation_y(-pl.yaw(j)) * d;
+            if l.x.abs() <= 1.2 && (-2.0..=12.0).contains(&l.z) {
+                return Some(crate::terrain::SEA_LEVEL + crate::buildings::PIER_DECK_TOP);
+            }
+        }
+    }
+    None
+}
+
+/// Quota del suolo: terreno, o piano del molo se più alto.
+fn ground_y(field: &TerrainField, items: &[crate::debug_place::Placement], x: f32, z: f32) -> f32 {
+    let g = field.height_at(x, z);
+    pier_deck_at(items, x, z).map_or(g, |d| d.max(g))
+}
+
 /// Sistema: routine degli abitanti (posto di giorno, piazza la sera, via di notte) e lanterne delle guardie.
 #[allow(clippy::too_many_arguments)]
 pub fn villager_routine(
@@ -349,6 +371,7 @@ pub fn villager_routine(
     time: Res<Time>,
     clock: Res<GameClock>,
     field: Option<Res<TerrainField>>,
+    dbg: Res<crate::debug_place::DebugPlace>,
     info: Res<VillageInfo>,
     dialog: Res<DialogState>,
     mut graph: Local<Option<RoadGraph>>,
@@ -446,7 +469,8 @@ pub fn villager_routine(
                 commands.entity(entity).remove::<ColliderDisabled>();
             }
         }
-        tf.translation.y = field.height_at(tf.translation.x, tf.translation.z) + CENTER_Y;
+        tf.translation.y =
+            ground_y(&field, &dbg.items, tf.translation.x, tf.translation.z) + CENTER_Y;
     }
 }
 
@@ -457,6 +481,29 @@ pub fn plugin(app: &mut App) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::debug_place::{PlaceMode, Placement};
+
+    #[test]
+    fn pier_deck_is_found_only_on_the_deck() {
+        let pl = Placement {
+            id: 1,
+            kind: "molo".into(),
+            mode: PlaceMode::Single,
+            a: Vec2::new(8.5, 96.3),
+            b: Vec2::ZERO,
+            radius: 0.0,
+            poly: Vec::new(),
+            seed: 0,
+            note: String::new(),
+            when: String::new(),
+            points: vec![Vec2::new(8.5, 96.3)],
+            yaws: vec![0.0],
+        };
+        let items = [pl];
+        assert!(pier_deck_at(&items, 8.5, 103.0).is_some());
+        assert!(pier_deck_at(&items, 11.0, 103.0).is_none());
+        assert!(pier_deck_at(&items, 8.5, 80.0).is_none());
+    }
 
     #[test]
     fn spec_has_villagers_and_guards() {

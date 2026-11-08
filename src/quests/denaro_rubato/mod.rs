@@ -528,28 +528,31 @@ pub fn spawn_thief(
     let mat = materials.add(crate::figure::skin_material(
         asset_server.load("textures/ladro.png"),
     ));
-    commands.spawn((
-        crate::scene::SceneNode,
-        crate::entities::Enemy,
-        QuestThief,
-        crate::hud::NameAnchor(1.1),
-        crate::combat::EnemyHealth {
-            current: 30.0,
-            max: 30.0,
-        },
-        crate::entities::PatrolState {
-            waypoints: vec![start, end],
-            current: 0,
-            speed: 3.0,
-        },
-        RigidBody::Kinematic,
-        Collider::capsule(0.4, 0.9),
-        LockedAxes::ROTATION_LOCKED,
-        LinearVelocity::ZERO,
-        CustomPositionIntegration,
-        Mesh3d(mesh),
-        MeshMaterial3d(mat),
-        Transform::from_translation(start),
-        NeedsGroundSnap,
-    ));
+    let hands = crate::figure::HandAssets::new(meshes, materials);
+    commands
+        .spawn((
+            crate::scene::SceneNode,
+            crate::entities::Enemy,
+            QuestThief,
+            crate::hud::NameAnchor(1.1),
+            crate::combat::EnemyHealth {
+                current: 30.0,
+                max: 30.0,
+            },
+            crate::entities::PatrolState {
+                waypoints: vec![start, end],
+                current: 0,
+                speed: 3.0,
+            },
+            RigidBody::Kinematic,
+            Collider::capsule(0.4, 0.9),
+            LockedAxes::ROTATION_LOCKED,
+            LinearVelocity::ZERO,
+            CustomPositionIntegration,
+            Mesh3d(mesh),
+            MeshMaterial3d(mat),
+            Transform::from_translation(start),
+            NeedsGroundSnap,
+        ))
+        .with_children(|c| hands.spawn(c, Vec3::new(0.9, 1.4, 0.9)));
 }

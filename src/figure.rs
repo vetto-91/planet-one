@@ -159,3 +159,34 @@ pub fn skin_material(texture: Handle<Image>) -> StandardMaterial {
         ..default()
     }
 }
+
+/// Mesh e materiale condivisi delle mani (cubetti color pelle).
+#[derive(Clone)]
+pub struct HandAssets {
+    mesh: Handle<Mesh>,
+    mat: Handle<StandardMaterial>,
+}
+
+impl HandAssets {
+    pub fn new(meshes: &mut Assets<Mesh>, materials: &mut Assets<StandardMaterial>) -> Self {
+        Self {
+            mesh: meshes.add(Cuboid::new(0.18, 0.18, 0.18)),
+            mat: materials.add(StandardMaterial {
+                base_color: Color::srgb(0.88, 0.7, 0.56),
+                perceptual_roughness: 0.9,
+                ..default()
+            }),
+        }
+    }
+
+    /// Spawna due mani ai lati del corpo di dimensioni `size` (fronte -Z, destra +X).
+    pub fn spawn(&self, parent: &mut ChildSpawnerCommands, size: Vec3) {
+        for side in [-1.0f32, 1.0] {
+            parent.spawn((
+                Mesh3d(self.mesh.clone()),
+                MeshMaterial3d(self.mat.clone()),
+                Transform::from_xyz(side * (size.x / 2.0 + 0.06), -size.y * 0.12, -0.04),
+            ));
+        }
+    }
+}

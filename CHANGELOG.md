@@ -2,6 +2,11 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Correzioni**: gli abitanti sul molo (Gaspare) ora camminano sul piano del molo invece di sprofondare nel fondale; tutti i personaggi umani (giocatore,
+  Viandante, abitanti, guardie, ladro) hanno le mani (cubetti color pelle ai lati del corpo).
+
 ## v0.0.20.0 — Porto, faro e campane (2026-11-08)
 
 - **Strada del sud** dal cancello al mare, **faro** (luce girevole di notte, guardiano Ettore) e **porticciolo** con molo calpestabile, tre barche, casetta dei pescatori e il

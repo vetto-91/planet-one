@@ -148,6 +148,8 @@ pub fn spawn(
                         ))),
                         Transform::from_xyz(0.0, 0.0, 0.0),
                     ));
+                    crate::figure::HandAssets::new(meshes, materials)
+                        .spawn(visual, Vec3::new(0.7, 1.3, 0.7));
                 });
         });
 }

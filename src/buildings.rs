@@ -729,8 +729,11 @@ fn lighthouse(b: &mut B) -> Vec<(Vec3, Vec3)> {
 
 /// Molo di legno (si stende verso +Z per 14 m a partire da z = -2): tavole, pali, parapetti, casse.
 /// L'origine è a livello del mare; il primo collider è il piano calpestabile.
+/// Quota (m) del piano del molo rispetto al livello del mare.
+pub const PIER_DECK_TOP: f32 = 0.55;
+
 fn pier(b: &mut B) -> Vec<(Vec3, Vec3)> {
-    let deck_y = 0.55;
+    let deck_y = PIER_DECK_TOP;
     // Tavole a strisce alternate.
     let n = 31;
     for i in 0..n {

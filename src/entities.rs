@@ -153,6 +153,7 @@ pub fn spawn_npc(
         asset_server.load("textures/viandante.png"),
     ));
 
+    let hands = crate::figure::HandAssets::new(meshes, materials);
     let npc = commands
         .spawn((
             Npc {
@@ -182,6 +183,7 @@ pub fn spawn_npc(
             MeshMaterial3d(mat),
             Transform::from_translation(local),
         ))
+        .with_children(|c| hands.spawn(c, Vec3::new(0.7, 1.6, 0.7)))
         .id();
     commands.entity(parent).add_child(npc);
     npc
