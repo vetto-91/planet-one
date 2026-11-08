@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.14.0 — Windows e macOS (2026-11-08)
 
 - Porting Windows e macOS: archivi costruiti da GitHub Actions (Windows x86_64 `.zip`, macOS universale `.tar.gz`), impostazioni nella cartella di
   configurazione di ogni piattaforma, cursore `Confined` su Windows, niente console in release su Windows (ADR 0004).
