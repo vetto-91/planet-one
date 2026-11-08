@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.17.0 — Villaggio di Fontevivo (2026-11-08)
 
 - **Villaggio di Fontevivo**: mura con torrette (dai piazzamenti `muro` di F4), due cancelli (Porta Nord e Sud) con battenti che si aprono di giorno e si
   chiudono di notte (varco pedonale sempre libero), strada a selciato e stradine, piazza con pozzo, chiesa con campanile, case di vario tipo,
