@@ -2,6 +2,12 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- Porting Windows e macOS: archivi costruiti da GitHub Actions (Windows x86_64 `.zip`, macOS universale `.tar.gz`), impostazioni nella cartella di
+  configurazione di ogni piattaforma, cursore `Confined` su Windows, niente console in release su Windows (ADR 0004).
+- Piazzamenti (alberi, lampioni, fiori) incorporati nel gioco: compaiono anche nei pacchetti distribuiti.
+
 ## v0.0.13.0 — Interazioni col mirino e oggetti a terra (2026-11-07)
 
 - Interruttore luce, pulsante serranda e maniglie interne delle finestre usabili col mirino da dentro (e non da fuori): ogni oggetto a parete ha il suo lato d'uso.

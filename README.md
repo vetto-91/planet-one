@@ -10,6 +10,23 @@ RPG 3D open source, cel-shaded, in terza persona. Scritto in **Rust** con il mot
 
 - Rust stable (>= 1.97) — [`rustup`](https://rustup.rs)
 - Linux: `libudev`, `alsa`, `vulkan` driver (di solito già presenti su desktop)
+- Windows 10/11: driver video con Vulkan o DirectX 12 (nessun'altra dipendenza)
+- macOS 11+: Metal (Intel o Apple Silicon, nessun'altra dipendenza)
+
+## Installazione dai pacchetti di rilascio
+
+Dalla pagina [Releases](https://github.com/vetto-91/planet-one/releases) scarica l'archivio della tua piattaforma,
+estrailo (l'eseguibile e la cartella `assets/` devono restare insieme) e avvia `planet-one`.
+
+| Piattaforma | Archivio | Primo avvio |
+|---|---|---|
+| Linux x86_64 | `planet-one-vX-linux-x86_64.tar.gz` | `./planet-one` |
+| Windows x86_64 | `planet-one-vX-windows-x86_64.zip` | doppio clic su `planet-one.exe`; se SmartScreen avvisa: "Ulteriori informazioni" → "Esegui comunque" (eseguibile non firmato) |
+| macOS (Intel + Apple Silicon) | `planet-one-vX-macos-universal.tar.gz` | eseguibile non firmato: tasto destro su `planet-one` → Apri, oppure `xattr -dr com.apple.quarantine <cartella>` e poi `./planet-one` |
+
+Note: su Mac i tasti F3/F4/F11 richiedono il tasto Fn (o l'impostazione "Usa F1, F2 ecc. come tasti funzione standard").
+Le impostazioni (volume) sono salvate in `%APPDATA%\planet-one\` (Windows), `~/Library/Application Support/planet-one/` (macOS),
+`~/.config/planet-one/` (Linux). Windows e macOS sono costruiti da GitHub Actions (`.github/workflows/release.yml`).
 
 ## Clonare e avviare
 

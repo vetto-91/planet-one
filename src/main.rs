@@ -3,6 +3,9 @@
 //! Fase 2.1: character controller cinematico (Avian MoveAndSlide),
 //! terreno 100 m, debug wireframe collider (F3).
 
+// In release su Windows niente finestra di console dietro il gioco.
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
+
 mod audio;
 mod camera;
 mod combat;
@@ -319,8 +322,13 @@ fn apply_cursor_for_mode(
     };
     if capture {
         opts.visible = false;
-        // Su X11 Locked ricade su Confined, ma è il massimo disponibile.
-        opts.grab_mode = CursorGrabMode::Locked;
+        // Windows non supporta Locked: Confined (il warp al centro mantiene la rotazione
+        // infinita). Su macOS Locked funziona; su X11 ricade su Confined.
+        opts.grab_mode = if cfg!(target_os = "windows") {
+            CursorGrabMode::Confined
+        } else {
+            CursorGrabMode::Locked
+        };
         info!("[CURSOR] cattura ON (fullscreen+playing): nascosto+bloccato");
     } else {
         opts.visible = true;

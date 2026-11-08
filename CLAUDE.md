@@ -75,4 +75,5 @@ Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, 
 ## Repository e sincronizzazione
 
 - Remote GitHub: repo privato `planet-one`. Non committare `target/`, `.claude/`, `context/`, log (vedi `.gitignore`).
+- Piattaforme: Linux (tarball costruito in locale), Windows e macOS (costruiti da GitHub Actions al push del tag, `.github/workflows/release.yml`, ADR 0004; non provabili da Linux).
 - Backup su Google Drive: `scripts/sync_drive.sh` (esclude `target/`, worktree e `context/`); provare prima con `--dry-run`.

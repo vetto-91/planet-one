@@ -1,0 +1,84 @@
+# Costruisce gli archivi di rilascio per Windows e macOS e li allega alla release GitHub.
+# Il tarball Linux continua a essere costruito in locale (vedi docs/decisions/0004-multipiattaforma.md).
+#
+# Parte al push di un tag `vX.Y.Z.W` (dopo `git push origin main vX.Y.Z.W`) oppure a mano
+# (Actions -> Release -> Run workflow, indicando il tag).
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag da costruire (es. v0.0.14.0)"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --release --locked
+      - name: Package
+        run: |
+          N="planet-one-${TAG}-windows-x86_64"
+          mkdir "$N"
+          cp target/release/planet-one.exe "$N/"
+          cp -r assets "$N/assets"
+          cp README.md LICENSE-MIT LICENSE-APACHE "$N/"
+          7z a -tzip "$N.zip" "$N"
+          echo "ASSET=$N.zip" >> "$GITHUB_ENV"
+      - name: Upload to release
+        run: |
+          NOTES=$(awk -v v="## ${TAG} " 'index($0, v)==1{f=1;next} /^## v/{f=0} f' CHANGELOG.md)
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$TAG" --notes "$NOTES" || true
+          gh release upload "$TAG" "$ASSET" --clobber
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+      - name: Build (Apple Silicon + Intel)
+        run: |
+          cargo build --release --locked --target aarch64-apple-darwin
+          cargo build --release --locked --target x86_64-apple-darwin
+      - name: Package (universal binary)
+        run: |
+          N="planet-one-${TAG}-macos-universal"
+          mkdir "$N"
+          lipo -create -output "$N/planet-one" \
+            target/aarch64-apple-darwin/release/planet-one \
+            target/x86_64-apple-darwin/release/planet-one
+          strip "$N/planet-one"
+          cp -r assets "$N/assets"
+          cp README.md LICENSE-MIT LICENSE-APACHE "$N/"
+          tar czf "$N.tar.gz" "$N"
+          echo "ASSET=$N.tar.gz" >> "$GITHUB_ENV"
+      - name: Upload to release
+        run: |
+          NOTES=$(awk -v v="## ${TAG} " 'index($0, v)==1{f=1;next} /^## v/{f=0} f' CHANGELOG.md)
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$TAG" --notes "$NOTES" || true
+          gh release upload "$TAG" "$ASSET" --clobber

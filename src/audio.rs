@@ -4,7 +4,7 @@
 //! quello diurno e quello notturno, che parte al tramonto (18:00) e dura fino
 //! a poco prima dell'alba; il passaggio è una dissolvenza incrociata. Il volume
 //! delle sole musiche si regola dal
-//! menu Esc e viene salvato in `~/.config/planet-one/settings.txt`.
+//! menu Esc e viene salvato in `planet-one/settings.txt` nella cartella di configurazione dell'utente.
 
 use bevy::audio::Volume;
 use bevy::prelude::*;
@@ -110,12 +110,23 @@ pub struct MusicTrack {
     gain: f32,
 }
 
-/// `$XDG_CONFIG_HOME/planet-one/settings.txt` oppure `~/.config/planet-one/settings.txt`.
+/// Cartella di configurazione dell'utente secondo la piattaforma:
+/// Windows `%APPDATA%`, macOS `~/Library/Application Support`, Linux `$XDG_CONFIG_HOME` o `~/.config`.
+fn config_base() -> Option<PathBuf> {
+    if cfg!(target_os = "windows") {
+        std::env::var_os("APPDATA").map(PathBuf::from)
+    } else if cfg!(target_os = "macos") {
+        std::env::var_os("HOME").map(|h| PathBuf::from(h).join("Library/Application Support"))
+    } else {
+        std::env::var_os("XDG_CONFIG_HOME")
+            .map(PathBuf::from)
+            .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))
+    }
+}
+
+/// `<config>/planet-one/settings.txt` (vedi [`config_base`]).
 fn settings_path() -> Option<PathBuf> {
-    let base = std::env::var_os("XDG_CONFIG_HOME")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))?;
-    Some(base.join("planet-one").join("settings.txt"))
+    Some(config_base()?.join("planet-one").join("settings.txt"))
 }
 
 /// Avvia i due brani in loop: quello dell'ora corrente a pieno volume, l'altro muto.

@@ -492,9 +492,15 @@ fn utc_now() -> String {
 fn file_path() -> std::path::PathBuf {
     let rel = std::path::PathBuf::from(FILE);
     if rel.parent().is_some_and(|p| p.exists()) || std::path::Path::new("Cargo.toml").exists() {
-        rel
+        return rel;
+    }
+    // Avviato da un'altra cartella durante lo sviluppo: usa quella del progetto, se esiste
+    // su questa macchina (nei pacchetti distribuiti non esiste: si usa la cartella corrente).
+    let manifest = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(FILE);
+    if manifest.parent().is_some_and(|p| p.exists()) {
+        manifest
     } else {
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(FILE)
+        rel
     }
 }
 
@@ -607,9 +613,9 @@ fn parse_points(v: &str) -> Vec<Vec2> {
 }
 
 fn read_file() -> Vec<Placement> {
-    let Ok(text) = std::fs::read_to_string(file_path()) else {
-        return Vec::new();
-    };
+    // Se il file non c'è (pacchetto distribuito) si usano i piazzamenti incorporati nel gioco.
+    let text = std::fs::read_to_string(file_path())
+        .unwrap_or_else(|_| include_str!("../debug/placements.txt").to_string());
     let mut items: Vec<Placement> = Vec::new();
     for line in text.lines() {
         let line = line.trim();
