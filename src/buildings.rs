@@ -37,6 +37,8 @@ pub fn is_building(kind: &str) -> bool {
 /// Edificio costruito: mesh, collider (centro, dimensioni) e semi-lati dell'impronta.
 pub struct Building {
     pub mesh: Mesh,
+    /// Manto di neve sui tetti (mostrato solo d'inverno); vuoto se non ci sono tetti.
+    pub snow: Mesh,
     pub colliders: Vec<(Vec3, Vec3)>,
     pub half: Vec2,
 }
@@ -88,9 +90,42 @@ pub(crate) struct B {
     nor: Vec<[f32; 3]>,
     col: Vec<Col>,
     idx: Vec<u32>,
+    /// Triangoli del manto di neve (sopra le falde dei tetti).
+    snow: Vec<[Vec3; 3]>,
 }
 
 impl B {
+    /// Aggiunge un triangolo di neve sollevato di 6 cm sopra una falda.
+    fn snow_tri(&mut self, a: Vec3, b: Vec3, c: Vec3) {
+        let up = Vec3::Y * 0.06;
+        self.snow.push([a + up, b + up, c + up]);
+    }
+
+    /// Mesh del manto di neve (bianco, normali verso l'alto).
+    pub(crate) fn snow_mesh(&self) -> Mesh {
+        let mut pos: Vec<[f32; 3]> = Vec::new();
+        let mut idx: Vec<u32> = Vec::new();
+        for t in &self.snow {
+            let base = pos.len() as u32;
+            let n = (t[1] - t[0]).cross(t[2] - t[0]);
+            let order = if n.y >= 0.0 { [0, 1, 2] } else { [0, 2, 1] };
+            for i in order {
+                pos.push(t[i].to_array());
+            }
+            idx.extend([base, base + 1, base + 2]);
+        }
+        let n = pos.len();
+        let mut m = Mesh::new(
+            PrimitiveTopology::TriangleList,
+            bevy::asset::RenderAssetUsages::default(),
+        );
+        m.insert_attribute(Mesh::ATTRIBUTE_POSITION, pos);
+        m.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[0.0f32, 1.0, 0.0]; n]);
+        m.insert_attribute(Mesh::ATTRIBUTE_UV_0, vec![[0.0f32, 0.0]; n]);
+        m.insert_indices(Indices::U32(idx));
+        m
+    }
+
     /// Quadrilatero; `hint` è la direzione "verso l'esterno" per orientare la faccia.
     pub(crate) fn quad(&mut self, a: Vec3, b: Vec3, c: Vec3, d: Vec3, hint: Vec3, col: Col) {
         let mut n = (b - a).cross(d - a).normalize_or_zero();
@@ -214,22 +249,18 @@ impl B {
                 Vec3::new(sv, 1.0, 0.0)
             }
         };
-        self.quad(
-            p(a0, y0, b1),
-            p(a1, y0, b1),
-            p(a1, yr, vc),
-            p(a0, yr, vc),
-            dir(1.0),
-            roof,
-        );
-        self.quad(
-            p(a0, y0, b0),
-            p(a1, y0, b0),
-            p(a1, yr, vc),
-            p(a0, yr, vc),
-            dir(-1.0),
-            roof,
-        );
+        for (vs, sv) in [(b1, 1.0), (b0, -1.0)] {
+            self.quad(
+                p(a0, y0, vs),
+                p(a1, y0, vs),
+                p(a1, yr, vc),
+                p(a0, yr, vc),
+                dir(sv),
+                roof,
+            );
+            self.snow_tri(p(a0, y0, vs), p(a1, y0, vs), p(a1, yr, vc));
+            self.snow_tri(p(a0, y0, vs), p(a1, yr, vc), p(a0, yr, vc));
+        }
         let end = |s: f32| {
             if ridge_x {
                 Vec3::new(s, 0.0, 0.0)
@@ -254,6 +285,7 @@ impl B {
             let (a, b) = (pts[i], pts[(i + 1) % 4]);
             let out = ((a + b) / 2.0 - c).normalize_or_zero() + Vec3::Y * 0.3;
             self.tri(a, b, top, out, col);
+            self.snow_tri(a, b, top);
         }
     }
 
@@ -1026,6 +1058,7 @@ pub fn model(kind: &str, seed: u32) -> Building {
         }
     };
     Building {
+        snow: b.snow_mesh(),
         mesh: b.finish(),
         colliders,
         half: Vec2::new(w / 2.0, d / 2.0),

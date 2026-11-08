@@ -135,6 +135,7 @@ pub fn spawn_terrain(
         SceneNode,
         Ground,
         TerrainMesh,
+        crate::seasons::SeasonGround { sand: false },
         RigidBody::Static,
         // Il wireframe di F3 sul terreno (720.000 triangoli) è troppo pesante: lo sostituisce
         // `terrain_debug_gizmos`.
@@ -221,6 +222,7 @@ pub fn update_terrain(
     let sand_mesh = build_sand_mesh(&mesh, &sand_w);
     let road_w = road_weights(&field, &vil.spec.roads);
     let road_mesh = build_sand_mesh(&mesh, &road_w);
+    let snow_mesh = build_sand_mesh(&mesh, &snow_weights(&field, &ocean, &sand_w, &road_w));
     let sea_mesh = build_sea_mesh(&field, &ocean);
     // I moli (piazzamenti `molo`) interrompono la barriera di riva: ci si cammina sopra.
     let piers: Vec<(Vec2, f32)> = dbg
@@ -268,6 +270,7 @@ pub fn update_terrain(
     commands.spawn((
         SceneNode,
         TerrainExtra,
+        crate::seasons::SeasonGround { sand: true },
         Mesh3d(meshes.add(sand_mesh)),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: Color::WHITE,
@@ -309,6 +312,24 @@ pub fn update_terrain(
             ..Default::default()
         })),
         Transform::default(),
+        bevy::light::NotShadowCaster,
+    ));
+    // Neve: stesso reticolo del terreno, alfa = quantità (la regola `seasons::apply_season`).
+    commands.spawn((
+        SceneNode,
+        TerrainExtra,
+        crate::seasons::SeasonSnowGround,
+        Mesh3d(meshes.add(snow_mesh)),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::srgba(0.93, 0.96, 1.0, 0.0),
+            emissive: LinearRgba::rgb(0.22, 0.24, 0.27),
+            perceptual_roughness: 0.9,
+            alpha_mode: AlphaMode::Blend,
+            depth_bias: 2.5,
+            ..Default::default()
+        })),
+        Transform::default(),
+        Visibility::Hidden,
         bevy::light::NotShadowCaster,
     ));
     commands.spawn((
@@ -712,6 +733,21 @@ fn sand_weights(field: &Field, ocean: &[bool]) -> Vec<f32> {
             let by_dist = 1.0 - smooth(5.0, 15.0, d);
             let by_height = 1.0 - smooth(SEA_LEVEL + 2.5, SEA_LEVEL + 4.5, field.h[i]);
             by_dist * by_height
+        })
+        .collect()
+}
+
+/// Peso della neve per vertice: a chiazze, non sul mare, ridotta su sabbia e strade.
+fn snow_weights(field: &Field, ocean: &[bool], sand_w: &[f32], road_w: &[f32]) -> Vec<f32> {
+    let n = field.n;
+    (0..n * n)
+        .map(|i| {
+            if ocean[i] {
+                return 0.0;
+            }
+            let (x, z) = ((i % n) as f32, (i / n) as f32);
+            let noise = 0.85 + 0.15 * (x * 0.37).sin() * (z * 0.29).cos();
+            (noise * (1.0 - sand_w[i]) * (1.0 - 0.7 * road_w[i])).clamp(0.0, 1.0)
         })
         .collect()
 }

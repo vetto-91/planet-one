@@ -323,6 +323,7 @@ pub fn update_sky(
     >,
     mut skyboxes: Query<&mut Skybox>,
     mut ambient: ResMut<GlobalAmbientLight>,
+    season: Res<crate::seasons::SeasonLook>,
 ) {
     let dir = sun_dir(clock.day_fraction().floor(), clock.hour);
     let elev = dir.y;
@@ -333,7 +334,8 @@ pub fn update_sky(
     if let Ok((mut t, mut light)) = sun.single_mut() {
         *t = Transform::from_translation(dir * 20.0).looking_at(Vec3::ZERO, Vec3::Y);
         light.illuminance = 4000.0 * day;
-        let c = Vec3::new(1.0, 0.95, 0.85).lerp(Vec3::new(1.0, 0.55, 0.3), warm);
+        let c = Vec3::new(1.0, 0.95, 0.85).lerp(Vec3::new(1.0, 0.55, 0.3), warm)
+            * Vec3::from(season.0.sun);
         light.color = Color::srgb(c.x, c.y, c.z);
     }
     if let Ok((mut t, mut light)) = moon.single_mut() {
@@ -343,7 +345,7 @@ pub fn update_sky(
 
     let amb = Vec3::new(0.35, 0.42, 0.7).lerp(Vec3::new(0.9, 0.92, 0.98), day);
     ambient.color = Color::srgb(amb.x, amb.y, amb.z);
-    ambient.brightness = 70.0 + (80.0 - 70.0) * day;
+    ambient.brightness = (70.0 + (80.0 - 70.0) * day) * season.0.ambient;
 
     let sky = smoothstep(-0.15, 0.3, elev);
     for mut s in &mut skyboxes {

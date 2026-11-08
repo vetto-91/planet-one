@@ -27,6 +27,7 @@ mod player;
 mod props;
 mod quests;
 mod scene;
+mod seasons;
 mod shop;
 mod sky;
 mod terrain;
@@ -131,6 +132,7 @@ fn main() {
         .add_plugins(villagers::plugin)
         .add_plugins(shop::plugin)
         .add_plugins(bells::plugin)
+        .add_plugins(seasons::plugin)
         .init_resource::<debug_place::DebugPlace>()
         .init_resource::<hud::Occluded>()
         .init_resource::<audio::AudioSettings>()

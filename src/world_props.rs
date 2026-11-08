@@ -145,6 +145,12 @@ pub fn sync_world_props(
         perceptual_roughness: 0.95,
         ..default()
     });
+    let snow_mat = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.95, 0.97, 1.0),
+        emissive: LinearRgba::rgb(0.22, 0.24, 0.27),
+        perceptual_roughness: 0.9,
+        ..default()
+    });
     let (mut spawned, mut skipped) = (0usize, 0usize);
     for pl in &dbg.items {
         if matches!(pl.kind.as_str(), "campo" | "orto") {
@@ -206,6 +212,15 @@ pub fn sync_world_props(
                     });
                 }
                 e.with_children(|c| {
+                    if model.snow.count_vertices() > 0 {
+                        c.spawn((
+                            crate::seasons::SeasonSnowRoof,
+                            Mesh3d(meshes.add(model.snow)),
+                            MeshMaterial3d(snow_mat.clone()),
+                            bevy::light::NotShadowCaster,
+                            Visibility::Hidden,
+                        ));
+                    }
                     c.spawn((
                         Mesh3d(meshes.add(model.mesh)),
                         MeshMaterial3d(building_mat.clone()),
@@ -353,6 +368,7 @@ pub fn sync_world_props(
                             for (i, (cone, y)) in cones.iter().zip([2.3, 3.2, 4.0]).enumerate() {
                                 let _ = i;
                                 c.spawn((
+                                    crate::seasons::SeasonLeaf((h * 3.0) as usize % 3),
                                     Mesh3d(cone.clone()),
                                     MeshMaterial3d(leaf.clone()),
                                     Transform::from_xyz(0.0, y, 0.0),
@@ -365,23 +381,28 @@ pub fn sync_world_props(
                         });
                 }
                 "fiori" => {
-                    commands.spawn(root).with_children(|c| {
-                        for k in 0..3 {
-                            let a = k as f32 * 2.1 + h * 6.0;
-                            let off = Vec3::new(a.cos() * 0.12, 0.0, a.sin() * 0.12);
-                            let petal = petals[((h * 5.0) as usize + k) % 5].clone();
-                            c.spawn((
-                                Mesh3d(stem_mesh.clone()),
-                                MeshMaterial3d(stem.clone()),
-                                Transform::from_translation(off + Vec3::Y * 0.145),
-                            ));
-                            c.spawn((
-                                Mesh3d(head_mesh.clone()),
-                                MeshMaterial3d(petal),
-                                Transform::from_translation(off + Vec3::Y * 0.37),
-                            ));
-                        }
-                    });
+                    commands
+                        .spawn(root)
+                        .insert(crate::seasons::SeasonFlower {
+                            threshold: hash01(p, 5.0) * 0.7,
+                        })
+                        .with_children(|c| {
+                            for k in 0..3 {
+                                let a = k as f32 * 2.1 + h * 6.0;
+                                let off = Vec3::new(a.cos() * 0.12, 0.0, a.sin() * 0.12);
+                                let petal = petals[((h * 5.0) as usize + k) % 5].clone();
+                                c.spawn((
+                                    Mesh3d(stem_mesh.clone()),
+                                    MeshMaterial3d(stem.clone()),
+                                    Transform::from_translation(off + Vec3::Y * 0.145),
+                                ));
+                                c.spawn((
+                                    Mesh3d(head_mesh.clone()),
+                                    MeshMaterial3d(petal),
+                                    Transform::from_translation(off + Vec3::Y * 0.37),
+                                ));
+                            }
+                        });
                 }
                 "panchina" => {
                     commands

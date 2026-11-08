@@ -2,6 +2,11 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Stagioni visibili (Fase 2)**: erba e sabbia cambiano tinta, chiome verdi/autunnali/innevate, fiori che sbocciano da primavera, neve a terra e sui tetti d'inverno,
+  foglie che cadono in autunno, luce stagionale (ADR 0012).
+
 ## v0.0.21.0 — Calendario (Fase 1), mani e molo (2026-11-08)
 
 - **Calendario (Fase 1)**: data di gioco dal 21 marzo anno 0 (mesi reali), stagioni, sole stagionale con alba e tramonto che cambiano nell'anno,
