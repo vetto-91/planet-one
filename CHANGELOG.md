@@ -2,6 +2,12 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- Dialoghi con IA **solo locale** (Ollama, `gemma4:e4b` configurabile), fase 1 testuale: opzione "Parliamo d'altro…" a fine dialogo, chat con
+  tre repliche suggerite e testo libero, interruttore e stato nel menu Esc; i dialoghi e le quest scritti hanno la precedenza (ADR 0005).
+- `scripts/setup_ai.sh` / `setup_ai.ps1`; persona del Viandante in `assets/ai/viandante.txt`; `PLANET_ONE_AI_MOCK=1` per provare senza modello.
+
 ## v0.0.14.0 — Windows e macOS (2026-11-08)
 
 - Porting Windows e macOS: archivi costruiti da GitHub Actions (Windows x86_64 `.zip`, macOS universale `.tar.gz`), impostazioni nella cartella di

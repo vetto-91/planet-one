@@ -139,6 +139,26 @@ Le voci (`assets/audio/voci/`) sono generate con `scripts/gen_tts_voci.py` (edge
 Microsoft, richiede rete): verificarne i termini d'uso prima di distribuire il gioco. Autore e licenza del brano da indicare prima di rendere
 pubblico il repository.
 
+### Dialoghi con IA (locale)
+
+I dialoghi e le quest scritti hanno sempre la precedenza. Quando un dialogo finisce senza scelte di quest in sospeso e
+la IA è pronta, compare l'opzione **"Parliamo d'altro…"**: si apre una chat in cui il personaggio risponde (in italiano) e
+propone tre repliche (tasti 1–3 o clic); si può anche scrivere liberamente (Invio) e uscire con Esc. La IA non legge né
+cambia quest, inventario o monete.
+
+**Tutto gira solo sul tuo PC**: nessun servizio cloud, nessuna telemetria. Il gioco parla solo con Ollama su
+`127.0.0.1:11434` (host non locali vengono rifiutati e il client non ha nemmeno il TLS). Dopo il download iniziale del
+modello tutto funziona offline.
+
+1. Installa [Ollama](https://ollama.com/download) (per ora non incluso nel gioco).
+2. `./scripts/setup_ai.sh --pull` (Windows: `.\scripts\setup_ai.ps1 -Pull`) scarica il modello predefinito `gemma4:e4b`
+   (5–10 GB, ~6–8 GB di VRAM; per PC più deboli `MODEL=gemma4:e2b`). Non impostare mai `OLLAMA_HOST=0.0.0.0`.
+3. Nel menu Esc → "Dialoghi con IA": interruttore (spegnilo sui PC lenti: il gioco va come senza IA), stato del servizio
+   e nome del modello. Le impostazioni sono in `settings.txt` (`ai_enabled`, `ai_model`, `ai_host`).
+
+Il carattere dei personaggi è in `assets/ai/<nome>.txt` (modificabile a mano). Per provare l'interfaccia senza modello:
+`PLANET_ONE_AI_MOCK=1`. Voce (TTS) e microfono (STT) arriveranno nelle fasi successive, sempre in locale.
+
 ### Giorno e notte
 
 Il giorno di gioco dura 24 minuti reali (1 ora = 1 minuto); sole e luna attraversano il cielo

@@ -26,6 +26,9 @@ fn is_night_music(hour: f32) -> bool {
 }
 /// Volume iniziale delle musiche (0..1).
 const DEFAULT_MUSIC_VOLUME: f32 = 0.6;
+/// Modello e host predefiniti dei dialoghi IA (solo locale).
+const DEFAULT_AI_MODEL: &str = "gemma4:e4b";
+const DEFAULT_AI_HOST: &str = "http://127.0.0.1:11434";
 /// Volume iniziale delle voci (0..1).
 const DEFAULT_VOICE_VOLUME: f32 = 0.9;
 
@@ -36,6 +39,12 @@ pub struct AudioSettings {
     pub music_volume: f32,
     /// Volume delle voci dei personaggi, 0..1.
     pub voice_volume: f32,
+    /// Dialoghi con IA locale (Ollama) attivi?
+    pub ai_enabled: bool,
+    /// Modello Ollama usato per i dialoghi.
+    pub ai_model: String,
+    /// Indirizzo di Ollama: solo loopback (vedi `ai::ollama::local_base`).
+    pub ai_host: String,
     /// Da salvare su file appena il mouse viene rilasciato.
     pub dirty: bool,
 }
@@ -45,6 +54,9 @@ impl Default for AudioSettings {
         let mut s = Self {
             music_volume: DEFAULT_MUSIC_VOLUME,
             voice_volume: DEFAULT_VOICE_VOLUME,
+            ai_enabled: true,
+            ai_model: DEFAULT_AI_MODEL.to_string(),
+            ai_host: DEFAULT_AI_HOST.to_string(),
             dirty: false,
         };
         if let Some(text) = settings_path().and_then(|p| std::fs::read_to_string(p).ok()) {
@@ -58,6 +70,19 @@ impl Default for AudioSettings {
                     && let Ok(v) = v.trim().parse::<f32>()
                 {
                     s.voice_volume = v.clamp(0.0, 1.0);
+                }
+                if let Some(v) = line.trim().strip_prefix("ai_enabled=") {
+                    s.ai_enabled = v.trim() != "0";
+                }
+                if let Some(v) = line.trim().strip_prefix("ai_model=")
+                    && !v.trim().is_empty()
+                {
+                    s.ai_model = v.trim().to_string();
+                }
+                if let Some(v) = line.trim().strip_prefix("ai_host=")
+                    && !v.trim().is_empty()
+                {
+                    s.ai_host = v.trim().to_string();
                 }
             }
             info!(
@@ -196,8 +221,12 @@ pub fn save_settings(mut settings: ResMut<AudioSettings>, mouse: Res<ButtonInput
     match std::fs::write(
         &path,
         format!(
-            "music_volume={:.2}\nvoice_volume={:.2}\n",
-            settings.music_volume, settings.voice_volume
+            "music_volume={:.2}\nvoice_volume={:.2}\nai_enabled={}\nai_model={}\nai_host={}\n",
+            settings.music_volume,
+            settings.voice_volume,
+            u8::from(settings.ai_enabled),
+            settings.ai_model,
+            settings.ai_host
         ),
     ) {
         Ok(()) => info!("[AUDIO] impostazioni salvate in {}", path.display()),

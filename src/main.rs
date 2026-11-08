@@ -6,6 +6,7 @@
 // In release su Windows niente finestra di console dietro il gioco.
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
+mod ai;
 mod audio;
 mod camera;
 mod combat;
@@ -62,6 +63,8 @@ pub enum AppState {
     Wait,
     /// Mappa aperta (M): vista dall'alto, gameplay sospeso, cursore libero.
     Map,
+    /// Chat con la IA locale dopo un dialogo: gameplay sospeso, cursore libero.
+    Chat,
     /// Reset della scena in corso (un frame, non interattivo).
     Resetting,
 }
@@ -115,6 +118,7 @@ fn main() {
         .init_resource::<quests::Barks>()
         .init_resource::<menu::JournalTab>()
         .add_plugins(map::plugin)
+        .add_plugins(ai::plugin)
         .init_resource::<debug_place::DebugPlace>()
         .init_resource::<hud::Occluded>()
         .init_resource::<audio::AudioSettings>()

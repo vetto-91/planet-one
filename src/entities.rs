@@ -102,6 +102,8 @@ pub struct DialogState {
     /// Il dialogo è stato letto/confermato fino in fondo (non chiuso con Esc
     /// né per allontanamento): solo allora la quest avanza.
     pub finished: bool,
+    /// Le scelte mostrate sono l'offerta della IA ("Parliamo d'altro…"), non una scelta di quest.
+    pub ai_offer: bool,
 }
 
 /// Distanza (m) oltre cui il dialogo si chiude da solo (range interazione: 5 m).
@@ -115,6 +117,7 @@ fn close_dialog(dialog: &mut DialogState, result: Option<usize>, finished: bool)
     dialog.choosing = false;
     dialog.result = result;
     dialog.block_interact = true;
+    dialog.ai_offer = false;
 }
 
 /// Spawn dell'NPC (Viandante) come figlio di `parent` (la casetta), alla
@@ -363,6 +366,7 @@ pub fn interact(
         dialog.choosing = false;
         dialog.result = None;
         dialog.finished = false;
+        dialog.ai_offer = false;
         dialog.speaker_entity = Some(entity);
         info!("dialogo aperto con {}", npc.name);
     }
@@ -373,7 +377,14 @@ pub fn interact(
 /// Se il dialogo ha delle scelte, dopo l'ultima riga si entra in modalità
 /// `choosing`: Su/Giù (o W/S) cambiano la scelta evidenziata, E/Invio la
 /// confermano. Esc chiude senza scelta (equivale a rifiutare).
-pub fn advance_dialog(keys: Res<ButtonInput<KeyCode>>, mut dialog: ResMut<DialogState>) {
+pub fn advance_dialog(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut dialog: ResMut<DialogState>,
+    ai: Res<crate::ai::AiState>,
+    settings: Res<crate::audio::AudioSettings>,
+    mut chat: ResMut<crate::ai::AiChat>,
+    mut next: ResMut<NextState<crate::AppState>>,
+) {
     if !dialog.open {
         return;
     }
@@ -397,6 +408,17 @@ pub fn advance_dialog(keys: Res<ButtonInput<KeyCode>>, mut dialog: ResMut<Dialog
         }
         if confirm {
             let choice = dialog.selected;
+            if dialog.ai_offer {
+                // Offerta della IA (non una scelta di quest): il dialogo scritto si chiude
+                // normalmente (la quest avanza), poi eventualmente si apre la chat.
+                let name = dialog.speaker.clone();
+                close_dialog(&mut dialog, None, true);
+                if choice == 0 {
+                    chat.begin(&name);
+                    next.set(crate::AppState::Chat);
+                }
+                return;
+            }
             info!("[DIALOG] scelta confermata: {}", choice);
             close_dialog(&mut dialog, Some(choice), true);
         }
@@ -407,7 +429,18 @@ pub fn advance_dialog(keys: Res<ButtonInput<KeyCode>>, mut dialog: ResMut<Dialog
         dialog.index += 1;
         if dialog.index >= dialog.lines.len() {
             if dialog.choices.is_empty() {
-                close_dialog(&mut dialog, None, true);
+                // Dialogo scritto finito, nessuna scelta di quest in sospeso: se la IA locale
+                // è attiva e pronta, si offre di chiacchierare ancora.
+                if settings.ai_enabled && ai.status == crate::ai::AiStatus::Ready {
+                    dialog.index = dialog.lines.len().saturating_sub(1);
+                    dialog.choices =
+                        vec!["Parliamo d'altro…".to_string(), "Arrivederci".to_string()];
+                    dialog.ai_offer = true;
+                    dialog.choosing = true;
+                    dialog.selected = 0;
+                } else {
+                    close_dialog(&mut dialog, None, true);
+                }
             } else {
                 // Resta sull'ultima riga e mostra le scelte.
                 dialog.index = dialog.lines.len().saturating_sub(1);

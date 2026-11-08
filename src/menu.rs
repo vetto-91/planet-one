@@ -39,7 +39,7 @@ pub fn toggle(
     mut next: ResMut<NextState<AppState>>,
 ) {
     // J: diario, T: "Aspetta" (non durante un dialogo).
-    if !dialog.open {
+    if !dialog.open && *state.get() != AppState::Chat {
         let (key, panel) = if keys.just_pressed(KeyCode::KeyJ) {
             (true, AppState::Journal)
         } else if keys.just_pressed(KeyCode::KeyT) {
@@ -69,7 +69,7 @@ pub fn toggle(
     }
     match state.get() {
         AppState::Playing => next.set(AppState::Paused),
-        AppState::Paused | AppState::Journal | AppState::Wait | AppState::Map => {
+        AppState::Paused | AppState::Journal | AppState::Wait | AppState::Map | AppState::Chat => {
             next.set(AppState::Playing)
         }
         // Durante il reset ESC non fa nulla: è uno stato transitorio.
@@ -114,6 +114,8 @@ pub struct UiQueries<'w, 's> {
     pub anchors: Query<'w, 's, &'static crate::hud::NameAnchor>,
     pub styled: Local<'s, bool>,
     pub audio: ResMut<'w, crate::audio::AudioSettings>,
+    pub chat: ResMut<'w, crate::ai::AiChat>,
+    pub ai: Res<'w, crate::ai::AiState>,
     pub occluded: Res<'w, hud::Occluded>,
     pub map_view: Res<'w, map::MapView>,
     pub clock: ResMut<'w, crate::daynight::GameClock>,
@@ -363,6 +365,27 @@ pub fn ui(
                         ui.checkbox(&mut show_fps.0, "Mostra FPS");
                         ui.separator();
 
+                        // Dialoghi con IA locale (Ollama, solo su questo PC).
+                        ui.label(
+                            egui::RichText::new("Dialoghi con IA (locale)")
+                                .strong()
+                                .color(crate::ui_style::GOLD),
+                        );
+                        if ui
+                            .checkbox(&mut q.audio.ai_enabled, "Dialoghi IA (spegni sui PC lenti)")
+                            .changed()
+                        {
+                            q.audio.dirty = true;
+                        }
+                        ui.label(format!("Stato: {}", q.ai.status.label()));
+                        ui.horizontal(|ui| {
+                            ui.label("Modello:");
+                            if ui.text_edit_singleline(&mut q.audio.ai_model).lost_focus() {
+                                q.audio.dirty = true;
+                            }
+                        });
+                        ui.separator();
+
                         // Riprendi (equivalente a Esc).
                         let btn = |t: &str| egui::Button::new(egui::RichText::new(t).strong());
                         let bsize = egui::vec2(240.0, 40.0);
@@ -446,6 +469,10 @@ pub fn ui(
         AppState::Journal => {
             let entries = crate::quests::journal_entries(&quest, &texts);
             draw_journal(ctx, &entries, &mut tab);
+        }
+        AppState::Chat => {
+            let status = q.ai.status.clone();
+            crate::ai::ui::chat_panel(ctx, &mut q.chat, &status);
         }
         // Durante Resetting non mostriamo nulla; la UI riapparirà in Playing/Paused.
         AppState::Resetting => {}
