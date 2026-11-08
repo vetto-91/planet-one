@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.20.0 — Porto, faro e campane (2026-11-08)
 
 - **Strada del sud** dal cancello al mare, **faro** (luce girevole di notte, guardiano Ettore) e **porticciolo** con molo calpestabile, tre barche, casetta dei pescatori e il
   pescatore Gaspare; cartelli e lampioni lungo la strada (ADR 0010).
