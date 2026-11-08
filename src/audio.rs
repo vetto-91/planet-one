@@ -45,6 +45,10 @@ pub struct AudioSettings {
     pub ai_model: String,
     /// Indirizzo di Ollama: solo loopback (vedi `ai::ollama::local_base`).
     pub ai_host: String,
+    /// Voce IA (Piper locale) attiva?
+    pub tts_enabled: bool,
+    /// Voce Piper da usare al posto di quella del personaggio (vuoto = automatica).
+    pub tts_voice: String,
     /// Da salvare su file appena il mouse viene rilasciato.
     pub dirty: bool,
 }
@@ -57,6 +61,8 @@ impl Default for AudioSettings {
             ai_enabled: true,
             ai_model: DEFAULT_AI_MODEL.to_string(),
             ai_host: DEFAULT_AI_HOST.to_string(),
+            tts_enabled: true,
+            tts_voice: String::new(),
             dirty: false,
         };
         if let Some(text) = settings_path().and_then(|p| std::fs::read_to_string(p).ok()) {
@@ -78,6 +84,12 @@ impl Default for AudioSettings {
                     && !v.trim().is_empty()
                 {
                     s.ai_model = v.trim().to_string();
+                }
+                if let Some(v) = line.trim().strip_prefix("tts_enabled=") {
+                    s.tts_enabled = v.trim() != "0";
+                }
+                if let Some(v) = line.trim().strip_prefix("tts_voice=") {
+                    s.tts_voice = v.trim().to_string();
                 }
                 if let Some(v) = line.trim().strip_prefix("ai_host=")
                     && !v.trim().is_empty()
@@ -221,12 +233,14 @@ pub fn save_settings(mut settings: ResMut<AudioSettings>, mouse: Res<ButtonInput
     match std::fs::write(
         &path,
         format!(
-            "music_volume={:.2}\nvoice_volume={:.2}\nai_enabled={}\nai_model={}\nai_host={}\n",
+            "music_volume={:.2}\nvoice_volume={:.2}\nai_enabled={}\nai_model={}\nai_host={}\ntts_enabled={}\ntts_voice={}\n",
             settings.music_volume,
             settings.voice_volume,
             u8::from(settings.ai_enabled),
             settings.ai_model,
-            settings.ai_host
+            settings.ai_host,
+            u8::from(settings.tts_enabled),
+            settings.tts_voice
         ),
     ) {
         Ok(()) => info!("[AUDIO] impostazioni salvate in {}", path.display()),

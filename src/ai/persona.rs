@@ -9,6 +9,9 @@ pub struct Persona {
     pub name: String,
     pub character: String,
     pub style: String,
+    /// Voce Piper (nome del file `.onnx`, senza estensione) e velocità (1.0 normale, >1 più lenta).
+    pub voice: String,
+    pub speed: f32,
     /// Cose che il personaggio sa e può dire.
     pub knows: Vec<String>,
     /// Cose che non deve rivelare né promettere.
@@ -18,7 +21,10 @@ pub struct Persona {
 const VIANDANTE: &str = include_str!("../../assets/ai/viandante.txt");
 
 fn parse(text: &str) -> Persona {
-    let mut p = Persona::default();
+    let mut p = Persona {
+        speed: 1.0,
+        ..Default::default()
+    };
     let mut section = "";
     for raw in text.lines() {
         let line = raw.trim();
@@ -42,6 +48,8 @@ fn parse(text: &str) -> Persona {
                 "nome" => p.name = v.trim().to_string(),
                 "carattere" => p.character = v.trim().to_string(),
                 "stile" => p.style = v.trim().to_string(),
+                "voce" => p.voice = v.trim().to_string(),
+                "velocita" => p.speed = v.trim().parse().unwrap_or(1.0),
                 _ => {}
             }
         }
@@ -70,6 +78,7 @@ pub fn load(name: &str) -> Persona {
         name: name.to_string(),
         character: "Un abitante cordiale del luogo.".to_string(),
         style: "Parla in modo semplice, con frasi brevi.".to_string(),
+        speed: 1.0,
         ..Default::default()
     }
 }

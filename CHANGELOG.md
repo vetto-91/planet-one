@@ -2,6 +2,12 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- Voce IA (fase 2): le risposte dei dialoghi IA sono lette ad alta voce con Piper **in locale** (programma esterno, senza rete); voce per personaggio,
+  casella "Voce IA" e scelta della voce nel menu, `PLANET_ONE_TTS_MOCK=1` per provare (ADR 0006).
+- `scripts/setup_ai.sh|ps1 --tts` installa Piper e le voci italiane con consenso esplicito; `scripts/gen_tts_voci.py` ora usa Piper locale (niente più edge-tts online).
+
 ## v0.0.15.0 — Dialoghi con IA locale, fase 1 (2026-11-08)
 
 - Dialoghi con IA **solo locale** (Ollama, `gemma4:e4b` configurabile), fase 1 testuale: opzione "Parliamo d'altro…" a fine dialogo, chat con

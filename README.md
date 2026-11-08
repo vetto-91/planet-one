@@ -135,9 +135,10 @@ La colonna sonora (`assets/audio/music/legacy_of_the_first_light.ogg`, in loop) 
 all'avvio; dal tramonto (18:00) fino a poco prima dell'alba (5:54) suona `lanterns_in_the_grove.ogg`
 con dissolvenza incrociata. Il volume delle musiche e quello delle voci dei personaggi si regolano dal menu Esc
 ("Volume musica", "Volume voci") e vengono salvati in `~/.config/planet-one/settings.txt`.
-Le voci (`assets/audio/voci/`) sono generate con `scripts/gen_tts_voci.py` (edge-tts, voci neurali
-Microsoft, richiede rete): verificarne i termini d'uso prima di distribuire il gioco. Autore e licenza del brano da indicare prima di rendere
-pubblico il repository.
+Le voci registrate (`assets/audio/voci/`) già presenti sono state generate con voci neurali Microsoft (edge-tts, online) in una
+fase precedente: verificarne i termini d'uso prima di distribuire il gioco. Le **nuove** si generano solo in locale con
+`scripts/gen_tts_voci.py` (Piper + ffmpeg, solo i clip mancanti; `--force` per rigenerarli tutti). Autore e licenza del brano da
+indicare prima di rendere pubblico il repository.
 
 ### Dialoghi con IA (locale)
 
@@ -156,8 +157,14 @@ modello tutto funziona offline.
 3. Nel menu Esc → "Dialoghi con IA": interruttore (spegnilo sui PC lenti: il gioco va come senza IA), stato del servizio
    e nome del modello. Le impostazioni sono in `settings.txt` (`ai_enabled`, `ai_model`, `ai_host`).
 
+**Voce**: le risposte della IA sono lette ad alta voce con [Piper](https://github.com/rhasspy/piper), un programma locale senza rete.
+`./scripts/setup_ai.sh --tts` (Windows: `.\\scripts\\setup_ai.ps1 -Tts`) installa Piper e la voce `it_IT-riccardo-x_low`; con `--all-it` scarica tutte le voci italiane
+(`riccardo`, `paola`, `serena`) per provarle: la voce di ogni personaggio si sceglie con la riga `voce:` del suo file, oppure dal menu Esc.
+Prima di scaricare lo script mostra il link alla model card (licenza) di ogni voce: il gioco non ridistribuisce voci. Casella "Voce IA" nel menu
+per spegnerla; senza Piper il gioco mostra solo il testo. Per provare senza Piper: `PLANET_ONE_TTS_MOCK=1`.
+
 Il carattere dei personaggi è in `assets/ai/<nome>.txt` (modificabile a mano). Per provare l'interfaccia senza modello:
-`PLANET_ONE_AI_MOCK=1`. Voce (TTS) e microfono (STT) arriveranno nelle fasi successive, sempre in locale.
+`PLANET_ONE_AI_MOCK=1`. Microfono (STT) arriverà nella fase successiva, sempre in locale.
 
 ### Giorno e notte
 

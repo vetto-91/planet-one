@@ -8,6 +8,7 @@
 
 pub mod ollama;
 pub mod persona;
+pub mod tts;
 pub mod ui;
 
 use crate::AppState;
@@ -182,6 +183,9 @@ pub struct AiChat {
     pub error: Option<String>,
     pub action: Option<ChatAction>,
     pub focus_input: bool,
+    /// Voce e velocità del personaggio (dalla persona).
+    voice: String,
+    speed: f32,
     system: String,
     req: u64,
 }
@@ -247,7 +251,12 @@ pub fn ai_probe(time: Res<Time>, settings: Res<AudioSettings>, mut ai: ResMut<Ai
 }
 
 /// Sistema: raccoglie le risposte della thread worker.
-pub fn ai_pump(settings: Res<AudioSettings>, mut ai: ResMut<AiState>, mut chat: ResMut<AiChat>) {
+pub fn ai_pump(
+    settings: Res<AudioSettings>,
+    mut ai: ResMut<AiState>,
+    mut chat: ResMut<AiChat>,
+    mut tts: ResMut<tts::TtsState>,
+) {
     let events: Vec<Event> = {
         let Ok(rx) = ai.rx.lock() else {
             return;
@@ -276,6 +285,13 @@ pub fn ai_pump(settings: Res<AudioSettings>, mut ai: ResMut<AiState>, mut chat: 
                 chat.thinking = false;
                 match result {
                     Ok(r) => {
+                        // La risposta si mostra subito e si legge ad alta voce (Piper locale).
+                        let voice = if settings.tts_voice.is_empty() {
+                            chat.voice.clone()
+                        } else {
+                            settings.tts_voice.clone()
+                        };
+                        tts.speak(&r.text, &voice, chat.speed);
                         chat.history.push(ChatTurn {
                             player: false,
                             text: r.text,
@@ -339,6 +355,8 @@ pub fn ai_enter_chat(
     clock: Res<GameClock>,
 ) {
     let p = persona::load(&chat.npc_name);
+    chat.voice = p.voice.clone();
+    chat.speed = p.speed;
     chat.system = persona::system_prompt(&p, &context_line(&quest, &clock));
     request_reply(&mut chat, &ai, &settings);
     info!("[AI] chat con {} avviata", chat.npc_name);
@@ -369,7 +387,8 @@ pub fn ai_handle_action(
 }
 
 /// OnExit(Chat): chiude la conversazione.
-pub fn ai_exit_chat(mut chat: ResMut<AiChat>) {
+pub fn ai_exit_chat(mut chat: ResMut<AiChat>, mut tts: ResMut<tts::TtsState>) {
+    tts.stop();
     chat.action = None;
     chat.thinking = false;
     chat.req += 1; // scarta eventuali risposte in arrivo
@@ -379,7 +398,8 @@ pub fn ai_exit_chat(mut chat: ResMut<AiChat>) {
 pub fn plugin(app: &mut App) {
     app.init_resource::<AiState>()
         .init_resource::<AiChat>()
-        .add_systems(Update, (ai_probe, ai_pump))
+        .init_resource::<tts::TtsState>()
+        .add_systems(Update, (ai_probe, ai_pump, tts::tts_scan, tts::tts_pump))
         .add_systems(OnEnter(AppState::Chat), ai_enter_chat)
         .add_systems(OnExit(AppState::Chat), ai_exit_chat)
         .add_systems(Update, ai_handle_action.run_if(in_state(AppState::Chat)));

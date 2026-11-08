@@ -116,6 +116,7 @@ pub struct UiQueries<'w, 's> {
     pub audio: ResMut<'w, crate::audio::AudioSettings>,
     pub chat: ResMut<'w, crate::ai::AiChat>,
     pub ai: Res<'w, crate::ai::AiState>,
+    pub tts: Res<'w, crate::ai::tts::TtsState>,
     pub occluded: Res<'w, hud::Occluded>,
     pub map_view: Res<'w, map::MapView>,
     pub clock: ResMut<'w, crate::daynight::GameClock>,
@@ -378,6 +379,41 @@ pub fn ui(
                             q.audio.dirty = true;
                         }
                         ui.label(format!("Stato: {}", q.ai.status.label()));
+                        if ui
+                            .checkbox(&mut q.audio.tts_enabled, "Voce IA (Piper locale)")
+                            .changed()
+                        {
+                            q.audio.dirty = true;
+                        }
+                        ui.label(format!("Voce: {}", q.tts.status.label()));
+                        if !q.tts.voices.is_empty() {
+                            let current = if q.audio.tts_voice.is_empty() {
+                                "automatica (dal personaggio)".to_string()
+                            } else {
+                                q.audio.tts_voice.clone()
+                            };
+                            egui::ComboBox::from_label("Voce")
+                                .selected_text(current)
+                                .show_ui(ui, |ui| {
+                                    if ui
+                                        .selectable_label(
+                                            q.audio.tts_voice.is_empty(),
+                                            "automatica (dal personaggio)",
+                                        )
+                                        .clicked()
+                                    {
+                                        q.audio.tts_voice.clear();
+                                        q.audio.dirty = true;
+                                    }
+                                    for v in q.tts.voices.clone() {
+                                        if ui.selectable_label(q.audio.tts_voice == v, &v).clicked()
+                                        {
+                                            q.audio.tts_voice = v;
+                                            q.audio.dirty = true;
+                                        }
+                                    }
+                                });
+                        }
                         ui.horizontal(|ui| {
                             ui.label("Modello:");
                             if ui.text_edit_singleline(&mut q.audio.ai_model).lost_focus() {
