@@ -2,10 +2,10 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.21.0 — Calendario (Fase 1), mani e molo (2026-11-08)
 
 - **Calendario (Fase 1)**: data di gioco dal 21 marzo anno 0 (mesi reali), stagioni, sole stagionale con alba e tramonto che cambiano nell'anno,
-  velocità del tempo ×1/×2/×4/×8 nel menu Esc, "Aspetta" che avanza anche i giorni; cancelli, lampioni, faro, lanterne e Viandante seguono alba e tramonto
+  velocità del tempo ×1/×2/×4/×8 nel menu Esc, musica giorno/notte sincronizzata con alba e tramonto, "Aspetta" che avanza anche i giorni; cancelli, lampioni, faro, lanterne e Viandante seguono alba e tramonto
   (ADR 0011).
 
 - **Correzioni**: gli abitanti sul molo (Gaspare) ora camminano sul piano del molo invece di sprofondare nel fondale; tutti i personaggi umani (giocatore,

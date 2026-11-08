@@ -28,6 +28,7 @@ Strategia: **vertical slice prima**. Una demo giocabile (1 quest, 1 NPC, 1 nemic
 | 7.2 — Abitanti | 6 abitanti e 4 guardie con saluto scritto, chat IA e voce, routine giornaliera | `v0.0.18.0` |
 | 7.3 — Mercato e armi | Negozi con le monete, armi/scudo/arco, mercato in piazza, campi | `v0.0.19.0` |
 | 7.4 — Porto e campane | Strada del sud, faro, porticciolo con molo e barche, campane della chiesa | `v0.0.20.0` |
+| 8.1 — Calendario (Fase 1) | Data dal 21 marzo anno 0, stagioni, sole e orari stagionali, velocità del tempo; mani ai personaggi, abitanti sul molo | `v0.0.21.0` |
 | 5.y — Mondo vivo | Colonna sonora con volume, casetta-chiosco esplorabile (porta, interni, stufa con fumo), routine giorno/notte del Viandante, voci dei personaggi, versione nel menu | `v0.0.7.0` |
 | 5.z — Mondo vivo, rifiniture | Interazione col mirino, casetta con serranda/interruttore/finestre e luci con ombre, routine del Viandante v2, voci normalizzate con ducking della musica | `v0.0.8.0` |
 | 5.w — Mappa e strumenti | Mappa dall'alto (M) con bussola e zoom, modalità debug piazzamenti (F4) con file `debug/placements.txt`, vetri e scuri spessi, il Viandante chiude porta e finestre | `v0.0.9.0` |

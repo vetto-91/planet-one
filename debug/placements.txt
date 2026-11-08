@@ -624,8 +624,8 @@ quando: generato da gen_porto.py
 punto: x -3.40, z 86.50
 quantità: 1   seed: 1
 nota: faro
-punti: (-3.40,86.50)
-rotazioni: 180
+punti: (-3.07,89.72)
+rotazioni: 115
 
 [P-0416] tipo: cartello | modalità: singolo
 quando: generato da gen_porto.py

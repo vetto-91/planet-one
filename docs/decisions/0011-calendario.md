@@ -2,7 +2,7 @@
 
 - Data: 2026-11-08
 - Stato: accettato (Fase 1 di 3; stagioni visibili e meteo seguono)
-- Versione: da rilasciare
+- Versione: v0.0.21.0
 
 ## Contesto
 Il gioco aveva solo l'ora (1 h = 60 s) e il sole sempre uguale. Servono data, stagioni e, in seguito, meteo; si procede a fasi.
