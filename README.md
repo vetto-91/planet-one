@@ -216,7 +216,8 @@ volume dipende dalla distanza dal campanile (si sente anche fuori dalle mura, pi
 ### Giorno e notte
 
 Il giorno di gioco dura 24 minuti reali (1 ora = 1 minuto); sole e luna attraversano il cielo
-e luce e cielo cambiano con l'ora. L'ora è nel chip in alto a sinistra; T apre "Aspetta".
+e luce e cielo cambiano con l'ora. L'ora e la data (si parte dal 21 marzo, anno 0) sono nel chip in alto a sinistra; il sole sale più in alto d'estate e più in basso d'inverno,
+con giorni lunghi o corti. T apre "Aspetta" (avanza anche i giorni); la velocità del tempo (×1–×8) si sceglie nel menu Esc.
 Per provare un'ora precisa: `PLANET_ONE_HOUR=21 cargo run`.
 
 ### Modificare i dialoghi

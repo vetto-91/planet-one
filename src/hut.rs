@@ -1711,9 +1711,6 @@ pub fn update_smoke(
 
 // ----- Routine del Viandante (giorno, sera, notte, mattina) -----
 
-/// Ore: dopo le 21 va a dormire, alle 6 si sveglia.
-const SLEEP_HOUR: f32 = 21.0;
-const WAKE_HOUR: f32 = 6.0;
 /// Velocità di camminata (m/s) e altezza del centro del corpo in piedi.
 const KEEPER_SPEED: f32 = 1.5;
 const STAND_Y: f32 = Y0 + 0.85;
@@ -2001,7 +1998,7 @@ pub fn keeper_routine(
     };
     let dt = time.delta_secs();
     let hour = clock.hour;
-    let night = !(WAKE_HOUR..SLEEP_HOUR).contains(&hour);
+    let night = !clock.awake();
     // Stato corrente degli oggetti.
     let is_on = |states: &Query<&mut PropState>, e: Entity| states.get(e).is_ok_and(|s| s.on);
     for (entity, mut k, mut tf, mut npc) in &mut keepers {

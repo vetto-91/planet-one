@@ -36,3 +36,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0009 | Negozi, armi e mercato | accettato |
 
 | 0010 | Strada del sud, faro, porticciolo e campane | accettato |
+| 0011 | Calendario, velocità del tempo e sole stagionale | accettato (Fase 1) |

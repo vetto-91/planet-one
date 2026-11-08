@@ -393,7 +393,7 @@ pub fn villager_routine(
     let dt = time.delta_secs();
     let hour = clock.hour;
     // Lanterne accese di notte.
-    let dark = !(6.0..19.0).contains(&hour);
+    let dark = clock.guard_lanterns_on();
     for mut l in &mut lanterns {
         let target = if dark { 60_000.0 } else { 0.0 };
         l.intensity += (target - l.intensity) * (dt * 2.0).min(1.0);

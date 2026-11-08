@@ -12,28 +12,216 @@ pub const DAY_SECONDS: f32 = 24.0 * 60.0;
 /// Distanza (m) dei dischi di sole/luna dalla camera.
 const DISC_DISTANCE: f32 = 400.0;
 
-/// Ora di gioco (0..24). Sopravvive al reset della scena.
-#[derive(Resource)]
+/// Giorni dei mesi (anno di 365 giorni, nessun bisestile).
+const MONTH_DAYS: [u8; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+/// Nomi abbreviati dei mesi.
+const MONTH_NAMES: [&str; 12] = [
+    "gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic",
+];
+/// Latitudine del mondo (gradi): Europa centrale.
+const LATITUDE_DEG: f32 = 48.0;
+/// Inclinazione dell'asse terrestre (gradi).
+const AXIAL_TILT_DEG: f32 = 23.44;
+
+/// Stagione astronomica (Europa centrale).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Season {
+    Spring,
+    Summer,
+    Autumn,
+    Winter,
+}
+
+impl Season {
+    pub fn name(self) -> &'static str {
+        match self {
+            Season::Spring => "Primavera",
+            Season::Summer => "Estate",
+            Season::Autumn => "Autunno",
+            Season::Winter => "Inverno",
+        }
+    }
+}
+
+/// Data di gioco: anno (parte da 0), mese 1..=12, giorno 1..=31.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct GameDate {
+    pub year: u32,
+    pub month: u8,
+    pub day: u8,
+}
+
+impl GameDate {
+    /// Data di partenza: 21 marzo, anno 0 (equinozio di primavera).
+    pub const START: GameDate = GameDate {
+        year: 0,
+        month: 3,
+        day: 21,
+    };
+
+    /// Passa al giorno successivo.
+    pub fn next_day(&mut self) {
+        if self.day < MONTH_DAYS[self.month as usize - 1] {
+            self.day += 1;
+        } else if self.month < 12 {
+            self.month += 1;
+            self.day = 1;
+        } else {
+            self.year += 1;
+            self.month = 1;
+            self.day = 1;
+        }
+    }
+
+    /// Giorno dell'anno, 1..=365 (1 gennaio = 1).
+    pub fn day_of_year(&self) -> u32 {
+        MONTH_DAYS[..self.month as usize - 1]
+            .iter()
+            .map(|d| *d as u32)
+            .sum::<u32>()
+            + self.day as u32
+    }
+
+    /// Stagione astronomica: primavera dal 21/3, estate dal 21/6, autunno dal 23/9, inverno dal 21/12.
+    pub fn season(&self) -> Season {
+        match (self.month, self.day) {
+            (1 | 2, _) | (3, 1..=20) | (12, 21..) => Season::Winter,
+            (3, _) | (4 | 5, _) | (6, ..=20) => Season::Spring,
+            (6, _) | (7 | 8, _) | (9, ..=22) => Season::Summer,
+            _ => Season::Autumn,
+        }
+    }
+
+    /// "21 mar, anno 0".
+    pub fn label(&self) -> String {
+        format!(
+            "{} {}, anno {}",
+            self.day,
+            MONTH_NAMES[self.month as usize - 1],
+            self.year
+        )
+    }
+
+    /// Legge `anno,mese,giorno` (per `PLANET_ONE_DATE`).
+    pub fn parse(text: &str) -> Option<Self> {
+        let v: Vec<u32> = text
+            .split(',')
+            .filter_map(|x| x.trim().parse().ok())
+            .collect();
+        let [year, month, day] = v[..] else {
+            return None;
+        };
+        if !(1..=12).contains(&month) || day < 1 || day > MONTH_DAYS[month as usize - 1] as u32 {
+            return None;
+        }
+        Some(Self {
+            year,
+            month: month as u8,
+            day: day as u8,
+        })
+    }
+}
+
+/// Declinazione del sole (radianti) al giorno dell'anno (frazionario).
+fn declination(day_of_year: f32) -> f32 {
+    AXIAL_TILT_DEG.to_radians() * ((day_of_year - 80.0) / 365.0 * std::f32::consts::TAU).sin()
+}
+
+/// Ore di alba e tramonto (ora solare locale) al giorno dell'anno.
+pub fn sunrise_sunset(day_of_year: f32) -> (f32, f32) {
+    let phi = LATITUDE_DEG.to_radians();
+    let cos_h0 = (-phi.tan() * declination(day_of_year).tan()).clamp(-1.0, 1.0);
+    let half = cos_h0.acos().to_degrees() / 15.0;
+    (12.0 - half, 12.0 + half)
+}
+
+/// Ora di gioco (0..24) e data. Sopravvive al reset della scena.
+#[derive(Resource, Clone)]
 pub struct GameClock {
     pub hour: f32,
+    pub date: GameDate,
+    /// Ora di alba e tramonto del giorno corrente (aggiornate a ogni cambio di giorno).
+    pub sunrise: f32,
+    pub sunset: f32,
 }
 
 impl Default for GameClock {
     fn default() -> Self {
-        // Ora iniziale: 10:00, o `PLANET_ONE_HOUR` (solo per provare il ciclo).
+        // Ora iniziale: 10:00, o `PLANET_ONE_HOUR`; data: `PLANET_ONE_DATE=anno,mese,giorno`
+        // (solo per provare il ciclo).
         let hour = std::env::var("PLANET_ONE_HOUR")
             .ok()
             .and_then(|v| v.parse::<f32>().ok())
             .unwrap_or(10.0);
-        Self { hour }
+        let date = std::env::var("PLANET_ONE_DATE")
+            .ok()
+            .and_then(|v| GameDate::parse(&v))
+            .unwrap_or(GameDate::START);
+        Self::new(date, hour)
     }
 }
 
 impl GameClock {
+    pub fn new(date: GameDate, hour: f32) -> Self {
+        let (sunrise, sunset) = sunrise_sunset(date.day_of_year() as f32);
+        Self {
+            hour,
+            date,
+            sunrise,
+            sunset,
+        }
+    }
+
     /// "HH:MM".
     pub fn label(&self) -> String {
         let h = self.hour.rem_euclid(24.0);
         format!("{:02}:{:02}", h as u32, ((h.fract()) * 60.0) as u32)
+    }
+
+    /// "21 mar, anno 0 · Primavera".
+    pub fn date_label(&self) -> String {
+        format!("{} · {}", self.date.label(), self.date.season().name())
+    }
+
+    /// Giorno dell'anno frazionario (per il sole).
+    pub fn day_fraction(&self) -> f32 {
+        self.date.day_of_year() as f32 + self.hour / 24.0
+    }
+
+    /// Fa avanzare l'orologio di `hours` ore di gioco, cambiando data e orari del sole.
+    pub fn advance(&mut self, hours: f32) {
+        self.hour += hours;
+        let mut changed = false;
+        while self.hour >= 24.0 {
+            self.hour -= 24.0;
+            self.date.next_day();
+            changed = true;
+        }
+        if changed {
+            let (r, s) = sunrise_sunset(self.date.day_of_year() as f32);
+            self.sunrise = r;
+            self.sunset = s;
+        }
+    }
+
+    /// Giorno "attivo" del villaggio: dall'alba a 3 h dopo il tramonto (cancelli aperti, Viandante sveglio).
+    pub fn awake(&self) -> bool {
+        (self.sunrise..self.sunset + 3.0).contains(&self.hour)
+    }
+
+    /// Lampioni accesi: da mezz'ora prima del tramonto a poco dopo l'alba.
+    pub fn lamps_on(&self) -> bool {
+        self.hour >= self.sunset - 0.5 || self.hour < self.sunrise + 0.2
+    }
+
+    /// Buio per faro (da un'ora dopo l'alba... a prima del tramonto è giorno).
+    pub fn lighthouse_dark(&self) -> bool {
+        !(self.sunrise + 0.5..self.sunset).contains(&self.hour)
+    }
+
+    /// Lanterne delle guardie: dal tramonto a un'ora dopo l'alba... (fuori da alba..tramonto+1).
+    pub fn guard_lanterns_on(&self) -> bool {
+        !(self.sunrise..self.sunset + 1.0).contains(&self.hour)
     }
 }
 
@@ -61,10 +249,16 @@ pub struct SkyDisc {
     pub is_sun: bool,
 }
 
-/// Direzione (verso il sole) all'ora data; leggera inclinazione verso sud (+Z).
-pub fn sun_dir(hour: f32) -> Vec3 {
-    let a = (hour - 6.0) / 24.0 * std::f32::consts::TAU;
-    Vec3::new(a.cos(), a.sin(), 0.3).normalize()
+/// Direzione (verso il sole) al giorno dell'anno e all'ora date: est = +X, sud = +Z, su = +Y.
+/// Equinozio: sorge a est alle 6, tramonta a ovest alle 18; d'estate sale di più, d'inverno meno.
+pub fn sun_dir(day_of_year: f32, hour: f32) -> Vec3 {
+    let phi = LATITUDE_DEG.to_radians();
+    let delta = declination(day_of_year);
+    let h = (hour - 12.0) / 24.0 * std::f32::consts::TAU;
+    let up = phi.sin() * delta.sin() + phi.cos() * delta.cos() * h.cos();
+    let east = -delta.cos() * h.sin();
+    let south = delta.cos() * h.cos() * phi.sin() - delta.sin() * phi.cos();
+    Vec3::new(east, up, south).normalize()
 }
 
 fn smoothstep(e0: f32, e1: f32, x: f32) -> f32 {
@@ -73,8 +267,13 @@ fn smoothstep(e0: f32, e1: f32, x: f32) -> f32 {
 }
 
 /// Sistema: avanza l'orologio in tempo reale (solo in gioco).
-pub fn tick_clock(time: Res<Time>, mut clock: ResMut<GameClock>) {
-    clock.hour = (clock.hour + time.delta_secs() * 24.0 / DAY_SECONDS).rem_euclid(24.0);
+pub fn tick_clock(
+    time: Res<Time>,
+    settings: Res<crate::audio::AudioSettings>,
+    mut clock: ResMut<GameClock>,
+) {
+    let speed = settings.time_speed.max(1) as f32;
+    clock.advance(time.delta_secs() * 24.0 / DAY_SECONDS * speed);
 }
 
 /// Crea i dischi di sole e luna (seguono la camera, non fanno parte della scena).
@@ -125,7 +324,7 @@ pub fn update_sky(
     mut skyboxes: Query<&mut Skybox>,
     mut ambient: ResMut<GlobalAmbientLight>,
 ) {
-    let dir = sun_dir(clock.hour);
+    let dir = sun_dir(clock.day_fraction().floor(), clock.hour);
     let elev = dir.y;
     let day = smoothstep(-0.1, 0.25, elev);
     let night_moon = smoothstep(-0.1, 0.25, -elev);
@@ -160,5 +359,117 @@ pub fn update_sky(
         } else {
             Visibility::Hidden
         };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn start_date_is_march_21_year_0() {
+        let d = GameDate::START;
+        assert_eq!(d.label(), "21 mar, anno 0");
+        assert_eq!(d.day_of_year(), 80);
+        assert_eq!(d.season(), Season::Spring);
+    }
+
+    #[test]
+    fn dates_roll_over_months_and_years() {
+        let mut d = GameDate {
+            year: 0,
+            month: 2,
+            day: 28,
+        };
+        d.next_day();
+        assert_eq!((d.month, d.day), (3, 1));
+        let mut d = GameDate {
+            year: 0,
+            month: 12,
+            day: 31,
+        };
+        d.next_day();
+        assert_eq!((d.year, d.month, d.day), (1, 1, 1));
+        // Un anno intero di giorni riporta alla stessa data.
+        let mut d = GameDate::START;
+        for _ in 0..365 {
+            d.next_day();
+        }
+        assert_eq!(
+            d,
+            GameDate {
+                year: 1,
+                ..GameDate::START
+            }
+        );
+    }
+
+    #[test]
+    fn seasons_follow_astronomical_dates() {
+        let s = |month, day| {
+            GameDate {
+                year: 0,
+                month,
+                day,
+            }
+            .season()
+        };
+        assert_eq!(s(3, 20), Season::Winter);
+        assert_eq!(s(3, 21), Season::Spring);
+        assert_eq!(s(6, 20), Season::Spring);
+        assert_eq!(s(6, 21), Season::Summer);
+        assert_eq!(s(9, 22), Season::Summer);
+        assert_eq!(s(9, 23), Season::Autumn);
+        assert_eq!(s(12, 20), Season::Autumn);
+        assert_eq!(s(12, 21), Season::Winter);
+        assert_eq!(s(1, 1), Season::Winter);
+    }
+
+    #[test]
+    fn sunrise_and_sunset_follow_the_season() {
+        let doy = |m, d| {
+            GameDate {
+                year: 0,
+                month: m,
+                day: d,
+            }
+            .day_of_year() as f32
+        };
+        let (r, t) = sunrise_sunset(doy(3, 21));
+        assert!((r - 6.0).abs() < 0.1 && (t - 18.0).abs() < 0.1);
+        let (rs, ts) = sunrise_sunset(doy(6, 21));
+        assert!(rs < 4.6 && ts > 19.4, "estate: {rs} {ts}");
+        let (rw, tw) = sunrise_sunset(doy(12, 21));
+        assert!(rw > 7.4 && tw < 16.6, "inverno: {rw} {tw}");
+    }
+
+    #[test]
+    fn sun_is_higher_in_summer_than_in_winter() {
+        let noon = |m, d| {
+            sun_dir(
+                GameDate {
+                    year: 0,
+                    month: m,
+                    day: d,
+                }
+                .day_of_year() as f32,
+                12.0,
+            )
+            .y
+        };
+        assert!(noon(6, 21) > noon(3, 21) && noon(3, 21) > noon(12, 21));
+        // All'equinozio alle 6 il sole è all'orizzonte, a est.
+        let d = sun_dir(80.0, 6.0);
+        assert!(d.y.abs() < 0.05 && d.x > 0.9);
+    }
+
+    #[test]
+    fn advancing_the_clock_changes_the_day() {
+        let mut c = GameClock::new(GameDate::START, 23.0);
+        c.advance(2.0);
+        assert_eq!((c.date.day, c.date.month), (22, 3));
+        assert!((c.hour - 1.0).abs() < 1e-4);
+        c.advance(48.0);
+        assert_eq!(c.date.day, 24);
     }
 }

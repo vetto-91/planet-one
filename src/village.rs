@@ -24,9 +24,6 @@ const WALL_T: f32 = 0.9;
 /// Semi-larghezza del vano del cancello e dei piloni.
 const GATE_HALF: f32 = 2.2;
 const PIER_HALF: f32 = 0.55;
-/// Ora di apertura e chiusura dei cancelli (battenti).
-const OPEN_HOUR: f32 = 6.0;
-const CLOSE_HOUR: f32 = 21.0;
 
 /// Una strada: larghezza (m) e polilinea.
 #[derive(Clone, Debug)]
@@ -477,7 +474,7 @@ pub fn sync_village(
         ));
         // Battenti: due ante piene (2,2 m ciascuna) che si chiudono al centro. Lo stato sta su
         // una maniglia invisibile; i bottoni sui piloni (dentro e fuori) lo commutano.
-        let open_now = (OPEN_HOUR..CLOSE_HOUR).contains(&clock.hour);
+        let open_now = clock.awake();
         let inward3 = Vec3::new(gate.inward.x, 0.0, gate.inward.y);
         let frame_z = frame * Vec3::Z;
         let sign_in = if frame_z.dot(inward3) > 0.0 {
@@ -607,7 +604,7 @@ pub fn gate_schedule(
     mut gates: Query<&mut PropState, With<GateHandle>>,
     mut last: Local<Option<bool>>,
 ) {
-    let open = (OPEN_HOUR..CLOSE_HOUR).contains(&clock.hour);
+    let open = clock.awake();
     if *last != Some(open) {
         *last = Some(open);
         for mut s in &mut gates {

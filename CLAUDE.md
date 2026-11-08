@@ -50,7 +50,7 @@ Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, 
 - `src/quests/mod.rs`: parser dei dialoghi, voci del diario, fumetti (barks), registro quest.
 - `src/quests/<quest>/mod.rs` + `assets/quests/<quest>/dialoghi.txt`: logica e testi (modificabili a mano) di ogni quest. Vedi ADR 0003.
 - `src/sky.rs`: cielo da `assets/textures/sky.png` convertito in cubemap a runtime.
-- `src/daynight.rs`: orologio (1 h = 60 s), sole/luna (luci e dischi), stato `Wait` (tasto T).
+- `src/daynight.rs`: orologio (1 h = 60 s), data e stagioni (`GameDate`), alba/tramonto stagionali (ADR 0011), sole/luna (luci e dischi), stato `Wait` (tasto T).
 - `src/figure.rs`: mesh a parallelepipedo con UV per faccia per le skin in `assets/textures/{player,ladro,viandante}.png`.
 - `src/world_props.rs`: alberi, fiori, panchine, lampioni veri creati da `debug/placements.txt`.
 - `src/audio.rs`: musica di sottofondo giorno/notte con dissolvenza (OGG in `assets/audio/music/`), volume musiche salvato in `~/.config/planet-one/settings.txt`.

@@ -193,7 +193,10 @@ pub fn ui(
             egui::Area::new(egui::Id::new("clock"))
                 .fixed_pos(egui::pos2(12.0, 104.0))
                 .show(ctx, |ui| {
-                    hud_chip(ui, &format!("Ora {}", q.clock.label()));
+                    hud_chip(
+                        ui,
+                        &format!("{} — {}", q.clock.date_label(), q.clock.label()),
+                    );
                 });
 
             // Prompt di interazione: appare quando il player e' vicino a un
@@ -371,6 +374,21 @@ pub fn ui(
 
                         // Toggle contatore FPS.
                         ui.checkbox(&mut show_fps.0, "Mostra FPS");
+                        ui.horizontal(|ui| {
+                            ui.label("Velocità del tempo:");
+                            for speed in [1u32, 2, 4, 8] {
+                                if ui
+                                    .selectable_label(
+                                        q.audio.time_speed == speed,
+                                        format!("x{speed}"),
+                                    )
+                                    .clicked()
+                                {
+                                    q.audio.time_speed = speed;
+                                    q.audio.dirty = true;
+                                }
+                            }
+                        });
                         ui.separator();
 
                         // Dialoghi con IA locale (Ollama, solo su questo PC).
@@ -463,15 +481,21 @@ pub fn ui(
                 .resizable(false)
                 .show(ctx, |ui| {
                     ui.label(
-                        egui::RichText::new(format!("Ora attuale: {}", q.clock.label())).size(18.0),
+                        egui::RichText::new(format!(
+                            "{} — {}",
+                            q.clock.date_label(),
+                            q.clock.label()
+                        ))
+                        .size(18.0),
                     );
                     ui.add_space(6.0);
                     ui.add(egui::Slider::new(&mut q.wait.hours, 1..=24).text("ore da attendere"));
-                    let after = (q.clock.hour + q.wait.hours as f32).rem_euclid(24.0);
+                    let mut after = q.clock.clone();
+                    after.advance(q.wait.hours as f32);
                     ui.label(format!(
-                        "Dopo l'attesa: {:02}:{:02}",
-                        after as u32,
-                        (after.fract() * 60.0) as u32
+                        "Dopo l'attesa: {} — {}",
+                        after.date_label(),
+                        after.label()
                     ));
                     ui.add_space(8.0);
                     ui.horizontal(|ui| {
@@ -485,7 +509,7 @@ pub fn ui(
                     ui.label("T / Esc = chiudi");
                 });
             if wait_now {
-                q.clock.hour = (q.clock.hour + q.wait.hours as f32).rem_euclid(24.0);
+                q.clock.advance(q.wait.hours as f32);
                 info!(
                     "[TIME] attesa di {} h: ora {}",
                     q.wait.hours,

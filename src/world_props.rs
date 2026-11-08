@@ -474,7 +474,7 @@ pub fn update_street_lamps(
     bulbs: Query<&LampBulb>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let on = clock.hour >= 17.5 || clock.hour < 6.2;
+    let on = clock.lamps_on();
     let k = (time.delta_secs() * 1.5).min(1.0);
     let mut level = 0.0;
     // Le ombre (luce che non passa le pareti) solo per i 3 lampioni più vicini alla camera, entro 30 m.
@@ -515,7 +515,7 @@ pub fn update_lighthouse(
     for mut tf in &mut heads {
         tf.rotate_y(time.delta_secs() * 0.8);
     }
-    let dark = !(6.5..18.0).contains(&clock.hour);
+    let dark = clock.lighthouse_dark();
     let k = (time.delta_secs() * 1.5).min(1.0);
     for mut l in &mut spots {
         let target = if dark { 40_000_000.0 } else { 0.0 };
