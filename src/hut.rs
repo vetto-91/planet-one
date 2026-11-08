@@ -73,6 +73,8 @@ pub enum PropKind {
     WindowGlass,
     /// Scuri di una finestra comandati da dentro (serve il vetro alzato).
     WindowInner,
+    /// Battenti di un cancello del villaggio (aperti di giorno, chiusi la notte).
+    Gate,
 }
 
 /// Stato di un oggetto, sull'entità "maniglia" (quella con `PropKind` e
@@ -1474,6 +1476,8 @@ pub fn update_prop_prompts(
             (PropKind::Light, false) => "[E] Accendi luce",
             (PropKind::Shutter, true) => "[E] Abbassa serranda",
             (PropKind::Shutter, false) => "[E] Alza serranda",
+            (PropKind::Gate, true) => "[E] Chiudi cancello",
+            (PropKind::Gate, false) => "[E] Apri cancello",
             (PropKind::WindowGlass, true) => "[E] Abbassa vetro",
             (PropKind::WindowGlass, false) => "[E] Alza vetro",
             (PropKind::WindowInner, _) => {

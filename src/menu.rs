@@ -117,6 +117,7 @@ pub struct UiQueries<'w, 's> {
     pub chat: ResMut<'w, crate::ai::AiChat>,
     pub ai: Res<'w, crate::ai::AiState>,
     pub tts: Res<'w, crate::ai::tts::TtsState>,
+    pub village: Res<'w, crate::village::VillageInfo>,
     pub occluded: Res<'w, hud::Occluded>,
     pub map_view: Res<'w, map::MapView>,
     pub clock: ResMut<'w, crate::daynight::GameClock>,
@@ -498,6 +499,13 @@ pub fn ui(
                     pp.translation(),
                     heading,
                     q.npc_pos.single().ok().map(|t| t.translation()),
+                    (q.village.poly.len() >= 3).then(|| {
+                        let north = q.village.poly.iter().map(|p| p.y).fold(f32::MAX, f32::min);
+                        (
+                            q.village.spec.name.as_str(),
+                            Vec3::new(q.village.center.x, 0.0, north - 10.0),
+                        )
+                    }),
                     q.map_view.zoom,
                 );
             }

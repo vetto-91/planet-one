@@ -55,7 +55,7 @@ punti: (44.92,-49.00) (41.22,-45.54) (47.84,-43.71) (40.36,-48.65) (44.43,-43.71
 quando: 2026-11-07 21:27 UTC (ora di gioco 15:09)
 punto: x 2.64, z 8.50
 quantità: 1   seed: 605355
-punti: (2.64,8.50)
+punti: (6.82,6.85)
 rotazioni: 0
 
 [P-0042] tipo: panchina | modalità: singolo
@@ -64,3 +64,344 @@ punto: x 4.37, z -2.80
 quantità: 1   seed: 66748
 punti: (4.13,-2.33)
 rotazioni: 180
+
+[P-0064] tipo: casa | modalità: singolo
+quando: 2026-11-08 14:09 UTC (ora di gioco 17:28)
+punto: x 6.00, z 13.00
+quantità: 1   seed: 408093
+punti: (6.00,13.00)
+rotazioni: 270
+
+[P-0065] tipo: muro | modalità: singolo
+quando: 2026-11-08 14:14 UTC (ora di gioco 19:05)
+punto: x 14.04, z -4.93
+quantità: 1   seed: 83468
+punti: (14.04,-4.93)
+rotazioni: 232
+
+[P-0066] tipo: muro | modalità: singolo
+quando: 2026-11-08 14:14 UTC (ora di gioco 19:05)
+punto: x 4.06, z -8.18
+quantità: 1   seed: 185786
+punti: (4.06,-8.18)
+rotazioni: 232
+
+[P-0068] tipo: muro | modalità: singolo
+quando: 2026-11-08 14:14 UTC (ora di gioco 19:05)
+punto: x -5.73, z -8.38
+quantità: 1   seed: 152839
+punti: (-5.73,-8.38)
+rotazioni: 232
+
+[P-0070] tipo: muro | modalità: singolo
+quando: 2026-11-08 14:14 UTC (ora di gioco 19:05)
+punto: x -25.23, z -8.53
+quantità: 1   seed: 80688
+punti: (-25.23,-8.53)
+rotazioni: 232
+
+[P-0071] tipo: muro | modalità: singolo
+quando: 2026-11-08 14:15 UTC (ora di gioco 19:05)
+punto: x -28.21, z 2.12
+quantità: 1   seed: 735038
+punti: (-28.21,2.12)
+rotazioni: 232
+
+[P-0072] tipo: muro | modalità: singolo
+quando: 2026-11-08 14:15 UTC (ora di gioco 19:05)
+punto: x -25.12, z 16.80
+quantità: 1   seed: 561418
+punti: (-25.12,16.80)
+rotazioni: 232
+
+[P-0073] tipo: muro | modalità: singolo
+quando: 2026-11-08 14:15 UTC (ora di gioco 19:05)
+punto: x -15.81, z 26.29
+quantità: 1   seed: 356283
+punti: (-15.81,26.29)
+rotazioni: 232
+
+[P-0075] tipo: muro | modalità: singolo
+quando: 2026-11-08 14:15 UTC (ora di gioco 19:05)
+punto: x 3.69, z 26.59
+quantità: 1   seed: 588371
+punti: (3.69,26.59)
+rotazioni: 232
+
+[P-0076] tipo: muro | modalità: singolo
+quando: 2026-11-08 14:15 UTC (ora di gioco 19:05)
+punto: x 19.76, z 16.95
+quantità: 1   seed: 850060
+punti: (19.76,16.95)
+rotazioni: 232
+
+[P-0078] tipo: muro | modalità: singolo
+quando: 2026-11-08 14:15 UTC (ora di gioco 19:05)
+punto: x 28.65, z 6.79
+quantità: 1   seed: 153672
+punti: (28.65,6.79)
+rotazioni: 232
+
+[P-0200] tipo: pozzo | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x -1.20, z 10.00
+quantità: 1   seed: 1
+nota: villaggio
+punti: (-1.20,10.00)
+rotazioni: 0
+
+[P-0201] tipo: chiesa | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x -14.00, z 12.00
+quantità: 1   seed: 1
+nota: villaggio
+punti: (-14.00,12.00)
+rotazioni: 90
+
+[P-0202] tipo: locanda | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x 16.50, z 3.60
+quantità: 1   seed: 1
+nota: villaggio
+punti: (16.50,3.60)
+rotazioni: 0
+
+[P-0203] tipo: casa-grande | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x 13.00, z 16.30
+quantità: 1   seed: 1
+nota: villaggio
+punti: (13.00,16.30)
+rotazioni: 180
+
+[P-0204] tipo: forno | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x 5.50, z 19.80
+quantità: 1   seed: 1
+nota: villaggio
+punti: (5.50,19.80)
+rotazioni: 270
+
+[P-0205] tipo: casa-media | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x -9.00, z -4.80
+quantità: 1   seed: 1
+nota: villaggio
+punti: (-9.00,-4.80)
+rotazioni: 0
+
+[P-0206] tipo: casa-piccola | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x -17.50, z -4.20
+quantità: 1   seed: 1
+nota: villaggio
+punti: (-17.50,-4.20)
+rotazioni: 0
+
+[P-0207] tipo: casa-piccola | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x -9.50, z 4.80
+quantità: 1   seed: 1
+nota: villaggio
+punti: (-9.50,4.80)
+rotazioni: 180
+
+[P-0208] tipo: casa-media | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x -19.50, z 4.50
+quantità: 1   seed: 1
+nota: villaggio
+punti: (-19.50,4.50)
+rotazioni: 180
+
+[P-0209] tipo: casa-media | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x -7.00, z 21.00
+quantità: 1   seed: 1
+nota: villaggio
+punti: (-7.00,21.00)
+rotazioni: 90
+
+[P-0210] tipo: casa-piccola | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x -14.50, z 22.00
+quantità: 1   seed: 1
+nota: villaggio
+punti: (-14.50,22.00)
+rotazioni: 0
+
+[P-0211] tipo: lampione | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x -3.00, z -5.50
+quantità: 1   seed: 1
+nota: villaggio
+punti: (-3.00,-5.50)
+rotazioni: 0
+
+[P-0212] tipo: lampione | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x 2.90, z -6.40
+quantità: 1   seed: 1
+nota: villaggio
+punti: (2.90,-6.40)
+rotazioni: 0
+
+[P-0213] tipo: lampione | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x -3.40, z 0.00
+quantità: 1   seed: 1
+nota: villaggio
+punti: (-3.40,0.00)
+rotazioni: 0
+
+[P-0214] tipo: lampione | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x -3.40, z 15.00
+quantità: 1   seed: 1
+nota: villaggio
+punti: (-3.40,15.00)
+rotazioni: 0
+
+[P-0215] tipo: lampione | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x 3.20, z 18.00
+quantità: 1   seed: 1
+nota: villaggio
+punti: (3.20,18.00)
+rotazioni: 0
+
+[P-0216] tipo: lampione | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x 2.40, z 24.00
+quantità: 1   seed: 1
+nota: villaggio
+punti: (2.40,24.00)
+rotazioni: 0
+
+[P-0217] tipo: lampione | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x -3.20, z 23.00
+quantità: 1   seed: 1
+nota: villaggio
+punti: (-3.20,23.00)
+rotazioni: 0
+
+[P-0218] tipo: lampione | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x -6.80, z 7.00
+quantità: 1   seed: 1
+nota: villaggio
+punti: (-6.80,7.00)
+rotazioni: 0
+
+[P-0219] tipo: lampione | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x 4.60, z 7.00
+quantità: 1   seed: 1
+nota: villaggio
+punti: (4.60,7.00)
+rotazioni: 0
+
+[P-0220] tipo: lampione | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x -6.80, z 13.50
+quantità: 1   seed: 1
+nota: villaggio
+punti: (-6.80,13.50)
+rotazioni: 0
+
+[P-0221] tipo: lampione | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x 4.60, z 13.50
+quantità: 1   seed: 1
+nota: villaggio
+punti: (4.60,13.50)
+rotazioni: 0
+
+[P-0222] tipo: lampione | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x 8.00, z 8.40
+quantità: 1   seed: 1
+nota: villaggio
+punti: (8.00,8.40)
+rotazioni: 0
+
+[P-0223] tipo: lampione | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x -12.00, z 2.00
+quantità: 1   seed: 1
+nota: villaggio
+punti: (-12.00,2.00)
+rotazioni: 0
+
+[P-0224] tipo: lampione | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x -20.00, z 2.00
+quantità: 1   seed: 1
+nota: villaggio
+punti: (-20.00,2.00)
+rotazioni: 0
+
+[P-0225] tipo: cartello | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x 4.00, z -12.00
+quantità: 1   seed: 1
+nota: fontevivo
+punti: (4.00,-12.00)
+rotazioni: 180
+
+[P-0226] tipo: cartello | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x -3.60, z -12.00
+quantità: 1   seed: 1
+nota: porta-nord
+punti: (-3.60,-12.00)
+rotazioni: 180
+
+[P-0227] tipo: cartello | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x -2.80, z 31.00
+quantità: 1   seed: 1
+nota: fontevivo
+punti: (-2.80,31.00)
+rotazioni: 0
+
+[P-0228] tipo: cartello | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x 4.60, z 31.00
+quantità: 1   seed: 1
+nota: porta-sud
+punti: (4.60,31.00)
+rotazioni: 0
+
+[P-0229] tipo: cartello | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x 2.60, z -3.20
+quantità: 1   seed: 1
+nota: piazza
+punti: (2.60,-3.20)
+rotazioni: 180
+
+[P-0230] tipo: cartello | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x -4.20, z 8.20
+quantità: 1   seed: 1
+nota: chiesa
+punti: (-4.20,8.20)
+rotazioni: 270
+
+[P-0231] tipo: cartello | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x 4.80, z 12.50
+quantità: 1   seed: 1
+nota: locanda
+punti: (4.80,12.50)
+rotazioni: 90
+
+[P-0232] tipo: cartello | modalità: singolo
+quando: generato da gen_villaggio.py
+punto: x 4.50, z 17.20
+quantità: 1   seed: 1
+nota: forno
+punti: (4.50,17.20)
+rotazioni: 90

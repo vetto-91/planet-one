@@ -2,6 +2,14 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Villaggio di Fontevivo**: mura con torrette (dai piazzamenti `muro` di F4), due cancelli (Porta Nord e Sud) con battenti che si aprono di giorno e si
+  chiudono di notte (varco pedonale sempre libero), strada a selciato e stradine, piazza con pozzo, chiesa con campanile, case di vario tipo,
+  locanda, forno, lampioni e cartelli con il nome; nome sulla mappa e banner d'ingresso; terreno spianato dentro le mura (ADR 0007).
+- F4: nuovi tipi (`casa-*`, `locanda`, `fabbro`, `forno`, `stalla`, `chiesa`, `pozzo`, `cartello`); gli alberi non vengono creati dentro le mura.
+- Il mare ora si disegna sopra sabbia e strade (anche dalla mappa). Script: `gen_villaggio.py`, `make_selciato_texture.py`, `make_cartelli.py`.
+
 ## v0.0.16.0 — Voce IA locale con Piper, fase 2 (2026-11-08)
 
 - Voce IA (fase 2): le risposte dei dialoghi IA sono lette ad alta voce con Piper **in locale** (programma esterno, senza rete); voce per personaggio,

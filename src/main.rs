@@ -8,6 +8,7 @@
 
 mod ai;
 mod audio;
+mod buildings;
 mod camera;
 mod combat;
 mod daynight;
@@ -28,6 +29,7 @@ mod sky;
 mod terrain;
 mod ui_style;
 mod version;
+mod village;
 mod voice;
 mod world_props;
 
@@ -119,6 +121,7 @@ fn main() {
         .init_resource::<menu::JournalTab>()
         .add_plugins(map::plugin)
         .add_plugins(ai::plugin)
+        .add_plugins(village::plugin)
         .init_resource::<debug_place::DebugPlace>()
         .init_resource::<hud::Occluded>()
         .init_resource::<audio::AudioSettings>()

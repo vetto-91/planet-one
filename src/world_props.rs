@@ -15,7 +15,10 @@ use bevy::prelude::*;
 
 /// Tipi di piazzamento che hanno un modello vero (niente segnaposto F4).
 pub fn has_model(kind: &str) -> bool {
-    matches!(kind, "albero" | "fiori" | "panchina" | "lampione")
+    matches!(
+        kind,
+        "albero" | "fiori" | "panchina" | "lampione" | "muro" | "cartello"
+    ) || crate::buildings::is_building(kind)
 }
 
 /// Marker degli oggetti creati da qui.
@@ -76,6 +79,8 @@ pub fn sync_world_props(
     dbg: Res<DebugPlace>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
+    village: Res<crate::village::VillageInfo>,
     props: Query<Entity, With<WorldProp>>,
     mut built: Local<(Option<u32>, usize)>,
 ) {
@@ -124,6 +129,11 @@ pub fn sync_world_props(
     let lantern_mesh = meshes.add(Cuboid::new(0.28, 0.4, 0.28));
     let cap_mesh = meshes.add(Cone::new(0.26, 0.22));
 
+    let building_mat = materials.add(StandardMaterial {
+        base_color: Color::WHITE,
+        perceptual_roughness: 0.95,
+        ..default()
+    });
     let (mut spawned, mut skipped) = (0usize, 0usize);
     for pl in &dbg.items {
         for (j, &p) in pl.points.iter().enumerate() {
@@ -136,6 +146,42 @@ pub fn sync_world_props(
                 continue;
             }
             let yaw = pl.yaw(j);
+            if crate::buildings::is_building(&pl.kind) {
+                let seed =
+                    (p.x * 100.0) as i32 as u32 ^ ((p.y * 100.0) as i32 as u32).rotate_left(11);
+                let model = crate::buildings::model(&pl.kind, seed);
+                commands
+                    .spawn((
+                        WorldProp,
+                        SceneNode,
+                        SnapToGround {
+                            offset: -0.05,
+                            half: model.half,
+                        },
+                        Transform::from_xyz(p.x, 0.0, p.y)
+                            .with_rotation(Quat::from_rotation_y(yaw)),
+                        Visibility::default(),
+                        RigidBody::Static,
+                    ))
+                    .with_children(|c| {
+                        c.spawn((
+                            Mesh3d(meshes.add(model.mesh)),
+                            MeshMaterial3d(building_mat.clone()),
+                        ));
+                        for (center, size) in model.colliders {
+                            c.spawn((
+                                Collider::cuboid(size.x, size.y, size.z),
+                                Transform::from_translation(center),
+                                crate::camera::BlocksCamera,
+                            ));
+                        }
+                    });
+                spawned += 1;
+                continue;
+            }
+            if pl.kind == "muro" {
+                continue; // il muro è generato da `village` dai vertici
+            }
             let half = match pl.kind.as_str() {
                 "panchina" => Vec2::new(0.75, 0.25),
                 "albero" => Vec2::splat(0.3),
@@ -154,7 +200,54 @@ pub fn sync_world_props(
             );
             let h = hash01(p, 1.0);
             match pl.kind.as_str() {
+                "cartello" => {
+                    // Palo con tabella: la chiave della texture è nella nota del piazzamento.
+                    let key = if pl.note.is_empty() {
+                        "fontevivo"
+                    } else {
+                        pl.note.as_str()
+                    };
+                    let sign_mat = materials.add(StandardMaterial {
+                        base_color: Color::WHITE,
+                        base_color_texture: Some(
+                            asset_server.load(format!("textures/cartelli/{key}.png")),
+                        ),
+                        perceptual_roughness: 0.9,
+                        ..default()
+                    });
+                    commands
+                        .spawn((root, RigidBody::Static))
+                        .with_children(|c| {
+                            c.spawn((
+                                Mesh3d(meshes.add(Cuboid::new(0.14, 2.9, 0.14))),
+                                MeshMaterial3d(wood.clone()),
+                                Transform::from_xyz(0.0, 1.25, 0.0),
+                            ));
+                            c.spawn((
+                                Mesh3d(meshes.add(Cuboid::new(1.74, 0.68, 0.07))),
+                                MeshMaterial3d(wood.clone()),
+                                Transform::from_xyz(0.0, 2.05, 0.0),
+                            ));
+                            c.spawn((
+                                Mesh3d(meshes.add(Rectangle::new(1.66, 0.62))),
+                                MeshMaterial3d(sign_mat),
+                                Transform::from_xyz(0.0, 2.05, 0.04),
+                            ));
+                            c.spawn((
+                                Collider::cuboid(0.3, 2.8, 0.3),
+                                Transform::from_xyz(0.0, 1.25, 0.0),
+                            ));
+                        });
+                }
                 "albero" => {
+                    if crate::village::in_polygon(&village.poly, p) {
+                        info!(
+                            "[PROPS] albero in ({:.1},{:.1}) saltato: dentro le mura",
+                            p.x, p.y
+                        );
+                        skipped += 1;
+                        continue;
+                    }
                     if let Some(why) = tree_blocked(p) {
                         info!("[PROPS] albero in ({:.1},{:.1}) saltato: {why}", p.x, p.y);
                         skipped += 1;

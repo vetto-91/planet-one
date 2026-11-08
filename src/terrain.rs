@@ -13,6 +13,7 @@
 //!   (o cambia a runtime), genera mesh e collider e li sostituisce sul posto.
 
 use crate::scene::{Ground, SceneNode};
+use crate::village::{Road, VillageInfo, dist_to_segment, signed_distance};
 use avian3d::prelude::*;
 use bevy::asset::AssetEvent;
 use bevy::image::{
@@ -83,8 +84,9 @@ impl TerrainField {
     }
 }
 
-/// Lato (m) di una piastrella della texture sabbia.
+/// Lato (m) di una piastrella della texture sabbia e del selciato.
 const SAND_TILE_M: f32 = 8.0;
+const ROAD_TILE_M: f32 = 3.0;
 
 /// Carica la heightmap e inserisce la resource [`TerrainAssets`].
 ///
@@ -166,6 +168,7 @@ pub fn update_terrain(
     mut events: MessageReader<AssetEvent<Image>>,
     terrains: Query<(Entity, &Mesh3d), With<TerrainMesh>>,
     extras: Query<Entity, With<TerrainExtra>>,
+    village: Option<Res<VillageInfo>>,
 ) {
     // Hot-reload: se la heightmap è stata modificata, invalida il mesh attuale.
     for event in events.read() {
@@ -194,7 +197,8 @@ pub fn update_terrain(
     };
 
     // Genera mesh e collider dalla heightmap.
-    let field = build_field(image);
+    let vil = village.map(|v| (*v).clone()).unwrap_or_default();
+    let field = build_field(image, &vil);
     let mesh = build_terrain_mesh(&field);
     let collider = build_terrain_collider(&field);
     let n = field.n;
@@ -214,6 +218,8 @@ pub fn update_terrain(
     let shore_mask = flood_ocean(&field, SHORE_LEVEL);
     let sand_w = sand_weights(&field, &ocean);
     let sand_mesh = build_sand_mesh(&mesh, &sand_w);
+    let road_w = road_weights(&field, &vil.spec.roads);
+    let road_mesh = build_sand_mesh(&mesh, &road_w);
     let sea_mesh = build_sea_mesh(&field, &ocean);
     let barrier = build_barrier(&field, &shore_mask);
     let shore = shore_points(&field, &shore_mask);
@@ -264,6 +270,36 @@ pub fn update_terrain(
         Transform::default(),
         bevy::light::NotShadowCaster,
     ));
+    let road_tex = asset_server
+        .load_builder()
+        .with_settings(|s: &mut ImageLoaderSettings| {
+            s.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
+                address_mode_u: ImageAddressMode::Repeat,
+                address_mode_v: ImageAddressMode::Repeat,
+                mag_filter: ImageFilterMode::Linear,
+                min_filter: ImageFilterMode::Linear,
+                mipmap_filter: ImageFilterMode::Linear,
+                anisotropy_clamp: 16,
+                ..Default::default()
+            });
+        })
+        .load("textures/selciato.png");
+    commands.spawn((
+        SceneNode,
+        TerrainExtra,
+        Mesh3d(meshes.add(road_mesh)),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::WHITE,
+            base_color_texture: Some(road_tex),
+            uv_transform: Affine2::from_scale(Vec2::splat(TERRAIN_SIZE / ROAD_TILE_M)),
+            perceptual_roughness: 0.95,
+            alpha_mode: AlphaMode::Blend,
+            depth_bias: 1.5,
+            ..Default::default()
+        })),
+        Transform::default(),
+        bevy::light::NotShadowCaster,
+    ));
     commands.spawn((
         SceneNode,
         TerrainExtra,
@@ -271,6 +307,8 @@ pub fn update_terrain(
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: Color::srgba(0.12, 0.38, 0.55, 0.82),
             alpha_mode: AlphaMode::Blend,
+            // Il mare si disegna dopo sabbia e strade (anche dall'alto, nella mappa).
+            depth_bias: 4.0,
             perceptual_roughness: 0.15,
             metallic: 0.0,
             ..Default::default()
@@ -429,7 +467,7 @@ fn island_height(image: &Image, x: f32, z: f32) -> f32 {
     land + (-3.5 - land) * smooth(0.72, 1.0, m)
 }
 
-fn build_field(image: &Image) -> Field {
+fn build_field(image: &Image, village: &VillageInfo) -> Field {
     let n = (TERRAIN_SIZE / STEP) as usize + 1;
     let mut h = Vec::with_capacity(n * n);
     for iz in 0..n {
@@ -439,7 +477,103 @@ fn build_field(image: &Image) -> Field {
             h.push(island_height(image, x, z));
         }
     }
+    flatten_village(&mut h, n, &village.poly);
     Field { n, h }
+}
+
+/// Spiana dolcemente il terreno dentro le mura e per 6 m oltre (media mobile delle quote):
+/// strade e case stanno su pendenze gentili.
+fn flatten_village(h: &mut [f32], n: usize, poly: &[Vec2]) {
+    if poly.len() < 3 {
+        return;
+    }
+    let (mut lo, mut hi) = (Vec2::splat(f32::MAX), Vec2::splat(f32::MIN));
+    for p in poly {
+        lo = lo.min(*p);
+        hi = hi.max(*p);
+    }
+    let margin = 8.0;
+    let idx = |w: f32| {
+        (((w + TERRAIN_SIZE / 2.0) / STEP).round() as isize).clamp(0, n as isize - 1) as usize
+    };
+    let (x0, x1, z0, z1) = (
+        idx(lo.x - margin),
+        idx(hi.x + margin),
+        idx(lo.y - margin),
+        idx(hi.y + margin),
+    );
+    let r = 8isize; // 4 m
+    let mut a: Vec<f32> = h.to_vec();
+    for _ in 0..2 {
+        let src = a.clone();
+        for z in z0..=z1 {
+            for x in x0..=x1 {
+                let mut sum = 0.0;
+                for k in -r..=r {
+                    let xx = (x as isize + k).clamp(0, n as isize - 1) as usize;
+                    sum += src[z * n + xx];
+                }
+                a[z * n + x] = sum / (2 * r + 1) as f32;
+            }
+        }
+        let src = a.clone();
+        for z in z0..=z1 {
+            for x in x0..=x1 {
+                let mut sum = 0.0;
+                for k in -r..=r {
+                    let zz = (z as isize + k).clamp(0, n as isize - 1) as usize;
+                    sum += src[zz * n + x];
+                }
+                a[z * n + x] = sum / (2 * r + 1) as f32;
+            }
+        }
+    }
+    for z in z0..=z1 {
+        for x in x0..=x1 {
+            let p = Vec2::new(
+                -TERRAIN_SIZE / 2.0 + x as f32 * STEP,
+                -TERRAIN_SIZE / 2.0 + z as f32 * STEP,
+            );
+            let d = signed_distance(poly, p);
+            let f = 1.0 - smooth(0.0, 6.0, d.max(0.0));
+            let i = z * n + x;
+            h[i] += (a[i] - h[i]) * 0.9 * f;
+        }
+    }
+}
+
+/// Peso (0..1) del selciato in ogni vertice: 1 sulla strada, bordo irregolare.
+fn road_weights(field: &Field, roads: &[Road]) -> Vec<f32> {
+    let n = field.n;
+    let mut w = vec![0.0f32; n * n];
+    let idx = |v: f32| {
+        (((v + TERRAIN_SIZE / 2.0) / STEP).round() as isize).clamp(0, n as isize - 1) as usize
+    };
+    for road in roads {
+        let half = road.width / 2.0;
+        for seg in road.pts.windows(2) {
+            let (a, b) = (seg[0], seg[1]);
+            let pad = half + 1.0;
+            let (x0, x1) = (idx(a.x.min(b.x) - pad), idx(a.x.max(b.x) + pad));
+            let (z0, z1) = (idx(a.y.min(b.y) - pad), idx(a.y.max(b.y) + pad));
+            for z in z0..=z1 {
+                for x in x0..=x1 {
+                    let p = Vec2::new(
+                        -TERRAIN_SIZE / 2.0 + x as f32 * STEP,
+                        -TERRAIN_SIZE / 2.0 + z as f32 * STEP,
+                    );
+                    let d = dist_to_segment(p, a, b);
+                    let nz = (noise2(p.x * 0.7 + 3.0, p.y * 0.7) - 0.5) * 0.5;
+                    let v = 1.0 - smooth(half - 0.4 + nz, half + 0.2 + nz, d);
+                    let i = z * n + x;
+                    if v > w[i] {
+                        w[i] = v;
+                    }
+                }
+            }
+        }
+    }
+    w
 }
 
 /// Costruisce il mesh del terreno dal campo di altezze.

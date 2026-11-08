@@ -64,6 +64,7 @@ Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, 
 - `docs/voci/` + `scripts/export_voci.py`: battute per creare le voci; rigenerare dopo aver cambiato `dialoghi.txt`.
 - `src/ui_style.rs`: palette, targhette (`plate`) e tema egui condiviso (stesso stile dei dialoghi).
 - `src/ai/`: dialoghi con IA SOLO LOCALE (Ollama su loopback, niente TLS/cloud; ADR 0005): `ollama.rs` client, `persona.rs` prompt da `assets/ai/<nome>.txt`, `tts.rs` voce con Piper locale (ADR 0006), `ui.rs` chat; stato `AppState::Chat`.
+- `src/village.rs` e `src/buildings.rs`: villaggio murato (mura da piazzamenti `muro`, cancelli, edifici procedurali con colori di vertice; ADR 0007; dati in `assets/world/villaggio.txt`).
 - `src/menu.rs`: UI egui (menu Esc, dialogo, FPS, diario J, bussola, fumetti).
 
 ## Regole di lavoro

@@ -166,6 +166,20 @@ per spegnerla; senza Piper il gioco mostra solo il testo. Per provare senza Pipe
 Il carattere dei personaggi è in `assets/ai/<nome>.txt` (modificabile a mano). Per provare l'interfaccia senza modello:
 `PLANET_ONE_AI_MOCK=1`. Microfono (STT) arriverà nella fase successiva, sempre in locale.
 
+### Il villaggio di Fontevivo
+
+Un villaggio murato con due cancelli (**Porta Nord** e **Porta Sud**, aperti dalle 6 alle 21 e di notte chiusi con un varco
+pedonale libero; si usano anche col mirino), una **strada a selciato** che li unisce, **stradine** verso ogni casa, una piazza con
+il pozzo, la **chiesa** col campanile, case di vario tipo, locanda, forno, lampioni accesi di sera e **cartelli** con il nome fuori dai
+cancelli e lungo le strade. Il nome compare in alto quando si entra e sulla mappa (M).
+
+Tutto si modifica in F4: le **mura** sono i piazzamenti `muro` (spostando un vertice il muro si rigenera subito; il terreno spianato
+attorno si aggiorna al riavvio); case, chiesa, pozzo, cartelli e lampioni sono piazzamenti dei tipi `casa-piccola`, `casa-media`,
+`casa-grande`, `locanda`, `fabbro`, `forno`, `stalla`, `chiesa`, `pozzo`, `cartello` (la nota del cartello è il nome del file in
+`assets/textures/cartelli/`). Nome, cancelli e strade sono in `assets/world/villaggio.txt`. `scripts/gen_villaggio.py` rigenera il layout
+iniziale (edifici, lampioni, cartelli e stradine; `--preview` salva un'anteprima dall'alto), `scripts/make_selciato_texture.py` e
+`scripts/make_cartelli.py` le texture (solo locale).
+
 ### Giorno e notte
 
 Il giorno di gioco dura 24 minuti reali (1 ora = 1 minuto); sole e luna attraversano il cielo

@@ -1,0 +1,28 @@
+# Villaggio murato (modificabile a mano; riletto all'avvio).
+# Le MURA sono i piazzamenti "muro" di debug/placements.txt (vertici in ordine di id, poligono chiuso).
+# Coordinate in metri: x = Est, z = Sud (il nord è -Z).
+nome: Fontevivo
+piazza: -1.2 10.0
+
+# Cancelli: nome e punto indicativo (si proietta sul tratto di muro più vicino).
+cancello: Nord 0.2 -7.6
+cancello: Sud 0.2 40.0
+
+# Strade: "strada: <tipo> <larghezza m> | x z, x z, ..." (tipo: grande | piccola | piazza).
+
+# --- strade (generate da scripts/gen_villaggio.py: rilanciare lo script le rigenera) ---
+strada: grande 4.2 | 0.21 -32.00, 0.21 -8.30, 0.10 -3.00, -0.50 2.00, -1.00 7.00, -1.20 10.00, -0.90 16.00, 0.00 22.00, 0.41 26.50, 0.41 48.00
+strada: piazza 11.0 | -1.20 10.00, -1.20 10.01
+strada: piccola 2.4 | 3.00 10.00, 12.00 10.50, 22.00 10.80
+strada: piccola 2.4 | -0.60 0.80, -10.00 0.40, -22.00 0.40
+strada: piccola 2.4 | -1.00 17.50, -6.00 18.50, -14.50 19.40
+strada: piccola 2.6 | -5.50 10.20, -7.20 12.00
+strada: stradina 1.6 | -4.50 12.00, -5.93 10.65
+strada: stradina 1.6 | 16.50 7.85, 16.42 10.63
+strada: stradina 1.6 | 13.00 12.30, 13.05 10.53
+strada: stradina 1.6 | 2.25 19.80, -0.27 20.18
+strada: stradina 1.6 | -9.00 -1.30, -9.07 0.44
+strada: stradina 1.6 | -17.50 -1.20, -17.50 0.40
+strada: stradina 1.6 | -9.50 1.80, -9.44 0.42
+strada: stradina 1.6 | -3.50 21.00, -4.08 18.12
+strada: stradina 1.6 | -14.50 25.00, -14.50 19.40

@@ -228,6 +228,7 @@ pub fn draw_map_overlay(
     player_pos: Vec3,
     heading_deg: f32,
     hut_pos: Option<Vec3>,
+    village: Option<(&str, Vec3)>,
     zoom: f32,
 ) {
     let size = ctx.viewport_rect().size();
@@ -330,6 +331,11 @@ pub fn draw_map_overlay(
                 egui::FontId::proportional(16.0),
                 egui::Color32::WHITE,
             );
+        }
+        if let Some((name, at)) = village
+            && let Ok(p) = cam.world_to_viewport(cam_t, at + Vec3::Y * 6.0)
+        {
+            crate::ui_style::plate(&painter, egui::pos2(p.x, p.y), name, 28.0, gold);
         }
         if let Some(h) = hut_pos
             && let Ok(p) = cam.world_to_viewport(cam_t, h + Vec3::Y * 6.0)

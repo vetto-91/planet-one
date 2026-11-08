@@ -31,3 +31,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0004 | Porting Windows e macOS con build in CI | accettato |
 | 0005 | Dialoghi con IA solo locale (Ollama) | accettato |
 | 0006 | Voce dei dialoghi IA con Piper locale | accettato |
+| 0007 | Villaggio murato con edifici procedurali | accettato |
