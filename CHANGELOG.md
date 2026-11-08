@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.19.0 — Mercato, negozi, armi e campi (2026-11-08)
 
 - **Negozi e mercato**: pannello di acquisto con le monete (30 iniziali, i nemici ne lasciano); venditori: Viandante (pozioni), armaiolo Ferruccio, arciera Silvia e tre bancarelle in
   piazza (pozioni, mele, pesce). Nuovi oggetti: spada corta, spada lunga, ascia, scudo, arco, frecce, mela, pesce (ADR 0009).
