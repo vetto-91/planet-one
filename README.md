@@ -203,6 +203,16 @@ verso il mirino). A mani nude 4. Per provare: `PLANET_ONE_GIVE=1` mette tutto in
 Fuori dalle mura ci sono **campi** di grano e un orto (tipi `campo`, `orto` in F4: si disegnano come aree con distribuzione regolare), pagliai e
 spaventapasseri. `scripts/gen_mercato.py` aggiunge mercato, botteghe e campi senza toccare il resto.
 
+### La strada del sud, il faro e il porticciolo
+
+Dalla Porta Sud una strada selciata scende per circa 70 m fino alla costa. A ovest, sulla scogliera, c'è il **faro** (a fasce bianche e rosse, con
+il guardiano Ettore): si accende al tramonto e il fascio gira. A est c'è il **porticciolo** con il molo di legno (ci si cammina sopra), tre barche, la
+casetta dei pescatori e il pescatore Gaspare. Cartelli "Faro" e "Porticciolo" lungo la strada. Lo script `scripts/gen_porto.py` genera tutto (strada,
+faro, molo, barche, lampioni, cartelli) senza toccare il resto; i tipi F4 sono `faro`, `molo` (a livello del mare) e `barca`.
+
+La **campana della chiesa** suona alle ore piene dal mattino alle 21 (7 rintocchi alle 7, 12 a mezzogiorno…): il suono è sintetizzato in locale e il
+volume dipende dalla distanza dal campanile (si sente anche fuori dalle mura, più piano).
+
 ### Giorno e notte
 
 Il giorno di gioco dura 24 minuti reali (1 ora = 1 minuto); sole e luna attraversano il cielo

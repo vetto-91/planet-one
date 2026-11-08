@@ -67,6 +67,7 @@ Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, 
 - `src/village.rs` e `src/buildings.rs`: villaggio murato (mura da piazzamenti `muro`, cancelli, edifici procedurali con colori di vertice; ADR 0007; dati in `assets/world/villaggio.txt`).
 - `src/villagers.rs`: abitanti e guardie (dati in `assets/world/abitanti.txt`, persona IA in `assets/ai/`), routine e percorsi sulle strade (ADR 0008).
 - `src/shop.rs`, `src/equipment.rs`, `src/inventory.rs`, `src/combat.rs`: negozi con le monete, armi/scudo/arco impugnabili e frecce (ADR 0009).
+- `src/bells.rs`: campana della chiesa sintetizzata e rintocchi alle ore; porto, faro e molo in `buildings.rs`/`world_props.rs` (ADR 0010, `scripts/gen_porto.py`).
 - `src/menu.rs`: UI egui (menu Esc, dialogo, FPS, diario J, bussola, fumetti).
 
 ## Regole di lavoro

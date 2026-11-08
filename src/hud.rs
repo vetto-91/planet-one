@@ -310,7 +310,7 @@ pub fn draw_enemy_bars(
 /// Targhetta con il nome sopra ogni NPC vicino al player.
 pub fn draw_npc_labels(
     ctx: &egui::Context,
-    npcs: &Query<(Entity, &GlobalTransform, &crate::entities::Npc)>,
+    npcs: &Query<(Entity, &GlobalTransform, &crate::entities::Npc, &Visibility)>,
     cameras: &Query<(&Camera, &GlobalTransform)>,
     player_pos: Vec3,
     barks: &crate::quests::Barks,
@@ -321,8 +321,9 @@ pub fn draw_npc_labels(
     };
     let viewport = ctx.viewport_rect();
     let painter = ctx.layer_painter(egui::LayerId::background());
-    for (entity, t, npc) in npcs.iter() {
-        if occluded.0.contains(&entity) {
+    for (entity, t, npc, vis) in npcs.iter() {
+        // Di notte gli abitanti sono in casa (nascosti): niente targhetta.
+        if *vis == Visibility::Hidden || occluded.0.contains(&entity) {
             continue;
         }
         if t.translation().distance(player_pos) > LABEL_DIST && !barks.has(entity) {

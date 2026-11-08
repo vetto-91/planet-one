@@ -8,6 +8,7 @@
 
 mod ai;
 mod audio;
+mod bells;
 mod buildings;
 mod camera;
 mod combat;
@@ -129,6 +130,7 @@ fn main() {
         .add_plugins(village::plugin)
         .add_plugins(villagers::plugin)
         .add_plugins(shop::plugin)
+        .add_plugins(bells::plugin)
         .init_resource::<debug_place::DebugPlace>()
         .init_resource::<hud::Occluded>()
         .init_resource::<audio::AudioSettings>()
@@ -271,6 +273,7 @@ fn main() {
             (
                 world_props::sync_world_props,
                 world_props::update_street_lamps,
+                world_props::update_lighthouse,
             ),
         )
         // Toggle Esc: bidirezionale (Playing ↔ Paused), esclude Resetting.

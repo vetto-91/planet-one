@@ -112,6 +112,7 @@ pub struct UiQueries<'w, 's> {
             Entity,
             &'static GlobalTransform,
             &'static crate::entities::Npc,
+            &'static Visibility,
         ),
     >,
     pub anchors: Query<'w, 's, &'static crate::hud::NameAnchor>,

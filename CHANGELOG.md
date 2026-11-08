@@ -2,6 +2,14 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Strada del sud** dal cancello al mare, **faro** (luce girevole di notte, guardiano Ettore) e **porticciolo** con molo calpestabile, tre barche, casetta dei pescatori e il
+  pescatore Gaspare; cartelli e lampioni lungo la strada (ADR 0010).
+- **Campana** della chiesa: suono sintetizzato in locale, rintocchi alle ore piene dalle 7 alle 21 con volume secondo la distanza.
+- **Correzioni**: di notte gli abitanti nascosti non mostrano più la targhetta; le bancarelle del mercato, la bottega dell'arciere, i pagliai e gli spaventapasseri
+  ora compaiono (in v0.0.19.0 mancavano per una lista di tipi incompleta, ora c'è un test).
+
 ## v0.0.19.0 — Mercato, negozi, armi e campi (2026-11-08)
 
 - **Negozi e mercato**: pannello di acquisto con le monete (30 iniziali, i nemici ne lasciano); venditori: Viandante (pozioni), armaiolo Ferruccio, arciera Silvia e tre bancarelle in

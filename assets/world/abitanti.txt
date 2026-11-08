@@ -102,3 +102,15 @@ skin: rosa
 negozio: pesce
 lavoro: -6.4 15.4 1 0
 orari: 7 18 20
+
+[Gaspare]
+ruolo: pescatore
+skin: verde
+lavoro: 8.5 103.0 0 1
+orari: 5 19 22
+
+[Ettore]
+ruolo: guardiano del faro
+skin: guardia
+guardia: si
+lavoro: -10.8 94.0 1 0

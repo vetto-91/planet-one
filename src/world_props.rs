@@ -29,6 +29,12 @@ pub struct WorldProp;
 #[derive(Component)]
 pub struct LampLight;
 
+/// Testa girevole del faro e luci che si accendono di sera.
+#[derive(Component)]
+pub struct LighthouseHead;
+#[derive(Component)]
+pub struct LighthouseBeam;
+
 /// Lanterna emissiva di un lampione (materiale condiviso).
 #[derive(Component)]
 pub struct LampBulb(Handle<StandardMaterial>);
@@ -163,7 +169,9 @@ pub fn sync_world_props(
             continue;
         }
         for (j, &p) in pl.points.iter().enumerate() {
-            if crate::terrain::is_water(p.x, p.y) {
+            // Molo e barche stanno apposta in mare.
+            let at_sea = matches!(pl.kind.as_str(), "molo" | "barca");
+            if !at_sea && crate::terrain::is_water(p.x, p.y) {
                 info!(
                     "[PROPS] oggetto in ({:.1},{:.1}) saltato: in mare",
                     p.x, p.y
@@ -176,32 +184,79 @@ pub fn sync_world_props(
                 let seed =
                     (p.x * 100.0) as i32 as u32 ^ ((p.y * 100.0) as i32 as u32).rotate_left(11);
                 let model = crate::buildings::model(&pl.kind, seed);
-                commands
-                    .spawn((
-                        WorldProp,
-                        SceneNode,
-                        SnapToGround {
-                            offset: -0.05,
-                            half: model.half,
-                        },
-                        Transform::from_xyz(p.x, 0.0, p.y)
-                            .with_rotation(Quat::from_rotation_y(yaw)),
-                        Visibility::default(),
-                        RigidBody::Static,
-                    ))
-                    .with_children(|c| {
-                        c.spawn((
-                            Mesh3d(meshes.add(model.mesh)),
-                            MeshMaterial3d(building_mat.clone()),
-                        ));
-                        for (center, size) in model.colliders {
-                            c.spawn((
-                                Collider::cuboid(size.x, size.y, size.z),
-                                Transform::from_translation(center),
-                                crate::camera::BlocksCamera,
-                            ));
-                        }
+                // Molo e barche stanno sul mare (quota fissa), il resto si appoggia al terreno.
+                let fixed_y = match pl.kind.as_str() {
+                    "molo" => Some(crate::terrain::SEA_LEVEL),
+                    "barca" => Some(crate::terrain::SEA_LEVEL + 0.05),
+                    _ => None,
+                };
+                let kind = pl.kind.clone();
+                let mut e = commands.spawn((
+                    WorldProp,
+                    SceneNode,
+                    Transform::from_xyz(p.x, fixed_y.unwrap_or(0.0), p.y)
+                        .with_rotation(Quat::from_rotation_y(yaw)),
+                    Visibility::default(),
+                    RigidBody::Static,
+                ));
+                if fixed_y.is_none() {
+                    e.insert(SnapToGround {
+                        offset: -0.05,
+                        half: model.half,
                     });
+                }
+                e.with_children(|c| {
+                    c.spawn((
+                        Mesh3d(meshes.add(model.mesh)),
+                        MeshMaterial3d(building_mat.clone()),
+                    ));
+                    for (i, (center, size)) in model.colliders.into_iter().enumerate() {
+                        let mut col = c.spawn((
+                            Collider::cuboid(size.x, size.y, size.z),
+                            Transform::from_translation(center),
+                            crate::camera::BlocksCamera,
+                        ));
+                        // Il piano del molo è "terreno" per il controllo di appoggio del giocatore.
+                        if kind == "molo" && i == 0 {
+                            col.insert(crate::scene::Ground);
+                        }
+                    }
+                    if kind == "faro" {
+                        // Testa del faro: ruota; dentro c'è un faro orientabile e un bagliore fisso.
+                        c.spawn((
+                            LighthouseHead,
+                            Transform::from_xyz(0.0, 14.55, 0.0),
+                            Visibility::default(),
+                        ))
+                        .with_children(|h| {
+                            h.spawn((
+                                LighthouseBeam,
+                                SpotLight {
+                                    color: Color::srgb(1.0, 0.92, 0.7),
+                                    intensity: 0.0,
+                                    range: 160.0,
+                                    outer_angle: 0.18,
+                                    inner_angle: 0.05,
+                                    shadow_maps_enabled: false,
+                                    ..default()
+                                },
+                                Transform::from_xyz(0.0, 0.0, -0.4)
+                                    .looking_to(Vec3::new(0.0, -0.06, -1.0), Vec3::Y),
+                            ));
+                        });
+                        c.spawn((
+                            LighthouseBeam,
+                            PointLight {
+                                color: Color::srgb(1.0, 0.88, 0.6),
+                                intensity: 0.0,
+                                range: 14.0,
+                                shadow_maps_enabled: false,
+                                ..default()
+                            },
+                            Transform::from_xyz(0.0, 14.7, 0.0),
+                        ));
+                    }
+                });
                 spawned += 1;
                 continue;
             }
@@ -446,5 +501,28 @@ pub fn update_street_lamps(
         && let Some(mut m) = materials.get_mut(&b.0)
     {
         m.emissive = LinearRgba::rgb(0.2 + 6.0 * level, 0.15 + 4.2 * level, 0.05 + 1.8 * level);
+    }
+}
+
+/// Sistema: il faro si accende al tramonto e il fascio gira (un giro ogni ~8 s).
+pub fn update_lighthouse(
+    time: Res<Time>,
+    clock: Res<GameClock>,
+    mut heads: Query<&mut Transform, With<LighthouseHead>>,
+    mut spots: Query<&mut SpotLight, With<LighthouseBeam>>,
+    mut points: Query<&mut PointLight, With<LighthouseBeam>>,
+) {
+    for mut tf in &mut heads {
+        tf.rotate_y(time.delta_secs() * 0.8);
+    }
+    let dark = !(6.5..18.0).contains(&clock.hour);
+    let k = (time.delta_secs() * 1.5).min(1.0);
+    for mut l in &mut spots {
+        let target = if dark { 40_000_000.0 } else { 0.0 };
+        l.intensity += (target - l.intensity) * k;
+    }
+    for mut l in &mut points {
+        let target = if dark { 200_000.0 } else { 0.0 };
+        l.intensity += (target - l.intensity) * k;
     }
 }

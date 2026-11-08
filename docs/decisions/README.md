@@ -34,3 +34,5 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0007 | Villaggio murato con edifici procedurali | accettato |
 | 0008 | Abitanti e guardie con dialoghi IA | accettato |
 | 0009 | Negozi, armi e mercato | accettato |
+
+| 0010 | Strada del sud, faro, porticciolo e campane | accettato |

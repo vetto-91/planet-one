@@ -22,6 +22,15 @@ pub fn is_building(kind: &str) -> bool {
             | "stalla"
             | "chiesa"
             | "pozzo"
+            | "arcere"
+            | "bancarella-erbe"
+            | "bancarella-frutta"
+            | "bancarella-pesce"
+            | "pagliaio"
+            | "spaventapasseri"
+            | "faro"
+            | "molo"
+            | "barca"
     )
 }
 
@@ -633,6 +642,220 @@ fn stall(b: &mut B, kind: &str) -> Vec<(Vec3, Vec3)> {
     ]
 }
 
+/// Faro: zoccolo di pietra, torre a fasce bianche e rosse, balconata, lanterna e cupola.
+fn lighthouse(b: &mut B) -> Vec<(Vec3, Vec3)> {
+    let (white, red) = ([0.95, 0.93, 0.88, 1.0], [0.78, 0.18, 0.15, 1.0]);
+    b.cuboid(Vec3::new(-2.6, -1.8, -2.6), Vec3::new(2.6, 0.6, 2.6), STONE);
+    b.cuboid(
+        Vec3::new(-2.2, 0.6, -2.2),
+        Vec3::new(2.2, 1.0, 2.2),
+        STONE_DARK,
+    );
+    let mut y = 1.0;
+    for i in 0..5 {
+        let hw = 1.95 - i as f32 * 0.14;
+        b.cuboid(
+            Vec3::new(-hw, y, -hw),
+            Vec3::new(hw, y + 2.6, hw),
+            if i % 2 == 0 { white } else { red },
+        );
+        y += 2.6;
+    }
+    // Porta e finestrelle.
+    door_front(b, 0.0, 1.95, 0.95, 1.9);
+    for (i, h) in [3.4f32, 6.0, 8.6, 11.2].iter().enumerate() {
+        let n = if i % 2 == 0 { Vec3::X } else { Vec3::NEG_X };
+        b.cuboid_c(
+            Vec3::new(n.x * (1.78 - i as f32 * 0.1), *h, 0.0),
+            Vec3::new(0.08, 0.6, 0.4),
+            GLASS,
+        );
+    }
+    // Balconata con ringhiera.
+    b.cuboid(
+        Vec3::new(-2.3, y, -2.3),
+        Vec3::new(2.3, y + 0.25, 2.3),
+        STONE_DARK,
+    );
+    for (x, z) in [
+        (-2.2, -2.2),
+        (2.2, -2.2),
+        (-2.2, 2.2),
+        (2.2, 2.2),
+        (0.0, -2.2),
+        (0.0, 2.2),
+        (-2.2, 0.0),
+        (2.2, 0.0),
+    ] {
+        b.cuboid_c(Vec3::new(x, y + 0.75, z), Vec3::new(0.1, 1.0, 0.1), TIMBER);
+    }
+    for (cx, cz, sx, sz) in [
+        (0.0, -2.2, 4.5, 0.1),
+        (0.0, 2.2, 4.5, 0.1),
+        (-2.2, 0.0, 0.1, 4.5),
+        (2.2, 0.0, 0.1, 4.5),
+    ] {
+        b.cuboid_c(Vec3::new(cx, y + 1.25, cz), Vec3::new(sx, 0.08, sz), TIMBER);
+    }
+    // Lanterna (vetri chiari), cupola e parafulmine.
+    b.cuboid(
+        Vec3::new(-0.95, y + 0.25, -0.95),
+        Vec3::new(0.95, y + 2.05, 0.95),
+        [1.0, 0.92, 0.62, 1.0],
+    );
+    for (x, z) in [(-0.95, -0.95), (0.95, -0.95), (-0.95, 0.95), (0.95, 0.95)] {
+        b.cuboid_c(
+            Vec3::new(x, y + 1.15, z),
+            Vec3::new(0.12, 1.8, 0.12),
+            TIMBER,
+        );
+    }
+    b.cuboid(
+        Vec3::new(-1.15, y + 2.05, -1.15),
+        Vec3::new(1.15, y + 2.25, 1.15),
+        STONE_DARK,
+    );
+    b.pyramid(Vec3::new(0.0, y + 2.25, 0.0), 1.2, 1.4, red);
+    b.cuboid_c(
+        Vec3::new(0.0, y + 4.1, 0.0),
+        Vec3::new(0.06, 1.0, 0.06),
+        TIMBER,
+    );
+    vec![
+        (Vec3::new(0.0, 5.5, 0.0), Vec3::new(4.2, 12.0, 4.2)),
+        (Vec3::new(0.0, -0.6, 0.0), Vec3::new(5.2, 2.4, 5.2)),
+    ]
+}
+
+/// Molo di legno (si stende verso +Z per 14 m a partire da z = -2): tavole, pali, parapetti, casse.
+/// L'origine è a livello del mare; il primo collider è il piano calpestabile.
+fn pier(b: &mut B) -> Vec<(Vec3, Vec3)> {
+    let deck_y = 0.55;
+    // Tavole a strisce alternate.
+    let n = 31;
+    for i in 0..n {
+        let z0 = -2.0 + 14.0 * i as f32 / n as f32;
+        let z1 = -2.0 + 14.0 * (i + 1) as f32 / n as f32;
+        let col: Col = if i % 2 == 0 {
+            [0.55, 0.4, 0.25, 1.0]
+        } else {
+            [0.5, 0.36, 0.22, 1.0]
+        };
+        b.cuboid(
+            Vec3::new(-1.2, deck_y - 0.12, z0 + 0.01),
+            Vec3::new(1.2, deck_y, z1 - 0.01),
+            col,
+        );
+    }
+    // Travi longitudinali e pali.
+    for x in [-1.0f32, 1.0] {
+        b.cuboid(
+            Vec3::new(x - 0.1, deck_y - 0.35, -2.0),
+            Vec3::new(x + 0.1, deck_y - 0.12, 12.0),
+            TIMBER,
+        );
+    }
+    for i in 0..6 {
+        let z = -1.0 + i as f32 * 2.6;
+        for x in [-1.3f32, 1.3] {
+            b.cuboid_c(Vec3::new(x, -1.2, z), Vec3::new(0.24, 4.6, 0.24), TIMBER);
+            b.cuboid_c(
+                Vec3::new(x, deck_y + 0.55, z),
+                Vec3::new(0.12, 1.1, 0.12),
+                TIMBER,
+            );
+        }
+    }
+    for x in [-1.3f32, 1.3] {
+        b.cuboid_c(
+            Vec3::new(x, deck_y + 0.95, 5.0),
+            Vec3::new(0.08, 0.08, 14.0),
+            TIMBER,
+        );
+        b.cuboid_c(
+            Vec3::new(x, deck_y + 0.5, 5.0),
+            Vec3::new(0.08, 0.08, 14.0),
+            TIMBER,
+        );
+    }
+    // Bitte di ormeggio, casse e un barile.
+    for (x, z) in [(-1.1, 4.0), (1.1, 8.0), (-1.1, 11.4)] {
+        b.cuboid_c(
+            Vec3::new(x, deck_y + 0.18, z),
+            Vec3::new(0.2, 0.36, 0.2),
+            [0.2, 0.2, 0.22, 1.0],
+        );
+    }
+    b.cuboid_c(
+        Vec3::new(-0.7, deck_y + 0.3, 1.0),
+        Vec3::new(0.7, 0.6, 0.7),
+        [0.6, 0.45, 0.28, 1.0],
+    );
+    b.cuboid_c(
+        Vec3::new(-0.6, deck_y + 0.9, 1.0),
+        Vec3::new(0.5, 0.5, 0.5),
+        [0.55, 0.4, 0.25, 1.0],
+    );
+    b.cuboid_c(
+        Vec3::new(0.75, deck_y + 0.4, 2.4),
+        Vec3::new(0.55, 0.8, 0.55),
+        [0.45, 0.3, 0.18, 1.0],
+    );
+    vec![
+        (
+            Vec3::new(0.0, deck_y - 0.15, 5.0),
+            Vec3::new(2.4, 0.3, 14.0),
+        ),
+        (
+            Vec3::new(-1.3, deck_y + 0.6, 5.0),
+            Vec3::new(0.14, 1.2, 14.0),
+        ),
+        (
+            Vec3::new(1.3, deck_y + 0.6, 5.0),
+            Vec3::new(0.14, 1.2, 14.0),
+        ),
+    ]
+}
+
+/// Barca a remi (si stende lungo Z, prua verso +Z).
+fn boat(b: &mut B, r: &mut Rng) {
+    let hull: Col = r.pick(&[
+        [0.45, 0.3, 0.18, 1.0],
+        [0.3, 0.42, 0.55, 1.0],
+        [0.6, 0.25, 0.2, 1.0],
+    ]);
+    let wood: Col = [0.55, 0.4, 0.25, 1.0];
+    b.cuboid(
+        Vec3::new(-0.55, -0.25, -1.4),
+        Vec3::new(0.55, 0.45, 1.0),
+        hull,
+    );
+    // Prua a punta e poppa dritta.
+    b.cuboid(
+        Vec3::new(-0.38, -0.2, 1.0),
+        Vec3::new(0.38, 0.45, 1.4),
+        hull,
+    );
+    b.cuboid(
+        Vec3::new(-0.18, -0.15, 1.4),
+        Vec3::new(0.18, 0.5, 1.75),
+        hull,
+    );
+    // Interno: fondo e sedili.
+    b.cuboid(
+        Vec3::new(-0.45, 0.4, -1.3),
+        Vec3::new(0.45, 0.46, 0.95),
+        [0.35, 0.25, 0.15, 1.0],
+    );
+    for z in [-0.6f32, 0.2] {
+        b.cuboid_c(Vec3::new(0.0, 0.58, z), Vec3::new(1.05, 0.08, 0.3), wood);
+    }
+    // Remi.
+    for x in [-0.8f32, 0.8] {
+        b.cuboid_c(Vec3::new(x, 0.75, -0.2), Vec3::new(0.05, 0.05, 1.7), wood);
+    }
+}
+
 /// Pozzo: anello di pietra, due montanti, piccolo tetto e secchio.
 fn well(b: &mut B) -> Vec<(Vec3, Vec3)> {
     b.cuboid(Vec3::new(-1.2, -1.0, -1.2), Vec3::new(1.2, 0.9, 1.2), STONE);
@@ -728,6 +951,18 @@ pub fn model(kind: &str, seed: u32) -> Building {
         "bancarella-erbe" | "bancarella-frutta" | "bancarella-pesce" => {
             let c = stall(&mut b, kind);
             (3.0, 2.8, c)
+        }
+        "faro" => {
+            let c = lighthouse(&mut b);
+            (5.2, 5.2, c)
+        }
+        "molo" => {
+            let c = pier(&mut b);
+            (3.2, 14.0, c)
+        }
+        "barca" => {
+            boat(&mut b, &mut r);
+            (1.3, 3.2, Vec::new())
         }
         "pagliaio" => {
             b.cuboid(
@@ -844,4 +1079,39 @@ pub fn crop_field_mesh(kind: &str, pts: &[Vec2], height: &dyn Fn(Vec2) -> f32) -
         }
     }
     b.finish()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Ogni tipo che ha un modello deve essere riconosciuto come edificio (e viceversa).
+    #[test]
+    fn every_building_kind_has_a_model() {
+        for k in [
+            "casa",
+            "casa-piccola",
+            "casa-media",
+            "casa-grande",
+            "locanda",
+            "fabbro",
+            "forno",
+            "stalla",
+            "chiesa",
+            "pozzo",
+            "arcere",
+            "bancarella-erbe",
+            "bancarella-frutta",
+            "bancarella-pesce",
+            "pagliaio",
+            "spaventapasseri",
+            "faro",
+            "molo",
+            "barca",
+        ] {
+            assert!(is_building(k), "{k} non riconosciuto");
+            let m = model(k, 7);
+            assert!(m.mesh.count_vertices() > 8, "{k} senza mesh");
+        }
+    }
 }

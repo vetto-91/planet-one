@@ -26,7 +26,7 @@ use std::fmt::Write as _;
 /// File con i piazzamenti (relativo alla cartella del progetto / di lavoro).
 pub const FILE: &str = "debug/placements.txt";
 /// Tipi predefiniti.
-const KINDS: [&str; 27] = [
+const KINDS: [&str; 30] = [
     "albero",
     "roccia",
     "cespuglio",
@@ -50,6 +50,9 @@ const KINDS: [&str; 27] = [
     "spaventapasseri",
     "campo",
     "orto",
+    "faro",
+    "molo",
+    "barca",
     "muro",
     "lampione",
     "panchina",
@@ -195,6 +198,9 @@ pub fn footprint(kind: &str) -> f32 {
         "spaventapasseri" => 0.6,
         "campo" => 0.45,
         "orto" => 0.4,
+        "faro" => 3.6,
+        "molo" => 1.8,
+        "barca" => 1.8,
         _ => 0.5,
     }
 }

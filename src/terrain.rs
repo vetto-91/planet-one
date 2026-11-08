@@ -169,6 +169,7 @@ pub fn update_terrain(
     terrains: Query<(Entity, &Mesh3d), With<TerrainMesh>>,
     extras: Query<Entity, With<TerrainExtra>>,
     village: Option<Res<VillageInfo>>,
+    dbg: Option<Res<crate::debug_place::DebugPlace>>,
 ) {
     // Hot-reload: se la heightmap è stata modificata, invalida il mesh attuale.
     for event in events.read() {
@@ -221,7 +222,17 @@ pub fn update_terrain(
     let road_w = road_weights(&field, &vil.spec.roads);
     let road_mesh = build_sand_mesh(&mesh, &road_w);
     let sea_mesh = build_sea_mesh(&field, &ocean);
-    let barrier = build_barrier(&field, &shore_mask);
+    // I moli (piazzamenti `molo`) interrompono la barriera di riva: ci si cammina sopra.
+    let piers: Vec<(Vec2, f32)> = dbg
+        .map(|d| {
+            d.items
+                .iter()
+                .filter(|p| p.kind == "molo")
+                .flat_map(|p| p.points.iter().enumerate().map(|(j, q)| (*q, p.yaw(j))))
+                .collect()
+        })
+        .unwrap_or_default();
+    let barrier = build_barrier(&field, &shore_mask, &piers);
     let shore = shore_points(&field, &shore_mask);
     info!(
         "[TERRAIN] riva: {} punti; sabbia: {} vertici",
@@ -768,12 +779,33 @@ fn build_sea_mesh(field: &Field, ocean: &[bool]) -> Mesh {
 }
 
 /// Barriera di riva: heightfield con +12 m sul mare (soglia `SHORE_LEVEL`) e −40 m altrove.
-fn build_barrier(field: &Field, shore_mask: &[bool]) -> Collider {
+fn build_barrier(field: &Field, shore_mask: &[bool], piers: &[(Vec2, f32)]) -> Collider {
     let n = field.n;
+    // Dentro l'impronta di un molo (x ±1,6 m, z da −2,5 a +12,5 m locali) il muro cade.
+    let on_pier = |x: usize, z: usize| {
+        let p = Vec2::new(
+            -TERRAIN_SIZE / 2.0 + x as f32 * STEP,
+            -TERRAIN_SIZE / 2.0 + z as f32 * STEP,
+        );
+        piers.iter().any(|(c, yaw)| {
+            let d = p - *c;
+            let (s, co) = yaw.sin_cos();
+            // coordinate locali: +Z locale = (sin yaw, cos yaw), +X locale = (cos yaw, -sin yaw)
+            let lz = d.x * s + d.y * co;
+            let lx = d.x * co - d.y * s;
+            lx.abs() < 1.6 && (-2.5..12.5).contains(&lz)
+        })
+    };
     let heights: Vec<Vec<f32>> = (0..n)
         .map(|x| {
             (0..n)
-                .map(|z| if shore_mask[z * n + x] { 12.0 } else { -40.0 })
+                .map(|z| {
+                    if shore_mask[z * n + x] && !on_pier(x, z) {
+                        12.0
+                    } else {
+                        -40.0
+                    }
+                })
                 .collect()
         })
         .collect();
