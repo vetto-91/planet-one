@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.22.0 — Stagioni visibili (Fase 2) (2026-11-08)
 
 - **Stagioni visibili (Fase 2)**: erba e sabbia cambiano tinta, chiome verdi/autunnali/innevate, fiori che sbocciano da primavera, neve a terra e sui tetti d'inverno,
   foglie che cadono in autunno, luce stagionale (ADR 0012).

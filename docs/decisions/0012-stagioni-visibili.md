@@ -2,7 +2,7 @@
 
 - Data: 2026-11-08
 - Stato: accettato
-- Versione: da rilasciare (v0.0.22.0)
+- Versione: v0.0.22.0
 
 ## Contesto
 Dopo la data e il sole stagionale (ADR 0011) il mondo deve anche cambiare aspetto con le stagioni.
