@@ -28,6 +28,11 @@ pub struct VillagerDef {
     pub guard: bool,
     /// Assortimento del negozio (chiave di `shop.rs`), se è un venditore.
     pub shop: Option<String>,
+    /// Cancello (nome) e turno (1..=3) delle guardie di turno.
+    pub gate: Option<String>,
+    pub shift: Option<u8>,
+    /// Camminamento (etichetta) delle guardie di ronda sulle mura.
+    pub wall: Option<String>,
     /// Posto di lavoro e direzione dello sguardo (dx, dz).
     pub work: (Vec2, Vec2),
     /// Posto serale (se diverso) e sguardo.
@@ -65,6 +70,9 @@ fn parse(text: &str) -> Vec<VillagerDef> {
             "skin" => d.skin = val.trim().to_string(),
             "guardia" => d.guard = val.trim() == "si",
             "negozio" => d.shop = Some(val.trim().to_string()),
+            "cancello" => d.gate = Some(val.trim().to_string()),
+            "turno" => d.shift = val.trim().parse().ok().filter(|t| (1..=3).contains(t)),
+            "muro" => d.wall = Some(val.trim().to_lowercase()),
             "lavoro" => {
                 if let Some(p) = pos(&nums) {
                     d.work = p;
@@ -100,6 +108,8 @@ enum Phase {
     Work,
     Evening,
     Night,
+    /// Guardia fuori turno: va alla casa delle guardie.
+    Rest,
 }
 
 /// Componente di un abitante (routine).
@@ -109,15 +119,32 @@ pub struct Villager {
     phase: Phase,
     path: VecDeque<Vec2>,
     placed: bool,
+    /// Nascosto (in casa o alla caserma).
+    hidden: bool,
 }
 
 /// Lanterna di una guardia (accesa di notte).
 #[derive(Component)]
 pub struct GuardLantern;
 
+/// Turni delle guardie (ore di gioco, fine esclusa; il terzo attraversa la mezzanotte).
+const SHIFTS: [(f32, f32); 3] = [(6.0, 14.0), (14.0, 22.0), (22.0, 30.0)];
+/// Anticipo (h) con cui il cambio turno raggiunge il posto: la caserma sta fuori dal cancello nord: la camminata fino a Porta Sud dura ~45 min.
+const SHIFT_EARLY: f32 = 1.0;
+
+/// La guardia del turno `shift` (1..=3) è in servizio a quest'ora?
+pub fn on_duty(shift: u8, hour: f32) -> bool {
+    let (a, b) = SHIFTS[(shift as usize).clamp(1, 3) - 1];
+    let a = a - SHIFT_EARLY;
+    (a..b).contains(&hour) || (a..b).contains(&(hour + 24.0))
+}
+
 fn desired_phase(def: &VillagerDef, hour: f32) -> Phase {
     if def.guard {
-        return Phase::Work;
+        return match def.shift {
+            Some(t) if !on_duty(t, hour) => Phase::Rest,
+            _ => Phase::Work,
+        };
     }
     let (start, end, night) = def.hours;
     if hour >= start && hour < end {
@@ -129,11 +156,56 @@ fn desired_phase(def: &VillagerDef, hour: f32) -> Phase {
     }
 }
 
-fn spot(def: &VillagerDef, phase: Phase) -> (Vec2, Vec2) {
+/// Posto di una guardia di cancello: subito oltre la punta dell'anta aperta (che si apre verso
+/// l'interno lungo il lato del vano), ai bordi della strada; un posto diverso per ogni turno.
+pub fn gate_post(gate: &crate::village::Gate, shift: u8) -> (Vec2, Vec2) {
+    let (lateral, dist) = match shift {
+        1 => (-1.5, 3.2),
+        2 => (1.5, 3.2),
+        _ => (-1.5, 4.6),
+    };
+    (
+        gate.pos + gate.inward * dist + gate.tangent * lateral,
+        -gate.inward,
+    )
+}
+
+/// Camminamento di una guardia di ronda: punto a metà del tratto, sguardo verso l'esterno.
+fn wall_post(walk: &crate::village::Walk, info: &VillageInfo) -> (Vec2, Vec2) {
+    let p = walk.pts[walk.pts.len() / 2];
+    let out = (p - info.center).normalize_or_zero();
+    (p, out)
+}
+
+fn spot(def: &VillagerDef, phase: Phase, info: &VillageInfo) -> (Vec2, Vec2) {
     match phase {
         Phase::Evening => def.evening.unwrap_or(def.work),
-        _ => def.work,
+        Phase::Rest => info.barracks.map_or(def.work, |(door, out)| (door, -out)),
+        _ => {
+            if let Some(w) = def
+                .wall
+                .as_ref()
+                .and_then(|l| info.walks.iter().find(|w| &w.label == l))
+            {
+                return wall_post(w, info);
+            }
+            if let (Some(name), Some(shift)) = (&def.gate, def.shift)
+                && let Some(g) = info
+                    .gates
+                    .iter()
+                    .find(|g| g.name.eq_ignore_ascii_case(name))
+            {
+                return gate_post(g, shift);
+            }
+            def.work
+        }
     }
+}
+
+/// Quota del piano di camminamento per le guardie di ronda.
+fn wall_y(def: &VillagerDef, info: &VillageInfo) -> Option<f32> {
+    let l = def.wall.as_ref()?;
+    info.walks.iter().find(|w| &w.label == l).map(|w| w.y)
 }
 
 /// Direzione (yaw) perché il davanti (-Z locale) guardi verso `d`.
@@ -209,6 +281,7 @@ pub fn spawn_villagers(
                     phase: Phase::Work,
                     path: VecDeque::new(),
                     placed: false,
+                    hidden: false,
                 },
                 RigidBody::Kinematic,
                 Collider::capsule(0.35, 1.0),
@@ -400,44 +473,69 @@ pub fn villager_routine(
     }
     for (entity, mut tf, mut npc, mut v, mut vis) in &mut q {
         let want = desired_phase(&v.def, hour);
+        let here = Vec2::new(tf.translation.x, tf.translation.z);
         // Primo frame: si mette direttamente nella fase giusta.
         if !v.placed {
+            // Le guardie di ronda aspettano che il camminamento sia stato costruito.
+            if v.def.wall.is_some() && wall_y(&v.def, &info).is_none() {
+                *vis = Visibility::Hidden;
+                continue;
+            }
             v.placed = true;
             v.phase = want;
-            let (p, look) = spot(&v.def, want);
+            let (p, look) = spot(&v.def, want, &info);
             tf.translation = Vec3::new(p.x, 0.0, p.y);
             tf.rotation = Quat::from_rotation_y(yaw_towards(look));
-            *vis = if want == Phase::Night {
-                Visibility::Hidden
+            v.hidden = matches!(want, Phase::Night | Phase::Rest);
+            if v.hidden {
+                *vis = Visibility::Hidden;
+                npc.mode = NpcMode::Busy;
+                commands.entity(entity).insert(ColliderDisabled);
             } else {
-                Visibility::Inherited
-            };
+                *vis = Visibility::Inherited;
+            }
         }
         // Cambio di fase: si parte (o si compare/scompare).
         if want != v.phase && v.path.is_empty() {
-            let from = Vec2::new(tf.translation.x, tf.translation.z);
-            let (to, _) = spot(&v.def, want);
+            let (to, _) = spot(&v.def, want, &info);
             if want == Phase::Night {
                 *vis = Visibility::Hidden;
+                v.hidden = true;
                 npc.mode = NpcMode::Busy;
                 commands.entity(entity).insert(ColliderDisabled);
                 v.phase = want;
                 continue;
             }
-            if v.phase == Phase::Night {
-                // Esce di casa: compare al suo posto.
-                let (p, _) = spot(&v.def, want);
-                tf.translation = Vec3::new(p.x, 0.0, p.y);
+            if v.hidden {
+                // Esce di casa (o dalla caserma): compare al suo posto, o alla porta della caserma.
+                let from_rest = v.phase == Phase::Rest;
+                let appear = if from_rest {
+                    spot(&v.def, Phase::Rest, &info).0
+                } else {
+                    to
+                };
+                tf.translation = Vec3::new(appear.x, 0.0, appear.y);
                 *vis = Visibility::Inherited;
+                v.hidden = false;
+                if from_rest {
+                    v.path = graph
+                        .as_ref()
+                        .map_or_else(|| VecDeque::from([to]), |g| g.route(appear, to));
+                }
                 v.phase = want;
             } else {
+                let dest = if want == Phase::Rest {
+                    spot(&v.def, Phase::Rest, &info).0
+                } else {
+                    to
+                };
                 v.path = graph
                     .as_ref()
-                    .map_or_else(|| VecDeque::from([to]), |g| g.route(from, to));
+                    .map_or_else(|| VecDeque::from([dest]), |g| g.route(here, dest));
                 v.phase = want;
             }
         }
-        if v.phase == Phase::Night {
+        if v.hidden {
             continue;
         }
         let talking = dialog.open && dialog.speaker_entity == Some(entity);
@@ -458,8 +556,15 @@ pub fn villager_routine(
                     tf.rotation = tf.rotation.slerp(want_rot, (8.0 * dt).clamp(0.0, 1.0));
                 }
             }
+        } else if v.phase == Phase::Rest {
+            // Arrivata alla caserma: entra e sparisce.
+            *vis = Visibility::Hidden;
+            v.hidden = true;
+            npc.mode = NpcMode::Busy;
+            commands.entity(entity).insert(ColliderDisabled);
+            continue;
         } else {
-            let (_, look) = spot(&v.def, v.phase);
+            let (_, look) = spot(&v.def, v.phase, &info);
             if !talking {
                 let want_rot = Quat::from_rotation_y(yaw_towards(look));
                 tf.rotation = tf.rotation.slerp(want_rot, (6.0 * dt).clamp(0.0, 1.0));
@@ -469,8 +574,10 @@ pub fn villager_routine(
                 commands.entity(entity).remove::<ColliderDisabled>();
             }
         }
-        tf.translation.y =
-            ground_y(&field, &dbg.items, tf.translation.x, tf.translation.z) + CENTER_Y;
+        tf.translation.y = match wall_y(&v.def, &info) {
+            Some(y) => y + CENTER_Y,
+            None => ground_y(&field, &dbg.items, tf.translation.x, tf.translation.z) + CENTER_Y,
+        };
     }
 }
 
@@ -539,5 +646,56 @@ mod tests {
         let r = g.route(Vec2::new(0.5, 1.0), Vec2::new(9.5, 10.0));
         assert!(r.len() >= 3);
         assert_eq!(*r.back().unwrap(), Vec2::new(9.5, 10.0));
+    }
+
+    #[test]
+    fn every_gate_is_covered_at_every_hour() {
+        for step in 0..(24 * 12) {
+            let hour = step as f32 / 12.0;
+            assert!(
+                (1..=3).any(|t| on_duty(t, hour)),
+                "nessuna guardia in servizio alle {hour}"
+            );
+        }
+        // Il turno di notte attraversa la mezzanotte.
+        assert!(on_duty(3, 23.0) && on_duty(3, 2.0) && !on_duty(3, 12.0));
+        assert!(on_duty(1, 6.5) && !on_duty(1, 15.0));
+    }
+
+    #[test]
+    fn gate_posts_are_past_the_open_leaf_and_distinct_per_shift() {
+        let gate = crate::village::Gate {
+            name: "Nord".into(),
+            pos: Vec2::new(0.0, -8.0),
+            tangent: Vec2::X,
+            inward: Vec2::Y,
+            edge: 0,
+            along: 0.0,
+        };
+        let posts: Vec<Vec2> = (1..=3).map(|s| gate_post(&gate, s).0).collect();
+        for p in &posts {
+            // L'anta aperta si estende per 2,2 m verso l'interno: il posto sta oltre.
+            assert!(p.y - gate.pos.y > 2.6, "{p}");
+            assert!((p.x - gate.pos.x).abs() < 2.1, "dentro la strada");
+        }
+        assert!(posts[0].distance(posts[1]) > 1.0 && posts[0].distance(posts[2]) > 1.0);
+    }
+
+    #[test]
+    fn spec_has_gate_and_wall_guards() {
+        let v = parse(SPEC);
+        let gate_guards: Vec<_> = v.iter().filter(|d| d.gate.is_some()).collect();
+        assert_eq!(gate_guards.len(), 6);
+        for gate in ["Nord", "Sud"] {
+            for shift in 1..=3u8 {
+                assert!(
+                    gate_guards
+                        .iter()
+                        .any(|d| d.gate.as_deref() == Some(gate) && d.shift == Some(shift)),
+                    "manca {gate} turno {shift}"
+                );
+            }
+        }
+        assert_eq!(v.iter().filter(|d| d.wall.is_some()).count(), 4);
     }
 }

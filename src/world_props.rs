@@ -145,12 +145,7 @@ pub fn sync_world_props(
         perceptual_roughness: 0.95,
         ..default()
     });
-    let snow_mat = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.95, 0.97, 1.0),
-        emissive: LinearRgba::rgb(0.22, 0.24, 0.27),
-        perceptual_roughness: 0.9,
-        ..default()
-    });
+    let snow_mat = crate::seasons::snow_material(&mut materials);
     let (mut spawned, mut skipped) = (0usize, 0usize);
     for pl in &dbg.items {
         if matches!(pl.kind.as_str(), "campo" | "orto") {

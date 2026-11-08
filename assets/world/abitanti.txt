@@ -3,6 +3,8 @@
 # Posizioni in metri (x = Est, z = Sud). "lavoro: x z dx dz" = posto e direzione dello sguardo.
 # "orari: inizio fine notte" = arriva al lavoro / va in piazza (sera) / sparisce in casa (24 = mezzanotte).
 # "guardia: si" = sempre al posto (di notte con la lanterna).
+# Guardie ai cancelli: "cancello: Nord|Sud" + "turno: 1|2|3" (6-14, 14-22, 22-6; fuori turno riposano alla casa delle guardie).
+# Guardie di ronda sul camminamento delle mura: "muro: nord|sud|est|ovest". Il posto si calcola dalla geometria (lavoro: è il ripiego).
 
 [Osvaldo]
 ruolo: locandiere
@@ -48,25 +50,77 @@ orari: 6 18 22
 ruolo: guardia
 skin: guardia
 guardia: si
-lavoro: -4.4 -6.4 1 0
+cancello: Nord
+turno: 1
+lavoro: 0 0 0 1
 
 [Guardia Bruno]
 ruolo: guardia
 skin: guardia
 guardia: si
-lavoro: 4.8 -6.4 -1 0
+cancello: Nord
+turno: 2
+lavoro: 0 0 0 1
+
+[Guardia Ennio]
+ruolo: guardia
+skin: guardia
+guardia: si
+cancello: Nord
+turno: 3
+lavoro: 0 0 0 1
 
 [Guardia Carlo]
 ruolo: guardia
 skin: guardia
 guardia: si
-lavoro: -4.4 25.0 1 0
+cancello: Sud
+turno: 1
+lavoro: 0 0 0 1
 
 [Guardia Dino]
 ruolo: guardia
 skin: guardia
 guardia: si
-lavoro: 4.8 25.0 -1 0
+cancello: Sud
+turno: 2
+lavoro: 0 0 0 1
+
+[Guardia Fausto]
+ruolo: guardia
+skin: guardia
+guardia: si
+cancello: Sud
+turno: 3
+lavoro: 0 0 0 1
+
+[Guardia Gino]
+ruolo: guardia
+skin: guardia
+guardia: si
+muro: nord
+lavoro: 0 0 0 1
+
+[Guardia Ivo]
+ruolo: guardia
+skin: guardia
+guardia: si
+muro: sud
+lavoro: 0 0 0 1
+
+[Guardia Livio]
+ruolo: guardia
+skin: guardia
+guardia: si
+muro: est
+lavoro: 0 0 0 1
+
+[Guardia Mario]
+ruolo: guardia
+skin: guardia
+guardia: si
+muro: ovest
+lavoro: 0 0 0 1
 
 [Ferruccio]
 ruolo: fabbro

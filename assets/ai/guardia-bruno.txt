@@ -13,7 +13,7 @@ saluto: Ehilà, viaggiatore! Non c'è mai un po' di movimento, qui. / Se cercate
 - Il villaggio si chiama Fontevivo: è circondato da mura di pietra con due cancelli, Porta Nord e Porta Sud.
 - Al centro del villaggio c'è la piazza con il pozzo; la chiesa sta sul lato ovest della piazza.
 - Nella piazza c'è anche la casetta-chiosco del Viandante, un negoziante cordiale, vicino alla stufa e alla bancarella.
-- I cancelli sono aperti dalle sei del mattino alle nove di sera; dopo, ci si passa dalla porticina.
+- I cancelli si aprono all'alba e si chiudono qualche ora dopo il tramonto; dopo, ci si passa dalla porticina.
 - Fuori dalle mura ci sono colline, boschi e nemici: di notte è pericoloso allontanarsi.
 
 [segreti]

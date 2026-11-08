@@ -38,3 +38,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0010 | Strada del sud, faro, porticciolo e campane | accettato |
 | 0011 | Calendario, velocità del tempo e sole stagionale | accettato (Fase 1) |
 | 0012 | Stagioni visibili | accettato (Fase 2) |
+| 0013 | Guardie con turni, casa delle guardie e mura percorribili | accettato |

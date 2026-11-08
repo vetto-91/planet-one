@@ -17,6 +17,7 @@ pub fn is_building(kind: &str) -> bool {
             | "casa-media"
             | "casa-grande"
             | "locanda"
+            | "caserma"
             | "fabbro"
             | "forno"
             | "stalla"
@@ -317,6 +318,8 @@ impl B {
             self.quad(p(u, y0), p(v, y0), p(v, y1), p(u, y1), hint(mid), col);
         }
         self.quad(p(a, y1), p(b, y1), p(cc, y1), p(d, y1), Vec3::Y, col);
+        self.snow_tri(p(a, y1), p(b, y1), p(cc, y1));
+        self.snow_tri(p(a, y1), p(cc, y1), p(d, y1));
     }
 
     pub(crate) fn finish(self) -> Mesh {
@@ -951,6 +954,17 @@ pub fn model(kind: &str, seed: u32) -> Building {
             );
             (10.0, 6.5, body_colliders(10.0, 6.5, 5.2))
         }
+        "caserma" => {
+            // Casa delle guardie: due piani, travi a vista, stendardo rosso accanto alla porta.
+            house(&mut b, &mut r, 8.0, 6.0, 5.2, 2, true, 1);
+            b.cuboid_c(Vec3::new(1.9, 3.6, 3.4), Vec3::new(0.08, 0.08, 0.9), TIMBER);
+            b.cuboid_c(
+                Vec3::new(1.9, 3.1, 3.8),
+                Vec3::new(0.7, 0.9, 0.06),
+                [0.7, 0.14, 0.12, 1.0],
+            );
+            (8.0, 6.0, body_colliders(8.0, 6.0, 5.2))
+        }
         "fabbro" => {
             house(&mut b, &mut r, 6.5, 5.0, 3.0, 1, false, 0);
             sign_arm(&mut b, [0.35, 0.36, 0.4, 1.0]);
@@ -1130,6 +1144,7 @@ mod tests {
             "casa-media",
             "casa-grande",
             "locanda",
+            "caserma",
             "fabbro",
             "forno",
             "stalla",

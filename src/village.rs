@@ -224,6 +224,14 @@ pub fn project_gates(poly: &[Vec2], hints: &[(String, Vec2)]) -> Vec<Gate> {
         .collect()
 }
 
+/// Camminamento sulle mura: etichetta (nord/sud/est/ovest), centro della striscia e quota del piano.
+#[derive(Clone, Debug)]
+pub struct Walk {
+    pub label: String,
+    pub pts: Vec<Vec2>,
+    pub y: f32,
+}
+
 /// Dati del villaggio per il resto del gioco (mappa, terreno, banner).
 #[derive(Resource, Default, Clone)]
 pub struct VillageInfo {
@@ -231,6 +239,10 @@ pub struct VillageInfo {
     pub poly: Vec<Vec2>,
     pub gates: Vec<Gate>,
     pub center: Vec2,
+    /// Camminamenti (riempiti da `sync_village` quando costruisce le mura).
+    pub walks: Vec<Walk>,
+    /// Porta della casa delle guardie e direzione dello sguardo verso l'esterno.
+    pub barracks: Option<(Vec2, Vec2)>,
 }
 
 impl VillageInfo {
@@ -243,11 +255,21 @@ impl VillageInfo {
         } else {
             poly.iter().fold(Vec2::ZERO, |a, b| a + *b) / poly.len() as f32
         };
+        // Casa delle guardie: la porta è sul fronte (+Z locale), 0,8 m oltre la facciata.
+        let barracks = items.iter().find(|p| p.kind == "caserma").and_then(|pl| {
+            let p = *pl.points.first()?;
+            let yaw = pl.yaw(0);
+            let dir = Vec2::new(yaw.sin(), yaw.cos());
+            let half = crate::buildings::model("caserma", 1).half;
+            Some((p + dir * (half.y + 0.8), dir))
+        });
         Self {
             spec,
             poly,
             gates,
             center,
+            walks: Vec::new(),
+            barracks,
         }
     }
 }
@@ -324,6 +346,73 @@ pub fn sync_village(
         0.92 + (seed % 1000) as f32 / 1000.0 * 0.16
     };
 
+    // --- Camminamenti: tratti scelti, quota del piano e gradini (la scala parte dal lato del cancello) ---
+    struct WalkBuild {
+        label: String,
+        run: Run,
+        y: f32,
+        g0: f32,
+        steps: usize,
+        start: f32,
+        end: f32,
+    }
+    let mut walk_builds: Vec<WalkBuild> = Vec::new();
+    let clear = walk_clearance(&dbg.items);
+    for (label, run) in pick_walkable(&info.poly, &info.gates, &ground, &clear) {
+        let len = run.len();
+        let strip = |s: f32| {
+            let (p, _, inw) = run_point(&info.poly, &run, s);
+            p + inw * (WALL_T / 2.0 + WALK_W / 2.0)
+        };
+        let hs: Vec<f32> = (0..=(len as usize))
+            .map(|k| ground(strip(k as f32)))
+            .collect();
+        let gmax = hs.iter().cloned().fold(f32::MIN, f32::max);
+        let gmean = hs.iter().sum::<f32>() / hs.len() as f32;
+        // Piano a 2,4 m sopra il terreno medio, ma mai a meno di 1,3 m sopra il punto più alto.
+        let y = (gmean + WALK_H).max(gmax + 1.3);
+        let start = if run.gate_start.is_some() {
+            0.1
+        } else {
+            TOWER_MARGIN
+        };
+        let end = if run.gate_end.is_some() {
+            0.1
+        } else {
+            TOWER_MARGIN
+        };
+        let g0 = ground(strip(start));
+        let steps = ((y - g0) / STEP_RISE).ceil().max(1.0) as usize;
+        let walk_len = len - end - start - steps as f32 * STEP_RUN;
+        info!(
+            "[VILLAGGIO] camminamento {label}: tratto {len:.1} m, piano a {y:.2} m (terreno {g0:.2}..{gmax:.2}), {steps} gradini, piano utile {walk_len:.1} m"
+        );
+        if walk_len < 2.5 {
+            continue;
+        }
+        walk_builds.push(WalkBuild {
+            label,
+            run,
+            y,
+            g0,
+            steps,
+            start,
+            end,
+        });
+    }
+    // Per ogni lato: intervalli (da, a, quota) dove il muro deve salire fino al piano.
+    let raised: Vec<(usize, f32, f32, f32)> = walk_builds
+        .iter()
+        .flat_map(|w| {
+            w.run
+                .spans
+                .iter()
+                .map(|s| (s.0, s.1.min(s.2), s.1.max(s.2), w.y))
+        })
+        .collect();
+    let mut walk_colliders: Vec<(Vec3, Vec3, f32)> = Vec::new();
+    let mut walks: Vec<Walk> = Vec::new();
+
     // --- Tratti di muro (a pezzi da ~2 m che seguono il terreno), con i vani dei cancelli ---
     for i in 0..n {
         let (a, b) = (info.poly[i], info.poly[(i + 1) % n]);
@@ -364,7 +453,14 @@ pub fn sync_village(
                 let pm = (pa + pb) / 2.0;
                 let hs = [ground(pa), ground(pm), ground(pb)];
                 let lo = hs.iter().cloned().fold(f32::MAX, f32::min) - 1.2;
-                let hi = hs.iter().cloned().fold(f32::MIN, f32::max) + WALL_H;
+                let um = (u0 + u1) / 2.0;
+                let mut hi = hs.iter().cloned().fold(f32::MIN, f32::max) + WALL_H;
+                if let Some(r) = raised
+                    .iter()
+                    .find(|r| r.0 == i && um >= r.1 - 0.01 && um <= r.2 + 0.01)
+                {
+                    hi = hi.max(r.3 + 1.1);
+                }
                 let half = (u1 - u0) / 2.0 + 0.02;
                 stone.obox(pm, lo, hi, half, WALL_T / 2.0, t, tint(STONE, rnd()));
                 stone.obox(
@@ -389,7 +485,7 @@ pub fn sync_village(
     // --- Torrette ai vertici (non vicino ai cancelli, che hanno i loro piloni) ---
     for i in 0..n {
         let v = info.poly[i];
-        if info.gates.iter().any(|g| g.pos.distance(v) < 6.8) {
+        if info.gates.iter().any(|g| g.pos.distance(v) < TOWER_CLEAR) {
             continue;
         }
         let g0 = ground(v);
@@ -405,6 +501,60 @@ pub fn sync_village(
         );
         roofs.pyramid(Vec3::new(v.x, g0 + 5.0, v.y), 1.75, 2.6, ROOFS[0]);
         colliders.push((Vec3::new(v.x, g0 + 1.8, v.y), Vec3::new(2.8, 6.5, 2.8), 0.0));
+    }
+
+    // --- Camminamenti e scale ---
+    for w in &walk_builds {
+        let len = w.run.len();
+        let at = |s: f32| {
+            let (p, t, inw) = run_point(&info.poly, &w.run, s);
+            (p + inw * (WALL_T / 2.0 + WALK_W / 2.0), t)
+        };
+        let rise = (w.y - w.g0) / w.steps as f32;
+        for i in 0..w.steps {
+            let (c, t) = at(w.start + (i as f32 + 0.5) * STEP_RUN);
+            let top = w.g0 + (i as f32 + 1.0) * rise;
+            let lo = ground(c) - 1.0;
+            stone.obox(
+                c,
+                lo,
+                top,
+                STEP_RUN / 2.0,
+                WALK_W / 2.0,
+                t,
+                tint(STONE_DARK, rnd()),
+            );
+            walk_colliders.push((
+                Vec3::new(c.x, (lo + top) / 2.0, c.y),
+                Vec3::new(STEP_RUN, top - lo, WALK_W),
+                (-t.y).atan2(t.x),
+            ));
+        }
+        let s_from = w.start + w.steps as f32 * STEP_RUN;
+        let s_to = len - w.end;
+        let k = (((s_to - s_from) / 2.2).ceil() as usize).max(1);
+        let mut pts = Vec::new();
+        for j in 0..k {
+            let (a, b) = (
+                s_from + (s_to - s_from) * j as f32 / k as f32,
+                s_from + (s_to - s_from) * (j + 1) as f32 / k as f32,
+            );
+            let (c, t) = at((a + b) / 2.0);
+            let lo = ground(c) - 1.0;
+            let half = (b - a) / 2.0 + 0.02;
+            stone.obox(c, lo, w.y, half, WALK_W / 2.0, t, tint(STONE, rnd()));
+            walk_colliders.push((
+                Vec3::new(c.x, (lo + w.y) / 2.0, c.y),
+                Vec3::new(half * 2.0, w.y - lo, WALK_W),
+                (-t.y).atan2(t.x),
+            ));
+            pts.push(c);
+        }
+        walks.push(Walk {
+            label: w.label.clone(),
+            pts,
+            y: w.y,
+        });
     }
 
     // --- Cancelli: piloni con torrette, architrave, battenti e maniglia ---
@@ -565,6 +715,8 @@ pub fn sync_village(
         perceptual_roughness: 0.95,
         ..default()
     });
+    let snow_mat = crate::seasons::snow_material(&mut materials);
+    let snows = [stone.snow_mesh(), roofs.snow_mesh()];
     commands
         .spawn((
             VillageWall,
@@ -578,6 +730,15 @@ pub fn sync_village(
                 Mesh3d(meshes.add(stone.finish())),
                 MeshMaterial3d(mat.clone()),
             ));
+            for snow in snows {
+                c.spawn((
+                    crate::seasons::SeasonSnowRoof,
+                    Mesh3d(meshes.add(snow)),
+                    MeshMaterial3d(snow_mat.clone()),
+                    bevy::light::NotShadowCaster,
+                    Visibility::Hidden,
+                ));
+            }
             c.spawn((
                 Mesh3d(meshes.add(roofs.finish())),
                 MeshMaterial3d(mat.clone()),
@@ -589,7 +750,17 @@ pub fn sync_village(
                     BlocksCamera,
                 ));
             }
+            // Camminamenti e gradini: sono "terreno" per il controllo di appoggio del giocatore.
+            for (center, size, yaw) in walk_colliders {
+                c.spawn((
+                    Collider::cuboid(size.x, size.y, size.z),
+                    Transform::from_translation(center).with_rotation(Quat::from_rotation_y(yaw)),
+                    BlocksCamera,
+                    crate::scene::Ground,
+                ));
+            }
         });
+    info.walks = walks;
     built.1 = 1;
     info!(
         "[VILLAGGIO] mura costruite: {} vertici, {} cancelli",
@@ -629,6 +800,251 @@ pub fn village_banner(
         quest.title = Some((info.spec.name.clone(), 4.0));
     }
     *was_inside = Some(inside);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Camminamenti sulle mura (ADR 0013)
+// ---------------------------------------------------------------------------------------------
+
+/// Distanza dal cancello oltre la quale un vertice del muro ha la sua torretta.
+const TOWER_CLEAR: f32 = 6.8;
+/// Quota del piano di camminamento sopra il punto più alto del terreno del tratto (m).
+const WALK_H: f32 = 2.4;
+/// Larghezza del camminamento (m), alzata e pedata dei gradini (m).
+const WALK_W: f32 = 1.2;
+const STEP_RISE: f32 = 0.3;
+const STEP_RUN: f32 = 0.38;
+/// Margine (m) lasciato libero davanti a una torretta piena.
+const TOWER_MARGIN: f32 = 1.9;
+/// Lunghezza minima (m) di un tratto per ospitare scala e camminamento.
+const MIN_RUN: f32 = 8.0;
+
+/// Funzione "qui è libero" per i camminamenti: fuori da edifici (rettangoli ruotati, la casetta compresa)
+/// e da pali, lampioni e alberi (cerchi), con un margine di 0,4 m.
+pub fn walk_clearance(items: &[Placement]) -> impl Fn(Vec2) -> bool {
+    // (centro, semi-lati locali, yaw); la casetta del Viandante sta in (6,5, 0,7), 4×6 m.
+    let mut rects: Vec<(Vec2, Vec2, f32)> = vec![(Vec2::new(6.5, 0.7), Vec2::new(2.0, 3.0), 0.0)];
+    let mut circles: Vec<(Vec2, f32)> = Vec::new();
+    for pl in items {
+        for (j, &p) in pl.points.iter().enumerate() {
+            if crate::buildings::is_building(&pl.kind) {
+                let half = crate::buildings::model(&pl.kind, 1).half;
+                rects.push((p, half, pl.yaw(j)));
+            } else if matches!(
+                pl.kind.as_str(),
+                "lampione" | "cartello" | "albero" | "panchina" | "pozzo"
+            ) {
+                circles.push((p, crate::debug_place::footprint(&pl.kind)));
+            }
+        }
+    }
+    move |q: Vec2| {
+        let m = 0.4;
+        !rects.iter().any(|(c, half, yaw)| {
+            let l = Quat::from_rotation_y(-yaw) * Vec3::new(q.x - c.x, 0.0, q.y - c.y);
+            l.x.abs() <= half.x + m && l.z.abs() <= half.y + m
+        }) && !circles.iter().any(|(c, r)| c.distance(q) <= r + 0.3)
+    }
+}
+
+/// Tratto di muro compreso tra due ostacoli (torretta o pilone di cancello).
+#[derive(Clone, Debug)]
+pub struct Run {
+    /// (lato, ascissa iniziale, ascissa finale) lungo il lato; l'ascissa può decrescere.
+    pub spans: Vec<(usize, f32, f32)>,
+    /// Cancello contro cui il tratto inizia / finisce, se c'è.
+    pub gate_start: Option<usize>,
+    pub gate_end: Option<usize>,
+}
+
+impl Run {
+    pub fn len(&self) -> f32 {
+        self.spans.iter().map(|s| (s.2 - s.1).abs()).sum()
+    }
+
+    fn reversed(&self) -> Run {
+        Run {
+            spans: self.spans.iter().rev().map(|s| (s.0, s.2, s.1)).collect(),
+            gate_start: self.gate_end,
+            gate_end: self.gate_start,
+        }
+    }
+}
+
+fn edge_len(poly: &[Vec2], i: usize) -> f32 {
+    poly[i].distance(poly[(i + 1) % poly.len()])
+}
+
+/// Normale del lato `i` rivolta verso l'interno del villaggio.
+fn edge_inward(poly: &[Vec2], i: usize) -> Vec2 {
+    let (a, b) = (poly[i], poly[(i + 1) % poly.len()]);
+    let t = (b - a).normalize_or_zero();
+    let n = Vec2::new(-t.y, t.x);
+    if in_polygon(poly, (a + b) / 2.0 + n * 0.5) {
+        n
+    } else {
+        -n
+    }
+}
+
+/// Suddivide il muro in tratti (catene di pezzi di muro) separati da torrette e cancelli.
+pub fn wall_runs(poly: &[Vec2], gates: &[Gate]) -> Vec<Run> {
+    let n = poly.len();
+    if n < 3 {
+        return Vec::new();
+    }
+    let tower = |v: usize| !gates.iter().any(|g| g.pos.distance(poly[v]) < TOWER_CLEAR);
+    // Pezzi pieni di ogni lato (fuori dai vani dei cancelli).
+    #[allow(clippy::type_complexity)]
+    let mut pieces: Vec<(usize, f32, f32, Option<usize>, Option<usize>)> = Vec::new();
+    for i in 0..n {
+        let len = edge_len(poly, i);
+        let mut gaps: Vec<(f32, f32, usize)> = gates
+            .iter()
+            .enumerate()
+            .filter(|(_, g)| g.edge == i)
+            .map(|(k, g)| {
+                (
+                    (g.along - GATE_HALF - 2.0 * PIER_HALF).max(0.0),
+                    (g.along + GATE_HALF + 2.0 * PIER_HALF).min(len),
+                    k,
+                )
+            })
+            .collect();
+        gaps.sort_by(|a, b| a.0.total_cmp(&b.0));
+        let (mut cur, mut before) = (0.0f32, None);
+        for (g0, g1, k) in gaps {
+            if g0 - cur > 0.05 {
+                pieces.push((i, cur, g0, before, Some(k)));
+            }
+            cur = g1;
+            before = Some(k);
+        }
+        if len - cur > 0.05 {
+            pieces.push((i, cur, len, before, None));
+        }
+    }
+    let mut runs: Vec<Run> = Vec::new();
+    for (e, s0, s1, gb, ga) in pieces {
+        let join = runs.last().is_some_and(|r| {
+            let l = r.spans.last().unwrap();
+            l.0 + 1 == e
+                && (l.2 - edge_len(poly, l.0)).abs() < 0.05
+                && s0 < 0.05
+                && r.gate_end.is_none()
+                && !tower(e)
+        });
+        if join {
+            let r = runs.last_mut().unwrap();
+            r.spans.push((e, s0, s1));
+            r.gate_end = ga;
+        } else {
+            runs.push(Run {
+                spans: vec![(e, s0, s1)],
+                gate_start: gb,
+                gate_end: ga,
+            });
+        }
+    }
+    // Raccordo ciclico: ultimo tratto → primo, se non c'è un ostacolo in mezzo.
+    if runs.len() >= 2 {
+        let (f, l) = (runs[0].clone(), runs[runs.len() - 1].clone());
+        let (fs, ls) = (f.spans[0], l.spans[l.spans.len() - 1]);
+        if fs.0 == 0
+            && fs.1 < 0.05
+            && ls.0 == n - 1
+            && (ls.2 - edge_len(poly, ls.0)).abs() < 0.05
+            && l.gate_end.is_none()
+            && f.gate_start.is_none()
+            && !tower(0)
+        {
+            let mut merged = l;
+            merged.spans.extend(f.spans);
+            merged.gate_end = f.gate_end;
+            runs.pop();
+            runs[0] = merged;
+        }
+    }
+    runs
+}
+
+/// Sceglie i tratti da rendere percorribili: il fianco più lungo di ogni cancello (la scala "della porta")
+/// più il tratto più lungo a est e quello più lungo a ovest. Ogni tratto parte dal lato della scala.
+pub fn pick_walkable(
+    poly: &[Vec2],
+    gates: &[Gate],
+    ground: &dyn Fn(Vec2) -> f32,
+    clear: &dyn Fn(Vec2) -> bool,
+) -> Vec<(String, Run)> {
+    let runs = wall_runs(poly, gates);
+    // Un tratto è usabile se è abbastanza lungo e la striscia di camminamento non attraversa edifici o pali.
+    let usable = |r: &Run| {
+        r.len() >= MIN_RUN
+            && (0..=(r.len() * 2.0) as usize).all(|k| {
+                let (p, _, inw) = run_point(poly, r, k as f32 * 0.5);
+                [0.0f32, 0.5, 1.0, 1.5]
+                    .iter()
+                    .all(|d| clear(p + inw * (WALL_T / 2.0 + *d)))
+            })
+    };
+    let mut used = vec![false; runs.len()];
+    let mut out: Vec<(String, Run)> = Vec::new();
+    for (k, g) in gates.iter().enumerate() {
+        let best = (0..runs.len())
+            .filter(|&i| runs[i].gate_start == Some(k) || runs[i].gate_end == Some(k))
+            .filter(|&i| usable(&runs[i]))
+            .max_by(|a, b| runs[*a].len().total_cmp(&runs[*b].len()));
+        if let Some(i) = best {
+            used[i] = true;
+            let r = if runs[i].gate_start == Some(k) {
+                runs[i].clone()
+            } else {
+                runs[i].reversed()
+            };
+            out.push((g.name.to_lowercase(), r));
+        }
+    }
+    let center = poly.iter().fold(Vec2::ZERO, |a, b| a + *b) / poly.len().max(1) as f32;
+    let score = |r: &Run| {
+        let hs: Vec<f32> = (0..=(r.len() as usize))
+            .map(|k| ground(run_point(poly, r, k as f32).0))
+            .collect();
+        let range = hs.iter().cloned().fold(f32::MIN, f32::max)
+            - hs.iter().cloned().fold(f32::MAX, f32::min);
+        r.len() - 12.0 * range
+    };
+    for (label, sign) in [("est", 1.0f32), ("ovest", -1.0)] {
+        let best = (0..runs.len())
+            .filter(|&i| !used[i] && usable(&runs[i]))
+            .filter(|&i| {
+                let (p, _, _) = run_point(poly, &runs[i], runs[i].len() / 2.0);
+                (p.x - center.x) * sign > 8.0
+            })
+            // Preferisce i tratti lunghi e in piano (dove il muro non deve salire troppo).
+            .max_by(|a, b| score(&runs[*a]).total_cmp(&score(&runs[*b])));
+        if let Some(i) = best {
+            used[i] = true;
+            out.push((label.to_string(), runs[i].clone()));
+        }
+    }
+    out
+}
+
+/// Punto del tratto a distanza `s` dall'inizio: (posizione sul muro, tangente, normale verso l'interno).
+pub fn run_point(poly: &[Vec2], run: &Run, s: f32) -> (Vec2, Vec2, Vec2) {
+    let mut acc = 0.0;
+    for (k, &(e, s0, s1)) in run.spans.iter().enumerate() {
+        let l = (s1 - s0).abs();
+        if s <= acc + l || k + 1 == run.spans.len() {
+            let u = (s - acc).clamp(0.0, l);
+            let dir = if s1 >= s0 { 1.0 } else { -1.0 };
+            let (a, b) = (poly[e], poly[(e + 1) % poly.len()]);
+            let t = (b - a).normalize_or_zero();
+            return (a + t * (s0 + dir * u), t * dir, edge_inward(poly, e));
+        }
+        acc += l;
+    }
+    (Vec2::ZERO, Vec2::X, Vec2::Y)
 }
 
 pub fn plugin(app: &mut App) {
@@ -674,5 +1090,53 @@ mod tests {
         assert_eq!(s.name, "Fontevivo");
         assert_eq!(s.gates.len(), 2);
         assert!(s.roads.len() >= 2);
+    }
+
+    fn big_square() -> Vec<Vec2> {
+        vec![
+            Vec2::new(-20.0, -20.0),
+            Vec2::new(20.0, -20.0),
+            Vec2::new(20.0, 20.0),
+            Vec2::new(-20.0, 20.0),
+        ]
+    }
+
+    #[test]
+    fn walls_split_into_runs_between_gates_and_towers() {
+        let poly = big_square();
+        let gates = project_gates(
+            &poly,
+            &[
+                ("Nord".into(), Vec2::new(0.0, -20.0)),
+                ("Sud".into(), Vec2::new(0.0, 20.0)),
+            ],
+        );
+        let runs = wall_runs(&poly, &gates);
+        // Ogni cancello ha due fianchi; est e ovest sono tratti interi tra due torrette (angoli).
+        assert!(runs.len() >= 4, "{}", runs.len());
+        assert!(runs.iter().all(|r| r.len() > 0.0));
+    }
+
+    #[test]
+    fn walkable_runs_cover_gates_east_and_west() {
+        let poly = big_square();
+        let gates = project_gates(
+            &poly,
+            &[
+                ("Nord".into(), Vec2::new(0.0, -20.0)),
+                ("Sud".into(), Vec2::new(0.0, 20.0)),
+            ],
+        );
+        let walkable = pick_walkable(&poly, &gates, &|_| 0.0, &|_| true);
+        let labels: Vec<&str> = walkable.iter().map(|(l, _)| l.as_str()).collect();
+        for want in ["nord", "sud", "est", "ovest"] {
+            assert!(labels.contains(&want), "manca {want}: {labels:?}");
+        }
+        // Il tratto di un cancello parte contro il cancello (lì c'è la scala).
+        let nord = &walkable.iter().find(|(l, _)| l == "nord").unwrap().1;
+        assert_eq!(nord.gate_start, Some(0));
+        let (p, _, inw) = run_point(&poly, nord, 0.0);
+        assert!(p.distance(gates[0].pos) > 2.0 && p.distance(gates[0].pos) < 6.0);
+        assert!(inw.y > 0.5, "la normale guarda verso l'interno");
     }
 }

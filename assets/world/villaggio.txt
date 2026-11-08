@@ -27,6 +27,9 @@ strada: stradina 1.6 | -9.50 1.80, -9.44 0.42
 strada: stradina 1.6 | -3.50 21.00, -4.08 18.12
 strada: stradina 1.6 | -14.50 25.00, -14.50 19.40
 
+# --- strada della caserma (generata da scripts/gen_guardie.py) ---
+strada: piccola 2.0 | 3.70 -16.50, 0.21 -16.50
+
 # --- strada del porto (generata da scripts/gen_porto.py) ---
 strada: grande 4.2 | 0.41 48.00, 0.00 60.00, -0.60 72.00, -0.40 84.00, 0.60 91.00, 3.50 94.20, 8.50 95.40
 strada: piccola 2.6 | 0.60 91.00, -5.00 92.40, -10.00 93.40, -11.20 94.00

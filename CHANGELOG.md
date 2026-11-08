@@ -2,6 +2,14 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Guardie con turni**: 6 guardie ai cancelli su tre turni (6–14, 14–22, 22–6), sempre almeno una per cancello, posti subito oltre l'anta aperta; chi finisce il turno va alla
+  nuova **casa delle guardie** (fuori da Porta Nord) e riposa; 4 guardie di ronda sulle mura (ADR 0013).
+- **Mura percorribili**: camminamenti con parapetto e scale (una per cancello, una a est e una a ovest) dove salgono le guardie di ronda.
+- **Correzioni**: la neve compare anche su torri, mura e merli; le foglie d'autunno cadono in coordinate di mondo (non seguono più la camera) e si spostano col vento;
+  lampioni spostati vicino alla chiesa.
+
 ## v0.0.22.0 — Stagioni visibili (Fase 2) (2026-11-08)
 
 - **Stagioni visibili (Fase 2)**: erba e sabbia cambiano tinta, chiome verdi/autunnali/innevate, fiori che sbocciano da primavera, neve a terra e sui tetti d'inverno,

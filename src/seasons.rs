@@ -264,12 +264,14 @@ pub struct SeasonSnowGround;
 #[derive(Component)]
 pub struct FallingLeaf {
     seed: f32,
+    counter: u32,
+    fresh: bool,
 }
 
 const LEAF_GREEN: [[f32; 3]; 3] = [[0.16, 0.5, 0.2], [0.22, 0.58, 0.24], [0.12, 0.42, 0.22]];
 const LEAF_AUTUMN: [[f32; 3]; 3] = [[0.85, 0.4, 0.1], [0.8, 0.62, 0.12], [0.65, 0.2, 0.1]];
 const LEAF_SNOW: [f32; 3] = [0.9, 0.94, 0.98];
-const POOL: usize = 48;
+const POOL: usize = 150;
 
 /// Colore (RGB) della chioma `i` nel `look` dato.
 pub fn leaf_color(l: &Look, i: usize) -> [f32; 3] {
@@ -355,6 +357,16 @@ pub fn apply_season(
     }
 }
 
+/// Materiale del manto di neve (bianco-azzurro, leggermente emissivo per non spegnersi all'ombra).
+pub fn snow_material(materials: &mut Assets<StandardMaterial>) -> Handle<StandardMaterial> {
+    materials.add(StandardMaterial {
+        base_color: Color::srgb(0.95, 0.97, 1.0),
+        emissive: LinearRgba::rgb(0.22, 0.24, 0.27),
+        perceptual_roughness: 0.9,
+        ..default()
+    })
+}
+
 /// Avvio: crea il gruppo di foglie in caduta (nascoste finché non è autunno).
 pub fn spawn_leaves(
     mut commands: Commands,
@@ -375,7 +387,9 @@ pub fn spawn_leaves(
     for i in 0..POOL {
         commands.spawn((
             FallingLeaf {
-                seed: i as f32 * 1.618,
+                seed: i as f32 * 1.618 + 0.37,
+                counter: 0,
+                fresh: true,
             },
             NotShadowCaster,
             Mesh3d(mesh.clone()),
@@ -386,37 +400,84 @@ pub fn spawn_leaves(
     }
 }
 
-/// Sistema: muove le foglie in un riquadro attorno alla camera; attive in proporzione a `leaf_fall`.
+/// Vento (m/s sul piano x, z): sposta foglie e, più avanti, pioggia e neve.
+#[derive(Resource)]
+pub struct Wind(pub Vec2);
+
+impl Default for Wind {
+    fn default() -> Self {
+        Self(Vec2::new(0.8, 0.3))
+    }
+}
+
+/// Raggio (m) attorno alla camera entro cui vivono le foglie.
+const LEAF_RADIUS: f32 = 22.0;
+
+/// Numero pseudo-casuale deterministico in 0..1.
+fn rnd(seed: f32, k: u32) -> f32 {
+    ((seed * 12.9898 + k as f32 * 78.233).sin() * 43_758.545).rem_euclid(1.0)
+}
+
+/// Sistema: le foglie vivono in coordinate di **mondo** (non seguono la camera): cadono con il vento
+/// fino al suolo e vengono riciclate quando toccano terra o escono dal raggio attorno al giocatore.
 pub fn update_leaves(
     time: Res<Time>,
     season: Res<SeasonLook>,
+    wind: Res<Wind>,
+    field: Option<Res<crate::terrain::TerrainField>>,
     cameras: Query<&GlobalTransform, With<Camera3d>>,
-    mut leaves: Query<(&FallingLeaf, &mut Transform, &mut Visibility), Without<Camera3d>>,
+    mut leaves: Query<(&mut FallingLeaf, &mut Transform, &mut Visibility), Without<Camera3d>>,
 ) {
-    let Ok(cam) = cameras.single() else {
+    let (Ok(cam), Some(field)) = (cameras.single(), field) else {
         return;
     };
     let cam = cam.translation();
-    let active = (season.0.leaf_fall * POOL as f32) as usize;
+    let dt = time.delta_secs().min(0.1);
     let t = time.elapsed_secs();
-    for (i, (leaf, mut tf, mut vis)) in leaves.iter_mut().enumerate() {
+    let active = (season.0.leaf_fall * POOL as f32) as usize;
+    for (i, (mut leaf, mut tf, mut vis)) in leaves.iter_mut().enumerate() {
         if i >= active {
             *vis = Visibility::Hidden;
+            leaf.fresh = true;
             continue;
         }
         *vis = Visibility::Inherited;
-        let s = leaf.seed;
-        // Caduta lenta (0,9 m/s) in un ciclo di 10 m, con oscillazione laterale.
-        let fall = (t * 0.9 + s * 7.3).rem_euclid(10.0);
-        let x = (s * 12.9898).sin() * 12.0 + (t * 0.7 + s).sin() * 1.2;
-        let z = (s * 78.233).sin() * 12.0 + (t * 0.5 + s * 2.0).cos() * 1.2;
-        tf.translation = cam + Vec3::new(x, 6.0 - fall, z);
-        tf.rotation = Quat::from_euler(EulerRot::XYZ, t * 1.3 + s, t * 0.8, s);
+        let pos = tf.translation;
+        let ground = field.height_at(pos.x, pos.z);
+        let out = Vec2::new(pos.x - cam.x, pos.z - cam.z).length() > LEAF_RADIUS;
+        if leaf.fresh || out || pos.y < ground + 0.03 {
+            // (Ri)generazione: disco attorno alla camera; all'inizio a quota casuale.
+            leaf.counter += 1;
+            let ang = rnd(leaf.seed, leaf.counter * 3) * std::f32::consts::TAU;
+            let r = LEAF_RADIUS * rnd(leaf.seed, leaf.counter * 3 + 1).sqrt();
+            let x = cam.x + ang.cos() * r;
+            let z = cam.z + ang.sin() * r;
+            let g = field.height_at(x, z);
+            let top = cam.y.max(g) + 7.0;
+            let y = if leaf.fresh {
+                g + 0.5 + rnd(leaf.seed, leaf.counter * 3 + 2) * (top - g)
+            } else {
+                top + rnd(leaf.seed, leaf.counter * 3 + 2) * 2.0
+            };
+            leaf.fresh = false;
+            tf.translation = Vec3::new(x, y, z);
+            continue;
+        }
+        // Caduta lenta con vento e oscillazione.
+        let sway = Vec2::new(
+            (t * 0.9 + leaf.seed).sin(),
+            (t * 0.7 + leaf.seed * 2.0).cos(),
+        ) * 0.35;
+        tf.translation.x += (wind.0.x + sway.x) * dt;
+        tf.translation.z += (wind.0.y + sway.y) * dt;
+        tf.translation.y -= 0.8 * dt;
+        tf.rotation = Quat::from_euler(EulerRot::XYZ, t * 1.3 + leaf.seed, t * 0.8, leaf.seed);
     }
 }
 
 pub fn plugin(app: &mut App) {
     app.init_resource::<SeasonLook>()
+        .init_resource::<Wind>()
         .add_systems(Startup, spawn_leaves)
         .add_systems(
             Update,
