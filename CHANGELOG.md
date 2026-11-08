@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.18.0 — Abitanti e guardie, correzioni al villaggio (2026-11-08)
 
 - **Abitanti e guardie** di Fontevivo (6 + 4) con saluto scritto e chat con la IA locale (carattere e voce propri), routine giornaliera (lavoro, piazza la sera,
   in casa di notte; le guardie ai cancelli con lanterna notturna) (ADR 0008).
