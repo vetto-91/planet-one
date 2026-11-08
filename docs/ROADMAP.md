@@ -30,6 +30,7 @@ Strategia: **vertical slice prima**. Una demo giocabile (1 quest, 1 NPC, 1 nemic
 | 7.4 — Porto e campane | Strada del sud, faro, porticciolo con molo e barche, campane della chiesa | `v0.0.20.0` |
 | 8.1 — Calendario (Fase 1) | Data dal 21 marzo anno 0, stagioni, sole e orari stagionali, velocità del tempo; mani ai personaggi, abitanti sul molo | `v0.0.21.0` |
 | 8.2 — Stagioni visibili | Tinte di erba e chiome, fiori, neve a terra/tetti/alberi, foglie che cadono, luce stagionale | `v0.0.22.0` |
+| 8.3 — Guardie e mura | Guardie su tre turni, casa delle guardie, camminamenti e scale sulle mura, guardie di ronda | `v0.0.23.0` |
 | 5.y — Mondo vivo | Colonna sonora con volume, casetta-chiosco esplorabile (porta, interni, stufa con fumo), routine giorno/notte del Viandante, voci dei personaggi, versione nel menu | `v0.0.7.0` |
 | 5.z — Mondo vivo, rifiniture | Interazione col mirino, casetta con serranda/interruttore/finestre e luci con ombre, routine del Viandante v2, voci normalizzate con ducking della musica | `v0.0.8.0` |
 | 5.w — Mappa e strumenti | Mappa dall'alto (M) con bussola e zoom, modalità debug piazzamenti (F4) con file `debug/placements.txt`, vetri e scuri spessi, il Viandante chiude porta e finestre | `v0.0.9.0` |

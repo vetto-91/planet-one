@@ -2,7 +2,7 @@
 
 - Data: 2026-11-08
 - Stato: accettato
-- Versione: da rilasciare (v0.0.23.0)
+- Versione: v0.0.23.0
 
 ## Contesto
 Le guardie stavano ferme ai cancelli senza mai riposare e il posto era fisso (il portone aperto le copriva). Si voleva sempre almeno una guardia per cancello, un luogo dove

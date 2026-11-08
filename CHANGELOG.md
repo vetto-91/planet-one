@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.23.0 — Guardie con turni, casa delle guardie e mura percorribili (2026-11-08)
 
 - **Guardie con turni**: 6 guardie ai cancelli su tre turni (6–14, 14–22, 22–6), sempre almeno una per cancello, posti subito oltre l'anta aperta; chi finisce il turno va alla
   nuova **casa delle guardie** (fuori da Porta Nord) e riposa; 4 guardie di ronda sulle mura (ADR 0013).
