@@ -2,7 +2,7 @@
 
 - Data: 2026-11-08
 - Stato: accettato
-- Versione: da rilasciare (v0.0.24.0)
+- Versione: v0.0.24.0
 
 ## Contesto
 Dopo il calendario (ADR 0011) e le stagioni visibili (ADR 0012) mancava il tempo atmosferico.

@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.24.0 — Meteo (Fase 3) (2026-11-08)
 
 - **Meteo (Fase 3)**: sereno, nuvoloso, pioggia, temporale (lampi e tuoni), nebbia e neve, deterministici per data con probabilità per mese; temperatura e meteo nel chip sotto la data;
   nebbia di distanza, luce più cupa, pioggia e neve come particelle nel mondo, neve che si accumula e si scioglie, vento, suoni di pioggia/vento/tuono sintetizzati in locale;
