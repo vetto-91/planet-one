@@ -160,26 +160,28 @@ pub fn spawn_pickup(
     kind: ItemKind,
     qty: u32,
     position: Vec3,
-) {
+) -> Entity {
     let color = kind.color();
     let c = color.to_srgba();
     let size = match kind {
         ItemKind::HealthPotion => 0.4,
         ItemKind::Coin => 0.3,
     };
-    commands.spawn((
-        SceneNode,
-        Pickup { kind, qty },
-        RigidBody::Static,
-        Collider::cuboid(size, size, size),
-        Mesh3d(meshes.add(Cuboid::new(size, size, size))),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: color,
-            emissive: LinearRgba::new(c.red, c.green, c.blue, 0.0) * 0.3,
-            ..default()
-        })),
-        Transform::from_translation(position),
-    ));
+    commands
+        .spawn((
+            SceneNode,
+            Pickup { kind, qty },
+            RigidBody::Static,
+            Collider::cuboid(size, size, size),
+            Mesh3d(meshes.add(Cuboid::new(size, size, size))),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: color,
+                emissive: LinearRgba::new(c.red, c.green, c.blue, 0.0) * 0.3,
+                ..default()
+            })),
+            Transform::from_translation(position),
+        ))
+        .id()
 }
 
 /// Sistema di raccolta: se il player è vicino a un Pickup (<= 2.0 m),

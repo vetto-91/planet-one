@@ -51,6 +51,8 @@ const DOOR_W: f32 = 0.99;
 const DOOR_H: f32 = 1.96;
 /// Angolo di apertura della porta (verso l'interno).
 const DOOR_OPEN_ANGLE: f32 = -1.75;
+/// Posizione locale della pozione sul tavolo (sopra il piano a Y0+0,78).
+pub const POTION_ON_TABLE: Vec3 = Vec3::new(0.0, Y0 + 0.99, 1.0);
 /// Posizione locale del negoziante dietro il banco (centro del corpo).
 pub const KEEPER_SHOP: Vec3 = Vec3::new(0.74, Y0 + 0.85, -2.0);
 /// Camino: posizione orizzontale e punta del tubo.

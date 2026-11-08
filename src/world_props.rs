@@ -219,9 +219,10 @@ pub fn sync_world_props(
                         .spawn((root, RigidBody::Static))
                         .with_children(|c| {
                             c.spawn((
-                                Mesh3d(meshes.add(Cuboid::new(0.14, 2.9, 0.14))),
+                                // Il palo sta dietro la tabella: non copre la scritta.
+                                Mesh3d(meshes.add(Cuboid::new(0.12, 2.9, 0.12))),
                                 MeshMaterial3d(wood.clone()),
-                                Transform::from_xyz(0.0, 1.25, 0.0),
+                                Transform::from_xyz(0.0, 1.25, -0.1),
                             ));
                             c.spawn((
                                 Mesh3d(meshes.add(Cuboid::new(1.74, 0.68, 0.07))),
@@ -235,7 +236,7 @@ pub fn sync_world_props(
                             ));
                             c.spawn((
                                 Collider::cuboid(0.3, 2.8, 0.3),
-                                Transform::from_xyz(0.0, 1.25, 0.0),
+                                Transform::from_xyz(0.0, 1.25, -0.05),
                             ));
                         });
                 }

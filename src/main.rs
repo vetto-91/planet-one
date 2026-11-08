@@ -30,6 +30,7 @@ mod terrain;
 mod ui_style;
 mod version;
 mod village;
+mod villagers;
 mod voice;
 mod world_props;
 
@@ -122,6 +123,7 @@ fn main() {
         .add_plugins(map::plugin)
         .add_plugins(ai::plugin)
         .add_plugins(village::plugin)
+        .add_plugins(villagers::plugin)
         .init_resource::<debug_place::DebugPlace>()
         .init_resource::<hud::Occluded>()
         .init_resource::<audio::AudioSettings>()

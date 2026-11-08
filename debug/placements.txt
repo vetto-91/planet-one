@@ -118,7 +118,7 @@ rotazioni: 232
 quando: 2026-11-08 14:15 UTC (ora di gioco 19:05)
 punto: x -15.81, z 26.29
 quantità: 1   seed: 356283
-punti: (-15.81,26.29)
+punti: (-17.38,26.59)
 rotazioni: 232
 
 [P-0075] tipo: muro | modalità: singolo
@@ -132,14 +132,14 @@ rotazioni: 232
 quando: 2026-11-08 14:15 UTC (ora di gioco 19:05)
 punto: x 19.76, z 16.95
 quantità: 1   seed: 850060
-punti: (19.76,16.95)
+punti: (20.50,20.33)
 rotazioni: 232
 
 [P-0078] tipo: muro | modalità: singolo
 quando: 2026-11-08 14:15 UTC (ora di gioco 19:05)
 punto: x 28.65, z 6.79
 quantità: 1   seed: 153672
-punti: (28.65,6.79)
+punti: (30.44,3.16)
 rotazioni: 232
 
 [P-0200] tipo: pozzo | modalità: singolo
@@ -267,7 +267,7 @@ quando: generato da gen_villaggio.py
 punto: x 3.20, z 18.00
 quantità: 1   seed: 1
 nota: villaggio
-punti: (3.20,18.00)
+punti: (2.47,15.99)
 rotazioni: 0
 
 [P-0216] tipo: lampione | modalità: singolo
@@ -291,7 +291,7 @@ quando: generato da gen_villaggio.py
 punto: x -6.80, z 7.00
 quantità: 1   seed: 1
 nota: villaggio
-punti: (-6.80,7.00)
+punti: (-5.82,7.06)
 rotazioni: 0
 
 [P-0219] tipo: lampione | modalità: singolo
@@ -323,7 +323,7 @@ quando: generato da gen_villaggio.py
 punto: x 8.00, z 8.40
 quantità: 1   seed: 1
 nota: villaggio
-punti: (8.00,8.40)
+punti: (16.14,11.97)
 rotazioni: 0
 
 [P-0223] tipo: lampione | modalità: singolo
@@ -339,7 +339,7 @@ quando: generato da gen_villaggio.py
 punto: x -20.00, z 2.00
 quantità: 1   seed: 1
 nota: villaggio
-punti: (-20.00,2.00)
+punti: (-22.55,0.70)
 rotazioni: 0
 
 [P-0225] tipo: cartello | modalità: singolo
@@ -387,8 +387,8 @@ quando: generato da gen_villaggio.py
 punto: x -4.20, z 8.20
 quantità: 1   seed: 1
 nota: chiesa
-punti: (-4.20,8.20)
-rotazioni: 270
+punti: (-4.82,9.35)
+rotazioni: 90
 
 [P-0231] tipo: cartello | modalità: singolo
 quando: generato da gen_villaggio.py
@@ -403,5 +403,5 @@ quando: generato da gen_villaggio.py
 punto: x 4.50, z 17.20
 quantità: 1   seed: 1
 nota: forno
-punti: (4.50,17.20)
-rotazioni: 90
+punti: (1.94,17.09)
+rotazioni: 266

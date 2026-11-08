@@ -12,6 +12,8 @@ pub struct Persona {
     /// Voce Piper (nome del file `.onnx`, senza estensione) e velocità (1.0 normale, >1 più lenta).
     pub voice: String,
     pub speed: f32,
+    /// Prime battute scritte (chiave `saluto:`, separate da " / "), prima dell'offerta della IA.
+    pub greeting: Vec<String>,
     /// Cose che il personaggio sa e può dire.
     pub knows: Vec<String>,
     /// Cose che non deve rivelare né promettere.
@@ -50,6 +52,13 @@ fn parse(text: &str) -> Persona {
                 "stile" => p.style = v.trim().to_string(),
                 "voce" => p.voice = v.trim().to_string(),
                 "velocita" => p.speed = v.trim().parse().unwrap_or(1.0),
+                "saluto" => {
+                    p.greeting = v
+                        .split(" / ")
+                        .map(|t| t.trim().to_string())
+                        .filter(|t| !t.is_empty())
+                        .collect();
+                }
                 _ => {}
             }
         }
@@ -59,7 +68,7 @@ fn parse(text: &str) -> Persona {
 
 /// Carica la persona dell'NPC `name` (file su disco, poi copia incorporata, poi generica).
 pub fn load(name: &str) -> Persona {
-    let id = name.to_lowercase();
+    let id = name.to_lowercase().replace(' ', "-");
     let rel = format!("assets/ai/{id}.txt");
     let candidates = [
         std::path::PathBuf::from(&rel),

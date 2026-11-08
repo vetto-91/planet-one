@@ -1,0 +1,69 @@
+# Abitanti e guardie di Fontevivo (modificabile a mano; riletto all'avvio e al reset scena).
+# Persona e voce per la IA: assets/ai/<nome-minuscolo-con-trattini>.txt (chiave `saluto:` = prime battute).
+# Posizioni in metri (x = Est, z = Sud). "lavoro: x z dx dz" = posto e direzione dello sguardo.
+# "orari: inizio fine notte" = arriva al lavoro / va in piazza (sera) / sparisce in casa (24 = mezzanotte).
+# "guardia: si" = sempre al posto (di notte con la lanterna).
+
+[Osvaldo]
+ruolo: locandiere
+skin: ocra
+lavoro: 16.5 8.4 0 1
+orari: 8 24 24
+
+[Marta]
+ruolo: fornaia
+skin: rosa
+lavoro: 2.2 19.8 -1 0
+sera: 3.4 12.6 -1 0
+orari: 5.5 18.5 21.5
+
+[Don Anselmo]
+ruolo: prete
+skin: prete
+lavoro: -5.6 12.3 1 0
+orari: 7 20 21
+
+[Rosa]
+ruolo: anziana
+skin: viola
+lavoro: -9.5 1.9 0 1
+sera: 3.0 -2.3 1 0
+orari: 7 17 20
+
+[Pietro]
+ruolo: ragazzo
+skin: verde
+lavoro: -3.8 13.0 1 0
+sera: 1.2 8.6 -1 0
+orari: 8 19 21
+
+[Beppe]
+ruolo: contadino
+skin: rosso
+lavoro: -3.4 21.0 1 0
+sera: -2.8 7.6 1 0
+orari: 6 18 22
+
+[Guardia Aldo]
+ruolo: guardia
+skin: guardia
+guardia: si
+lavoro: -3.0 -6.9 1 0
+
+[Guardia Bruno]
+ruolo: guardia
+skin: guardia
+guardia: si
+lavoro: 3.6 -6.9 -1 0
+
+[Guardia Carlo]
+ruolo: guardia
+skin: guardia
+guardia: si
+lavoro: -3.2 25.0 1 0
+
+[Guardia Dino]
+ruolo: guardia
+skin: guardia
+guardia: si
+lavoro: 3.8 25.0 -1 0

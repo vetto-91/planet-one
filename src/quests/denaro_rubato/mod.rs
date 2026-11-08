@@ -176,7 +176,7 @@ pub fn quest_on_dialog_close(
     let was_open = *last_open;
     *last_open = dialog.open;
     // Solo se il dialogo è stato letto fino in fondo (non Esc / allontanamento).
-    if was_open && !dialog.open && dialog.finished {
+    if was_open && !dialog.open && dialog.finished && dialog.speaker == "Viandante" {
         match quest.stage {
             // La quest parte SOLO se il giocatore risponde "Sì" (scelta 0).
             QuestStage::Idle if !quest.accepted && dialog.result == Some(0) => {

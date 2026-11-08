@@ -129,15 +129,19 @@ pub fn spawn_world(
         hut::KEEPER_SHOP,
     );
 
-    // --- Pickup: pozione sparsa (le monete a terra sono solo quelle della quest) ---
-    inventory::spawn_pickup(
+    // --- Pozione sul tavolo dentro la casetta (figlia della casetta: ne segue la quota) ---
+    let potion = inventory::spawn_pickup(
         commands,
         meshes,
         materials,
         inventory::ItemKind::HealthPotion,
         1,
-        Vec3::new(6.0, 0.0, -5.0),
+        hut::POTION_ON_TABLE,
     );
+    commands.entity(potion).insert(ChildOf(hut));
+
+    // --- Abitanti e guardie di Fontevivo ---
+    crate::villagers::spawn_villagers(commands, meshes, materials, asset_server);
 
     // --- Ladro della quest: posizione fissa richiesta (x 31.2, z -34.9).
     //     La quota viene appoggiata al terreno da `quest::place_quest_thief`. ---

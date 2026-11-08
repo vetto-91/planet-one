@@ -34,8 +34,8 @@ pub struct Building {
 
 pub(crate) type Col = [f32; 4];
 
-pub(crate) const STONE: Col = [0.62, 0.6, 0.57, 1.0];
-pub(crate) const STONE_DARK: Col = [0.38, 0.38, 0.4, 1.0];
+pub(crate) const STONE: Col = [0.74, 0.72, 0.68, 1.0];
+pub(crate) const STONE_DARK: Col = [0.5, 0.5, 0.52, 1.0];
 const TIMBER: Col = [0.3, 0.2, 0.12, 1.0];
 const DOOR: Col = [0.38, 0.24, 0.13, 1.0];
 const GLASS: Col = [0.16, 0.22, 0.32, 1.0];

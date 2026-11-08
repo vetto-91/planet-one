@@ -180,6 +180,14 @@ attorno si aggiorna al riavvio); case, chiesa, pozzo, cartelli e lampioni sono p
 iniziale (edifici, lampioni, cartelli e stradine; `--preview` salva un'anteprima dall'alto), `scripts/make_selciato_texture.py` e
 `scripts/make_cartelli.py` le texture (solo locale).
 
+### Abitanti e guardie
+
+Fontevivo è abitata: 6 abitanti (locandiere, fornaia, prete, anziana, ragazzo, contadino) e 4 guardie ai cancelli. Ognuno ha un saluto scritto
+e poi, a fine dialogo, la **chat con la IA locale** ("Parliamo d'altro…") con il proprio carattere e la propria voce (Piper). Di giorno stanno
+al loro posto, la sera si ritrovano in piazza (camminando sulle strade), di notte spariscono in casa; le guardie restano ai cancelli sempre,
+con la lanterna accesa di notte. I dati sono in `assets/world/abitanti.txt` (posto, orari, aspetto) e `assets/ai/<nome>.txt` (persona, voce,
+saluto); le skin si generano con `scripts/make_skin_abitanti.py`.
+
 ### Giorno e notte
 
 Il giorno di gioco dura 24 minuti reali (1 ora = 1 minuto); sole e luna attraversano il cielo

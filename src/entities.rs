@@ -352,7 +352,12 @@ pub fn interact(
         dialog.open = true;
         dialog.speaker = npc.name.to_string();
         // Battute e scelte dalla quest (file dialoghi.txt), altrimenti default dell'NPC.
-        let (lines, choices, voices) = crate::quests::npc_dialog(&quest, &texts);
+        // Solo il Viandante parla di quest; gli altri abitanti usano il loro saluto.
+        let (lines, choices, voices) = if npc.name == "Viandante" {
+            crate::quests::npc_dialog(&quest, &texts)
+        } else {
+            (Vec::new(), Vec::new(), Vec::new())
+        };
         if lines.is_empty() {
             dialog.lines = npc.lines.iter().map(|s| s.to_string()).collect();
             dialog.voices = vec![Vec::new(); dialog.lines.len()];

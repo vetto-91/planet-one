@@ -2,6 +2,14 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Abitanti e guardie** di Fontevivo (6 + 4) con saluto scritto e chat con la IA locale (carattere e voce propri), routine giornaliera (lavoro, piazza la sera,
+  in casa di notte; le guardie ai cancelli con lanterna notturna) (ADR 0008).
+- Cartelli: il palo sta dietro la tabella. Cancelli: ante piene (si chiudono davvero, con collisione) e porticina centrale; ogni anta si apre col mirino.
+- La pozione è ora sul tavolo dentro la casetta del Viandante. Mura di pietra più chiare.
+- La quest del Viandante avanza solo con il Viandante (non con gli altri abitanti).
+
 ## v0.0.17.0 — Villaggio di Fontevivo (2026-11-08)
 
 - **Villaggio di Fontevivo**: mura con torrette (dai piazzamenti `muro` di F4), due cancelli (Porta Nord e Sud) con battenti che si aprono di giorno e si
