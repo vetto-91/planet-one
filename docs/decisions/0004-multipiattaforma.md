@@ -17,7 +17,7 @@ di sviluppo (Linux).
   `include_str!` come fallback (i pacchetti non hanno la cartella `debug/`).
 - Gli archivi Windows (`.zip`, x86_64) e macOS (`.tar.gz`, binario universale Intel +
   Apple Silicon creato con `lipo`) sono costruiti da GitHub Actions
-  (`.github/workflows/release.yml`) al push del tag `v*` e allegati alla release. Linux
+  (`.github/workflows/release.yml`) a mano (`gh workflow run release.yml -f tag=… -f windows=true -f macos=true`, scelta per sistema operativo per contenere i costi) e allegati alla release. Linux
   resta costruito in locale come prima.
 - Pacchetti non firmati (niente notarizzazione Apple né firma Authenticode): il README
   spiega come superare Gatekeeper e SmartScreen.

@@ -1,29 +1,37 @@
 # Costruisce gli archivi di rilascio per Windows e macOS e li allega alla release GitHub.
 # Il tarball Linux continua a essere costruito in locale (vedi docs/decisions/0004-multipiattaforma.md).
 #
-# Parte al push di un tag `vX.Y.Z.W` (dopo `git push origin main vX.Y.Z.W`) oppure a mano
-# (Actions -> Release -> Run workflow, indicando il tag).
+# Parte SOLO a mano (i minuti di CI costano: macOS x10, Windows x2): `gh workflow run release.yml
+# -f tag=vX.Y.Z.W -f windows=true -f macos=false`, oppure Actions -> Release -> Run workflow.
+# Ogni sistema operativo si sceglie con la sua casella.
 name: Release
 
 on:
-  push:
-    tags: ["v*"]
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag da costruire (es. v0.0.14.0)"
+        description: "Tag da costruire (es. v0.0.15.0)"
         required: true
+      windows:
+        description: "Costruisci l'archivio Windows"
+        type: boolean
+        default: false
+      macos:
+        description: "Costruisci l'archivio macOS (universale)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
 env:
   CARGO_TERM_COLOR: always
-  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+  TAG: ${{ github.event.inputs.tag }}
   GH_TOKEN: ${{ github.token }}
 
 jobs:
   windows:
+    if: ${{ inputs.windows }}
     runs-on: windows-latest
     defaults:
       run:
@@ -52,6 +60,7 @@ jobs:
           gh release upload "$TAG" "$ASSET" --clobber
 
   macos:
+    if: ${{ inputs.macos }}
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
