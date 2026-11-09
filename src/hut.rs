@@ -209,9 +209,13 @@ pub struct Chimney;
 /// Sbuffo di fumo.
 #[derive(Component)]
 pub struct SmokePuff {
-    age: f32,
-    life: f32,
-    drift: Vec2,
+    pub(crate) age: f32,
+    pub(crate) life: f32,
+    pub(crate) drift: Vec2,
+    /// Dimensione rispetto allo sbuffo della stufa.
+    pub(crate) size: f32,
+    pub(crate) grey: f32,
+    pub(crate) alpha: f32,
 }
 
 /// Richiesta di commutare un oggetto (inviata da `entities::interact`).
@@ -1776,7 +1780,7 @@ pub fn emit_smoke(
     mut materials: ResMut<Assets<StandardMaterial>>,
     stoves: Query<(&PropKind, &PropState)>,
     chimneys: Query<&GlobalTransform, With<Chimney>>,
-    puffs: Query<(), With<SmokePuff>>,
+    puffs: Query<(), (With<SmokePuff>, Without<crate::village_life::TownPuff>)>,
     mut timer: Local<f32>,
     mut mesh: Local<Option<Handle<Mesh>>>,
 ) {
@@ -1804,6 +1808,9 @@ pub fn emit_smoke(
             age: 0.0,
             life: 4.0,
             drift: Vec2::new(0.12 + jitter.x, 0.05 + jitter.y),
+            size: 1.0,
+            grey: 0.75,
+            alpha: 0.5,
         },
         Mesh3d(m),
         MeshMaterial3d(materials.add(StandardMaterial {
@@ -1837,9 +1844,14 @@ pub fn update_smoke(
         }
         let k = puff.age / puff.life;
         tf.translation += Vec3::new(puff.drift.x, 0.8, puff.drift.y) * dt;
-        tf.scale = Vec3::splat(0.15 + 0.6 * k);
+        tf.scale = Vec3::splat((0.15 + 0.6 * k) * puff.size);
         if let Some(mut m) = materials.get_mut(&mat.0) {
-            m.base_color = Color::srgba(0.75, 0.75, 0.78, 0.5 * (1.0 - k));
+            m.base_color = Color::srgba(
+                puff.grey,
+                puff.grey,
+                puff.grey + 0.03,
+                puff.alpha * (1.0 - k),
+            );
         }
     }
 }

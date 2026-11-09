@@ -249,6 +249,8 @@ volume dipende dalla distanza dal campanile (si sente anche fuori dalle mura, pi
 
 L'isola si sente: onde secondo la distanza dal mare, ruscello, vento in quota, uccelli di giorno, grilli nelle notti tiepide, brusio in piazza nelle ore di mercato, e passi diversi su erba, terra, sabbia, pietra, legno, acqua e neve. Tutti i suoni sono sintetizzati in locale.
 
+Il paese è vissuto: dai comignoli esce il fumo, di notte sulle mura si accendono le torce, e per strada e al porto trovi carretti, botti, casse, panni stesi e reti. Carretti, botti e casse si aprono con E.
+
 Ci sono anche gli animali: mucche e pecore pascolano e si scostano se ti avvicini, le galline razzolano in paese, i gabbiani girano sul porto, gli uccelli si alzano quando arrivi, nel laghetto nuotano i pesci, e con i fiori compaiono le farfalle. Modelli di mucca, pecora e latifoglie: CC0 di Quaternius. Mandrie e pollai si cambiano in `assets/world/isola.txt`.
 
 ### Giorno e notte

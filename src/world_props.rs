@@ -387,6 +387,13 @@ pub fn sync_world_props(
                             &kind,
                         ));
                     }
+                    let works = matches!(kind.as_str(), "forno" | "fabbro" | "locanda");
+                    for at in interior.chimneys {
+                        c.spawn((
+                            crate::village_life::TownChimney { works },
+                            Transform::from_translation(at),
+                        ));
+                    }
                     for at in interior.lights {
                         c.spawn((
                             InteriorLight,

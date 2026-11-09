@@ -50,6 +50,11 @@ pub fn is_building(kind: &str) -> bool {
             | "faro"
             | "molo"
             | "barca"
+            | "carretto"
+            | "botti"
+            | "casse"
+            | "panni"
+            | "reti"
     )
 }
 
@@ -101,6 +106,8 @@ pub struct Interior {
     pub lights: Vec<Vec3>,
     /// Mobili che contengono oggetti.
     pub containers: Vec<crate::containers::ContainerSpot>,
+    /// Bocche dei camini, da dove esce il fumo.
+    pub chimneys: Vec<Vec3>,
     /// Punto subito dentro la porta.
     pub door_inside: Option<Vec3>,
     /// Per ogni piano, il percorso da dentro la porta al pianerottolo.
@@ -456,6 +463,25 @@ impl B {
         self.quad(p(a, y1), p(b, y1), p(cc, y1), p(d, y1), Vec3::Y, col);
         self.snow_tri(p(a, y1), p(b, y1), p(cc, y1));
         self.snow_tri(p(a, y1), p(cc, y1), p(d, y1));
+    }
+
+    /// Trave a sezione quadrata fra due punti qualsiasi.
+    pub(crate) fn beam(&mut self, a: Vec3, b: Vec3, half: f32, col: Col) {
+        let d = (b - a).normalize_or(Vec3::Y);
+        let refer = if d.y.abs() > 0.9 { Vec3::X } else { Vec3::Y };
+        let u = d.cross(refer).normalize() * half;
+        let v = d.cross(u).normalize() * half;
+        for (s, t) in [(u, v), (v, -u), (-u, -v), (-v, u)] {
+            let corner = |p: Vec3, x: f32| p + s * x + t;
+            self.quad(
+                corner(a, -1.0),
+                corner(a, 1.0),
+                corner(b, 1.0),
+                corner(b, -1.0),
+                t,
+                col,
+            );
+        }
     }
 
     /// Mesh unica a colori di vertice (campi coltivati).
@@ -853,6 +879,7 @@ fn house(
     for i in 0..chimneys {
         let x = if i == 0 { -hw + 0.35 } else { hw * 0.1 };
         chimney(b, x, 0.0, wh, wh + rh + 0.9);
+        int.chimneys.push(Vec3::new(x, wh + rh + 1.0, 0.0));
         int.walls
             .push((Vec3::new(x, wh + 1.1, 0.0), Vec3::new(0.7, 2.2, 0.7)));
     }
@@ -1157,6 +1184,149 @@ fn sign_arm(b: &mut B, col: Col) {
         Vec3::new(0.1, 0.1, 0.55),
         [0.95, 0.9, 0.7, 1.0],
     );
+}
+
+/// Ruota di legno nel piano YZ: cerchio a segmenti e raggi.
+fn wheel(b: &mut B, center: Vec3, radius: f32) {
+    use std::f32::consts::TAU;
+    const SIDES: usize = 12;
+    let wood: Col = [0.34, 0.23, 0.13, 1.0];
+    let rim = |k: usize| {
+        let a = k as f32 / SIDES as f32 * TAU;
+        center + Vec3::new(0.0, a.cos() * radius, a.sin() * radius)
+    };
+    for k in 0..SIDES {
+        b.beam(rim(k), rim(k + 1), 0.045, wood);
+    }
+    for k in (0..SIDES / 2).step_by(2) {
+        b.beam(rim(k), rim(k + SIDES / 2), 0.03, wood);
+    }
+}
+
+/// Carretto a due ruote con una cassa sul pianale.
+fn cart(b: &mut B, int: &mut Interior) -> Vec<(Vec3, Vec3)> {
+    let y = 0.7;
+    b.cuboid_c(Vec3::new(0.0, y, 0.0), Vec3::new(1.3, 0.08, 2.2), TIMBER);
+    for side in [-1.0f32, 1.0] {
+        b.cuboid_c(
+            Vec3::new(side * 0.63, y + 0.22, 0.0),
+            Vec3::new(0.05, 0.36, 2.2),
+            TIMBER,
+        );
+        wheel(b, Vec3::new(side * 0.8, 0.5, -0.1), 0.5);
+        b.beam(
+            Vec3::new(side * 0.42, y - 0.02, 1.05),
+            Vec3::new(side * 0.42, 0.28, 2.95),
+            0.035,
+            TIMBER,
+        );
+    }
+    b.cuboid_c(
+        Vec3::new(0.0, y + 0.22, -1.08),
+        Vec3::new(1.3, 0.36, 0.05),
+        TIMBER,
+    );
+    b.cuboid_c(
+        Vec3::new(0.0, 0.5, -0.1),
+        Vec3::new(1.5, 0.08, 0.08),
+        TIMBER,
+    );
+    crate::interiors::crate_box(b, int, 0.0, -0.45, y + 0.04, 0.62);
+    vec![(Vec3::new(0.0, 0.75, -0.05), Vec3::new(1.6, 1.5, 2.3))]
+}
+
+/// Filo con i panni stesi tra due pali.
+fn laundry(b: &mut B, r: &mut Rng) -> Vec<(Vec3, Vec3)> {
+    const SPAN: f32 = 2.3;
+    const TOP: f32 = 2.05;
+    for side in [-1.0f32, 1.0] {
+        b.cuboid_c(
+            Vec3::new(side * SPAN, TOP / 2.0, 0.0),
+            Vec3::new(0.08, TOP, 0.08),
+            TIMBER,
+        );
+    }
+    b.cuboid_c(
+        Vec3::new(0.0, TOP - 0.04, 0.0),
+        Vec3::new(SPAN * 2.0, 0.02, 0.02),
+        [0.75, 0.72, 0.62, 1.0],
+    );
+    let colors: [Col; 5] = [
+        [0.86, 0.84, 0.76, 1.0],
+        [0.62, 0.3, 0.26, 1.0],
+        [0.32, 0.42, 0.58, 1.0],
+        [0.78, 0.66, 0.4, 1.0],
+        [0.42, 0.52, 0.36, 1.0],
+    ];
+    b.force = Some(Mat::Cloth);
+    let mut x = -SPAN + 0.55;
+    while x < SPAN - 0.4 {
+        let w = 0.45 + r.next() as f32 % 40.0 / 100.0;
+        let h = 0.6 + r.next() as f32 % 45.0 / 100.0;
+        b.cuboid_c(
+            Vec3::new(x + w / 2.0, TOP - 0.05 - h / 2.0, 0.0),
+            Vec3::new(w, h, 0.025),
+            r.pick(&colors),
+        );
+        x += w + 0.14;
+    }
+    b.force = None;
+    [-1.0f32, 1.0]
+        .map(|s| {
+            (
+                Vec3::new(s * SPAN, TOP / 2.0, 0.0),
+                Vec3::new(0.14, TOP, 0.14),
+            )
+        })
+        .to_vec()
+}
+
+/// Reti da pesca stese ad asciugare su un telaio.
+fn nets(b: &mut B) -> Vec<(Vec3, Vec3)> {
+    const SPAN: f32 = 1.6;
+    const TOP: f32 = 2.1;
+    for side in [-1.0f32, 1.0] {
+        b.cuboid_c(
+            Vec3::new(side * SPAN, TOP / 2.0, 0.0),
+            Vec3::new(0.1, TOP, 0.1),
+            TIMBER,
+        );
+    }
+    b.cuboid_c(
+        Vec3::new(0.0, TOP, 0.0),
+        Vec3::new(SPAN * 2.0 + 0.3, 0.08, 0.08),
+        TIMBER,
+    );
+    let cord: Col = [0.3, 0.3, 0.26, 1.0];
+    let mut x = -SPAN + 0.15;
+    while x < SPAN {
+        b.cuboid_c(Vec3::new(x, 1.3, 0.0), Vec3::new(0.012, 1.55, 0.012), cord);
+        x += 0.16;
+    }
+    let mut y = 0.55;
+    while y < TOP {
+        b.cuboid_c(
+            Vec3::new(0.0, y, 0.0),
+            Vec3::new(SPAN * 2.0 - 0.2, 0.012, 0.012),
+            cord,
+        );
+        y += 0.16;
+    }
+    for k in 0..7 {
+        b.cuboid_c(
+            Vec3::new(-SPAN + 0.3 + k as f32 * 0.45, 0.52, 0.0),
+            Vec3::new(0.09, 0.09, 0.09),
+            [0.75, 0.55, 0.25, 1.0],
+        );
+    }
+    [-1.0f32, 1.0]
+        .map(|s| {
+            (
+                Vec3::new(s * SPAN, TOP / 2.0, 0.0),
+                Vec3::new(0.16, TOP, 0.16),
+            )
+        })
+        .to_vec()
 }
 
 /// Bancarella di mercato: bancone, tendone a strisce, montanti e merce (`kind` dà il tipo).
@@ -1573,6 +1743,7 @@ fn well(b: &mut B) -> Vec<(Vec3, Vec3)> {
 
 /// Costruisce l'edificio `kind` con la variante data dal `seed`.
 pub fn model(kind: &str, seed: u32) -> Building {
+    use crate::interiors as rooms;
     let mut b = B::default();
     let mut r = Rng(seed | 1);
     for _ in 0..3 {
@@ -1628,6 +1799,22 @@ pub fn model(kind: &str, seed: u32) -> Building {
         }
         "forno" => {
             house(&mut b, &mut r, &mut int, kind, 5.5, 4.5, 2, false, 1, seed);
+            // Insegna a bandiera: una pagnotta sulla tavola.
+            b.cuboid_c(
+                Vec3::new(1.7, 3.1, 2.75),
+                Vec3::new(0.08, 0.08, 1.0),
+                TIMBER,
+            );
+            b.cuboid_c(
+                Vec3::new(1.7, 2.65, 3.1),
+                Vec3::new(0.08, 0.7, 0.8),
+                [0.42, 0.28, 0.16, 1.0],
+            );
+            b.cuboid_c(
+                Vec3::new(1.7, 2.65, 3.1),
+                Vec3::new(0.12, 0.2, 0.5),
+                [0.8, 0.56, 0.24, 1.0],
+            );
             (5.5, 4.5, Vec::new())
         }
         "stalla" => {
@@ -1711,6 +1898,21 @@ pub fn model(kind: &str, seed: u32) -> Building {
             (7.4, 17.0, Vec::new())
         }
         "pozzo" => (2.4, 2.4, well(&mut b)),
+        "carretto" => (1.6, 3.2, cart(&mut b, &mut int)),
+        "botti" => {
+            for (x, z) in [(-0.42, 0.0), (0.42, 0.12), (0.02, -0.68)] {
+                rooms::barrel(&mut b, &mut int, x, z, 0.0);
+            }
+            (1.5, 1.5, Vec::new())
+        }
+        "casse" => {
+            rooms::crate_box(&mut b, &mut int, -0.42, 0.0, 0.0, 0.8);
+            rooms::crate_box(&mut b, &mut int, 0.44, 0.1, 0.0, 0.66);
+            rooms::crate_box(&mut b, &mut int, -0.4, 0.05, 0.8, 0.52);
+            (1.7, 1.0, Vec::new())
+        }
+        "panni" => (4.8, 0.5, laundry(&mut b, &mut r)),
+        "reti" => (3.6, 0.5, nets(&mut b)),
         // "casa" e "casa-media"
         _ => {
             let timber = r.next().is_multiple_of(2);

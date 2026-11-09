@@ -361,7 +361,7 @@ fn shelf(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32, lx: f32, facing:
     );
 }
 
-fn barrel(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32) {
+pub(crate) fn barrel(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32) {
     solid(
         b,
         int,
@@ -375,7 +375,7 @@ fn barrel(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32) {
     container(int, Vec3::new(x, y + 0.94, z), ContainerKind::Barrel);
 }
 
-fn crate_box(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32, size: f32) {
+pub(crate) fn crate_box(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32, size: f32) {
     solid(
         b,
         int,

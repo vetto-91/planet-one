@@ -49,6 +49,7 @@ mod trees;
 mod ui_style;
 mod version;
 mod village;
+mod village_life;
 mod villagers;
 mod voice;
 mod water;
@@ -176,6 +177,7 @@ fn main() {
         .add_plugins(bells::plugin)
         .add_plugins(ambience::plugin)
         .add_plugins(animals::plugin)
+        .add_plugins(village_life::plugin)
         .add_plugins(seasons::plugin)
         .add_plugins(weather::plugin)
         .add_plugins(figure::plugin)

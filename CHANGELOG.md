@@ -2,6 +2,11 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Paese vissuto**: fumo dai comignoli (la mattina, la sera e col freddo; forno, fabbro e locanda per tutta la giornata di lavoro), torce sulle mura accese al buio, carretti, botti, casse, panni stesi, reti al porto, insegna del forno.
+- I nuovi carretti, botti e casse si aprono come gli altri contenitori e si spostano con F4.
+
 ## v0.0.39.0 — Suoni e animali (2026-11-09)
 
 - **Suoni dell'isola** (ADR 0028): onde, ruscello, vento in quota, uccelli, gabbiani, grilli, brusio della piazza e passi diversi per superficie, sintetizzati in locale, con il nuovo volume «Ambiente» (ora include anche meteo e campane).

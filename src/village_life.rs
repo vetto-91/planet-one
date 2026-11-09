@@ -1,0 +1,292 @@
+//! Paese vissuto: fumo dai comignoli e torce sulle mura accese di notte.
+//!
+//! Carretti, botti, casse, panni e reti sono piazzamenti normali (`buildings::model`,
+//! `scripts/gen_paese.py`): si spostano con F4 e i contenitori funzionano come gli altri.
+
+use crate::ambience::daylight;
+use crate::audio::AudioSettings;
+use crate::daynight::GameClock;
+use crate::hut::SmokePuff;
+use crate::player::Player;
+use crate::scene::SceneNode;
+use crate::village::VillageInfo;
+use crate::weather::WeatherState;
+use bevy::light::NotShadowCaster;
+use bevy::prelude::*;
+
+/// Fin dove (m) si vede il fumo dei camini.
+const SMOKE_RANGE: f32 = 75.0;
+const MAX_SMOKING: usize = 10;
+const MAX_PUFFS: usize = 70;
+/// Una torcia ogni tanti metri di camminamento.
+const TORCH_SPACING: f32 = 15.0;
+const TORCH_LUMENS: f32 = 90_000.0;
+
+/// Bocca di un camino. `works`: bottega che tiene il fuoco acceso tutto il giorno.
+#[derive(Component)]
+pub struct TownChimney {
+    pub works: bool,
+}
+
+/// Sbuffo uscito da un camino del paese (non conta nel limite della stufa della casetta).
+#[derive(Component)]
+pub struct TownPuff;
+
+#[derive(Component)]
+struct WallTorch {
+    seed: f32,
+}
+
+#[derive(Component)]
+struct TorchFlame;
+
+/// Il fuoco di una casa è acceso a quest'ora con questa temperatura?
+pub fn fire_lit(works: bool, hour: f32, temp: f32) -> bool {
+    if works {
+        return (6.0..21.0).contains(&hour);
+    }
+    (6.0..9.5).contains(&hour) || (17.0..23.0).contains(&hour) || temp < 9.0
+}
+
+/// Punti a passo costante lungo il percorso chiuso `path`.
+pub fn points_every(path: &[Vec3], spacing: f32) -> Vec<Vec3> {
+    let mut out = Vec::new();
+    let mut left = spacing / 2.0;
+    for (i, a) in path.iter().enumerate() {
+        let b = path[(i + 1) % path.len()];
+        let len = a.xz().distance(b.xz());
+        // Le torri sono salti di quota: lì non serve una torcia a mezz'aria.
+        if len < 1e-3 || (a.y - b.y).abs() > 0.6 {
+            continue;
+        }
+        let mut at = left;
+        while at < len {
+            out.push(a.lerp(b, at / len));
+            at += spacing;
+        }
+        left = at - len;
+    }
+    out
+}
+
+/// Sistema: sbuffi dai camini accesi più vicini al giocatore, a turno.
+#[allow(clippy::too_many_arguments)]
+fn town_smoke(
+    mut commands: Commands,
+    time: Res<Time>,
+    clock: Res<GameClock>,
+    weather: Res<WeatherState>,
+    player: Query<&Transform, With<Player>>,
+    chimneys: Query<(&TownChimney, &GlobalTransform)>,
+    puffs: Query<(), With<TownPuff>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut state: Local<(f32, usize, usize)>,
+    mut mesh: Local<Option<Handle<Mesh>>>,
+) {
+    state.0 -= time.delta_secs();
+    if state.0 > 0.0 || puffs.iter().count() >= MAX_PUFFS {
+        return;
+    }
+    state.0 = 0.11;
+    let Ok(me) = player.single() else {
+        return;
+    };
+    let me = me.translation;
+    let mut lit: Vec<(f32, Vec3)> = chimneys
+        .iter()
+        .filter(|(c, _)| fire_lit(c.works, clock.hour, weather.temp))
+        .map(|(_, g)| (g.translation().distance_squared(me), g.translation()))
+        .filter(|(d, _)| *d < SMOKE_RANGE * SMOKE_RANGE)
+        .collect();
+    if lit.is_empty() {
+        return;
+    }
+    if state.2 != lit.len() {
+        state.2 = lit.len();
+        info!("[PAESE] camini accesi vicini: {}", lit.len());
+    }
+    lit.sort_by(|a, b| a.0.total_cmp(&b.0));
+    lit.truncate(MAX_SMOKING);
+    state.1 = (state.1 + 1) % lit.len();
+    let top = lit[state.1].1;
+    let t = time.elapsed_secs();
+    let m = mesh
+        .get_or_insert_with(|| meshes.add(Sphere::new(0.5)))
+        .clone();
+    let push = 0.14 + weather.wind * 0.07;
+    commands.spawn((
+        SceneNode,
+        TownPuff,
+        SmokePuff {
+            age: 0.0,
+            life: 6.0,
+            size: 3.5,
+            grey: 0.4,
+            alpha: 0.78,
+            drift: Vec2::new(
+                push + (t * 12.9).sin() * 0.05,
+                push * 0.4 + (t * 78.2).cos() * 0.05,
+            ),
+        },
+        Mesh3d(m),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::srgba(0.42, 0.42, 0.45, 0.5),
+            alpha_mode: AlphaMode::Blend,
+            unlit: true,
+            ..default()
+        })),
+        Transform::from_translation(top).with_scale(Vec3::splat(0.45)),
+        NotShadowCaster,
+    ));
+}
+
+/// Sistema: (ri)crea le torce quando cambia il percorso sulle mura.
+fn sync_torches(
+    mut commands: Commands,
+    village: Res<VillageInfo>,
+    existing: Query<Entity, With<WallTorch>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut built: Local<(usize, Option<Vec3>)>,
+) {
+    let stamp = (village.patrol.len(), village.patrol.first().copied());
+    if village.patrol.is_empty() || (*built == stamp && !existing.is_empty()) {
+        return;
+    }
+    *built = stamp;
+    for e in &existing {
+        commands.entity(e).despawn();
+    }
+    let post = meshes.add(Cuboid::new(0.07, 1.5, 0.07));
+    let flame = meshes.add(Sphere::new(0.085).mesh().uv(8, 6));
+    let wood = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.25, 0.17, 0.1),
+        perceptual_roughness: 0.9,
+        ..default()
+    });
+    let fire = materials.add(StandardMaterial {
+        base_color: Color::srgb(1.0, 0.6, 0.2),
+        emissive: LinearRgba::rgb(6.0, 2.4, 0.5),
+        ..default()
+    });
+    let spots = points_every(&village.patrol, TORCH_SPACING);
+    info!("[PAESE] {} torce sulle mura", spots.len());
+    for (i, at) in spots.into_iter().enumerate() {
+        // Sul lato verso il paese, per non intralciare la ronda.
+        let inward = (village.center - at.xz()).normalize_or_zero() * 0.8;
+        let base = at + Vec3::new(inward.x, 0.0, inward.y);
+        commands
+            .spawn((
+                SceneNode,
+                WallTorch {
+                    seed: i as f32 * 2.3,
+                },
+                Transform::from_translation(base),
+                Visibility::default(),
+            ))
+            .with_children(|p| {
+                p.spawn((
+                    Mesh3d(post.clone()),
+                    MeshMaterial3d(wood.clone()),
+                    Transform::from_xyz(0.0, 0.75, 0.0),
+                ));
+                p.spawn((
+                    TorchFlame,
+                    Mesh3d(flame.clone()),
+                    MeshMaterial3d(fire.clone()),
+                    Transform::from_xyz(0.0, 1.62, 0.0),
+                    NotShadowCaster,
+                    Visibility::Hidden,
+                ));
+                p.spawn((
+                    PointLight {
+                        color: Color::srgb(1.0, 0.68, 0.36),
+                        intensity: 0.0,
+                        range: 13.0,
+                        shadow_maps_enabled: false,
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, 1.75, 0.0),
+                ));
+            });
+    }
+}
+
+/// Sistema: le torce si accendono al buio e la fiamma trema.
+#[allow(clippy::type_complexity)]
+fn light_torches(
+    time: Res<Time>,
+    clock: Res<GameClock>,
+    settings: Res<AudioSettings>,
+    torches: Query<(&WallTorch, &Children)>,
+    mut flames: Query<(&mut Visibility, &mut Transform), With<TorchFlame>>,
+    mut lights: Query<&mut PointLight>,
+) {
+    let dark = daylight(clock.hour, clock.sunrise, clock.sunset) < 0.45;
+    let now = time.elapsed_secs();
+    for (torch, children) in &torches {
+        let flicker = 1.0 + 0.16 * (now * 11.0 + torch.seed).sin() * (now * 7.3 + torch.seed).cos();
+        for child in children.iter() {
+            if let Ok((mut vis, mut t)) = flames.get_mut(child) {
+                vis.set_if_neq(if dark {
+                    Visibility::Inherited
+                } else {
+                    Visibility::Hidden
+                });
+                t.scale = Vec3::new(flicker, flicker * 1.6, flicker);
+            }
+            if let Ok(mut light) = lights.get_mut(child) {
+                let target = if dark && settings.gfx.interior_lights {
+                    TORCH_LUMENS * flicker
+                } else {
+                    0.0
+                };
+                if light.intensity != target {
+                    light.intensity = target;
+                }
+            }
+        }
+    }
+}
+
+pub fn plugin(app: &mut App) {
+    app.add_systems(Update, (town_smoke, sync_torches, light_torches));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn houses_light_the_fire_morning_and_evening_or_when_cold() {
+        assert!(fire_lit(false, 7.0, 20.0));
+        assert!(fire_lit(false, 20.0, 20.0));
+        assert!(!fire_lit(false, 13.0, 20.0));
+        assert!(fire_lit(false, 13.0, 4.0));
+        assert!(!fire_lit(false, 3.0, 20.0));
+    }
+
+    #[test]
+    fn workshops_burn_all_day() {
+        assert!(fire_lit(true, 13.0, 25.0));
+        assert!(!fire_lit(true, 23.0, 25.0));
+    }
+
+    #[test]
+    fn torches_are_evenly_spaced_and_skip_jumps() {
+        let square = [
+            Vec3::new(0.0, 1.0, 0.0),
+            Vec3::new(30.0, 1.0, 0.0),
+            Vec3::new(30.0, 1.0, 30.0),
+            Vec3::new(0.0, 1.0, 30.0),
+        ];
+        let pts = points_every(&square, 15.0);
+        assert_eq!(pts.len(), 8);
+        for w in pts.windows(2) {
+            assert!(w[0].distance(w[1]) <= 15.0 + 1e-3);
+        }
+        let jump = [Vec3::ZERO, Vec3::new(20.0, 3.0, 0.0)];
+        assert!(points_every(&jump, 5.0).is_empty());
+    }
+}
