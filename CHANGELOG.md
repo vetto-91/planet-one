@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.31.0 — Interni degli edifici (2026-11-09)
 
 - **Interni visitabili** (ADR 0019): case, locanda, caserma, fabbro, forno, arciere e chiesa hanno porte vere, piani con scale, sottotetto e arredi per tipo di edificio; il campanile si sale fino alla cella delle campane. Terreno spianato sotto gli edifici, finestre visibili anche da dentro, luci nell'edificio in cui si è (nuova opzione grafica).
 - **Abitanti a letto**: di notte tornano a casa a piedi e dormono nel proprio letto; le guardie fuori turno dormono in caserma (`casa:` in `abitanti.txt`).
