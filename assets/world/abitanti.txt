@@ -8,47 +8,47 @@
 
 [Osvaldo]
 ruolo: locandiere
-skin: ocra
+modello: civile-m-ocra
 lavoro: 16.5 8.4 0 1
 orari: 8 24 24
 
 [Marta]
 ruolo: fornaia
-skin: rosa
+modello: civile-f-rosa
 lavoro: 2.2 19.8 -1 0
 sera: 3.4 12.6 -1 0
 orari: 5.5 18.5 21.5
 
 [Don Anselmo]
 ruolo: prete
-skin: prete
+modello: prete
 lavoro: -5.6 12.3 1 0
 orari: 7 20 21
 
 [Rosa]
 ruolo: anziana
-skin: viola
+modello: civile-f-viola
 lavoro: -9.5 1.9 0 1
 sera: 3.0 -2.3 1 0
 orari: 7 17 20
 
 [Pietro]
 ruolo: ragazzo
-skin: verde
+modello: civile-m-verde
 lavoro: -3.8 13.0 1 0
 sera: 1.2 8.6 -1 0
 orari: 8 19 21
 
 [Beppe]
 ruolo: contadino
-skin: rosso
+modello: civile-m-rosso
 lavoro: -3.4 21.0 1 0
 sera: -2.8 7.6 1 0
 orari: 6 18 22
 
 [Guardia Aldo]
 ruolo: guardia
-skin: guardia
+modello: guardia
 guardia: si
 cancello: Nord
 turno: 1
@@ -56,7 +56,7 @@ lavoro: 0 0 0 1
 
 [Guardia Bruno]
 ruolo: guardia
-skin: guardia
+modello: guardia
 guardia: si
 cancello: Nord
 turno: 2
@@ -64,7 +64,7 @@ lavoro: 0 0 0 1
 
 [Guardia Ennio]
 ruolo: guardia
-skin: guardia
+modello: guardia
 guardia: si
 cancello: Nord
 turno: 3
@@ -72,7 +72,7 @@ lavoro: 0 0 0 1
 
 [Guardia Carlo]
 ruolo: guardia
-skin: guardia
+modello: guardia
 guardia: si
 cancello: Sud
 turno: 1
@@ -80,7 +80,7 @@ lavoro: 0 0 0 1
 
 [Guardia Dino]
 ruolo: guardia
-skin: guardia
+modello: guardia
 guardia: si
 cancello: Sud
 turno: 2
@@ -88,7 +88,7 @@ lavoro: 0 0 0 1
 
 [Guardia Fausto]
 ruolo: guardia
-skin: guardia
+modello: guardia
 guardia: si
 cancello: Sud
 turno: 3
@@ -96,75 +96,75 @@ lavoro: 0 0 0 1
 
 [Guardia Gino]
 ruolo: guardia
-skin: guardia
+modello: guardia
 guardia: si
 muro: nord
 lavoro: 0 0 0 1
 
 [Guardia Ivo]
 ruolo: guardia
-skin: guardia
+modello: guardia
 guardia: si
 muro: sud
 lavoro: 0 0 0 1
 
 [Guardia Livio]
 ruolo: guardia
-skin: guardia
+modello: guardia
 guardia: si
 muro: est
 lavoro: 0 0 0 1
 
 [Guardia Mario]
 ruolo: guardia
-skin: guardia
+modello: guardia
 guardia: si
 muro: ovest
 lavoro: 0 0 0 1
 
 [Ferruccio]
 ruolo: fabbro
-skin: rosso
+modello: civile-m-rosso
 negozio: armaiolo
 lavoro: -8.4 -1.5 0 1
 orari: 7 19 21
 
 [Silvia]
 ruolo: arciera
-skin: verde
+modello: arciera
 negozio: arciere
 lavoro: -17.5 -0.9 0 1
 orari: 7 19 21
 
 [Agnese]
 ruolo: erborista
-skin: viola
+modello: civile-f-viola
 negozio: erborista
 lavoro: -6.4 7.4 1 0
 orari: 7 18 20
 
 [Tonio]
 ruolo: fruttivendolo
-skin: ocra
+modello: civile-m-ocra
 negozio: frutta
 lavoro: 4.8 8.6 -1 0
 orari: 7 18 20
 
 [Nina]
 ruolo: pescivendola
-skin: rosa
+modello: civile-f-rosa
 negozio: pesce
 lavoro: -6.4 15.4 1 0
 orari: 7 18 20
 
 [Gaspare]
 ruolo: pescatore
-skin: verde
+modello: civile-m-verde
 lavoro: 8.5 103.0 0 1
 orari: 5 19 22
 
 [Ettore]
 ruolo: guardiano del faro
-skin: guardia
+modello: guardia
 guardia: si
 lavoro: -10.8 94.0 1 0

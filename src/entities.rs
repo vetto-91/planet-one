@@ -139,21 +139,10 @@ fn close_dialog(dialog: &mut DialogState, result: Option<usize>, finished: bool)
 /// `SceneNode`: il despawn ricorsivo del genitore lo elimina.
 pub fn spawn_npc(
     commands: &mut Commands,
-    meshes: &mut Assets<Mesh>,
-    materials: &mut Assets<StandardMaterial>,
     asset_server: &AssetServer,
     parent: Entity,
     local: Vec3,
 ) -> Entity {
-    let mesh = meshes.add(crate::figure::figure_mesh(
-        Vec3::new(0.7, 1.6, 0.7),
-        &crate::figure::FigureUv::standard(),
-    ));
-    let mat = materials.add(crate::figure::skin_material(
-        asset_server.load("textures/viandante.png"),
-    ));
-
-    let hands = crate::figure::HandAssets::new(meshes, materials);
     let npc = commands
         .spawn((
             Npc {
@@ -179,11 +168,10 @@ pub fn spawn_npc(
             crate::hut::Keeper::new(),
             // Collider figlio: si somma al corpo statico della casetta.
             Collider::capsule(0.35, 1.0),
-            Mesh3d(mesh),
-            MeshMaterial3d(mat),
             Transform::from_translation(local),
+            Visibility::default(),
         ))
-        .with_children(|c| hands.spawn(c, Vec3::new(0.7, 1.6, 0.7)))
+        .with_children(|c| crate::figure::spawn_character(c, asset_server, "viandante"))
         .id();
     commands.entity(parent).add_child(npc);
     npc

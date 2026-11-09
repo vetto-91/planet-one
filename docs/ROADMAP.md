@@ -44,7 +44,7 @@ Strategia: **vertical slice prima**. Una demo giocabile (1 quest, 1 NPC, 1 nemic
 - **Input gamepad**: opzionale.
 - **Audio**: musica di sottofondo con volume nel menu (bevy_audio) fatta; restano effetti sonori e voci dei personaggi (testi in `docs/voci/`).
 - **UI**: restano da valutare i confini tra egui (attuale) e bevy_ui.
-- **Asset**: sostituire i placeholder con modelli glTF CC0 (Kenney, Quaternius) esportati da Blender con shading cel.
+- **Asset**: personaggi glTF CC0 Quaternius fatti (ADR 0015); restano mondo e materiali PBR, poi le animazioni.
 - **Fuori scope v1**: multiplayer. Web build (WASM) da valutare dopo la stabilità su Linux.
 
 ## Decisioni architetturali

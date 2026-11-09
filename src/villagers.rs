@@ -24,7 +24,8 @@ const CENTER_Y: f32 = 0.85;
 pub struct VillagerDef {
     pub name: String,
     pub role: String,
-    pub skin: String,
+    /// Aspetto: file in `assets/models/characters/`.
+    pub model: String,
     pub guard: bool,
     /// Assortimento del negozio (chiave di `shop.rs`), se è un venditore.
     pub shop: Option<String>,
@@ -67,7 +68,7 @@ fn parse(text: &str) -> Vec<VillagerDef> {
             |n: &[f32]| (n.len() >= 4).then(|| (Vec2::new(n[0], n[1]), Vec2::new(n[2], n[3])));
         match k.trim() {
             "ruolo" => d.role = val.trim().to_string(),
-            "skin" => d.skin = val.trim().to_string(),
+            "modello" => d.model = val.trim().to_string(),
             "guardia" => d.guard = val.trim() == "si",
             "negozio" => d.shop = Some(val.trim().to_string()),
             "cancello" => d.gate = Some(val.trim().to_string()),
@@ -224,11 +225,6 @@ pub fn spawn_villagers(
     materials: &mut Assets<StandardMaterial>,
     asset_server: &AssetServer,
 ) {
-    let figure = meshes.add(crate::figure::figure_mesh(
-        Vec3::new(0.7, 1.6, 0.7),
-        &crate::figure::FigureUv::standard(),
-    ));
-    let hands = crate::figure::HandAssets::new(meshes, materials);
     let steel = materials.add(StandardMaterial {
         base_color: Color::srgb(0.55, 0.56, 0.6),
         metallic: 0.5,
@@ -248,9 +244,7 @@ pub fn spawn_villagers(
             .collect();
         let lines: &'static [&'static str] = Box::leak(lines.into_boxed_slice());
         let name: &'static str = Box::leak(def.name.clone().into_boxed_str());
-        let skin = materials.add(crate::figure::skin_material(
-            asset_server.load(format!("textures/abitante-{}.png", def.skin)),
-        ));
+        let model = def.model.clone();
         let (pos, look) = def.work;
         let guard = def.guard;
         let shop_key: Option<&'static str> =
@@ -261,7 +255,6 @@ pub fn spawn_villagers(
             emissive: LinearRgba::rgb(0.2, 0.12, 0.03),
             ..default()
         });
-        let helmet = meshes.add(Cuboid::new(0.84, 0.22, 0.84));
         let spear = meshes.add(Cylinder::new(0.03, 2.5));
         let spear_tip = meshes.add(Cone::new(0.07, 0.25));
         commands
@@ -289,32 +282,31 @@ pub fn spawn_villagers(
                 },
                 RigidBody::Kinematic,
                 Collider::capsule(0.35, 1.0),
-                Mesh3d(figure.clone()),
-                MeshMaterial3d(skin),
                 Transform::from_xyz(pos.x, CENTER_Y, pos.y)
                     .with_rotation(Quat::from_rotation_y(yaw_towards(look))),
                 Visibility::default(),
             ))
             .with_children(|c| {
-                hands.spawn(c, Vec3::new(0.7, 1.6, 0.7));
+                crate::figure::spawn_character(c, asset_server, &model);
                 if guard {
+                    // Lancia nella destra: l'asse dell'osso `hand_r` punta verso le dita (in basso a riposo).
                     c.spawn((
-                        Mesh3d(helmet.clone()),
-                        MeshMaterial3d(steel.clone()),
-                        Transform::from_xyz(0.0, 0.86, 0.0),
-                    ));
-                    c.spawn((
-                        Mesh3d(spear.clone()),
-                        MeshMaterial3d(wood.clone()),
-                        Transform::from_xyz(0.55, 0.4, 0.0),
-                    ));
-                    c.spawn((
-                        Mesh3d(spear_tip.clone()),
-                        MeshMaterial3d(steel.clone()),
-                        Transform::from_xyz(0.55, 1.78, 0.0),
-                    ));
+                        crate::figure::AttachToHand { right: true },
+                        Transform::from_xyz(-0.02, -0.40, 0.0)
+                            .with_rotation(Quat::from_rotation_x(std::f32::consts::PI)),
+                        Visibility::default(),
+                    ))
+                    .with_children(|s| {
+                        s.spawn((Mesh3d(spear.clone()), MeshMaterial3d(wood.clone())));
+                        s.spawn((
+                            Mesh3d(spear_tip.clone()),
+                            MeshMaterial3d(steel.clone()),
+                            Transform::from_xyz(0.0, 1.38, 0.0),
+                        ));
+                    });
                     c.spawn((
                         GuardLantern,
+                        crate::figure::AttachToHand { right: false },
                         Mesh3d(lantern_mesh.clone()),
                         MeshMaterial3d(lantern_mat.clone()),
                         PointLight {
@@ -324,7 +316,7 @@ pub fn spawn_villagers(
                             shadow_maps_enabled: false,
                             ..default()
                         },
-                        Transform::from_xyz(-0.55, 0.1, -0.25),
+                        Transform::from_xyz(0.0, 0.26, 0.0),
                     ));
                 }
             });

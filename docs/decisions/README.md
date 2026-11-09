@@ -40,3 +40,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0012 | Stagioni visibili | accettato (Fase 2) |
 | 0013 | Guardie con turni, casa delle guardie e mura percorribili | accettato |
 | 0014 | Meteo | accettato (Fase 3) |
+| 0015 | Grafica realistica, personaggi CC0 | accettato (Fase 1) |

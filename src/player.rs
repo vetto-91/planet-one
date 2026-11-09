@@ -112,12 +112,7 @@ const MAX_RISE_FOR_JUMP: f32 = 1.0;
 const JUMP_BUFFER_TIME: f32 = 0.15;
 
 /// Spawn del giocatore: corpo kinematico + mesh visivo figlio.
-pub fn spawn(
-    commands: &mut Commands,
-    meshes: &mut Assets<Mesh>,
-    materials: &mut Assets<StandardMaterial>,
-    asset_server: &AssetServer,
-) {
+pub fn spawn(commands: &mut Commands, asset_server: &AssetServer) {
     commands
         .spawn((
             SceneNode,
@@ -137,19 +132,7 @@ pub fn spawn(
         .with_children(|body| {
             body.spawn((PlayerVisual, Transform::default(), Visibility::default()))
                 .with_children(|visual| {
-                    // Skin dell'avventuriero (viso sul fronte, -Z).
-                    visual.spawn((
-                        Mesh3d(meshes.add(crate::figure::figure_mesh(
-                            Vec3::new(0.7, 1.3, 0.7),
-                            &crate::figure::FigureUv::solid_sides(),
-                        ))),
-                        MeshMaterial3d(materials.add(crate::figure::skin_material(
-                            asset_server.load("textures/player.png"),
-                        ))),
-                        Transform::from_xyz(0.0, 0.0, 0.0),
-                    ));
-                    crate::figure::HandAssets::new(meshes, materials)
-                        .spawn(visual, Vec3::new(0.7, 1.3, 0.7));
+                    crate::figure::spawn_character(visual, asset_server, "giocatore");
                 });
         });
 }

@@ -2,6 +2,11 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Personaggi veri (Grafica realistica, Fase 1)**: giocatore, Viandante, abitanti, guardie e ladro sono ora modelli umani con scheletro (asset CC0 Quaternius), al posto dei parallelepipedi, con posa di riposo;
+  armi, scudo, lancia e lanterna si agganciano alle ossa delle mani (ADR 0015). Il nemico rosso resta un cubo; chi cammina scivola finché non arriva la Fase 3.
+
 ## v0.0.24.0 — Meteo (Fase 3) (2026-11-08)
 
 - **Meteo (Fase 3)**: sereno, nuvoloso, pioggia, temporale (lampi e tuoni), nebbia e neve, deterministici per data con probabilità per mese; temperatura e meteo nel chip sotto la data;

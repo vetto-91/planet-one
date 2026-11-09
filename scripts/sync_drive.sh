@@ -26,4 +26,5 @@ exec rclone "$MODE" . "$REMOTE" --progress \
   --exclude '/target/**' \
   --exclude '/.claude/worktrees/**' \
   --exclude '/context/**' \
+  --exclude '/assets_src/**' \
   ${ARGS[@]+"${ARGS[@]}"}

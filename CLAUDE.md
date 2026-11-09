@@ -1,6 +1,6 @@
 # CLAUDE.md — Planet One
 
-RPG 3D open source, cel-shaded, terza persona. Rust + Bevy 0.20.1, fisica Avian 0.8, UI egui (bevy_egui 0.43).
+RPG 3D open source, grafica realistica PBR in corso (ADR 0015), terza persona. Rust + Bevy 0.20.1, fisica Avian 0.8, UI egui (bevy_egui 0.43).
 
 ## Stato e roadmap
 
@@ -53,7 +53,7 @@ Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, 
 - `src/weather.rs`: meteo deterministico per data (sereno, nuvoloso, pioggia, temporale, nebbia, neve), temperatura, vento, nebbia di distanza, particelle di pioggia/neve, neve a terra, suoni sintetizzati in locale (ADR 0014).
 - `src/seasons.rs`: stagioni visibili (tinte erba/chiome, fiori, neve a terra e sui tetti, foglie che cadono) da `look(giorno)`, ADR 0012.
 - `src/daynight.rs`: orologio (1 h = 60 s), data e stagioni (`GameDate`), alba/tramonto stagionali (ADR 0011), sole/luna (luci e dischi), stato `Wait` (tasto T).
-- `src/figure.rs`: mesh a parallelepipedo con UV per faccia per le skin in `assets/textures/{player,ladro,viandante}.png`.
+- `src/figure.rs`: personaggi glTF CC0 con scheletro comune in `assets/models/characters/` (composti da `scripts/build_characters.py` partendo da `assets_src/`, non in git), clip di riposo e oggetti agganciati alle ossa delle mani (ADR 0015).
 - `src/world_props.rs`: alberi, fiori, panchine, lampioni veri creati da `debug/placements.txt`.
 - `src/audio.rs`: musica di sottofondo giorno/notte con dissolvenza (OGG in `assets/audio/music/`), volume musiche salvato in `~/.config/planet-one/settings.txt`.
 - `src/hut.rs`: casetta-chiosco del Viandante (mesh con UV dalla foto `assets/textures/capanna.png`, fondamenta e scale di pietra, interni, oggetti con stato `PropState`: porta, finestre, stufa con fumo, luce, serranda) e routine giornaliera del negoziante (`Keeper`). Gli oggetti si usano col mirino (`Interactable.aim`, vedi `entities::interact`).

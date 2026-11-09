@@ -1,6 +1,6 @@
 # Planet One
 
-RPG 3D open source, cel-shaded, in terza persona. Scritto in **Rust** con il motore **[Bevy](https://bevy.org)**. Obiettivo iniziale: una **vertical slice** giocabile (1 quest, 1 NPC, 1 nemico, inventario minimale).
+RPG 3D open source, in terza persona, con grafica realistica in corso (personaggi veri da `v0.0.25.0`, mondo e animazioni nelle prossime fasi). Scritto in **Rust** con il motore **[Bevy](https://bevy.org)**. Obiettivo iniziale: una **vertical slice** giocabile (1 quest, 1 NPC, 1 nemico, inventario minimale).
 
 > Stato: **Fase 5 — Vertical slice completata, con rifiniture** (`v0.0.24.0`).
 > Quest "Denaro Rubato", bussola, obiettivi (TAB), combattimento e inventario.
@@ -187,7 +187,7 @@ e poi, a fine dialogo, la **chat con la IA locale** ("Parliamo d'altro…") con 
 al loro posto, la sera si ritrovano in piazza (camminando sulle strade), di notte spariscono in casa; le guardie lavorano su **tre turni** (6–14, 14–22, 22–6): ai cancelli ce n'è sempre almeno una (subito oltre l'anta aperta), il cambio
 turno arriva un'ora prima, e chi finisce va a riposare alla **casa delle guardie** (fuori da Porta Nord, a est della strada). Quattro guardie di ronda
 stanno sui **camminamenti** delle mura, a cui si sale con le scale (una per cancello, più una a est e una a ovest). Di notte hanno la lanterna accesa. I dati sono in `assets/world/abitanti.txt` (posto, orari, aspetto) e `assets/ai/<nome>.txt` (persona, voce,
-saluto); le skin si generano con `scripts/make_skin_abitanti.py`.
+saluto); l'aspetto (`modello:`) è uno dei file in `assets/models/characters/`, composti da `scripts/build_characters.py` (vedi `assets/models/LICENSES.md`).
 
 ### Negozi, mercato, armi e campi
 
@@ -252,7 +252,7 @@ src/      codice del gioco (ECS Bevy)
   world_props.rs alberi, fiori, panchine, lampioni da debug/placements.txt
   voice.rs   riproduzione delle voci dei personaggi
   daynight.rs orologio di gioco, sole e luna, luci e cielo
-  figure.rs  personaggi a parallelepipedo con skin a sviluppo (player/ladro/viandante)
+  figure.rs  personaggi: modelli glTF con scheletro, posa di riposo, oggetti agganciati alle mani
   quests/   una cartella per quest (logica) + parser dialoghi e diario
 assets/quests/<quest>/dialoghi.txt   testi della quest, modificabili a mano
 docs/     decisioni (ADR), convenzioni e battute per le voci (docs/voci/, generate da scripts/export_voci.py)

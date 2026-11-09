@@ -135,6 +135,7 @@ fn main() {
         .add_plugins(bells::plugin)
         .add_plugins(seasons::plugin)
         .add_plugins(weather::plugin)
+        .add_plugins(figure::plugin)
         .init_resource::<debug_place::DebugPlace>()
         .init_resource::<hud::Occluded>()
         .init_resource::<audio::AudioSettings>()

@@ -513,22 +513,7 @@ pub fn thief_notice_player(
 }
 
 /// Spawn del ladro (enemy rosso con marker QuestThief) in un angolo della mappa.
-pub fn spawn_thief(
-    commands: &mut Commands,
-    meshes: &mut Assets<Mesh>,
-    materials: &mut Assets<StandardMaterial>,
-    asset_server: &AssetServer,
-    start: Vec3,
-    end: Vec3,
-) {
-    let mesh = meshes.add(crate::figure::figure_mesh(
-        Vec3::new(0.9, 1.4, 0.9),
-        &crate::figure::FigureUv::standard(),
-    ));
-    let mat = materials.add(crate::figure::skin_material(
-        asset_server.load("textures/ladro.png"),
-    ));
-    let hands = crate::figure::HandAssets::new(meshes, materials);
+pub fn spawn_thief(commands: &mut Commands, asset_server: &AssetServer, start: Vec3, end: Vec3) {
     commands
         .spawn((
             crate::scene::SceneNode,
@@ -549,10 +534,9 @@ pub fn spawn_thief(
             LockedAxes::ROTATION_LOCKED,
             LinearVelocity::ZERO,
             CustomPositionIntegration,
-            Mesh3d(mesh),
-            MeshMaterial3d(mat),
+            Visibility::default(),
             Transform::from_translation(start),
             NeedsGroundSnap,
         ))
-        .with_children(|c| hands.spawn(c, Vec3::new(0.9, 1.4, 0.9)));
+        .with_children(|c| crate::figure::spawn_character(c, asset_server, "ladro"));
 }

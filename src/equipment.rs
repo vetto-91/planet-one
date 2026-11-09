@@ -13,8 +13,10 @@ pub struct HeldItem;
 #[derive(Component)]
 pub struct HeldWeapon;
 
-/// Inclinazione a riposo dell'arma (la lama punta un po' in avanti).
-const REST_TILT: f32 = -0.25;
+/// Rotazione dell'arma a riposo nel riferimento dell'osso della mano: la lama esce dal lato del pollice.
+const REST_TILT: f32 = std::f32::consts::FRAC_PI_2;
+/// Posizione dell'impugnatura nel palmo (riferimento dell'osso `hand_r`).
+const GRIP: Vec3 = Vec3::new(-0.02, 0.09, 0.0);
 
 /// Sistema: ricrea i modelli impugnati quando cambia l'equipaggiamento.
 pub fn update_held_items(
@@ -56,8 +58,8 @@ pub fn update_held_items(
             .spawn((
                 HeldItem,
                 HeldWeapon,
-                Transform::from_xyz(0.5, -0.05, -0.15)
-                    .with_rotation(Quat::from_rotation_x(REST_TILT)),
+                crate::figure::AttachToHand { right: true },
+                Transform::from_translation(GRIP).with_rotation(Quat::from_rotation_x(REST_TILT)),
                 Visibility::default(),
             ))
             .id();
@@ -151,7 +153,9 @@ pub fn update_held_items(
                 HeldItem,
                 Mesh3d(meshes.add(Cuboid::new(0.07, 0.75, 0.55))),
                 MeshMaterial3d(mat(Color::srgb(0.25, 0.4, 0.75), 0.1)),
-                Transform::from_xyz(-0.47, 0.0, -0.25),
+                crate::figure::AttachToHand { right: false },
+                // Sul dorso della mano sinistra (osso `hand_l`).
+                Transform::from_xyz(-0.08, 0.05, 0.0),
                 Visibility::default(),
             ))
             .id();

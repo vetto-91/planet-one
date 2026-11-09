@@ -107,7 +107,7 @@ pub fn spawn_world(
     ));
 
     // --- Player ---
-    player::spawn(commands, meshes, materials, asset_server);
+    player::spawn(commands, asset_server);
 
     // --- Casetta-chiosco con il Viandante come negoziante. Il fronte (-Z locale,
     //     con il banco) guarda verso il player, che parte a -X; la quota viene
@@ -120,14 +120,7 @@ pub fn spawn_world(
         Vec3::new(6.5, 0.0, 0.7),
         std::f32::consts::FRAC_PI_2,
     );
-    entities::spawn_npc(
-        commands,
-        meshes,
-        materials,
-        asset_server,
-        hut,
-        hut::KEEPER_SHOP,
-    );
+    entities::spawn_npc(commands, asset_server, hut, hut::KEEPER_SHOP);
 
     // --- Pozione sul tavolo dentro la casetta (figlia della casetta: ne segue la quota) ---
     let potion = inventory::spawn_pickup(
@@ -147,8 +140,6 @@ pub fn spawn_world(
     //     La quota viene appoggiata al terreno da `quest::place_quest_thief`. ---
     quest::spawn_thief(
         commands,
-        meshes,
-        materials,
         asset_server,
         Vec3::new(31.2, 0.0, -34.9),
         Vec3::new(27.2, 0.0, -34.9),

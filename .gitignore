@@ -19,3 +19,6 @@ run.log
 *.swp
 .DS_Store
 Thumbs.db
+
+# Pacchetti grezzi scaricati (solo per rigenerare assets/models, ADR 0015)
+assets_src/

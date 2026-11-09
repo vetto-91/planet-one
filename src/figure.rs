@@ -1,192 +1,228 @@
-//! Personaggi a parallelepipedo con texture a "sviluppo" (net).
+//! Personaggi: modelli glTF CC0 con scheletro comune (ADR 0015).
 //!
-//! Le skin (`assets/textures/{player,ladro,viandante}.png`) sono sviluppi di un
-//! box: colonna 1 = fronte (viso in alto), colonna 0 = lato +X, colonna 2 =
-//! lato -X, colonna 3 = retro, riquadro sopra la colonna 1 = cima. Il Cuboid di
-//! Bevy mappa tutta la texture su ogni faccia, quindi qui si costruisce un mesh
-//! con un rettangolo UV per faccia. Il fronte guarda verso -Z (come `facing`).
+//! I file in `assets/models/characters/` sono composti da `scripts/build_characters.py`: ogni aspetto ha
+//! lo stesso scheletro (65 ossa), le clip stanno in `animations.gltf`. Il modello è un figlio del
+//! corpo, abbassato ai piedi e girato di 180° (il glTF guarda +Z, il gioco -Z). Quando la scena è pronta
+//! parte la clip di riposo e le ossa delle mani diventano disponibili per gli oggetti impugnati.
 
-use bevy::asset::RenderAssetUsages;
-use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
+use bevy::world_serialization::WorldInstanceReady;
+use std::time::Duration;
 
-/// Dimensioni (px) delle skin ritagliate: tutte uguali.
-const TEX_W: f32 = 945.0;
-const TEX_H: f32 = 910.0;
+/// Altezza del centro del corpo sul terreno (capsula da 1,7 m).
+pub const CENTER_Y: f32 = 0.85;
+/// Clip in `animations.gltf`, nell'ordine scritto da `scripts/build_characters.py`.
+pub const CLIPS: [&str; 14] = [
+    "Idle_Loop",
+    "Walk_Loop",
+    "Jog_Fwd_Loop",
+    "Sprint_Loop",
+    "Jump_Start",
+    "Jump_Loop",
+    "Jump_Land",
+    "Sword_Idle",
+    "Sword_Attack",
+    "Punch_Jab",
+    "Hit_Chest",
+    "Death01",
+    "Idle_Talking_Loop",
+    "Interact",
+];
+const ANIMATIONS: &str = "models/characters/animations.gltf";
 
-/// Rettangolo UV in pixel della texture: (x0, y0, x1, y1).
-type PxRect = (f32, f32, f32, f32);
-
-/// Rettangoli UV delle sei facce.
-pub struct FigureUv {
-    pub front: PxRect,
-    pub back: PxRect,
-    pub left: PxRect,
-    pub right: PxRect,
-    pub top: PxRect,
-    pub bottom: PxRect,
+/// Grafo con tutte le clip, condiviso dai personaggi.
+#[derive(Resource)]
+pub struct CharacterAnims {
+    graph: Handle<AnimationGraph>,
+    clips: Vec<AnimationNodeIndex>,
 }
 
-impl FigureUv {
-    /// Layout standard (bordi di griglia esclusi con un'inset di ~6 px).
-    pub fn standard() -> Self {
-        Self {
-            front: (247.0, 348.0, 466.0, 888.0),
-            back: (706.0, 348.0, 922.0, 888.0),
-            left: (19.5, 348.0, 235.0, 888.0),
-            right: (478.0, 348.0, 694.0, 888.0),
-            top: (247.0, 30.0, 466.0, 236.0),
-            bottom: (247.0, 866.0, 466.0, 886.0),
+/// Radice del modello, in attesa di sapere se il file si è caricato.
+#[derive(Component)]
+pub struct PendingModel;
+
+/// Ossa delle mani del personaggio (sul corpo, cioè sul genitore del modello).
+#[derive(Component, Clone, Copy)]
+pub struct HandBones {
+    pub right: Entity,
+    pub left: Entity,
+}
+
+/// Oggetto da agganciare a una mano del corpo a cui è figlio, appena le ossa sono pronte.
+#[derive(Component)]
+pub struct AttachToHand {
+    pub right: bool,
+}
+
+/// Avvio: carica le clip e costruisce il grafo delle animazioni.
+pub fn load_character_anims(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut graphs: ResMut<Assets<AnimationGraph>>,
+) {
+    let handles: Vec<Handle<AnimationClip>> = (0..CLIPS.len())
+        .map(|i| asset_server.load(GltfAssetLabel::Animation(i).from_asset(ANIMATIONS)))
+        .collect();
+    let (graph, clips) = AnimationGraph::from_clips(handles);
+    commands.insert_resource(CharacterAnims {
+        graph: graphs.add(graph),
+        clips,
+    });
+}
+
+/// Crea il modello `name` come figlio del corpo.
+pub fn spawn_character(parent: &mut ChildSpawnerCommands, asset_server: &AssetServer, name: &str) {
+    let scene: Handle<WorldAsset> = asset_server
+        .load(GltfAssetLabel::Scene(0).from_asset(format!("models/characters/{name}.gltf")));
+    parent
+        .spawn((
+            PendingModel,
+            WorldAssetRoot(scene),
+            Transform::from_xyz(0.0, -CENTER_Y, 0.0)
+                .with_rotation(Quat::from_rotation_y(std::f32::consts::PI)),
+        ))
+        .observe(on_character_ready);
+}
+
+/// Scena pronta: avvia la clip di riposo (fase diversa per ciascuno) e registra le ossa delle mani.
+fn on_character_ready(
+    ready: On<WorldInstanceReady>,
+    mut commands: Commands,
+    anims: Res<CharacterAnims>,
+    children: Query<&Children>,
+    parents: Query<&ChildOf>,
+    names: Query<&Name>,
+    mut players: Query<(Entity, &mut AnimationPlayer)>,
+) {
+    let root = ready.entity;
+    let (mut right, mut left) = (None, None);
+    for e in children.iter_descendants(root) {
+        if let Ok(name) = names.get(e) {
+            match name.as_str() {
+                "hand_r" => right = Some(e),
+                "hand_l" => left = Some(e),
+                _ => {}
+            }
+        }
+        if let Ok((player_entity, mut player)) = players.get_mut(e) {
+            let mut transitions = AnimationTransitions::new();
+            let phase = (root.to_bits().wrapping_mul(2_654_435_761) % 1000) as f32 / 1000.0;
+            transitions
+                .play(&mut player, anims.clips[0], Duration::ZERO)
+                .repeat()
+                .seek_to(phase);
+            commands
+                .entity(player_entity)
+                .insert((AnimationGraphHandle(anims.graph.clone()), transitions));
+        }
+    }
+    if let (Some(right), Some(left), Ok(body)) = (right, left, parents.get(root)) {
+        commands
+            .entity(body.parent())
+            .insert(HandBones { right, left });
+    } else {
+        warn!("[FIGURE] modello senza ossa delle mani");
+    }
+}
+
+/// Sistema: aggancia alle ossa delle mani gli oggetti in attesa (armi, scudo, lancia, lanterna).
+pub fn attach_to_hands(
+    mut commands: Commands,
+    pending: Query<(Entity, &AttachToHand, &ChildOf)>,
+    bones: Query<&HandBones>,
+) {
+    for (e, hand, parent) in &pending {
+        if let Ok(b) = bones.get(parent.parent()) {
+            let bone = if hand.right { b.right } else { b.left };
+            commands
+                .entity(e)
+                .remove::<AttachToHand>()
+                .insert(ChildOf(bone));
+        }
+    }
+}
+
+/// Sistema: se il file di un modello non si carica, mostra una figura a blocchi al suo posto.
+pub fn model_fallback(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    pending: Query<(Entity, &WorldAssetRoot), With<PendingModel>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    for (e, root) in &pending {
+        let state = asset_server.load_state(&root.0);
+        if state.is_loaded() {
+            commands.entity(e).remove::<PendingModel>();
+        } else if state.is_failed() {
+            error!("[FIGURE] modello non caricato: figura di ripiego");
+            let block = (
+                Mesh3d(meshes.add(Cuboid::new(0.6, 1.7, 0.4))),
+                MeshMaterial3d(materials.add(Color::srgb(0.5, 0.45, 0.4))),
+                Transform::from_xyz(0.0, CENTER_Y, 0.0),
+            );
+            commands
+                .entity(e)
+                .remove::<PendingModel>()
+                .with_children(|c| {
+                    c.spawn(block);
+                });
+        }
+    }
+}
+
+pub fn plugin(app: &mut App) {
+    app.add_systems(Startup, load_character_anims)
+        .add_systems(Update, (attach_to_hands, model_fallback));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn dir() -> std::path::PathBuf {
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/models/characters")
+    }
+
+    #[test]
+    fn every_clip_is_in_the_animation_file_in_order() {
+        let text = std::fs::read_to_string(dir().join("animations.gltf")).unwrap();
+        let mut last = 0;
+        for clip in CLIPS {
+            let at = text
+                .find(&format!("\"name\":\"{clip}\""))
+                .unwrap_or_else(|| panic!("manca la clip {clip}"));
+            assert!(at > last, "clip fuori ordine: {clip}");
+            last = at;
         }
     }
 
-    /// Come `standard`, ma i lati della skin del player mostrano le braccia
-    /// aperte su fondo grigio: si usa un'area di stoffa uniforme.
-    pub fn solid_sides() -> Self {
-        Self {
-            left: (40.0, 462.0, 200.0, 520.0),
-            right: (500.0, 462.0, 660.0, 520.0),
-            ..Self::standard()
+    #[test]
+    fn every_villager_model_exists() {
+        for def in crate::villagers::load_defs() {
+            assert!(
+                dir().join(format!("{}.gltf", def.model)).exists(),
+                "{}: manca il modello '{}'",
+                def.name,
+                def.model
+            );
         }
-    }
-}
-
-/// Mesh di un box `size` centrato in origine, con UV per faccia.
-pub fn figure_mesh(size: Vec3, uv: &FigureUv) -> Mesh {
-    let (hw, hh, hd) = (size.x / 2.0, size.y / 2.0, size.z / 2.0);
-    // (angoli tl, tr, br, bl, normale, rettangolo UV)
-    let faces: [([Vec3; 4], Vec3, PxRect); 6] = [
-        // Fronte (-Z): a sinistra dello spettatore c'è +X.
-        (
-            [
-                Vec3::new(hw, hh, -hd),
-                Vec3::new(-hw, hh, -hd),
-                Vec3::new(-hw, -hh, -hd),
-                Vec3::new(hw, -hh, -hd),
-            ],
-            Vec3::NEG_Z,
-            uv.front,
-        ),
-        // Retro (+Z).
-        (
-            [
-                Vec3::new(-hw, hh, hd),
-                Vec3::new(hw, hh, hd),
-                Vec3::new(hw, -hh, hd),
-                Vec3::new(-hw, -hh, hd),
-            ],
-            Vec3::Z,
-            uv.back,
-        ),
-        // Lato +X (colonna 0 della skin).
-        (
-            [
-                Vec3::new(hw, hh, hd),
-                Vec3::new(hw, hh, -hd),
-                Vec3::new(hw, -hh, -hd),
-                Vec3::new(hw, -hh, hd),
-            ],
-            Vec3::X,
-            uv.left,
-        ),
-        // Lato -X (colonna 2).
-        (
-            [
-                Vec3::new(-hw, hh, -hd),
-                Vec3::new(-hw, hh, hd),
-                Vec3::new(-hw, -hh, hd),
-                Vec3::new(-hw, -hh, -hd),
-            ],
-            Vec3::NEG_X,
-            uv.right,
-        ),
-        // Cima (+Y): il basso dell'immagine è verso il fronte.
-        (
-            [
-                Vec3::new(hw, hh, hd),
-                Vec3::new(-hw, hh, hd),
-                Vec3::new(-hw, hh, -hd),
-                Vec3::new(hw, hh, -hd),
-            ],
-            Vec3::Y,
-            uv.top,
-        ),
-        // Base (-Y).
-        (
-            [
-                Vec3::new(hw, -hh, -hd),
-                Vec3::new(-hw, -hh, -hd),
-                Vec3::new(-hw, -hh, hd),
-                Vec3::new(hw, -hh, hd),
-            ],
-            Vec3::NEG_Y,
-            uv.bottom,
-        ),
-    ];
-
-    let mut positions = Vec::with_capacity(24);
-    let mut normals = Vec::with_capacity(24);
-    let mut uvs = Vec::with_capacity(24);
-    let mut indices = Vec::with_capacity(36);
-    for (corners, normal, (x0, y0, x1, y1)) in faces {
-        let base = positions.len() as u32;
-        let (u0, u1, v0, v1) = (x0 / TEX_W, x1 / TEX_W, y0 / TEX_H, y1 / TEX_H);
-        let corner_uv = [[u0, v0], [u1, v0], [u1, v1], [u0, v1]];
-        for (c, t) in corners.iter().zip(corner_uv) {
-            positions.push(c.to_array());
-            normals.push(normal.to_array());
-            uvs.push(t);
-        }
-        indices.extend_from_slice(&[base, base + 3, base + 2, base, base + 2, base + 1]);
-    }
-
-    Mesh::new(
-        PrimitiveTopology::TriangleList,
-        RenderAssetUsages::default(),
-    )
-    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
-    .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
-    .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
-    .with_inserted_indices(Indices::U32(indices))
-}
-
-/// Materiale con la skin (texture bianca neutra, ruvido).
-pub fn skin_material(texture: Handle<Image>) -> StandardMaterial {
-    StandardMaterial {
-        base_color: Color::WHITE,
-        base_color_texture: Some(texture),
-        perceptual_roughness: 0.9,
-        ..default()
-    }
-}
-
-/// Mesh e materiale condivisi delle mani (cubetti color pelle).
-#[derive(Clone)]
-pub struct HandAssets {
-    mesh: Handle<Mesh>,
-    mat: Handle<StandardMaterial>,
-}
-
-impl HandAssets {
-    pub fn new(meshes: &mut Assets<Mesh>, materials: &mut Assets<StandardMaterial>) -> Self {
-        Self {
-            mesh: meshes.add(Cuboid::new(0.18, 0.18, 0.18)),
-            mat: materials.add(StandardMaterial {
-                base_color: Color::srgb(0.88, 0.7, 0.56),
-                perceptual_roughness: 0.9,
-                ..default()
-            }),
+        for model in ["giocatore", "viandante", "ladro"] {
+            assert!(dir().join(format!("{model}.gltf")).exists(), "{model}");
         }
     }
 
-    /// Spawna due mani ai lati del corpo di dimensioni `size` (fronte -Z, destra +X).
-    pub fn spawn(&self, parent: &mut ChildSpawnerCommands, size: Vec3) {
-        for side in [-1.0f32, 1.0] {
-            parent.spawn((
-                Mesh3d(self.mesh.clone()),
-                MeshMaterial3d(self.mat.clone()),
-                Transform::from_xyz(side * (size.x / 2.0 + 0.06), -size.y * 0.12, -0.04),
-            ));
+    #[test]
+    fn textures_referenced_by_models_exist() {
+        for entry in std::fs::read_dir(dir()).unwrap() {
+            let path = entry.unwrap().path();
+            if path.extension().is_some_and(|e| e == "gltf") {
+                let text = std::fs::read_to_string(&path).unwrap();
+                for part in text.split("\"uri\":\"").skip(1) {
+                    let uri = part.split('"').next().unwrap();
+                    assert!(dir().join(uri).exists(), "{path:?}: manca {uri}");
+                }
+            }
         }
     }
 }
