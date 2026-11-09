@@ -51,3 +51,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0023 | Contenitori e faro visitabile | accettato |
 | 0024 | Statistiche, peso e zaini | accettato |
 | 0025 | Menu principale e salvataggi | accettato |
+| 0026 | Forma dell'isola e acque | accettato |

@@ -958,6 +958,7 @@ mod tests {
     #[test]
     fn route_walks_along_roads() {
         let roads = vec![Road {
+            dirt: false,
             width: 2.0,
             pts: vec![
                 Vec2::new(0.0, 0.0),

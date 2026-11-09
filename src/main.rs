@@ -48,6 +48,7 @@ mod version;
 mod village;
 mod villagers;
 mod voice;
+mod water;
 mod weather;
 mod world_props;
 
@@ -163,6 +164,7 @@ fn main() {
         .add_plugins(shell::plugin)
         .add_plugins(containers::plugin)
         .add_plugins(character::plugin)
+        .add_plugins(water::plugin)
         .add_plugins(save::plugin)
         .add_plugins(settings_ui::plugin)
         .add_plugins(main_menu::plugin)

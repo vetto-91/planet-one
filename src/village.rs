@@ -30,6 +30,8 @@ const BUTTON_OUT: f32 = 3.45;
 pub struct Road {
     pub width: f32,
     pub pts: Vec<Vec2>,
+    /// Sentiero di terra battuta invece che selciato.
+    pub dirt: bool,
 }
 
 /// Dati letti da `villaggio.txt`.
@@ -92,7 +94,8 @@ fn parse_spec(text: &str) -> VillageSpec {
                         })
                         .collect();
                     if pts.len() >= 2 {
-                        s.roads.push(Road { width, pts });
+                        let dirt = head.split_whitespace().next() == Some("sentiero");
+                        s.roads.push(Road { width, pts, dirt });
                     }
                 }
             }

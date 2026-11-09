@@ -42,7 +42,7 @@ Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, 
 
 - `src/main.rs`: stati dell'app (`MainMenu`, `Loading`, `Playing`, `Paused`, `Journal`, `Wait`, `Map`, `Resetting`) e cablaggio dei sistemi.
 - `src/scene.rs`: costruzione e reset della scena.
-- `src/terrain.rs`: heightmap → mesh e collider, hot-reload.
+- `src/terrain.rs`: heightmap → mesh e collider, hot-reload; `src/water.rs`: alture, scogliere, ruscello, onde da `assets/world/isola.txt` (ADR 0026).
 - `src/player.rs`: movimento, salto, corsa, ground-check (in `FixedUpdate`, character controller kinematico).
 - `src/camera.rs`: orbita, terza e prima persona.
 - `src/entities.rs`: NPC, nemico, dialogo.

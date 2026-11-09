@@ -214,6 +214,8 @@ Il personaggio ha sette **statistiche** (tasto C) e porta **30 kg** di base: olt
 
 **Bauli, armadi, botti, casse e scaffali** si aprono con E: si possono prendere e posare oggetti, con un limite di peso legato alla grandezza del mobile. Anche il **faro** si visita: alloggio del guardiano, scala a chiocciola, lanterna e balconata; è chiuso a chiave.
 
+Fuori dalle mura l'isola ha **alture** con la vista sul paese, **scogliere** a est e sud-ovest, **spiagge**, un **ruscello** con laghetto e ponte, e **sentieri** di terra battuta. La forma si cambia in `assets/world/isola.txt`.
+
 Fontevivo è abitata: 6 abitanti (locandiere, fornaia, prete, anziana, ragazzo, contadino) e 10 guardie: 6 ai cancelli e 4 di ronda sulle mura. Ognuno ha un saluto scritto
 e poi, a fine dialogo, la **chat con la IA locale** ("Parliamo d'altro…") con il proprio carattere e la propria voce (Piper). Di giorno stanno
 al loro posto, la sera si ritrovano in piazza (camminando sulle strade), di notte spariscono in casa; le guardie lavorano su **tre turni** (6–14, 14–22, 22–6): ai cancelli ce n'è sempre almeno una (subito oltre l'anta aperta), il cambio

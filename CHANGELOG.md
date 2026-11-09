@@ -2,6 +2,11 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Isola** (ADR 0026): alture percorribili, scogliere a est e a sud-ovest, spiagge più larghe, roccia sui pendii e sentieri di terra battuta che collegano le zone dell'isola.
+- **Acqua** (ADR 0026): un ruscello con laghetto e ponte di legno; onde sul mare e schiuma lungo la riva, spegnibili dalle impostazioni grafiche.
+
 ## v0.0.36.0 — Menu principale e salvataggi (2026-11-09)
 
 - **Menu principale** (ADR 0025): Continua, Nuova partita con classi o punti da distribuire, Carica partita per personaggio, Impostazioni a schede (Gioco, Audio, Video, Controlli), Esci.

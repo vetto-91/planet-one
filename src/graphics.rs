@@ -69,6 +69,8 @@ pub struct GfxOptions {
     pub particles: u8,
     /// Ferma le animazioni dei personaggi lontani.
     pub far_anim_cull: bool,
+    /// Onde, corrente e schiuma sull'acqua.
+    pub waves: bool,
 }
 
 impl GfxOptions {
@@ -81,6 +83,7 @@ impl GfxOptions {
         antialias: true,
         particles: 100,
         far_anim_cull: true,
+        waves: true,
     };
     pub const MEDIUM: Self = Self {
         shadows: Shadows::Medium,
@@ -91,6 +94,7 @@ impl GfxOptions {
         antialias: true,
         particles: 50,
         far_anim_cull: true,
+        waves: true,
     };
     pub const LOW: Self = Self {
         shadows: Shadows::Low,
@@ -101,6 +105,7 @@ impl GfxOptions {
         antialias: false,
         particles: 50,
         far_anim_cull: true,
+        waves: false,
     };
 
     /// Quota delle particelle attive (0..1).
@@ -111,7 +116,7 @@ impl GfxOptions {
     /// Righe da scrivere in `settings.txt`.
     pub fn to_lines(self) -> String {
         format!(
-            "gfx_shadows={}\ngfx_lamp_shadows={}\ngfx_interior_lights={}\ngfx_ssao={}\ngfx_bloom={}\ngfx_antialias={}\ngfx_particles={}\ngfx_far_anim_cull={}\n",
+            "gfx_shadows={}\ngfx_lamp_shadows={}\ngfx_interior_lights={}\ngfx_ssao={}\ngfx_bloom={}\ngfx_antialias={}\ngfx_particles={}\ngfx_far_anim_cull={}\ngfx_waves={}\n",
             self.shadows.key(),
             u8::from(self.lamp_shadows),
             u8::from(self.interior_lights),
@@ -120,6 +125,7 @@ impl GfxOptions {
             u8::from(self.antialias),
             self.particles,
             u8::from(self.far_anim_cull),
+            u8::from(self.waves),
         )
     }
 
@@ -149,6 +155,7 @@ impl GfxOptions {
                 }
             }
             "gfx_far_anim_cull" => self.far_anim_cull = on,
+            "gfx_waves" => self.waves = on,
             _ => {}
         }
     }
@@ -345,6 +352,7 @@ pub fn graphics_ui(ui: &mut egui::Ui, audio: &mut AudioSettings) {
         }
     });
     ui.checkbox(&mut gfx.far_anim_cull, "Ferma le animazioni lontane");
+    ui.checkbox(&mut gfx.waves, "Onde e schiuma sull'acqua");
     ui.separator();
     let mut fps = audio.fps;
     ui.checkbox(&mut fps.vsync, "VSync (FPS legati al monitor)");
@@ -399,6 +407,7 @@ mod tests {
             antialias: false,
             particles: 0,
             far_anim_cull: false,
+            waves: false,
         };
         let mut read = GfxOptions::HIGH;
         for line in original.to_lines().lines() {
