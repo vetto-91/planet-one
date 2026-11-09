@@ -262,9 +262,10 @@ fn read_test_wav(path: &Path) -> Result<Vec<f32>, String> {
         .position(|w| w == b"data")
         .ok_or("WAV di prova non valido")?
         + 8;
-    Ok(data[start..]
-        .chunks_exact(2)
-        .map(|b| f32::from(i16::from_le_bytes([b[0], b[1]])) / 32768.0)
+    let (frames, _) = data[start..].as_chunks::<2>();
+    Ok(frames
+        .iter()
+        .map(|b| f32::from(i16::from_le_bytes(*b)) / 32768.0)
         .collect())
 }
 

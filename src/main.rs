@@ -13,6 +13,7 @@ mod bells;
 mod buildings;
 mod camera;
 mod combat;
+mod containers;
 mod daynight;
 mod debug_place;
 mod devtools;
@@ -82,6 +83,8 @@ pub enum AppState {
     Chat,
     /// Inventario aperto (I): gioco sospeso, cursore libero.
     Inventory,
+    /// Mobile aperto (casse, armadi…): gioco sospeso, cursore libero.
+    Container,
     /// Shell dei trucchi aperta (\\): gioco sospeso, cursore libero.
     Shell,
     /// Negozio aperto (acquisto con le monete): gameplay sospeso, cursore libero.
@@ -144,6 +147,7 @@ fn main() {
         .add_plugins(village::plugin)
         .add_plugins(villagers::plugin)
         .add_plugins(shell::plugin)
+        .add_plugins(containers::plugin)
         .add_plugins(shop::plugin)
         .add_plugins(bells::plugin)
         .add_plugins(seasons::plugin)
@@ -284,6 +288,7 @@ fn main() {
                 debug_place::debug_ui,
                 inventory_ui::inventory_window.run_if(in_state(AppState::Inventory)),
                 shell::shell_panel.run_if(in_state(AppState::Shell)),
+                containers::container_window.run_if(in_state(AppState::Container)),
             )
                 .chain(),
         )

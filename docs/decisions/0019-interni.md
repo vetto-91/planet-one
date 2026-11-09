@@ -20,4 +20,5 @@ Gli edifici erano volumi pieni con un collider unico. Case, locanda, caserma, fa
 ## Conseguenze
 - Ci sono circa 1000 collider statici in più nel villaggio; nelle prove gli FPS restano tra 50 e 95, senza un confronto preciso con la versione precedente.
 - Le case sono più alte (fino a circa 12,8 m al colmo).
-- Il faro e la casetta del Viandante non cambiano.
+- La casetta del Viandante non cambia.
+- Il faro è diventato visitabile con ADR 0023.

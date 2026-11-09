@@ -77,6 +77,8 @@ pub enum PropKind {
     WindowInner,
     /// Battenti di un cancello del villaggio (aperti di giorno, chiusi la notte).
     Gate,
+    /// Mobile che contiene oggetti (vedi `containers`).
+    Container,
 }
 
 /// Serratura di una porta: chi può aprirla senza chiave.
@@ -1204,6 +1206,18 @@ pub fn spawn_hut(
             Vec3::new(-1.65, Y0 + 0.49, -0.8),
             false,
         );
+        c.spawn(crate::containers::bundle(
+            crate::containers::ContainerKind::Chest,
+            Vec3::new(-1.65, Y0 + 0.62, -0.8),
+            "casetta:baule".to_string(),
+            "casetta",
+        ));
+        c.spawn(crate::containers::bundle(
+            crate::containers::ContainerKind::Shelf,
+            Vec3::new(0.2, Y0 + 1.05, 2.5),
+            "casetta:scaffale".to_string(),
+            "casetta",
+        ));
         // Scaffale con libri al fondo.
         add_box(
             c,
@@ -1491,8 +1505,17 @@ pub fn handle_prop_toggle(
     players: Query<&GlobalTransform, With<crate::player::Player>>,
     clock: Res<crate::daynight::GameClock>,
     inventory: Res<crate::inventory::Inventory>,
+    furniture: Query<&crate::containers::Container>,
+    mut containers: ResMut<crate::containers::Containers>,
+    mut next: ResMut<NextState<crate::AppState>>,
 ) {
     for PropToggle(handle) in reader.read() {
+        // Un mobile non cambia stato: si apre la sua finestra.
+        if let Ok(c) = furniture.get(*handle) {
+            containers.open(c);
+            next.set(crate::AppState::Container);
+            continue;
+        }
         // I bottoni dei cancelli commutano lo stato del cancello.
         let handle = &buttons.get(*handle).map_or(*handle, |b| b.0);
         // Scuri comandati da dentro: servono il vetro alzato; si agisce sulla maniglia esterna.
@@ -1558,6 +1581,8 @@ pub fn update_prop_prompts(
             .and_then(|b| states.get(b.0).ok())
             .map_or(st.on, |s| s.on);
         let text = match (kind, st_on) {
+            // I mobili hanno un testo fisso, scelto quando vengono creati.
+            (PropKind::Container, _) => continue,
             (PropKind::Door, true) => "[E] Chiudi porta",
             (PropKind::Door, false) => "[E] Apri porta",
             (PropKind::Window, true) => "[E] Chiudi scuri",

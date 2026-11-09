@@ -201,6 +201,8 @@ iniziale (edifici, lampioni, cartelli e stradine; `--preview` salva un'anteprima
 
 Gli edifici hanno porte da aprire con E, piani collegati da scale, un **sottotetto** e mobili per ogni tipo di edificio; il campanile si sale fino alla cella delle campane. **Locanda e chiesa** sono sempre aperte, **forno, fabbro e arciere** negli orari di lavoro, **case e caserma** sono chiuse a chiave: ogni abitante ha la sua chiave. Di sera gli abitanti rientrano, salgono le scale e dormono nel loro letto; le guardie fuori turno dormono in caserma.
 
+**Bauli, armadi, botti, casse e scaffali** si aprono con E: si possono prendere e posare oggetti, con un limite di peso legato alla grandezza del mobile. Anche il **faro** si visita: alloggio del guardiano, scala a chiocciola, lanterna e balconata; è chiuso a chiave.
+
 Fontevivo è abitata: 6 abitanti (locandiere, fornaia, prete, anziana, ragazzo, contadino) e 10 guardie: 6 ai cancelli e 4 di ronda sulle mura. Ognuno ha un saluto scritto
 e poi, a fine dialogo, la **chat con la IA locale** ("Parliamo d'altro…") con il proprio carattere e la propria voce (Piper). Di giorno stanno
 al loro posto, la sera si ritrovano in piazza (camminando sulle strade), di notte spariscono in casa; le guardie lavorano su **tre turni** (6–14, 14–22, 22–6): ai cancelli ce n'è sempre almeno una (subito oltre l'anta aperta), il cambio

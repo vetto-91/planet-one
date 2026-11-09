@@ -4,6 +4,7 @@
 //! grandi hanno un collider, i piccoli no. I letti sono registrati: gli abitanti ci dormono di notte.
 
 use crate::buildings::{B, Col, Interior};
+use crate::containers::{ContainerKind, ContainerSpot};
 use bevy::prelude::*;
 
 const WOOD: Col = [0.42, 0.28, 0.16, 1.0];
@@ -289,6 +290,10 @@ fn stool(b: &mut B, x: f32, z: f32, y: f32) {
     );
 }
 
+fn container(int: &mut Interior, pos: Vec3, kind: ContainerKind) {
+    int.containers.push(ContainerSpot { pos, kind });
+}
+
 fn chest(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32) {
     solid(
         b,
@@ -302,9 +307,11 @@ fn chest(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32) {
         Vec3::new(0.14, 0.14, 0.04),
         IRON,
     );
+    container(int, Vec3::new(x, y + 0.62, z), ContainerKind::Chest);
 }
 
-fn wardrobe(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32) {
+/// Armadio; `facing` (+1 o -1) è il verso Z verso cui guardano le ante.
+fn wardrobe(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32, facing: f32) {
     solid(
         b,
         int,
@@ -313,13 +320,19 @@ fn wardrobe(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32) {
         WOOD_DARK,
     );
     b.cuboid_c(
-        Vec3::new(x, y + 1.0, z + 0.26),
+        Vec3::new(x, y + 1.0, z + facing * 0.26),
         Vec3::new(0.02, 1.7, 0.02),
         IRON,
     );
+    container(
+        int,
+        Vec3::new(x, y + 1.1, z + facing * 0.32),
+        ContainerKind::Wardrobe,
+    );
 }
 
-fn shelf(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32, lx: f32) {
+/// Scaffale; `facing` (+1 o -1) è il verso Z verso cui guardano i ripiani.
+fn shelf(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32, lx: f32, facing: f32) {
     solid(
         b,
         int,
@@ -334,13 +347,18 @@ fn shelf(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32, lx: f32) {
                 Vec3::new(
                     x - lx * 0.3 + lx * 0.3 * k as f32,
                     y + 0.34 + 0.42 * row as f32,
-                    z + 0.18,
+                    z + facing * 0.18,
                 ),
                 Vec3::new(0.2, 0.26, 0.06),
                 BLANKET[(a as usize) % 4],
             );
         }
     }
+    container(
+        int,
+        Vec3::new(x, y + 1.05, z + facing * 0.24),
+        ContainerKind::Shelf,
+    );
 }
 
 fn barrel(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32) {
@@ -354,6 +372,7 @@ fn barrel(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32) {
     for hy in [0.18, 0.66] {
         b.cuboid_c(Vec3::new(x, y + hy, z), Vec3::new(0.66, 0.05, 0.66), IRON);
     }
+    container(int, Vec3::new(x, y + 0.94, z), ContainerKind::Barrel);
 }
 
 fn crate_box(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32, size: f32) {
@@ -364,6 +383,7 @@ fn crate_box(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32, size: f32) {
         Vec3::splat(size),
         WOOD,
     );
+    container(int, Vec3::new(x, y + size + 0.08, z), ContainerKind::Crate);
 }
 
 /// Letto con la testata verso `head` (±X o ±Z); registra il posto e il punto da cui ci si sdraia.
@@ -447,12 +467,12 @@ fn home_floor(b: &mut B, int: &mut Interior, r: &Room, floor: usize, seed: u32) 
         table(b, int, x, mid, y, 1.6, 0.85);
         bench(b, int, x, mid - 0.68, y, 1.4);
         bench(b, int, x, mid + 0.68, y, 1.4);
-        shelf(b, int, r.x0 + 0.75, r.z1 - 0.2, y, 1.3);
+        shelf(b, int, r.x0 + 0.75, r.z1 - 0.2, y, 1.3, -1.0);
     } else {
         bed(b, int, r, r.x0 + 0.5, r.z1 - 1.0, Vec3::Z, tint);
         bed(b, int, r, r.x0 + 2.05, r.z1 - 0.5, Vec3::NEG_X, tint + 1);
         if r.x1 - (r.x0 + 3.05) >= 1.1 {
-            wardrobe(b, int, r.x0 + 3.6, r.z1 - 0.28, y);
+            wardrobe(b, int, r.x0 + 3.6, r.z1 - 0.28, y, -1.0);
         }
         if r.z1 - r.z0 >= 2.2 {
             chest(b, int, r.x0 + 2.0, r.z1 - 1.3, y);
@@ -504,7 +524,7 @@ pub(crate) fn furnish(
             for k in 0..3 {
                 stool(b, r.x(0.58) + k as f32 * 0.7, r.z(0.22) + 0.6, y);
             }
-            shelf(b, int, r.x(0.75), r.z0 + 0.2, y, 2.4);
+            shelf(b, int, r.x(0.75), r.z0 + 0.2, y, 2.4, 1.0);
             barrel(b, int, r.x(0.95), r.z(0.5), y);
             for (a, c) in [(0.16, 0.4), (0.16, 0.82), (0.82, 0.78)] {
                 table(b, int, r.x(a), r.z(c), y, 1.1, 0.85);
@@ -515,7 +535,7 @@ pub(crate) fn furnish(
         ("locanda", _) => {
             dormitory(b, int, r, seed as usize);
             chest(b, int, r.x(0.55), r.z(0.2), y);
-            wardrobe(b, int, r.x(0.8), r.z(0.2), y);
+            wardrobe(b, int, r.x(0.8), r.z(0.2), y, 1.0);
         }
         ("caserma", 0) => {
             let x = r.x(0.72);
@@ -582,7 +602,7 @@ pub(crate) fn furnish(
                 [0.9, 0.42, 0.12, 1.0],
             );
             table(b, int, r.x(0.8), r.z(0.83), y, 1.4, 0.7);
-            shelf(b, int, r.x(0.12), r.z1 - 0.25, y, 1.1);
+            shelf(b, int, r.x(0.12), r.z1 - 0.25, y, 1.1, -1.0);
             chest(b, int, r.x0 + 0.45, r.z(0.62), y);
         }
         ("arcere", 0) => {
@@ -629,6 +649,53 @@ pub(crate) fn furnish(
 /// Sottotetto arredato.
 pub(crate) fn furnish_attic(b: &mut B, int: &mut Interior, r: &Room) {
     attic(b, int, r);
+}
+
+/// Faro: alloggio del guardiano al piano terra, rampa al primo piano, ripostiglio e chiocciola fino in cima.
+pub(crate) fn lighthouse_interior(b: &mut B, int: &mut Interior, y0: f32, y1: f32, top: f32) {
+    let rect = (-1.7, 1.7, -1.7, 1.7);
+    slab(b, int, rect.0, rect.1, rect.2, rect.3, y0);
+    // Rampa lungo la parete destra: il primo gradino fa da pianerottolo fino al muro di fondo.
+    let (tx0, tx1) = (0.9, 1.7);
+    let n = 11;
+    let rise = (y1 - y0) / n as f32;
+    let start = -1.45;
+    for k in 0..n {
+        let za = if k == 0 {
+            rect.2
+        } else {
+            start + k as f32 * RUN
+        };
+        let zb = start + (k + 1) as f32 * RUN;
+        step(b, int, tx0, tx1, za, zb, y0, y0 + (k + 1) as f32 * rise);
+    }
+    slab_with_hole(b, int, rect, (tx0, tx1, start, start + n as f32 * RUN), y1);
+
+    // Alloggio: i mobili lasciano libero il passaggio dalla porta alla rampa.
+    let room = Room {
+        x0: -1.6,
+        x1: 0.85,
+        z0: -1.6,
+        z1: 1.6,
+        y: y0,
+        floor: 0,
+        back_z: rect.2,
+        back_x: 0.85,
+    };
+    bed(b, int, &room, -1.12, -0.6, Vec3::NEG_Z, 2);
+    shelf(b, int, -1.1, 1.5, y0, 1.0, -1.0);
+    table(b, int, 0.55, 0.4, y0, 0.6, 0.6);
+    stool(b, 0.55, -0.25, y0);
+    crate_box(b, int, 0.62, 1.3, y0, 0.5);
+
+    // Ripostiglio al primo piano, sotto i giri alti della scala.
+    chest(b, int, -1.05, 1.28, y1);
+    barrel(b, int, -1.2, -1.2, y1);
+
+    // Chiocciola nel pozzo centrale, fino alla stanza della lanterna.
+    let shaft = (-0.95, 0.95, -0.95, 0.95);
+    let hole = square_helix(b, int, shaft, y1, top, 0.7);
+    slab_with_hole(b, int, (-0.97, 0.97, -0.97, 0.97), hole, top);
 }
 
 /// Navata della chiesa: panche e altare.

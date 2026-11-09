@@ -319,7 +319,8 @@ impl Inventory {
         self.slots
             .iter()
             .filter_map(|s| s.kind.weight_kg().map(|w| w * s.qty as f32))
-            .sum()
+            .sum::<f32>()
+            .abs() // la somma vuota è -0.0
     }
 
     /// Quantità posseduta di un tipo (0 se assente).

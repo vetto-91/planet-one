@@ -81,6 +81,7 @@ pub fn toggle(
         | AppState::Chat
         | AppState::Inventory
         | AppState::Shell
+        | AppState::Container
         | AppState::Shop => next.set(AppState::Playing),
         // Durante il reset ESC non fa nulla: è uno stato transitorio.
         AppState::Resetting => {}
@@ -560,6 +561,8 @@ pub fn ui(
         AppState::Inventory => {}
         // Anche la shell ha il suo sistema (`shell::shell_panel`).
         AppState::Shell => {}
+        // I mobili aperti hanno il loro sistema (`containers::container_window`).
+        AppState::Container => {}
         // Durante Resetting non mostriamo nulla; la UI riapparirà in Playing/Paused.
         AppState::Resetting => {}
     }

@@ -2,6 +2,11 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Contenitori** (ADR 0023): bauli, armadi, botti, casse e scaffali di case, botteghe, bancarelle, molo e casetta si aprono con E: si prendono e si posano oggetti, con capienza da 5 a 10 volte quanto porta il giocatore. Contengono poche cose a tema, sempre le stesse.
+- **Faro visitabile** (ADR 0023): alloggio arredato, ripostiglio, scala a chiocciola fino alla lanterna e balconata. Chiuso a chiave.
+
 ## v0.0.33.0 — Microfono locale (2026-11-09)
 
 - **Microfono nella chat** (ADR 0022): tenendo premuto F2 o «Parla» si parla agli abitanti, con whisper.cpp solo in locale. Il testo si può rileggere prima di inviarlo. Spento finché non lo si attiva; si installa con `setup_ai --stt`.

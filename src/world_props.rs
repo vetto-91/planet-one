@@ -277,6 +277,7 @@ pub fn sync_world_props(
                 let model_half = model.half;
                 let interior = model.interior;
                 // Posti letto e porta in coordinate del mondo, per gli abitanti.
+                let place_id = pl.id;
                 let mut home_index = None;
                 let mut lock = crate::hut::Lock::Private;
                 if let Some(door) = interior.door {
@@ -376,6 +377,14 @@ pub fn sync_world_props(
                         c.spawn((
                             Collider::cuboid(size.x, size.y, size.z),
                             Transform::from_translation(center),
+                        ));
+                    }
+                    for (i, spot) in interior.containers.iter().enumerate() {
+                        c.spawn(crate::containers::bundle(
+                            spot.kind,
+                            spot.pos,
+                            format!("{place_id}:{j}:{i}"),
+                            &kind,
                         ));
                     }
                     for at in interior.lights {

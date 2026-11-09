@@ -21,6 +21,7 @@ pub fn interior_half(kind: &str) -> Option<Vec2> {
         "stalla" => Vec2::new(4.5, 2.5),
         "arcere" | "casa" | "casa-media" => Vec2::new(3.1, 2.5),
         "chiesa" => Vec2::new(3.7, 8.5),
+        "faro" => Vec2::new(2.6, 2.6),
         _ => return None,
     })
 }
@@ -98,6 +99,8 @@ pub struct Interior {
     pub beds: Vec<Bed>,
     /// Luci interne, una per piano.
     pub lights: Vec<Vec3>,
+    /// Mobili che contengono oggetti.
+    pub containers: Vec<crate::containers::ContainerSpot>,
     /// Punto subito dentro la porta.
     pub door_inside: Option<Vec3>,
     /// Per ogni piano, il percorso da dentro la porta al pianerottolo.
@@ -1157,7 +1160,7 @@ fn sign_arm(b: &mut B, col: Col) {
 }
 
 /// Bancarella di mercato: bancone, tendone a strisce, montanti e merce (`kind` dà il tipo).
-fn stall(b: &mut B, kind: &str) -> Vec<(Vec3, Vec3)> {
+fn stall(b: &mut B, int: &mut Interior, kind: &str) -> Vec<(Vec3, Vec3)> {
     let (c1, goods): (Col, Col) = match kind {
         "bancarella-frutta" => ([0.78, 0.2, 0.18, 1.0], [0.85, 0.2, 0.2, 1.0]),
         "bancarella-pesce" => ([0.25, 0.45, 0.75, 1.0], [0.75, 0.8, 0.85, 1.0]),
@@ -1219,6 +1222,13 @@ fn stall(b: &mut B, kind: &str) -> Vec<(Vec3, Vec3)> {
         Vec3::new(0.7, 0.6, 0.6),
         [0.5, 0.36, 0.22, 1.0],
     );
+    for x in [-0.9, 0.9] {
+        int.containers.push(crate::containers::ContainerSpot {
+            // Sul fronte delle casse, appena fuori dal collider: dentro sarebbe nascosta alla vista.
+            pos: Vec3::new(x, 0.55, -1.2),
+            kind: crate::containers::ContainerKind::Crate,
+        });
+    }
     vec![
         (Vec3::new(0.0, 0.5, 0.45), Vec3::new(2.9, 1.1, 0.95)),
         (Vec3::new(0.0, 0.5, -0.8), Vec3::new(2.9, 1.1, 0.7)),
@@ -1226,41 +1236,75 @@ fn stall(b: &mut B, kind: &str) -> Vec<(Vec3, Vec3)> {
 }
 
 /// Faro: zoccolo di pietra, torre a fasce bianche e rosse, balconata, lanterna e cupola.
-fn lighthouse(b: &mut B) -> Vec<(Vec3, Vec3)> {
+/// Anello di pareti di una sezione di torre attorno a un vano quadrato, con l'eventuale porta sul fronte (+Z).
+#[allow(clippy::too_many_arguments)]
+fn tower_shell(
+    b: &mut B,
+    int: &mut Interior,
+    hw: f32,
+    inner: f32,
+    y0: f32,
+    y1: f32,
+    col: Col,
+    door: Option<(f32, f32)>,
+) {
+    let mut wall = |b: &mut B, min: Vec3, max: Vec3| {
+        b.cuboid(min, max, col);
+        int.walls.push(((min + max) / 2.0, max - min));
+    };
+    wall(b, Vec3::new(-hw, y0, -hw), Vec3::new(hw, y1, -inner));
+    wall(b, Vec3::new(-hw, y0, -inner), Vec3::new(-inner, y1, inner));
+    wall(b, Vec3::new(inner, y0, -inner), Vec3::new(hw, y1, inner));
+    match door {
+        Some((half, top)) => {
+            wall(b, Vec3::new(-hw, y0, inner), Vec3::new(-half, y1, hw));
+            wall(b, Vec3::new(half, y0, inner), Vec3::new(hw, y1, hw));
+            if y1 > top {
+                wall(
+                    b,
+                    Vec3::new(-half, y0.max(top), inner),
+                    Vec3::new(half, y1, hw),
+                );
+            }
+        }
+        None => wall(b, Vec3::new(-hw, y0, inner), Vec3::new(hw, y1, hw)),
+    }
+}
+
+/// Faro cavo: alloggio del guardiano, ripostiglio, scala a chiocciola, lanterna e balconata.
+fn lighthouse(b: &mut B, int: &mut Interior) {
+    use crate::interiors as rooms;
     let (white, red) = ([0.95, 0.93, 0.88, 1.0], [0.78, 0.18, 0.15, 1.0]);
-    b.cuboid(Vec3::new(-2.6, -1.8, -2.6), Vec3::new(2.6, 0.6, 2.6), STONE);
-    b.cuboid(
-        Vec3::new(-2.2, 0.6, -2.2),
-        Vec3::new(2.2, 1.0, 2.2),
-        STONE_DARK,
-    );
+    let y0 = GROUND_FLOOR;
+    let (door_w, door_h) = (0.95, 1.9);
+    let door = Some((door_w / 2.0, y0 + door_h));
+    // Basamento pieno, calpestabile, con un gradino d'accesso.
+    let base = (Vec3::new(-2.6, -1.8, -2.6), Vec3::new(2.6, 0.4, 2.6));
+    b.cuboid(base.0, base.1, STONE);
+    int.ground.push(((base.0 + base.1) / 2.0, base.1 - base.0));
+    let access = (Vec3::new(-0.8, -0.4, 2.6), Vec3::new(0.8, 0.2, 3.2));
+    b.cuboid(access.0, access.1, STONE);
+    int.ground
+        .push(((access.0 + access.1) / 2.0, access.1 - access.0));
+    tower_shell(b, int, 1.95, 1.7, 0.4, 1.0, STONE_DARK, door);
+    // Le due sezioni basse sono stanze; dalla terza in su resta il pozzo della scala.
     let mut y = 1.0;
     for i in 0..5 {
         let hw = 1.95 - i as f32 * 0.14;
-        b.cuboid(
-            Vec3::new(-hw, y, -hw),
-            Vec3::new(hw, y + 2.6, hw),
-            if i % 2 == 0 { white } else { red },
-        );
+        let inner = match i {
+            // La seconda ha pareti sottili: la testa di chi sale la rampa passa sotto il suo bordo.
+            0 | 1 => 1.7,
+            _ => 0.97,
+        };
+        let col = if i % 2 == 0 { white } else { red };
+        let gap = if i == 0 { door } else { None };
+        tower_shell(b, int, hw, inner, y, y + 2.6, col, gap);
         y += 2.6;
     }
-    // Porta e finestrelle.
-    // Porta dipinta (il faro resta chiuso): cornice, anta e gradino.
-    b.cuboid(
-        Vec3::new(-0.575, 0.0, 1.93),
-        Vec3::new(0.575, 2.0, 2.0),
-        TIMBER,
-    );
-    b.cuboid(
-        Vec3::new(-0.475, 0.0, 1.95),
-        Vec3::new(0.475, 1.9, 2.04),
-        DOOR,
-    );
-    b.cuboid(
-        Vec3::new(-0.7, 0.0, 1.95),
-        Vec3::new(0.7, 0.18, 2.55),
-        STONE,
-    );
+    door_front(b, int, 0.0, 1.95, door_w, door_h);
+    int.door_inside = Some(Vec3::new(0.0, y0, 1.3));
+    int.routes = vec![Vec::new()];
+    // Finestrelle, visibili anche da dentro.
     for (i, h) in [3.4f32, 6.0, 8.6, 11.2].iter().enumerate() {
         let n = if i % 2 == 0 { Vec3::X } else { Vec3::NEG_X };
         b.cuboid_c(
@@ -1268,13 +1312,23 @@ fn lighthouse(b: &mut B) -> Vec<(Vec3, Vec3)> {
             Vec3::new(0.08, 0.6, 0.4),
             GLASS,
         );
+        let inner = [1.7, 1.7, 0.97, 0.97][i];
+        inner_window(b, Vec3::new(n.x * (inner - 0.01), *h, 0.0), -n, (0.4, 0.6));
     }
-    // Balconata con ringhiera.
-    b.cuboid(
-        Vec3::new(-2.3, y, -2.3),
-        Vec3::new(2.3, y + 0.25, 2.3),
-        STONE_DARK,
-    );
+    // Interni, fino al pavimento della lanterna.
+    let floor1 = 3.6;
+    let top = y + 0.25;
+    rooms::lighthouse_interior(b, int, y0, floor1, top);
+    // Balconata percorribile attorno alla lanterna, con ringhiera solida.
+    for (min, max) in [
+        (Vec3::new(-2.3, y, -2.3), Vec3::new(2.3, top, -0.97)),
+        (Vec3::new(-2.3, y, 0.97), Vec3::new(2.3, top, 2.3)),
+        (Vec3::new(-2.3, y, -0.97), Vec3::new(-0.97, top, 0.97)),
+        (Vec3::new(0.97, y, -0.97), Vec3::new(2.3, top, 0.97)),
+    ] {
+        b.cuboid(min, max, STONE_DARK);
+        int.ground.push(((min + max) / 2.0, max - min));
+    }
     for (x, z) in [
         (-2.2, -2.2),
         (2.2, -2.2),
@@ -1294,13 +1348,34 @@ fn lighthouse(b: &mut B) -> Vec<(Vec3, Vec3)> {
         (2.2, 0.0, 0.1, 4.5),
     ] {
         b.cuboid_c(Vec3::new(cx, y + 1.25, cz), Vec3::new(sx, 0.08, sz), TIMBER);
+        int.walls.push((
+            Vec3::new(cx, top + 0.7, cz),
+            Vec3::new(sx.max(0.1), 1.4, sz.max(0.1)),
+        ));
     }
-    // Lanterna (vetri chiari), cupola e parafulmine.
-    b.cuboid(
-        Vec3::new(-0.95, y + 0.25, -0.95),
-        Vec3::new(0.95, y + 2.05, 0.95),
-        [1.0, 0.92, 0.62, 1.0],
+    // Lanterna cava (vetri chiari), con l'apertura verso la balconata sul fronte.
+    let glow = [1.0, 0.92, 0.62, 1.0];
+    let head = y + 2.05;
+    let mut pane = |b: &mut B, min: Vec3, max: Vec3| {
+        b.cuboid(min, max, glow);
+        int.walls.push(((min + max) / 2.0, max - min));
+    };
+    pane(
+        b,
+        Vec3::new(-0.95, top, -0.95),
+        Vec3::new(0.95, head, -0.89),
     );
+    pane(
+        b,
+        Vec3::new(-0.95, top, -0.89),
+        Vec3::new(-0.89, head, 0.95),
+    );
+    pane(b, Vec3::new(0.89, top, -0.89), Vec3::new(0.95, head, 0.95));
+    pane(b, Vec3::new(-0.89, top, 0.89), Vec3::new(-0.6, head, 0.95));
+    pane(b, Vec3::new(0.6, top, 0.89), Vec3::new(0.89, head, 0.95));
+    // La lampada al centro.
+    let lamp = (Vec3::new(-0.2, top, -0.2), Vec3::new(0.2, top + 1.1, 0.2));
+    pane(b, lamp.0, lamp.1);
     for (x, z) in [(-0.95, -0.95), (0.95, -0.95), (-0.95, 0.95), (0.95, 0.95)] {
         b.cuboid_c(
             Vec3::new(x, y + 1.15, z),
@@ -1319,18 +1394,16 @@ fn lighthouse(b: &mut B) -> Vec<(Vec3, Vec3)> {
         Vec3::new(0.06, 1.0, 0.06),
         TIMBER,
     );
-    vec![
-        (Vec3::new(0.0, 5.5, 0.0), Vec3::new(4.2, 12.0, 4.2)),
-        (Vec3::new(0.0, -0.6, 0.0), Vec3::new(5.2, 2.4, 5.2)),
-    ]
+    int.lights.push(Vec3::new(0.0, 2.9, 0.2));
+    int.lights.push(Vec3::new(-1.0, 5.6, 1.0));
+    int.lights.push(Vec3::new(0.0, 10.0, 0.0));
+    int.lights.push(Vec3::new(0.3, top + 1.5, 0.3));
 }
 
-/// Molo di legno (si stende verso +Z per 14 m a partire da z = -2): tavole, pali, parapetti, casse.
-/// L'origine è a livello del mare; il primo collider è il piano calpestabile.
 /// Quota (m) del piano del molo rispetto al livello del mare.
 pub const PIER_DECK_TOP: f32 = 0.55;
 
-fn pier(b: &mut B) -> Vec<(Vec3, Vec3)> {
+fn pier(b: &mut B, int: &mut Interior) -> Vec<(Vec3, Vec3)> {
     let deck_y = PIER_DECK_TOP;
     // Tavole a strisce alternate.
     let n = 31;
@@ -1402,6 +1475,14 @@ fn pier(b: &mut B) -> Vec<(Vec3, Vec3)> {
         Vec3::new(0.55, 0.8, 0.55),
         [0.45, 0.3, 0.18, 1.0],
     );
+    use crate::containers::{ContainerKind, ContainerSpot};
+    for (pos, kind) in [
+        (Vec3::new(-0.7, deck_y + 0.45, 1.42), ContainerKind::Crate),
+        (Vec3::new(-0.6, deck_y + 1.23, 1.0), ContainerKind::Crate),
+        (Vec3::new(0.75, deck_y + 0.88, 2.4), ContainerKind::Barrel),
+    ] {
+        int.containers.push(ContainerSpot { pos, kind });
+    }
     vec![
         (
             Vec3::new(0.0, deck_y - 0.15, 5.0),
@@ -1564,15 +1645,15 @@ pub fn model(kind: &str, seed: u32) -> Building {
             (6.2, 5.0, Vec::new())
         }
         "bancarella-erbe" | "bancarella-frutta" | "bancarella-pesce" => {
-            let c = stall(&mut b, kind);
+            let c = stall(&mut b, &mut int, kind);
             (3.0, 2.8, c)
         }
         "faro" => {
-            let c = lighthouse(&mut b);
-            (5.2, 5.2, c)
+            lighthouse(&mut b, &mut int);
+            (5.2, 5.2, Vec::new())
         }
         "molo" => {
-            let c = pier(&mut b);
+            let c = pier(&mut b, &mut int);
             (3.2, 14.0, c)
         }
         "barca" => {
@@ -1718,6 +1799,7 @@ mod tests {
             "fabbro",
             "forno",
             "arcere",
+            "faro",
         ] {
             let int = model(kind, 7).interior;
             for bed in &int.beds {
@@ -1737,6 +1819,19 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn lighthouse_climbs_to_the_lantern_with_a_real_door() {
+        let int = model("faro", 1).interior;
+        assert!(int.door.is_some());
+        let top = int
+            .ground
+            .iter()
+            .map(|(c, s)| c.y + s.y / 2.0)
+            .fold(f32::MIN, f32::max);
+        assert!((top - 14.25).abs() < 1e-3, "{top}");
+        assert!(int.containers.len() >= 4);
     }
 
     #[test]

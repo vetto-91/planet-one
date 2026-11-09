@@ -185,7 +185,8 @@ lavoro: 8.5 103.0 0 1
 orari: 5 19 22
 
 [Ettore]
+casa: faro 0 0
 ruolo: guardiano del faro
 modello: guardia
 guardia: si
-lavoro: -10.8 94.0 1 0
+lavoro: -10.6 90.4 1 0
