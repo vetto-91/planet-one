@@ -2,7 +2,7 @@
 
 - Data: 2026-11-09
 - Stato: accettato (Fase 2 della grafica realistica)
-- Versione: da rilasciare (v0.0.26.0)
+- Versione: v0.0.26.0
 
 ## Contesto
 Dopo i personaggi veri (ADR 0015) il mondo era ancora cel-shaded: terreno con texture illustrate, edifici a colori di vertice senza UV, alberi a coni, nessun tonemapping.
