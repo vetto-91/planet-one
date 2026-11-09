@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.41.0 — Luoghi da scoprire (2026-11-09)
 
 - **Luoghi da scoprire** (ADR 0029): campo del ladro nel bosco, fattoria con Ida, mulino a vento di Gino con le pale che girano, torre in rovina sull'altura con scala fino in cima, rovine di un tempio, grotta nella scogliera, accampamento dei banditi con nemici che ricompaiono, santuario nella radura, cartelli e panchine sui sentieri.
 - I luoghi hanno bauli e casse da aprire, il nome sulla mappa e sentieri che li collegano.
