@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.37.0 — Terreno e acque dell'isola (2026-11-09)
 
 - **Isola** (ADR 0026): alture percorribili, scogliere a est e a sud-ovest, spiagge più larghe, roccia sui pendii e sentieri di terra battuta che collegano le zone dell'isola.
 - **Acqua** (ADR 0026): un ruscello con laghetto e ponte di legno; onde sul mare e schiuma lungo la riva, spegnibili dalle impostazioni grafiche.

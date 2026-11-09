@@ -2,7 +2,7 @@
 
 RPG 3D open source, in terza persona, con grafica realistica in corso (personaggi veri da `v0.0.25.0`, mondo e materiali PBR da `v0.0.26.0`, animazioni dei personaggi da `v0.0.28.0`). Scritto in **Rust** con il motore **[Bevy](https://bevy.org)**. Obiettivo iniziale: una **vertical slice** giocabile (1 quest, 1 NPC, 1 nemico, inventario minimale).
 
-> Stato: **Fase 5 — Vertical slice completata, con rifiniture** (`v0.0.36.0`).
+> Stato: **Fase 5 — Vertical slice completata, con rifiniture** (`v0.0.37.0`).
 > Quest "Denaro Rubato", bussola, obiettivi (TAB), combattimento e inventario.
 > Roadmap e fasi: [docs/ROADMAP.md](docs/ROADMAP.md).
 

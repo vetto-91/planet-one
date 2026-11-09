@@ -3,4 +3,4 @@
 //! Il quarto segmento (BUGFIX) non vive in `Cargo.toml`: aggiornare questa
 //! costante a ogni rilascio, insieme a `Cargo.toml`, `CHANGELOG.md` e al tag.
 
-pub const GAME_VERSION: &str = "v0.0.36.0";
+pub const GAME_VERSION: &str = "v0.0.37.0";
