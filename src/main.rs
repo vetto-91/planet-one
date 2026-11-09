@@ -22,6 +22,7 @@ mod figure;
 mod graphics;
 mod hud;
 mod hut;
+mod interiors;
 mod inventory;
 mod inventory_ui;
 mod map;
@@ -147,6 +148,7 @@ fn main() {
         .add_plugins(animation::plugin)
         .add_plugins(graphics::plugin)
         .init_resource::<debug_place::DebugPlace>()
+        .init_resource::<world_props::Homes>()
         .init_resource::<hud::Occluded>()
         .init_resource::<audio::AudioSettings>()
         .init_resource::<voice::VoiceQueue>()
@@ -296,6 +298,7 @@ fn main() {
                 world_props::sync_world_props,
                 world_props::update_street_lamps,
                 world_props::update_lighthouse,
+                world_props::update_interior_lights,
             ),
         )
         // Toggle Esc: bidirezionale (Playing ↔ Paused), esclude Resetting.

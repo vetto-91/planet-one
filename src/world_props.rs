@@ -35,6 +35,46 @@ pub struct LighthouseHead;
 #[derive(Component)]
 pub struct LighthouseBeam;
 
+/// Impronta di un edificio visitabile: le sue luci si accendono se il giocatore è dentro.
+#[derive(Component)]
+pub struct BuildingFootprint {
+    pub half: Vec2,
+}
+
+/// Luce interna di un edificio.
+#[derive(Component)]
+pub struct InteriorLight;
+
+/// Potenza delle luci interne (lm) e apertura della porta (rad, verso l'interno).
+const INTERIOR_LUMENS: f32 = 90_000.0;
+const DOOR_OPEN_ANGLE: f32 = 1.45;
+
+/// Posti letto e porta di un edificio, in coordinate del mondo.
+pub struct HomeEntry {
+    pub kind: String,
+    pub occurrence: usize,
+    pub door: Vec2,
+    /// Centro del materasso e direzione della testata.
+    pub beds: Vec<(Vec3, Vec3)>,
+}
+
+/// Case del paese: gli abitanti vi dormono (`casa:` in `abitanti.txt`).
+#[derive(Resource, Default)]
+pub struct Homes {
+    pub list: Vec<HomeEntry>,
+    /// Vero dopo la prima costruzione degli edifici.
+    pub built: bool,
+}
+
+impl Homes {
+    /// La casa `occurrence`-esima di tipo `kind`.
+    pub fn find(&self, kind: &str, occurrence: usize) -> Option<&HomeEntry> {
+        self.list
+            .iter()
+            .find(|h| h.kind == kind && h.occurrence == occurrence)
+    }
+}
+
 /// Lanterna emissiva di un lampione (materiale condiviso).
 #[derive(Component)]
 pub struct LampBulb(Handle<StandardMaterial>);
@@ -90,6 +130,7 @@ pub fn sync_world_props(
     village: Res<crate::village::VillageInfo>,
     field: Option<Res<crate::terrain::TerrainField>>,
     props: Query<Entity, With<WorldProp>>,
+    mut homes: ResMut<Homes>,
     mut built: Local<(Option<u32>, usize)>,
 ) {
     // Prima che il terreno esista non si può appoggiare nulla: si aspetta.
@@ -137,6 +178,9 @@ pub fn sync_world_props(
     });
     let snow_mat = crate::seasons::snow_material(&mut materials);
     let (mut spawned, mut skipped) = (0usize, 0usize);
+    let door_mesh_cache: &mut Vec<(f32, f32, Handle<Mesh>)> = &mut Vec::new();
+    homes.list.clear();
+    let mut occurrences: std::collections::HashMap<String, usize> = Default::default();
     for pl in &dbg.items {
         if matches!(pl.kind.as_str(), "campo" | "orto") {
             // Campo coltivato: una sola mesh per tutto il piazzamento.
@@ -183,6 +227,28 @@ pub fn sync_world_props(
                     _ => None,
                 };
                 let kind = pl.kind.clone();
+                let model_half = model.half;
+                let interior = model.interior;
+                // Posti letto e porta in coordinate del mondo, per gli abitanti.
+                if let Some(door) = interior.door {
+                    let occurrence = occurrences.entry(kind.clone()).or_insert(0);
+                    let y = crate::props::ground_under(&field, p, model_half) - 0.05;
+                    let origin = Vec3::new(p.x, y, p.y);
+                    let rot = Quat::from_rotation_y(yaw);
+                    let outside =
+                        origin + rot * (door.hinge + Vec3::new(door.width / 2.0, 0.0, 1.0));
+                    homes.list.push(HomeEntry {
+                        kind: kind.clone(),
+                        occurrence: *occurrence,
+                        door: Vec2::new(outside.x, outside.z),
+                        beds: interior
+                            .beds
+                            .iter()
+                            .map(|b| (origin + rot * b.pos, rot * b.head))
+                            .collect(),
+                    });
+                    *occurrence += 1;
+                }
                 let mut e = commands.spawn((
                     WorldProp,
                     SceneNode,
@@ -194,8 +260,11 @@ pub fn sync_world_props(
                 if fixed_y.is_none() {
                     e.insert(SnapToGround {
                         offset: -0.05,
-                        half: model.half,
+                        half: model_half,
                     });
+                }
+                if !interior.lights.is_empty() {
+                    e.insert(BuildingFootprint { half: model_half });
                 }
                 e.with_children(|c| {
                     if model.snow.count_vertices() > 0 {
@@ -220,6 +289,93 @@ pub fn sync_world_props(
                         if kind == "molo" && i == 0 {
                             col.insert(crate::scene::Ground);
                         }
+                    }
+                    for (center, size) in interior.walls {
+                        c.spawn((
+                            Collider::cuboid(size.x, size.y, size.z),
+                            Transform::from_translation(center),
+                            crate::camera::BlocksCamera,
+                        ));
+                    }
+                    for (center, size) in interior.ground {
+                        c.spawn((
+                            Collider::cuboid(size.x, size.y, size.z),
+                            Transform::from_translation(center),
+                            crate::scene::Ground,
+                            crate::camera::BlocksCamera,
+                        ));
+                    }
+                    for (center, size) in interior.furniture {
+                        c.spawn((
+                            Collider::cuboid(size.x, size.y, size.z),
+                            Transform::from_translation(center),
+                        ));
+                    }
+                    for at in interior.lights {
+                        c.spawn((
+                            InteriorLight,
+                            PointLight {
+                                color: Color::srgb(1.0, 0.78, 0.5),
+                                intensity: INTERIOR_LUMENS,
+                                range: 12.0,
+                                shadow_maps_enabled: false,
+                                ..default()
+                            },
+                            Transform::from_translation(at),
+                            Visibility::Hidden,
+                        ));
+                    }
+                    if let Some(door) = interior.door {
+                        let (w, h) = (door.width, door.height);
+                        let leaf = match door_mesh_cache.iter().find(|(a, b, _)| *a == w && *b == h)
+                        {
+                            Some((_, _, m)) => m.clone(),
+                            None => {
+                                let m =
+                                    meshes.add(crate::pbr::with_tangents(Cuboid::new(w, h, 0.07)));
+                                door_mesh_cache.push((w, h, m.clone()));
+                                m
+                            }
+                        };
+                        // Lo stato sta al centro del vano: si usa da fuori e da dentro.
+                        let state = c
+                            .spawn((
+                                crate::hut::PropKind::Door,
+                                crate::hut::PropState { on: false },
+                                crate::entities::Interactable {
+                                    prompt: "[E] Apri porta".to_string(),
+                                    range: 3.0,
+                                    aim: Some(0.7),
+                                    use_from: None,
+                                },
+                                Transform::from_translation(
+                                    door.hinge + Vec3::new(w / 2.0, 1.0, 0.0),
+                                ),
+                            ))
+                            .id();
+                        c.spawn((
+                            crate::hut::Hinge {
+                                state,
+                                open_angle: DOOR_OPEN_ANGLE,
+                                angle: 0.0,
+                                base: Quat::IDENTITY,
+                            },
+                            Transform::from_translation(door.hinge),
+                            Visibility::default(),
+                        ))
+                        .with_children(|d| {
+                            d.spawn((
+                                Mesh3d(leaf),
+                                MeshMaterial3d(wood.clone()),
+                                Transform::from_xyz(w / 2.0, h / 2.0, 0.0),
+                            ));
+                            d.spawn((
+                                crate::hut::DoorCollider,
+                                Collider::cuboid(w, h, 0.1),
+                                Transform::from_xyz(w / 2.0, h / 2.0, 0.0),
+                                crate::camera::BlocksCamera,
+                            ));
+                        });
                     }
                     if kind == "faro" {
                         // Testa del faro: ruota; dentro c'è un faro orientabile e un bagliore fisso.
@@ -489,6 +645,39 @@ pub fn sync_world_props(
     }
     info!("[PROPS] oggetti veri creati: {spawned} (alberi saltati: {skipped})");
     *built = (Some(dbg.revision()), spawned);
+    homes.built = true;
+}
+
+/// Sistema: accende le luci dell'edificio in cui si trova il giocatore (e nessun'altra).
+pub fn update_interior_lights(
+    settings: Res<crate::audio::AudioSettings>,
+    player: Query<&GlobalTransform, With<crate::player::Player>>,
+    buildings: Query<(&GlobalTransform, &BuildingFootprint, &Children)>,
+    mut lights: Query<&mut Visibility, With<InteriorLight>>,
+) {
+    let Ok(player) = player.single() else {
+        return;
+    };
+    let p = player.translation();
+    for (tf, footprint, children) in &buildings {
+        let local = tf.affine().inverse().transform_point3(p);
+        let inside = settings.gfx.interior_lights
+            && local.x.abs() <= footprint.half.x + 0.5
+            && local.z.abs() <= footprint.half.y + 0.5
+            && local.y > -2.0;
+        let wanted = if inside {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
+        for child in children {
+            if let Ok(mut vis) = lights.get_mut(*child)
+                && *vis != wanted
+            {
+                *vis = wanted;
+            }
+        }
+    }
 }
 
 /// Potenza dei lampioni (lm), calibrata sulla resa HDR.

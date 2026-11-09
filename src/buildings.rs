@@ -9,6 +9,22 @@ use crate::pbr::{MATS, Mat};
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
 
+/// Semi-lati dell'impronta degli edifici visitabili (`None` per gli altri).
+pub fn interior_half(kind: &str) -> Option<Vec2> {
+    Some(match kind {
+        "casa-piccola" => Vec2::new(2.5, 2.0),
+        "casa-grande" => Vec2::new(3.5, 3.0),
+        "locanda" => Vec2::new(5.0, 3.25),
+        "caserma" => Vec2::new(4.0, 3.0),
+        "fabbro" => Vec2::new(5.0, 2.5),
+        "forno" => Vec2::new(2.75, 2.25),
+        "stalla" => Vec2::new(4.5, 2.5),
+        "arcere" | "casa" | "casa-media" => Vec2::new(3.1, 2.5),
+        "chiesa" => Vec2::new(3.7, 8.5),
+        _ => return None,
+    })
+}
+
 /// Tipi di piazzamento che sono edifici.
 pub fn is_building(kind: &str) -> bool {
     matches!(
@@ -44,6 +60,40 @@ pub struct Building {
     pub snow: Mesh,
     pub colliders: Vec<(Vec3, Vec3)>,
     pub half: Vec2,
+    /// Porta, pavimenti calpestabili, letti e luci (vuoto per gli oggetti pieni).
+    pub interior: Interior,
+}
+
+/// Porta vera di un edificio: cerniera in basso a sinistra, l'anta si estende verso +X.
+#[derive(Clone, Copy, Debug)]
+pub struct Door {
+    pub hinge: Vec3,
+    pub width: f32,
+    pub height: f32,
+}
+
+/// Posto letto (coordinate locali all'edificio).
+#[derive(Clone, Copy, Debug)]
+pub struct Bed {
+    /// Centro del materasso.
+    pub pos: Vec3,
+    /// Direzione della testata (±X o ±Z).
+    pub head: Vec3,
+}
+
+/// Parti interne di un edificio visitabile.
+#[derive(Default)]
+pub struct Interior {
+    pub door: Option<Door>,
+    /// Pareti, soffitti: fermano giocatore e camera.
+    pub walls: Vec<(Vec3, Vec3)>,
+    /// Mobili grandi: fermano il giocatore, non la camera.
+    pub furniture: Vec<(Vec3, Vec3)>,
+    /// Pavimenti e gradini: `Ground` per il controllo di appoggio.
+    pub ground: Vec<(Vec3, Vec3)>,
+    pub beds: Vec<Bed>,
+    /// Luci interne, una per piano.
+    pub lights: Vec<Vec3>,
 }
 
 pub(crate) type Col = [f32; 4];
@@ -101,7 +151,7 @@ pub(crate) struct B {
     /// Materiale di ogni triangolo.
     tri_mat: Vec<Mat>,
     /// Materiale imposto alle prossime facce (`None` = dedotto dal colore).
-    force: Option<Mat>,
+    pub(crate) force: Option<Mat>,
     /// Triangoli del manto di neve (sopra le falde dei tetti).
     snow: Vec<[Vec3; 3]>,
 }
@@ -526,23 +576,43 @@ fn window(b: &mut B, c: Vec3, n: Vec3, shutter: Col) {
     }
 }
 
-/// Porta sul fronte (+Z) con gradino.
-fn door_front(b: &mut B, x: f32, z: f32, w: f32, h: f32) {
+/// Quota del pavimento del piano terra, sopra lo zoccolo.
+pub(crate) const GROUND_FLOOR: f32 = 0.42;
+/// Altezza di un piano.
+const STOREY: f32 = 2.5;
+/// Spessore delle pareti esterne.
+const WALL_T: f32 = 0.22;
+
+/// Cornice e gradini della porta sul fronte (+Z); l'anta vera è in `world_props`.
+fn door_front(b: &mut B, int: &mut Interior, x: f32, z: f32, w: f32, h: f32) {
+    let y0 = GROUND_FLOOR;
     b.cuboid(
-        Vec3::new(x - w / 2.0 - 0.1, 0.0, z - 0.02),
-        Vec3::new(x + w / 2.0 + 0.1, h + 0.1, z + 0.08),
+        Vec3::new(x - w / 2.0 - 0.1, y0, z - 0.02),
+        Vec3::new(x - w / 2.0, y0 + h + 0.1, z + 0.08),
         TIMBER,
     );
     b.cuboid(
-        Vec3::new(x - w / 2.0, 0.0, z),
-        Vec3::new(x + w / 2.0, h, z + 0.12),
-        DOOR,
+        Vec3::new(x + w / 2.0, y0, z - 0.02),
+        Vec3::new(x + w / 2.0 + 0.1, y0 + h + 0.1, z + 0.08),
+        TIMBER,
     );
     b.cuboid(
-        Vec3::new(x - w / 2.0 - 0.2, 0.0, z),
-        Vec3::new(x + w / 2.0 + 0.2, 0.18, z + 0.55),
-        STONE,
+        Vec3::new(x - w / 2.0, y0 + h, z - 0.02),
+        Vec3::new(x + w / 2.0, y0 + h + 0.1, z + 0.08),
+        TIMBER,
     );
+    // Due gradini di pietra.
+    for (top, depth, back) in [(0.21f32, 0.75f32, 0.0), (GROUND_FLOOR, 0.38, WALL_T + 0.02)] {
+        let min = Vec3::new(x - w / 2.0 - 0.25, -0.4, z - back);
+        let max = Vec3::new(x + w / 2.0 + 0.25, top, z + depth);
+        b.cuboid(min, max, STONE);
+        int.ground.push(((min + max) / 2.0, max - min));
+    }
+    int.door = Some(Door {
+        hinge: Vec3::new(x - w / 2.0, y0, z - WALL_T / 2.0),
+        width: w,
+        height: h,
+    });
 }
 
 fn chimney(b: &mut B, x: f32, z: f32, y0: f32, y1: f32) {
@@ -558,29 +628,67 @@ fn chimney(b: &mut B, x: f32, z: f32, y0: f32, y1: f32) {
     );
 }
 
-/// Casa a base rettangolare `w`×`d`, muri alti `wh`, `floors` piani di finestre.
+/// Casa a base `w`×`d` su `floors` piani, cava: pareti, solai, scale, porta e sottotetto. Restituisce l'altezza dei muri.
 #[allow(clippy::too_many_arguments)]
 fn house(
     b: &mut B,
     r: &mut Rng,
+    int: &mut Interior,
+    kind: &str,
     w: f32,
     d: f32,
-    wh: f32,
     floors: usize,
     timber: bool,
     chimneys: usize,
-) {
+    seed: u32,
+) -> f32 {
+    use crate::interiors as rooms;
     let wall = r.pick(&WALLS);
     let roof = r.pick(&ROOFS);
     let shutter = r.pick(&SHUTTERS);
     let (hw, hd) = (w / 2.0, d / 2.0);
-    // Zoccolo di pietra che affonda nel terreno (compensa le pendenze).
+    let y0 = GROUND_FLOOR;
+    let wh = y0 + STOREY * floors as f32 + 0.04;
+    // Zoccolo di pietra che affonda nel terreno (compensa le pendenze): è la base del pavimento.
     b.cuboid(
         Vec3::new(-hw - 0.12, -1.3, -hd - 0.12),
         Vec3::new(hw + 0.12, 0.4, hd + 0.12),
         STONE,
     );
-    b.cuboid(Vec3::new(-hw, 0.4, -hd), Vec3::new(hw, wh, hd), wall);
+    let door_x = if floors > 1 { 0.0 } else { -hw * 0.35 };
+    let (door_w, door_h) = (1.0, 2.05);
+    let t = WALL_T;
+    // Pareti cave: la facciata ha il vano della porta.
+    let mut wall_box = |b: &mut B, min: Vec3, max: Vec3| {
+        b.cuboid(min, max, wall);
+        int.walls.push(((min + max) / 2.0, max - min));
+    };
+    wall_box(b, Vec3::new(-hw, 0.4, -hd), Vec3::new(hw, wh, -hd + t));
+    wall_box(
+        b,
+        Vec3::new(-hw, 0.4, -hd + t),
+        Vec3::new(-hw + t, wh, hd - t),
+    );
+    wall_box(
+        b,
+        Vec3::new(hw - t, 0.4, -hd + t),
+        Vec3::new(hw, wh, hd - t),
+    );
+    wall_box(
+        b,
+        Vec3::new(-hw, 0.4, hd - t),
+        Vec3::new(door_x - door_w / 2.0, wh, hd),
+    );
+    wall_box(
+        b,
+        Vec3::new(door_x + door_w / 2.0, 0.4, hd - t),
+        Vec3::new(hw, wh, hd),
+    );
+    wall_box(
+        b,
+        Vec3::new(door_x - door_w / 2.0, y0 + door_h, hd - t),
+        Vec3::new(door_x + door_w / 2.0, wh, hd),
+    );
     if timber {
         // Travi a vista: montanti d'angolo e fasce orizzontali.
         for (x, z) in [(-hw, -hd), (hw, -hd), (-hw, hd), (hw, hd)] {
@@ -590,87 +698,245 @@ fn house(
                 TIMBER,
             );
         }
-        for y in [wh * 0.52, wh - 0.1] {
-            b.cuboid_c(
-                Vec3::new(0.0, y, hd + 0.01),
-                Vec3::new(w + 0.1, 0.16, 0.12),
-                TIMBER,
-            );
-            b.cuboid_c(
-                Vec3::new(0.0, y, -hd - 0.01),
-                Vec3::new(w + 0.1, 0.16, 0.12),
-                TIMBER,
-            );
+        for k in 1..=floors {
+            let y = y0 + STOREY * k as f32 - 0.05;
+            for z in [hd + 0.01, -hd - 0.01] {
+                b.cuboid_c(Vec3::new(0.0, y, z), Vec3::new(w + 0.1, 0.16, 0.12), TIMBER);
+            }
         }
     }
-    let ridge_x = w >= d;
-    let rh = (if ridge_x { d } else { w }) * 0.55;
-    b.gable((-hw, hw, -hd, hd), wh, rh, 0.4, ridge_x, roof, wall);
-    // Porta e finestre sul fronte.
-    let door_x = if floors > 1 { 0.0 } else { -hw * 0.35 };
-    door_front(b, door_x, hd, 0.95, 1.95);
+    // Tetto ripido con il colmo lungo X (lato lungo): il sottotetto è abitabile.
+    let rh = d * 0.8;
+    b.gable((-hw, hw, -hd, hd), wh, rh, 0.4, true, roof, wall);
+    // Dentro: falde e timpani visti dal sottotetto.
+    b.force = Some(Mat::Planks);
+    let side = (hd + 0.4, rh * (hd + 0.4) / hd);
+    for s in [-1.0f32, 1.0] {
+        b.quad(
+            Vec3::new(-hw, wh - 0.1, s * side.0),
+            Vec3::new(hw, wh - 0.1, s * side.0),
+            Vec3::new(hw, wh + rh - 0.1, 0.0),
+            Vec3::new(-hw, wh + rh - 0.1, 0.0),
+            Vec3::new(0.0, -1.0, -s),
+            [0.4, 0.3, 0.2, 1.0],
+        );
+    }
+    b.force = None;
+    for s in [-1.0f32, 1.0] {
+        b.tri(
+            Vec3::new(s * (hw - 0.02), wh, -hd),
+            Vec3::new(s * (hw - 0.02), wh, hd),
+            Vec3::new(s * (hw - 0.02), wh + rh, 0.0),
+            Vec3::new(-s, 0.0, 0.0),
+            wall,
+        );
+    }
+    door_front(b, int, door_x, hd, door_w, door_h);
     let per_floor = ((w - 1.2) / 2.2).floor().max(1.0) as usize;
     for f in 0..floors {
-        let y = 1.45 + f as f32 * 2.5;
-        if y + 0.5 > wh {
-            break;
-        }
+        let y = y0 + 1.25 + f as f32 * STOREY;
         for i in 0..per_floor {
             let x = -hw + 0.9 + (w - 1.8) * (i as f32 + 0.5) / per_floor as f32;
             if f == 0 && (x - door_x).abs() < 1.1 {
                 continue;
             }
             window(b, Vec3::new(x, y, hd), Vec3::Z, shutter);
+            inner_window(b, Vec3::new(x, y, hd - t - 0.01), Vec3::NEG_Z, (0.62, 0.86));
         }
+        window(b, Vec3::new(0.0, y, -hd), Vec3::NEG_Z, shutter);
+        inner_window(b, Vec3::new(0.0, y, -hd + t + 0.01), Vec3::Z, (0.62, 0.86));
     }
-    // Finestre sul retro e sui fianchi.
-    window(b, Vec3::new(0.0, 1.5, -hd), Vec3::NEG_Z, shutter);
-    window(b, Vec3::new(hw, 1.5, 0.0), Vec3::X, shutter);
-    window(b, Vec3::new(-hw, 1.5, 0.0), Vec3::NEG_X, shutter);
-    // Camini.
+    // Piani, scale e arredi.
+    let (x0, x1, z0, z1) = (-hw + t, hw - t, -hd + t, hd - t);
+    let mut ys: Vec<f32> = (0..=floors).map(|k| y0 + k as f32 * STOREY).collect();
+    let attic_y = *ys.last().unwrap() + 0.02;
+    *ys.last_mut().unwrap() = attic_y;
+    // Semi-larghezza del sottotetto in cui si sta in piedi.
+    let knee = hd * (1.0 - 1.85 / rh).max(0.25);
+    let layout = rooms::floors_and_stairs(b, int, (x0, x1, z0, z1), &ys, knee);
+    for (f, &y) in ys.iter().enumerate().take(floors) {
+        // L'ultimo piano lascia libera la rampa del sottotetto, a destra.
+        let room_x1 = if f + 1 == floors {
+            layout.top_x0 - 0.15
+        } else {
+            x1 - 0.1
+        };
+        let room = rooms::Room {
+            x0: x0 + 0.1,
+            x1: room_x1,
+            z0: z0 + 1.2,
+            z1: z1 - 0.1,
+            y,
+            back_z: z0,
+            back_x: layout.back_x,
+        };
+        rooms::furnish(b, int, kind, &room, f, seed);
+        int.lights.push(Vec3::new(0.0, y + 2.1, (z0 + z1) / 2.0));
+    }
+    // Sottotetto: pareti basse (quella posteriore si ferma alla rampa), soffitto e ripostiglio.
+    b.force = Some(Mat::Planks);
+    for s in [-1.0f32, 1.0] {
+        let right = if s < 0.0 { layout.top_x0 - 0.05 } else { x1 };
+        let cx = (x0 + right) / 2.0;
+        let c = Vec3::new(cx, attic_y + 0.9, s * (knee + 0.05));
+        let size = Vec3::new(right - x0, 1.8, 0.1);
+        b.cuboid_c(c, size, [0.4, 0.3, 0.2, 1.0]);
+        int.walls.push((c, size));
+    }
+    b.force = None;
+    let ceiling_y = attic_y + 2.15;
+    int.walls.push((
+        Vec3::new(0.0, ceiling_y + 0.6, 0.0),
+        Vec3::new(w, 1.2, 2.0 * knee + 0.4),
+    ));
+    for s in [-1.0f32, 1.0] {
+        // Le testate salgono fino al soffitto; le falde esterne sono piene per la camera.
+        int.walls.push((
+            Vec3::new(s * (hw - t / 2.0), attic_y + 1.1, 0.0),
+            Vec3::new(t, 2.2, 2.0 * knee + 0.4),
+        ));
+        int.walls.push((
+            Vec3::new(0.0, wh + 0.6, s * (knee + 0.1 + (hd - knee) / 2.0)),
+            Vec3::new(w, 1.2, hd - knee - 0.1),
+        ));
+    }
+    let attic_room = rooms::Room {
+        x0: x0 + 0.9,
+        x1: layout.top_x0 - 0.9,
+        z0: -knee + 0.05,
+        z1: knee - 0.05,
+        y: attic_y,
+        back_z: z0,
+        back_x: x0,
+    };
+    if attic_room.x1 - attic_room.x0 > 0.9 {
+        rooms::furnish_attic(b, int, &attic_room);
+    }
+    int.lights.push(Vec3::new(0.0, attic_y + 1.6, 0.0));
+    // Camini: uno addossato alla testata sinistra, l'altro passante nel sottotetto.
     for i in 0..chimneys {
-        let x = if ridge_x {
-            hw * (if i == 0 { 0.55 } else { -0.55 })
-        } else {
-            0.0
-        };
-        let z = if ridge_x {
-            0.0
-        } else {
-            hd * (if i == 0 { 0.55 } else { -0.55 })
-        };
-        chimney(b, x, z, wh + rh * 0.4, wh + rh + 0.9);
+        let x = if i == 0 { -hw + 0.35 } else { hw * 0.1 };
+        chimney(b, x, 0.0, wh, wh + rh + 0.9);
+        int.walls
+            .push((Vec3::new(x, wh + 1.1, 0.0), Vec3::new(0.7, 2.2, 0.7)));
     }
+    wh
 }
 
-fn body_colliders(w: f32, d: f32, wh: f32) -> Vec<(Vec3, Vec3)> {
-    vec![
-        (
-            Vec3::new(0.0, wh / 2.0 - 0.3, 0.0),
-            Vec3::new(w + 0.2, wh + 1.2, d + 0.2),
-        ),
-        (Vec3::new(0.0, wh + 0.9, 0.0), Vec3::new(w, 1.8, d)),
-    ]
+/// Finestra vista da dentro: un pannello luminoso con il telaio.
+fn inner_window(b: &mut B, c: Vec3, n: Vec3, (w, h): (f32, f32)) {
+    let t = Vec3::Y.cross(n).normalize();
+    b.force = Some(Mat::Plain);
+    b.quad(
+        c - t * (w / 2.0) - Vec3::Y * (h / 2.0),
+        c + t * (w / 2.0) - Vec3::Y * (h / 2.0),
+        c + t * (w / 2.0) + Vec3::Y * (h / 2.0),
+        c - t * (w / 2.0) + Vec3::Y * (h / 2.0),
+        n,
+        [0.62, 0.76, 0.9, 1.0],
+    );
+    b.force = None;
+    b.cuboid_c(
+        c,
+        t.abs() * (w + 0.1) + Vec3::Y * 0.05 + n.abs() * 0.04,
+        TIMBER,
+    );
 }
 
-/// Chiesa: navata (larghezza 7, lunghezza 11), abside, campanile sul fronte e portale.
-fn church(b: &mut B, r: &mut Rng) -> Vec<(Vec3, Vec3)> {
+/// Chiesa cava: navata con panche e altare, campanile con scala a chiocciola fino alla cella delle campane.
+fn church(b: &mut B, r: &mut Rng, int: &mut Interior) {
+    use crate::interiors as rooms;
     let wall = [0.93, 0.9, 0.82, 1.0];
     let roof = ROOFS[1];
     let (hw, wh) = (3.5, 5.4);
+    let t = 0.3;
+    let y0 = GROUND_FLOOR;
     let (z_back, z_front) = (-7.5, 3.5); // navata
+    let tz = z_front + 1.7; // centro del campanile
+    let thw = 1.7;
+    let (t_back, t_front) = (tz - 1.8, tz + 1.8);
+    // Muri con collider.
+    let mut mur = |b: &mut B, min: Vec3, max: Vec3| {
+        b.cuboid(min, max, wall);
+        int.walls.push(((min + max) / 2.0, max - min));
+    };
+    // Basamenti.
     b.cuboid(
         Vec3::new(-hw - 0.15, -1.4, z_back - 0.15),
-        Vec3::new(hw + 0.15, 0.5, z_front + 0.15),
+        Vec3::new(hw + 0.15, 0.4, z_front + 0.15),
         STONE,
     );
     b.cuboid(
-        Vec3::new(-hw, 0.5, z_back),
+        Vec3::new(-1.8, -1.5, tz - 1.9),
+        Vec3::new(1.8, 0.4, tz + 1.9),
+        STONE,
+    );
+    // Navata: fianchi, fondo e facciata con la porta verso il campanile.
+    mur(
+        b,
+        Vec3::new(-hw, 0.4, z_back),
+        Vec3::new(-hw + t, wh, z_front),
+    );
+    mur(
+        b,
+        Vec3::new(hw - t, 0.4, z_back),
         Vec3::new(hw, wh, z_front),
-        wall,
+    );
+    mur(
+        b,
+        Vec3::new(-hw + t, 0.4, z_back),
+        Vec3::new(hw - t, wh, z_back + t),
+    );
+    let (nd_w, nd_h) = (1.4, 2.25);
+    mur(
+        b,
+        Vec3::new(-hw + t, 0.4, z_front - t),
+        Vec3::new(-nd_w / 2.0, wh, z_front),
+    );
+    mur(
+        b,
+        Vec3::new(nd_w / 2.0, 0.4, z_front - t),
+        Vec3::new(hw - t, wh, z_front),
+    );
+    mur(
+        b,
+        Vec3::new(-nd_w / 2.0, y0 + nd_h, z_front - t),
+        Vec3::new(nd_w / 2.0, wh, z_front),
     );
     b.gable((-hw, hw, z_back, z_front), wh, 3.2, 0.5, false, roof, wall);
-    // Abside poligonale (più bassa).
+    // Interno del tetto a vista.
+    b.force = Some(Mat::Planks);
+    for s in [-1.0f32, 1.0] {
+        b.quad(
+            Vec3::new(s * (hw + 0.5), wh - 0.1, z_back),
+            Vec3::new(s * (hw + 0.5), wh - 0.1, z_front),
+            Vec3::new(0.0, wh + 3.1, z_front),
+            Vec3::new(0.0, wh + 3.1, z_back),
+            Vec3::new(-s, -1.0, 0.0),
+            [0.4, 0.3, 0.2, 1.0],
+        );
+    }
+    b.force = None;
+    for (z, nz) in [(z_back + 0.02, 1.0f32), (z_front - 0.02, -1.0)] {
+        b.tri(
+            Vec3::new(-hw, wh, z),
+            Vec3::new(hw, wh, z),
+            Vec3::new(0.0, wh + 3.2, z),
+            Vec3::new(0.0, 0.0, nz),
+            wall,
+        );
+    }
+    // Pavimento di pietra.
+    for (x0, x1, z0, z1) in [
+        (-hw, hw, z_back, z_front + 0.2),
+        (-thw, thw, t_back, t_front),
+    ] {
+        let min = Vec3::new(x0, y0 - 0.18, z0);
+        let max = Vec3::new(x1, y0, z1);
+        b.cuboid(min, max, STONE);
+        int.ground.push(((min + max) / 2.0, max - min));
+    }
+    // Abside poligonale (più bassa, piena).
     b.cuboid(
         Vec3::new(-2.2, -1.4, z_back - 2.6),
         Vec3::new(2.2, 0.5, z_back + 0.2),
@@ -690,31 +956,102 @@ fn church(b: &mut B, r: &mut Rng) -> Vec<(Vec3, Vec3)> {
         roof,
         wall,
     );
-    // Campanile sul fronte.
-    let tz = z_front + 1.7;
-    b.cuboid(
-        Vec3::new(-1.8, -1.5, tz - 1.9),
-        Vec3::new(1.8, 0.5, tz + 1.9),
-        STONE,
-    );
-    b.cuboid(
-        Vec3::new(-1.7, 0.5, tz - 1.8),
-        Vec3::new(1.7, 10.4, tz + 1.8),
-        wall,
-    );
-    // Cella campanaria con aperture scure e cuspide.
-    for s in [-1.0f32, 1.0] {
+    // Campanile cavo sul fronte, con le aperture della cella campanaria vere.
+    let tt = 0.25;
+    let top = 10.4;
+    let (sill, lintel) = (8.9, 10.1);
+    let open_half = 0.55;
+    // Fianchi e retro/fronte: pieni sotto e sopra la cella, con pilastri ai lati delle aperture.
+    let mut tower_wall =
+        |b: &mut B, x_side: Option<f32>, z_side: Option<f32>, gap: Option<(f32, f32)>| {
+            let (min, max) = match (x_side, z_side) {
+                (Some(s), _) => (
+                    Vec3::new(if s < 0.0 { -thw } else { thw - tt }, 0.4, t_back),
+                    Vec3::new(if s < 0.0 { -thw + tt } else { thw }, top, t_front),
+                ),
+                (_, Some(s)) => (
+                    Vec3::new(-thw, 0.4, if s < 0.0 { t_back } else { t_front - tt }),
+                    Vec3::new(thw, top, if s < 0.0 { t_back + tt } else { t_front }),
+                ),
+                _ => return,
+            };
+            let along_x = z_side.is_some();
+            let (a0, a1) = if along_x {
+                (min.x, max.x)
+            } else {
+                (min.z, max.z)
+            };
+            let c = if along_x { 0.0 } else { tz };
+            let span = |b: &mut B, ua: f32, ub: f32, ya: f32, yb: f32| {
+                let (mut lo, mut hi) = (min, max);
+                if along_x {
+                    lo.x = ua;
+                    hi.x = ub;
+                } else {
+                    lo.z = ua;
+                    hi.z = ub;
+                }
+                lo.y = ya;
+                hi.y = yb;
+                b.cuboid(lo, hi, wall);
+            };
+            // Sotto la cella, con l'eventuale vano della porta.
+            match gap {
+                Some((half, h)) => {
+                    span(b, a0, c - half, 0.4, sill);
+                    span(b, c + half, a1, 0.4, sill);
+                    span(b, c - half, c + half, y0 + h, sill);
+                }
+                None => span(b, a0, a1, 0.4, sill),
+            }
+            span(b, a0, c - open_half, sill, lintel);
+            span(b, c + open_half, a1, sill, lintel);
+            span(b, a0, a1, lintel, top);
+            // Il collider è pieno: dalle aperture si guarda ma non si cade.
+            let mut block = |ua: f32, ub: f32, ya: f32| {
+                let (mut lo, mut hi) = (min, max);
+                if along_x {
+                    lo.x = ua;
+                    hi.x = ub;
+                } else {
+                    lo.z = ua;
+                    hi.z = ub;
+                }
+                lo.y = ya;
+                int.walls.push(((lo + hi) / 2.0, hi - lo));
+            };
+            match gap {
+                Some((half, h)) => {
+                    block(a0, c - half, 0.4);
+                    block(c + half, a1, 0.4);
+                    block(c - half, c + half, y0 + h);
+                }
+                None => block(a0, a1, 0.4),
+            }
+        };
+    tower_wall(b, Some(-1.0), None, None);
+    tower_wall(b, Some(1.0), None, None);
+    tower_wall(b, None, Some(-1.0), Some((nd_w / 2.0, nd_h)));
+    tower_wall(b, None, Some(1.0), Some((0.85, 2.8)));
+    // Scala a chiocciola e cella campanaria.
+    let inner = (-thw + tt, thw - tt, t_back + tt, t_front - tt);
+    let belfry = 8.0;
+    let hole = rooms::square_helix(b, int, inner, y0, belfry, 0.8);
+    rooms::slab_with_hole(b, int, inner, hole, belfry);
+    // Campana appesa al soffitto della cella.
+    let bronze = [0.55, 0.42, 0.2, 1.0];
+    for (y, half) in [(9.05f32, 0.42f32), (9.35, 0.34), (9.65, 0.26), (9.9, 0.16)] {
         b.cuboid_c(
-            Vec3::new(0.0, 9.3, tz + s * 1.82),
-            Vec3::new(1.1, 1.5, 0.08),
-            GLASS,
-        );
-        b.cuboid_c(
-            Vec3::new(s * 1.72, 9.3, tz),
-            Vec3::new(0.08, 1.5, 1.1),
-            GLASS,
+            Vec3::new(0.0, y, tz),
+            Vec3::new(half * 2.0, 0.3, half * 2.0),
+            bronze,
         );
     }
+    b.cuboid_c(
+        Vec3::new(0.0, 10.25, tz),
+        Vec3::new(0.08, 0.5, 0.08),
+        TIMBER,
+    );
     b.cuboid(
         Vec3::new(-1.85, 10.4, tz - 1.95),
         Vec3::new(1.85, 10.7, tz + 1.95),
@@ -725,13 +1062,13 @@ fn church(b: &mut B, r: &mut Rng) -> Vec<(Vec3, Vec3)> {
     b.cuboid_c(Vec3::new(0.0, 16.4, tz), Vec3::new(0.12, 1.1, 0.12), TIMBER);
     b.cuboid_c(Vec3::new(0.0, 16.5, tz), Vec3::new(0.6, 0.12, 0.12), TIMBER);
     // Portale (sul fronte del campanile, +Z) e orologio.
-    door_front(b, 0.0, tz + 1.8, 1.7, 2.8);
+    door_front(b, int, 0.0, t_front, 1.7, 2.8);
     b.cuboid_c(
         Vec3::new(0.0, 6.8, tz + 1.82),
         Vec3::new(1.0, 1.0, 0.08),
         [0.9, 0.85, 0.6, 1.0],
     );
-    // Finestre alte e strette sui fianchi della navata.
+    // Finestre alte e strette sui fianchi della navata, viste anche da dentro.
     for i in 0..3 {
         let z = z_back + 2.0 + i as f32 * 3.0;
         for s in [-1.0f32, 1.0] {
@@ -740,24 +1077,41 @@ fn church(b: &mut B, r: &mut Rng) -> Vec<(Vec3, Vec3)> {
                 Vec3::new(0.06, 2.0, 0.8),
                 GLASS,
             );
+            inner_window(
+                b,
+                Vec3::new(s * (hw - t - 0.01), 3.2, z),
+                Vec3::new(-s, 0.0, 0.0),
+                (0.8, 2.0),
+            );
         }
     }
     let _ = r.next();
-    vec![
-        (
-            Vec3::new(0.0, 2.6, (z_back + z_front) / 2.0),
-            Vec3::new(7.4, 6.4, z_front - z_back + 0.4),
-        ),
-        (
-            Vec3::new(0.0, 5.6, (z_back + z_front) / 2.0),
-            Vec3::new(7.0, 3.0, z_front - z_back),
-        ),
-        (Vec3::new(0.0, 2.0, z_back - 1.2), Vec3::new(4.2, 4.2, 2.6)),
-        (Vec3::new(0.0, 5.2, tz), Vec3::new(3.8, 11.4, 4.0)),
-    ]
+    // Panche e altare.
+    let nave = rooms::Room {
+        x0: -hw + t,
+        x1: hw - t,
+        z0: z_back + t,
+        z1: z_front - t,
+        y: y0,
+        back_z: z_back + t,
+        back_x: -hw + t,
+    };
+    rooms::furnish_church(b, int, &nave);
+    // Tetto pieno per la camera; l'abside è un volume unico.
+    int.walls.push((
+        Vec3::new(0.0, wh + 0.9, (z_back + z_front) / 2.0),
+        Vec3::new(7.0, 1.8, z_front - z_back),
+    ));
+    int.walls
+        .push((Vec3::new(0.0, 2.0, z_back - 1.2), Vec3::new(4.2, 4.2, 2.6)));
+    int.walls
+        .push((Vec3::new(0.0, 10.55, tz), Vec3::new(3.7, 0.3, 3.8)));
+    int.lights.push(Vec3::new(0.0, 4.6, -4.0));
+    int.lights.push(Vec3::new(0.0, 4.6, 0.8));
+    int.lights.push(Vec3::new(0.0, 2.6, tz));
+    int.lights.push(Vec3::new(0.0, belfry + 2.0, tz));
 }
 
-/// Insegna a bandiera accanto alla porta (bottega).
 fn sign_arm(b: &mut B, col: Col) {
     b.cuboid_c(Vec3::new(1.9, 3.1, 3.0), Vec3::new(0.08, 0.08, 1.0), TIMBER);
     b.cuboid_c(Vec3::new(1.9, 2.65, 3.45), Vec3::new(0.08, 0.7, 0.9), col);
@@ -857,7 +1211,22 @@ fn lighthouse(b: &mut B) -> Vec<(Vec3, Vec3)> {
         y += 2.6;
     }
     // Porta e finestrelle.
-    door_front(b, 0.0, 1.95, 0.95, 1.9);
+    // Porta dipinta (il faro resta chiuso): cornice, anta e gradino.
+    b.cuboid(
+        Vec3::new(-0.575, 0.0, 1.93),
+        Vec3::new(0.575, 2.0, 2.0),
+        TIMBER,
+    );
+    b.cuboid(
+        Vec3::new(-0.475, 0.0, 1.95),
+        Vec3::new(0.475, 1.9, 2.04),
+        DOOR,
+    );
+    b.cuboid(
+        Vec3::new(-0.7, 0.0, 1.95),
+        Vec3::new(0.7, 0.18, 2.55),
+        STONE,
+    );
     for (i, h) in [3.4f32, 6.0, 8.6, 11.2].iter().enumerate() {
         let n = if i % 2 == 0 { Vec3::X } else { Vec3::NEG_X };
         b.cuboid_c(
@@ -1094,17 +1463,18 @@ pub fn model(kind: &str, seed: u32) -> Building {
     for _ in 0..3 {
         r.next();
     }
-    let (w, d, colliders) = match kind {
+    let mut int = Interior::default();
+    let (w, d, colliders): (f32, f32, Vec<(Vec3, Vec3)>) = match kind {
         "casa-piccola" => {
-            house(&mut b, &mut r, 5.0, 4.0, 2.7, 1, false, 1);
-            (5.0, 4.0, body_colliders(5.0, 4.0, 2.7))
+            house(&mut b, &mut r, &mut int, kind, 5.0, 4.0, 2, false, 1, seed);
+            (5.0, 4.0, Vec::new())
         }
         "casa-grande" => {
-            house(&mut b, &mut r, 7.0, 6.0, 5.4, 2, true, 2);
-            (7.0, 6.0, body_colliders(7.0, 6.0, 5.4))
+            house(&mut b, &mut r, &mut int, kind, 7.0, 6.0, 3, true, 2, seed);
+            (7.0, 6.0, Vec::new())
         }
         "locanda" => {
-            house(&mut b, &mut r, 10.0, 6.5, 5.2, 2, true, 2);
+            house(&mut b, &mut r, &mut int, kind, 10.0, 6.5, 3, true, 2, seed);
             // Insegna a bandiera accanto alla porta.
             b.cuboid_c(Vec3::new(1.6, 3.4, 3.4), Vec3::new(0.08, 0.08, 0.9), TIMBER);
             b.cuboid_c(
@@ -1112,11 +1482,11 @@ pub fn model(kind: &str, seed: u32) -> Building {
                 Vec3::new(0.7, 0.55, 0.06),
                 [0.55, 0.3, 0.15, 1.0],
             );
-            (10.0, 6.5, body_colliders(10.0, 6.5, 5.2))
+            (10.0, 6.5, Vec::new())
         }
         "caserma" => {
-            // Casa delle guardie: due piani, travi a vista, stendardo rosso accanto alla porta.
-            house(&mut b, &mut r, 8.0, 6.0, 5.2, 2, true, 1);
+            // Casa delle guardie: tre piani, travi a vista, stendardo rosso accanto alla porta.
+            house(&mut b, &mut r, &mut int, kind, 8.0, 6.0, 3, true, 1, seed);
             b.cuboid_c(Vec3::new(1.9, 3.6, 3.4), Vec3::new(0.08, 0.08, 0.9), TIMBER);
             b.force = Some(Mat::Cloth);
             b.cuboid_c(
@@ -1125,39 +1495,39 @@ pub fn model(kind: &str, seed: u32) -> Building {
                 [0.7, 0.14, 0.12, 1.0],
             );
             b.force = None;
-            (8.0, 6.0, body_colliders(8.0, 6.0, 5.2))
+            (8.0, 6.0, Vec::new())
         }
         "fabbro" => {
-            house(&mut b, &mut r, 6.5, 5.0, 3.0, 1, false, 0);
+            house(&mut b, &mut r, &mut int, kind, 6.5, 5.0, 2, false, 1, seed);
             sign_arm(&mut b, [0.35, 0.36, 0.4, 1.0]);
-            chimney(&mut b, 2.3, -1.2, 2.6, 5.6);
             b.cuboid(
                 Vec3::new(3.25, 0.0, -1.5),
                 Vec3::new(5.0, 2.3, 2.0),
                 [0.45, 0.38, 0.32, 1.0],
             );
-            let mut c = body_colliders(6.5, 5.0, 3.0);
-            c.push((Vec3::new(4.1, 1.1, 0.25), Vec3::new(1.8, 2.4, 3.5)));
-            (10.0, 5.0, c)
+            (
+                10.0,
+                5.0,
+                vec![(Vec3::new(4.1, 1.1, 0.25), Vec3::new(1.8, 2.4, 3.5))],
+            )
         }
         "forno" => {
-            house(&mut b, &mut r, 5.5, 4.5, 2.8, 1, false, 0);
-            chimney(&mut b, 1.4, 0.0, 2.8, 5.2);
-            (5.5, 4.5, body_colliders(5.5, 4.5, 2.8))
+            house(&mut b, &mut r, &mut int, kind, 5.5, 4.5, 2, false, 1, seed);
+            (5.5, 4.5, Vec::new())
         }
         "stalla" => {
-            house(&mut b, &mut r, 9.0, 5.0, 2.4, 1, false, 0);
+            house(&mut b, &mut r, &mut int, kind, 9.0, 5.0, 1, false, 0, seed);
             b.cuboid(
                 Vec3::new(-1.4, 0.0, 2.52),
                 Vec3::new(1.4, 2.1, 2.64),
                 TIMBER,
             );
-            (9.0, 5.0, body_colliders(9.0, 5.0, 2.4))
+            (9.0, 5.0, Vec::new())
         }
         "arcere" => {
-            house(&mut b, &mut r, 6.2, 5.0, 3.5, 2, true, 1);
+            house(&mut b, &mut r, &mut int, kind, 6.2, 5.0, 2, true, 1, seed);
             sign_arm(&mut b, [0.25, 0.5, 0.3, 1.0]);
-            (6.2, 5.0, body_colliders(6.2, 5.0, 3.5))
+            (6.2, 5.0, Vec::new())
         }
         "bancarella-erbe" | "bancarella-frutta" | "bancarella-pesce" => {
             let c = stall(&mut b, kind);
@@ -1222,15 +1592,15 @@ pub fn model(kind: &str, seed: u32) -> Building {
             )
         }
         "chiesa" => {
-            let c = church(&mut b, &mut r);
-            (7.4, 17.0, c)
+            church(&mut b, &mut r, &mut int);
+            (7.4, 17.0, Vec::new())
         }
         "pozzo" => (2.4, 2.4, well(&mut b)),
         // "casa" e "casa-media"
         _ => {
             let timber = r.next().is_multiple_of(2);
-            house(&mut b, &mut r, 6.2, 5.0, 3.5, 2, timber, 1);
-            (6.2, 5.0, body_colliders(6.2, 5.0, 3.5))
+            house(&mut b, &mut r, &mut int, kind, 6.2, 5.0, 2, timber, 1, seed);
+            (6.2, 5.0, Vec::new())
         }
     };
     Building {
@@ -1238,6 +1608,7 @@ pub fn model(kind: &str, seed: u32) -> Building {
         parts: b.finish_parts(),
         colliders,
         half: Vec2::new(w / 2.0, d / 2.0),
+        interior: int,
     }
 }
 

@@ -181,7 +181,24 @@ pub fn update_terrain(
 
     // Genera mesh e collider dalla heightmap.
     let vil = village.map(|v| (*v).clone()).unwrap_or_default();
-    let field = build_field(image, &vil);
+    // Spiazzi piani sotto gli edifici visitabili.
+    let pads: Vec<BuildingPad> = dbg
+        .as_ref()
+        .map(|d| {
+            d.items
+                .iter()
+                .filter_map(|p| crate::buildings::interior_half(&p.kind).map(|half| (p, half)))
+                .flat_map(|(p, half)| {
+                    p.points.iter().enumerate().map(move |(j, q)| BuildingPad {
+                        center: *q,
+                        half,
+                        yaw: p.yaw(j),
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let field = build_field(image, &vil, &pads);
     let mesh = build_terrain_mesh(&field);
     let collider = build_terrain_collider(&field);
     let n = field.n;
@@ -453,7 +470,7 @@ fn island_height(image: &Image, x: f32, z: f32) -> f32 {
     land + (-3.5 - land) * smooth(0.72, 1.0, m)
 }
 
-fn build_field(image: &Image, village: &VillageInfo) -> Field {
+fn build_field(image: &Image, village: &VillageInfo, pads: &[BuildingPad]) -> Field {
     let n = (TERRAIN_SIZE / STEP) as usize + 1;
     let mut h = Vec::with_capacity(n * n);
     for iz in 0..n {
@@ -464,7 +481,74 @@ fn build_field(image: &Image, village: &VillageInfo) -> Field {
         }
     }
     flatten_village(&mut h, n, &village.poly);
+    flatten_pads(&mut h, n, pads);
     Field { n, h }
+}
+
+/// Impronta di un edificio visitabile: il terreno sotto va spianato (il pavimento è 42 cm sopra la base).
+struct BuildingPad {
+    center: Vec2,
+    half: Vec2,
+    yaw: f32,
+}
+
+/// Porta il terreno alla quota media dell'impronta, con un raccordo morbido attorno, così che i
+/// pavimenti non siano attraversati dal terreno e la porta sia sempre a un gradino da terra.
+fn flatten_pads(h: &mut [f32], n: usize, pads: &[BuildingPad]) {
+    /// Bordo pieno attorno all'impronta e larghezza del raccordo (m).
+    const RIM: f32 = 1.3;
+    const BLEND: f32 = 3.5;
+    let world = |ix: usize| -TERRAIN_SIZE / 2.0 + ix as f32 * STEP;
+    let index = |w: f32| ((w + TERRAIN_SIZE / 2.0) / STEP).round() as isize;
+    let clamp = |i: isize| i.clamp(0, n as isize - 1) as usize;
+    let rotations: Vec<(f32, f32)> = pads.iter().map(|p| p.yaw.sin_cos()).collect();
+    // Quota di ogni spiazzo, dal terreno prima di ogni modifica.
+    let targets: Vec<f32> = pads
+        .iter()
+        .zip(&rotations)
+        .map(|(pad, &(sin, cos))| {
+            let corners = [
+                Vec2::ZERO,
+                Vec2::new(pad.half.x, pad.half.y),
+                Vec2::new(-pad.half.x, pad.half.y),
+                Vec2::new(pad.half.x, -pad.half.y),
+                Vec2::new(-pad.half.x, -pad.half.y),
+            ];
+            corners
+                .iter()
+                .map(|l| {
+                    let p = pad.center + Vec2::new(l.x * cos + l.y * sin, -l.x * sin + l.y * cos);
+                    h[clamp(index(p.y)) * n + clamp(index(p.x))]
+                })
+                .sum::<f32>()
+                / corners.len() as f32
+        })
+        .collect();
+    // Peso di ogni spiazzo su ogni vertice; dove due si sovrappongono prevale il più vicino.
+    let mut sum = vec![(0.0f32, 0.0f32, 0.0f32); h.len()];
+    for ((pad, &(sin, cos)), &target) in pads.iter().zip(&rotations).zip(&targets) {
+        let reach = pad.half.length() + RIM + BLEND + 1.0;
+        for iz in clamp(index(pad.center.y - reach))..=clamp(index(pad.center.y + reach)) {
+            for ix in clamp(index(pad.center.x - reach))..=clamp(index(pad.center.x + reach)) {
+                let d = Vec2::new(world(ix), world(iz)) - pad.center;
+                let l = Vec2::new(d.x * cos - d.y * sin, d.x * sin + d.y * cos);
+                let out = (l.abs() - pad.half).max(Vec2::ZERO).length();
+                let f = 1.0 - smooth(RIM, RIM + BLEND, out);
+                if f > 0.0 {
+                    let w = f.powi(4);
+                    let cell = &mut sum[iz * n + ix];
+                    cell.0 += w;
+                    cell.1 += w * target;
+                    cell.2 = cell.2.max(f);
+                }
+            }
+        }
+    }
+    for (value, (weight, weighted, strength)) in h.iter_mut().zip(sum) {
+        if weight > 0.0 {
+            *value += (weighted / weight - *value) * strength;
+        }
+    }
 }
 
 /// Spiana dolcemente il terreno dentro le mura e per 6 m oltre (media mobile delle quote):

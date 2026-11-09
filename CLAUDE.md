@@ -70,6 +70,7 @@ Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, 
 - `docs/voci/` + `scripts/export_voci.py`: battute per creare le voci; rigenerare dopo aver cambiato `dialoghi.txt`.
 - `src/ui_style.rs`: palette, targhette (`plate`) e tema egui condiviso (stesso stile dei dialoghi).
 - `src/ai/`: dialoghi con IA SOLO LOCALE (Ollama su loopback, niente TLS/cloud; ADR 0005): `ollama.rs` client, `persona.rs` prompt da `assets/ai/<nome>.txt`, `tts.rs` voce con Piper locale (ADR 0006), `ui.rs` chat; stato `AppState::Chat`.
+- `src/interiors.rs`: arredi, solai e scale degli edifici (ADR 0019), porte e luci in `world_props.rs`, spiazzi in `terrain.rs`, letti in `abitanti.txt` (`casa:`).
 - `src/village.rs` e `src/buildings.rs`: villaggio murato (mura da piazzamenti `muro`, cancelli, edifici procedurali con parti per materiale PBR e UV in metri; ADR 0007, ADR 0016; dati in `assets/world/villaggio.txt`).
 - `src/villagers.rs`: abitanti e guardie (turni, `Phase::Rest` alla caserma, posti calcolati dai cancelli e dai camminamenti; ADR 0013) (dati in `assets/world/abitanti.txt`, persona IA in `assets/ai/`), routine e percorsi sulle strade (ADR 0008).
 - `src/shop.rs`, `src/equipment.rs`, `src/inventory.rs`, `src/combat.rs`: negozi con le monete, armi/scudo/arco impugnabili e frecce (ADR 0009).

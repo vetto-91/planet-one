@@ -2,6 +2,11 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Interni visitabili** (ADR 0019): case, locanda, caserma, fabbro, forno, arciere e chiesa hanno porte vere, piani con scale, sottotetto e arredi per tipo di edificio; il campanile si sale fino alla cella delle campane. Terreno spianato sotto gli edifici, finestre visibili anche da dentro, luci nell'edificio in cui si è (nuova opzione grafica).
+- **Abitanti a letto**: di notte tornano a casa a piedi e dormono nel proprio letto; le guardie fuori turno dormono in caserma (`casa:` in `abitanti.txt`).
+
 ## v0.0.30.0 — Mura percorribili (2026-11-09)
 
 - **Mura percorribili**: il muro è più spesso verso l'esterno, con un camminamento continuo lungo tutto il perimetro, ponti sopra i cancelli e torri cave attraversabili; scale dentro lo spessore del muro (una per cancello, una a est e una a ovest). Le quattro guardie sulle mura ora fanno la ronda sull'intero anello (ADR 0018).

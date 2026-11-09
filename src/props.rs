@@ -12,6 +12,15 @@ pub struct SnapToGround {
     pub half: Vec2,
 }
 
+/// Quota più bassa del terreno tra centro e angoli dell'area: è la base degli edifici.
+pub fn ground_under(field: &TerrainField, p: Vec2, half: Vec2) -> f32 {
+    let (hx, hz) = (half.x, half.y);
+    [(0.0, 0.0), (hx, hz), (-hx, hz), (hx, -hz), (-hx, -hz)]
+        .iter()
+        .map(|(dx, dz)| field.height_at(p.x + dx, p.y + dz))
+        .fold(f32::MAX, f32::min)
+}
+
 /// Sistema: porta a terra le entità con [`SnapToGround`] usando il campo di altezze del
 /// terreno (esatto, indipendente dalla fisica). Riprova ogni frame finché il terreno
 /// non è stato generato: prima c'è solo il segnaposto piatto a y = 0,5.
@@ -25,11 +34,7 @@ pub fn snap_to_ground(
     };
     for (entity, mut transform, snap) in &mut items {
         let p = transform.translation;
-        let (hx, hz) = (snap.half.x, snap.half.y);
-        let lowest = [(0.0, 0.0), (hx, hz), (-hx, hz), (hx, -hz), (-hx, -hz)]
-            .iter()
-            .map(|(dx, dz)| field.height_at(p.x + dx, p.z + dz))
-            .fold(f32::MAX, f32::min);
+        let lowest = ground_under(&field, Vec2::new(p.x, p.z), snap.half);
         transform.translation.y = lowest + snap.offset;
         commands.entity(entity).remove::<SnapToGround>();
         debug!(

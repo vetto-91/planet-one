@@ -40,8 +40,10 @@ pub struct VillagerDef {
     pub work: (Vec2, Vec2),
     /// Posto serale (se diverso) e sguardo.
     pub evening: Option<(Vec2, Vec2)>,
-    /// Inizio lavoro, fine lavoro (va in piazza), fine serata (sparisce in casa).
+    /// Inizio lavoro, fine lavoro (va in piazza), fine serata (torna a casa).
     pub hours: (f32, f32, f32),
+    /// Casa: tipo di edificio, quale tra quelli di quel tipo, posto letto.
+    pub home: Option<(String, usize, usize)>,
 }
 
 fn parse(text: &str) -> Vec<VillagerDef> {
@@ -83,6 +85,14 @@ fn parse(text: &str) -> Vec<VillagerDef> {
             }
             "sera" => d.evening = pos(&nums),
             "orari" if nums.len() >= 3 => d.hours = (nums[0], nums[1], nums[2]),
+            "casa" => {
+                let mut t = val.split_whitespace();
+                if let (Some(kind), Some(n), Some(bed)) = (t.next(), t.next(), t.next())
+                    && let (Ok(n), Ok(bed)) = (n.parse(), bed.parse())
+                {
+                    d.home = Some((kind.to_string(), n, bed));
+                }
+            }
             _ => {}
         }
     }
@@ -131,6 +141,13 @@ pub struct Villager {
 /// Lanterna di una guardia (accesa di notte).
 #[derive(Component)]
 pub struct GuardLantern;
+
+/// Lancia e lanterna: si posano quando la guardia va a letto.
+#[derive(Component)]
+pub struct GuardGear;
+
+type GearItem = (Entity, &'static mut Visibility);
+type GearOnly = (With<GuardGear>, Without<Villager>);
 
 /// Turni delle guardie (ore di gioco, fine esclusa; il terzo attraversa la mezzanotte).
 const SHIFTS: [(f32, f32); 3] = [(6.0, 14.0), (14.0, 22.0), (22.0, 30.0)];
@@ -287,6 +304,7 @@ pub fn spawn_villagers(
                 if guard {
                     // Lancia nella destra: l'asse dell'osso `hand_r` punta verso le dita (in basso a riposo).
                     c.spawn((
+                        GuardGear,
                         crate::figure::AttachToHand { right: true },
                         Transform::from_xyz(-0.02, -0.40, 0.0)
                             .with_rotation(Quat::from_rotation_x(std::f32::consts::PI)),
@@ -302,6 +320,7 @@ pub fn spawn_villagers(
                     });
                     c.spawn((
                         GuardLantern,
+                        GuardGear,
                         crate::figure::AttachToHand { right: false },
                         Mesh3d(lantern_mesh.clone()),
                         MeshMaterial3d(lantern_mat.clone()),
@@ -429,7 +448,22 @@ fn ground_y(field: &TerrainField, items: &[crate::debug_place::Placement], x: f3
     pier_deck_at(items, x, z).map_or(g, |d| d.max(g))
 }
 
-/// Sistema: routine degli abitanti (posto di giorno, piazza la sera, via di notte) e lanterne delle guardie.
+/// Posto letto di un abitante: porta di casa, materasso e direzione della testata.
+fn home_of(def: &VillagerDef, homes: &crate::world_props::Homes) -> Option<(Vec2, Vec3, Vec3)> {
+    let (kind, n, bed) = def.home.as_ref()?;
+    let home = homes.find(kind, *n)?;
+    let (pos, head) = *home.beds.get(*bed)?;
+    Some((home.door, pos, head))
+}
+
+/// Mette l'abitante a letto, supino con la testa verso la testata.
+fn lie_in_bed(tf: &mut Transform, pos: Vec3, head: Vec3) {
+    tf.translation = pos + Vec3::Y * 0.18;
+    tf.rotation = Quat::from_rotation_y(head.x.atan2(head.z))
+        * Quat::from_rotation_x(std::f32::consts::FRAC_PI_2);
+}
+
+/// Sistema: routine degli abitanti (posto di giorno, piazza la sera, a letto di notte) e lanterne delle guardie.
 #[allow(clippy::too_many_arguments)]
 pub fn villager_routine(
     mut commands: Commands,
@@ -440,6 +474,8 @@ pub fn villager_routine(
     dbg: Res<crate::debug_place::DebugPlace>,
     info: Res<VillageInfo>,
     dialog: Res<DialogState>,
+    homes: Res<crate::world_props::Homes>,
+    parents: Query<&ChildOf>,
     mut graph: Local<Option<RoadGraph>>,
     mut q: Query<(
         Entity,
@@ -448,7 +484,8 @@ pub fn villager_routine(
         &mut Villager,
         &mut Visibility,
     )>,
-    mut lanterns: Query<&mut PointLight, With<GuardLantern>>,
+    mut lanterns: Query<(Entity, &mut PointLight), With<GuardLantern>>,
+    mut gear: Query<GearItem, GearOnly>,
 ) {
     let Some(field) = field else {
         return;
@@ -458,11 +495,27 @@ pub fn villager_routine(
     }
     let dt = time.delta_secs();
     let hour = clock.hour;
-    // Lanterne accese di notte.
+    // Lanterne accese di notte, spente per chi dorme.
     let dark = clock.guard_lanterns_on();
-    for mut l in &mut lanterns {
-        let target = if dark { 60_000.0 } else { 0.0 };
+    for (entity, mut l) in &mut lanterns {
+        let asleep = parents
+            .iter_ancestors(entity)
+            .any(|a| q.get(a).is_ok_and(|(.., v, _)| v.hidden));
+        let target = if dark && !asleep { 60_000.0 } else { 0.0 };
         l.intensity += (target - l.intensity) * (dt * 2.0).min(1.0);
+    }
+    for (entity, mut vis) in &mut gear {
+        let asleep = parents
+            .iter_ancestors(entity)
+            .any(|a| q.get(a).is_ok_and(|(.., v, _)| v.hidden));
+        let wanted = if asleep {
+            Visibility::Hidden
+        } else {
+            Visibility::Inherited
+        };
+        if *vis != wanted {
+            *vis = wanted;
+        }
     }
     for (entity, mut tf, mut npc, mut v, mut vis) in &mut q {
         let want = desired_phase(&v.def, hour, weather.shelter);
@@ -491,6 +544,11 @@ pub fn villager_routine(
             }
             continue;
         }
+        // Aspetta che gli edifici esistano: i letti servono per piazzarli.
+        if !homes.built {
+            continue;
+        }
+        let home = home_of(&v.def, &homes);
         // Primo frame: si mette direttamente nella fase giusta.
         if !v.placed {
             v.placed = true;
@@ -500,9 +558,14 @@ pub fn villager_routine(
             tf.rotation = Quat::from_rotation_y(yaw_towards(look));
             v.hidden = matches!(want, Phase::Night | Phase::Rest);
             if v.hidden {
-                *vis = Visibility::Hidden;
                 npc.mode = NpcMode::Busy;
                 commands.entity(entity).insert(ColliderDisabled);
+                if let Some((_, pos, head)) = home {
+                    lie_in_bed(&mut tf, pos, head);
+                    *vis = Visibility::Inherited;
+                } else {
+                    *vis = Visibility::Hidden;
+                }
             } else {
                 *vis = Visibility::Inherited;
             }
@@ -510,7 +573,8 @@ pub fn villager_routine(
         // Cambio di fase: si parte (o si compare/scompare).
         if want != v.phase && v.path.is_empty() {
             let (to, _) = spot(&v.def, want, &info);
-            if want == Phase::Night {
+            let going_to_bed = matches!(want, Phase::Night | Phase::Rest);
+            if want == Phase::Night && home.is_none() {
                 *vis = Visibility::Hidden;
                 v.hidden = true;
                 npc.mode = NpcMode::Busy;
@@ -519,27 +583,33 @@ pub fn villager_routine(
                 continue;
             }
             if v.hidden {
-                // Esce di casa (o dalla caserma): compare al suo posto, o alla porta della caserma.
+                if going_to_bed {
+                    // Da riposo a riposo (riparo dalla pioggia finito di notte): resta dov'è.
+                    v.phase = want;
+                    continue;
+                }
+                // Si alza e compare alla porta di casa; senza casa, al posto di lavoro o alla caserma.
                 let from_rest = v.phase == Phase::Rest;
-                let appear = if from_rest {
-                    spot(&v.def, Phase::Rest, &info).0
-                } else {
-                    to
+                let appear = match home {
+                    Some((door, ..)) => door,
+                    None if from_rest => spot(&v.def, Phase::Rest, &info).0,
+                    None => to,
                 };
                 tf.translation = Vec3::new(appear.x, 0.0, appear.y);
+                tf.rotation = Quat::from_rotation_y(tf.rotation.to_euler(EulerRot::YXZ).0);
                 *vis = Visibility::Inherited;
                 v.hidden = false;
-                if from_rest {
+                if home.is_some() || from_rest {
                     v.path = graph
                         .as_ref()
                         .map_or_else(|| VecDeque::from([to]), |g| g.route(appear, to));
                 }
                 v.phase = want;
             } else {
-                let dest = if want == Phase::Rest {
-                    spot(&v.def, Phase::Rest, &info).0
-                } else {
-                    to
+                let dest = match home {
+                    Some((door, ..)) if going_to_bed => door,
+                    _ if want == Phase::Rest => spot(&v.def, Phase::Rest, &info).0,
+                    _ => to,
                 };
                 v.path = graph
                     .as_ref()
@@ -568,12 +638,16 @@ pub fn villager_routine(
                     tf.rotation = tf.rotation.slerp(want_rot, (8.0 * dt).clamp(0.0, 1.0));
                 }
             }
-        } else if v.phase == Phase::Rest {
-            // Arrivata alla caserma: entra e sparisce.
-            *vis = Visibility::Hidden;
+        } else if matches!(v.phase, Phase::Night | Phase::Rest) {
+            // Arrivato alla porta: entra e va a letto (senza casa, sparisce).
             v.hidden = true;
             npc.mode = NpcMode::Busy;
             commands.entity(entity).insert(ColliderDisabled);
+            if let Some((_, pos, head)) = home {
+                lie_in_bed(&mut tf, pos, head);
+            } else {
+                *vis = Visibility::Hidden;
+            }
             continue;
         } else {
             let (_, look) = spot(&v.def, v.phase, &info);
@@ -721,5 +795,24 @@ mod tests {
             }
         }
         assert_eq!(v.iter().filter(|d| d.wall.is_some()).count(), 4);
+    }
+
+    #[test]
+    fn every_civilian_and_gate_guard_has_a_real_bed() {
+        let v = parse(SPEC);
+        let mut used = std::collections::HashSet::new();
+        for d in v.iter().filter(|d| d.name != "Ettore" && d.wall.is_none()) {
+            let (kind, _, bed) = d
+                .home
+                .clone()
+                .unwrap_or_else(|| panic!("{} senza casa", d.name));
+            let beds = crate::buildings::model(&kind, 1).interior.beds.len();
+            assert!(bed < beds, "{}: letto {bed} su {beds}", d.name);
+            assert!(
+                used.insert(d.home.clone()),
+                "{}: letto già occupato",
+                d.name
+            );
+        }
     }
 }

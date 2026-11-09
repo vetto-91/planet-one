@@ -60,6 +60,8 @@ impl Shadows {
 pub struct GfxOptions {
     pub shadows: Shadows,
     pub lamp_shadows: bool,
+    /// Luci negli edifici (solo in quello in cui si trova il giocatore).
+    pub interior_lights: bool,
     pub ssao: bool,
     pub bloom: bool,
     pub antialias: bool,
@@ -73,6 +75,7 @@ impl GfxOptions {
     pub const HIGH: Self = Self {
         shadows: Shadows::High,
         lamp_shadows: true,
+        interior_lights: true,
         ssao: true,
         bloom: true,
         antialias: true,
@@ -82,6 +85,7 @@ impl GfxOptions {
     pub const MEDIUM: Self = Self {
         shadows: Shadows::Medium,
         lamp_shadows: false,
+        interior_lights: true,
         ssao: true,
         bloom: true,
         antialias: true,
@@ -91,6 +95,7 @@ impl GfxOptions {
     pub const LOW: Self = Self {
         shadows: Shadows::Low,
         lamp_shadows: false,
+        interior_lights: false,
         ssao: false,
         bloom: false,
         antialias: false,
@@ -106,9 +111,10 @@ impl GfxOptions {
     /// Righe da scrivere in `settings.txt`.
     pub fn to_lines(self) -> String {
         format!(
-            "gfx_shadows={}\ngfx_lamp_shadows={}\ngfx_ssao={}\ngfx_bloom={}\ngfx_antialias={}\ngfx_particles={}\ngfx_far_anim_cull={}\n",
+            "gfx_shadows={}\ngfx_lamp_shadows={}\ngfx_interior_lights={}\ngfx_ssao={}\ngfx_bloom={}\ngfx_antialias={}\ngfx_particles={}\ngfx_far_anim_cull={}\n",
             self.shadows.key(),
             u8::from(self.lamp_shadows),
+            u8::from(self.interior_lights),
             u8::from(self.ssao),
             u8::from(self.bloom),
             u8::from(self.antialias),
@@ -131,6 +137,7 @@ impl GfxOptions {
                 }
             }
             "gfx_lamp_shadows" => self.lamp_shadows = on,
+            "gfx_interior_lights" => self.interior_lights = on,
             "gfx_ssao" => self.ssao = on,
             "gfx_bloom" => self.bloom = on,
             "gfx_antialias" => self.antialias = on,
@@ -331,6 +338,7 @@ pub fn graphics_window(ctx: &egui::Context, audio: &mut AudioSettings, open: &mu
                 }
             });
             ui.checkbox(&mut gfx.lamp_shadows, "Ombre dei lampioni");
+            ui.checkbox(&mut gfx.interior_lights, "Luci negli edifici");
             ui.checkbox(&mut gfx.ssao, "Occlusione ambientale");
             ui.checkbox(&mut gfx.bloom, "Bagliore delle luci");
             ui.checkbox(&mut gfx.antialias, "Antialiasing");
@@ -399,6 +407,7 @@ mod tests {
         let original = GfxOptions {
             shadows: Shadows::Off,
             lamp_shadows: false,
+            interior_lights: false,
             ssao: false,
             bloom: true,
             antialias: false,

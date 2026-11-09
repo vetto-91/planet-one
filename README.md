@@ -183,6 +183,8 @@ iniziale (edifici, lampioni, cartelli e stradine; `--preview` salva un'anteprima
 
 ### Abitanti e guardie
 
+Gli edifici sono **visitabili**: case, locanda, caserma, fabbro, forno, arciere e chiesa hanno una porta da aprire con E, piani collegati da scale, un **sottotetto** e mobili per ogni tipo di edificio; il campanile si sale fino alla cella delle campane. Di notte gli abitanti rientrano a casa e dormono nel loro letto; le guardie fuori turno dormono in caserma.
+
 Fontevivo è abitata: 6 abitanti (locandiere, fornaia, prete, anziana, ragazzo, contadino) e 10 guardie: 6 ai cancelli e 4 di ronda sulle mura. Ognuno ha un saluto scritto
 e poi, a fine dialogo, la **chat con la IA locale** ("Parliamo d'altro…") con il proprio carattere e la propria voce (Piper). Di giorno stanno
 al loro posto, la sera si ritrovano in piazza (camminando sulle strade), di notte spariscono in casa; le guardie lavorano su **tre turni** (6–14, 14–22, 22–6): ai cancelli ce n'è sempre almeno una (subito oltre l'anta aperta), il cambio
