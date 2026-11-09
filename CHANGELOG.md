@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.32.0 — Abitanti ai piani, chiavi e shell (2026-11-09)
 
 - **Abitanti ai piani** (ADR 0020): di sera entrano dalla porta, salgono le scale e vanno a letto; al mattino scendono ed escono. Nessuno sta più fermo davanti a un ingresso.
 - **Chiavi e serrature** (ADR 0020): locanda e chiesa aperte, botteghe aperte negli orari di lavoro, case e caserma chiuse. Ogni abitante porta le sue chiavi.
