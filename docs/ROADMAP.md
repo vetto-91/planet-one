@@ -35,6 +35,7 @@ Strategia: **vertical slice prima**. Una demo giocabile (1 quest, 1 NPC, 1 nemic
 | 9.1 — Personaggi veri | Modelli umani con scheletro CC0, posa di riposo, oggetti alle mani | `v0.0.25.0` |
 | 9.2 — Mondo PBR | Texture fotografiche CC0 su terreno ed edifici, abeti veri, rendering HDR con ombre a cascata e occlusione | `v0.0.26.0` |
 | 9.2.1 — Rifinitura PBR | Tende, ferro e legno ovunque, sotto-menu impostazioni grafiche | `v0.0.27.0` |
+| 9.3 — Animazioni | Camminata, corsa, salto, attacchi, colpiti e morte per tutti i personaggi | `v0.0.28.0` |
 | 5.y — Mondo vivo | Colonna sonora con volume, casetta-chiosco esplorabile (porta, interni, stufa con fumo), routine giorno/notte del Viandante, voci dei personaggi, versione nel menu | `v0.0.7.0` |
 | 5.z — Mondo vivo, rifiniture | Interazione col mirino, casetta con serranda/interruttore/finestre e luci con ombre, routine del Viandante v2, voci normalizzate con ducking della musica | `v0.0.8.0` |
 | 5.w — Mappa e strumenti | Mappa dall'alto (M) con bussola e zoom, modalità debug piazzamenti (F4) con file `debug/placements.txt`, vetri e scuri spessi, il Viandante chiude porta e finestre | `v0.0.9.0` |
@@ -47,7 +48,7 @@ Strategia: **vertical slice prima**. Una demo giocabile (1 quest, 1 NPC, 1 nemic
 - **Input gamepad**: opzionale.
 - **Audio**: musica di sottofondo con volume nel menu (bevy_audio) fatta; restano effetti sonori e voci dei personaggi (testi in `docs/voci/`).
 - **UI**: restano da valutare i confini tra egui (attuale) e bevy_ui.
-- **Asset**: personaggi glTF CC0 Quaternius fatti (ADR 0015); mondo e materiali PBR fatti (ADR 0016); restano le animazioni.
+- **Asset**: personaggi glTF CC0 Quaternius fatti (ADR 0015); mondo e materiali PBR fatti (ADR 0016); animazioni fatte (ADR 0017).
 - **Fuori scope v1**: multiplayer. Web build (WASM) da valutare dopo la stabilità su Linux.
 
 ## Decisioni architetturali

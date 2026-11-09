@@ -2,7 +2,7 @@
 
 - Data: 2026-11-09
 - Stato: accettato (Fase 3 della grafica realistica)
-- Versione: da rilasciare (v0.0.28.0)
+- Versione: v0.0.28.0
 
 ## Contesto
 I personaggi erano fermi nella posa di riposo: chi camminava scivolava, l'attacco era solo un'oscillazione dell'arma.

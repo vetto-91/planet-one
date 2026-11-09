@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.28.0 — Animazioni dei personaggi (2026-11-09)
 
 - **Animazioni (Grafica realistica, Fase 3)**: camminata, corsa, salto, attacco per arma, colpito, conversazione per giocatore, abitanti e nemici, con clip accelerate secondo la velocità reale; il nemico colpito e morto si anima e resta a terra qualche secondo; opzione per fermare le animazioni lontane (ADR 0017).
 - **Correzione**: in mischia si colpivano solo i nemici a nord, perché si usava la direzione del corpo fisico che non ruota mai.
