@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.27.0 — Materiali completi e impostazioni grafiche (2026-11-09)
 
 - **Impostazioni grafiche**: nuovo sotto-menu nel menu Esc con preset Alta/Media/Bassa, qualità delle ombre, ombre dei lampioni, occlusione ambientale, bagliore, antialiasing e particelle (solo aspetto visivo, salvate in `settings.txt`).
 - **Materiali**: tende e merci in tela, lampioni e gambe delle panchine in ferro, molo, barche, casse e pali in legno, pagliai in paglia, armi e scudo adeguati; tangenti anche sulle primitive, così le normal map funzionano ovunque.
