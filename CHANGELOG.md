@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.33.0 — Microfono locale (2026-11-09)
 
 - **Microfono nella chat** (ADR 0022): tenendo premuto F2 o «Parla» si parla agli abitanti, con whisper.cpp solo in locale. Il testo si può rileggere prima di inviarlo. Spento finché non lo si attiva; si installa con `setup_ai --stt`.
 
