@@ -44,6 +44,8 @@ pub struct VillagerDef {
     pub hours: (f32, f32, f32),
     /// Casa: tipo di edificio, quale tra quelli di quel tipo, posto letto.
     pub home: Option<(String, usize, usize)>,
+    /// Chiavi in più (edifici dove lavora): nomi come `chiesa 0`.
+    pub extra_keys: Vec<String>,
 }
 
 fn parse(text: &str) -> Vec<VillagerDef> {
@@ -85,6 +87,12 @@ fn parse(text: &str) -> Vec<VillagerDef> {
             }
             "sera" => d.evening = pos(&nums),
             "orari" if nums.len() >= 3 => d.hours = (nums[0], nums[1], nums[2]),
+            "chiave" => {
+                let key = val.split_whitespace().collect::<Vec<_>>().join(" ");
+                if !key.is_empty() {
+                    d.extra_keys.push(key);
+                }
+            }
             "casa" => {
                 let mut t = val.split_whitespace();
                 if let (Some(kind), Some(n), Some(bed)) = (t.next(), t.next(), t.next())
@@ -136,6 +144,32 @@ pub struct Villager {
     hidden: bool,
     /// Distanza percorsa sull'anello delle mura (guardie di ronda).
     patrol: f32,
+    /// Percorso dentro casa (mondo, piedi): ha la precedenza sulla strada.
+    indoor: VecDeque<Vec3>,
+    /// È già entrato: quando `indoor` finisce si mette a letto.
+    entered: bool,
+}
+
+/// Inventario di un abitante: le chiavi che porta con sé.
+#[derive(Component, Default, Debug)]
+pub struct NpcInventory {
+    pub keys: Vec<String>,
+}
+
+impl NpcInventory {
+    pub fn has(&self, key: &str) -> bool {
+        self.keys.iter().any(|k| k == key)
+    }
+
+    fn of(def: &VillagerDef) -> Self {
+        let mut keys: Vec<String> = def
+            .home
+            .iter()
+            .map(|(kind, n, _)| format!("{kind} {n}"))
+            .collect();
+        keys.extend(def.extra_keys.iter().cloned());
+        Self { keys }
+    }
 }
 
 /// Lanterna di una guardia (accesa di notte).
@@ -285,6 +319,7 @@ pub fn spawn_villagers(
                     use_from: None,
                 },
                 crate::hud::NameAnchor(1.3),
+                NpcInventory::of(&def),
                 Villager {
                     def,
                     phase: Phase::Work,
@@ -292,6 +327,8 @@ pub fn spawn_villagers(
                     placed: false,
                     hidden: false,
                     patrol: 0.0,
+                    indoor: VecDeque::new(),
+                    entered: false,
                 },
                 RigidBody::Kinematic,
                 Collider::capsule(0.35, 1.0),
@@ -448,12 +485,24 @@ fn ground_y(field: &TerrainField, items: &[crate::debug_place::Placement], x: f3
     pier_deck_at(items, x, z).map_or(g, |d| d.max(g))
 }
 
-/// Posto letto di un abitante: porta di casa, materasso e direzione della testata.
-fn home_of(def: &VillagerDef, homes: &crate::world_props::Homes) -> Option<(Vec2, Vec3, Vec3)> {
+/// Letto di un abitante: serve la chiave di casa, altrimenti non può entrare.
+struct HomeRef<'a> {
+    door: Vec2,
+    bed: &'a crate::world_props::HomeBed,
+}
+
+fn home_of<'a>(
+    def: &VillagerDef,
+    keys: &NpcInventory,
+    homes: &'a crate::world_props::Homes,
+) -> Option<HomeRef<'a>> {
     let (kind, n, bed) = def.home.as_ref()?;
     let home = homes.find(kind, *n)?;
-    let (pos, head) = *home.beds.get(*bed)?;
-    Some((home.door, pos, head))
+    keys.has(&home.key()).then_some(())?;
+    Some(HomeRef {
+        door: home.door,
+        bed: home.beds.get(*bed)?,
+    })
 }
 
 /// Mette l'abitante a letto, supino con la testa verso la testata.
@@ -481,6 +530,7 @@ pub fn villager_routine(
         Entity,
         &mut Transform,
         &mut Npc,
+        &NpcInventory,
         &mut Villager,
         &mut Visibility,
     )>,
@@ -517,7 +567,7 @@ pub fn villager_routine(
             *vis = wanted;
         }
     }
-    for (entity, mut tf, mut npc, mut v, mut vis) in &mut q {
+    for (entity, mut tf, mut npc, keys, mut v, mut vis) in &mut q {
         let want = desired_phase(&v.def, hour, weather.shelter);
         let here = Vec2::new(tf.translation.x, tf.translation.z);
         // Guardie di ronda: percorrono l'anello delle mura senza fermarsi, salvo quando parlano.
@@ -548,7 +598,7 @@ pub fn villager_routine(
         if !homes.built {
             continue;
         }
-        let home = home_of(&v.def, &homes);
+        let home = home_of(&v.def, keys, &homes);
         // Primo frame: si mette direttamente nella fase giusta.
         if !v.placed {
             v.placed = true;
@@ -560,8 +610,8 @@ pub fn villager_routine(
             if v.hidden {
                 npc.mode = NpcMode::Busy;
                 commands.entity(entity).insert(ColliderDisabled);
-                if let Some((_, pos, head)) = home {
-                    lie_in_bed(&mut tf, pos, head);
+                if let Some(h) = &home {
+                    lie_in_bed(&mut tf, h.bed.pos, h.bed.head);
                     *vis = Visibility::Inherited;
                 } else {
                     *vis = Visibility::Hidden;
@@ -571,7 +621,7 @@ pub fn villager_routine(
             }
         }
         // Cambio di fase: si parte (o si compare/scompare).
-        if want != v.phase && v.path.is_empty() {
+        if want != v.phase && v.path.is_empty() && v.indoor.is_empty() {
             let (to, _) = spot(&v.def, want, &info);
             let going_to_bed = matches!(want, Phase::Night | Phase::Rest);
             if want == Phase::Night && home.is_none() {
@@ -588,15 +638,23 @@ pub fn villager_routine(
                     v.phase = want;
                     continue;
                 }
-                // Si alza e compare alla porta di casa; senza casa, al posto di lavoro o alla caserma.
+                // Si alza, scende le scale ed esce; senza casa compare al lavoro o alla caserma.
                 let from_rest = v.phase == Phase::Rest;
-                let appear = match home {
-                    Some((door, ..)) => door,
+                let appear = match &home {
+                    Some(h) => h.door,
                     None if from_rest => spot(&v.def, Phase::Rest, &info).0,
                     None => to,
                 };
                 tf.translation = Vec3::new(appear.x, 0.0, appear.y);
                 tf.rotation = Quat::from_rotation_y(tf.rotation.to_euler(EulerRot::YXZ).0);
+                if let Some(h) = &home {
+                    let mut steps: VecDeque<Vec3> = h.bed.path.iter().rev().copied().collect();
+                    if let Some(start) = steps.pop_front() {
+                        tf.translation = start + Vec3::Y * CENTER_Y;
+                    }
+                    v.indoor = steps;
+                    info!("[VILLAGERS] {} si alza", v.def.name);
+                }
                 *vis = Visibility::Inherited;
                 v.hidden = false;
                 if home.is_some() || from_rest {
@@ -606,8 +664,8 @@ pub fn villager_routine(
                 }
                 v.phase = want;
             } else {
-                let dest = match home {
-                    Some((door, ..)) if going_to_bed => door,
+                let dest = match &home {
+                    Some(h) if going_to_bed => h.door,
                     _ if want == Phase::Rest => spot(&v.def, Phase::Rest, &info).0,
                     _ => to,
                 };
@@ -621,6 +679,26 @@ pub fn villager_routine(
             continue;
         }
         let talking = dialog.open && dialog.speaker_entity == Some(entity);
+        // Dentro casa si cammina in 3D, sulle rampe e sui pavimenti.
+        if let Some(&next) = v.indoor.front() {
+            npc.mode = NpcMode::Busy;
+            commands.entity(entity).insert(ColliderDisabled);
+            if !talking {
+                let to = next + Vec3::Y * CENTER_Y - tf.translation;
+                if to.length() < 0.1 {
+                    v.indoor.pop_front();
+                } else {
+                    let step = (WALK_SPEED * dt).min(to.length());
+                    tf.translation += to.normalize() * step;
+                    let flat = Vec2::new(to.x, to.z);
+                    if flat.length() > 0.05 {
+                        let want_rot = Quat::from_rotation_y(yaw_towards(flat.normalize()));
+                        tf.rotation = tf.rotation.slerp(want_rot, (8.0 * dt).clamp(0.0, 1.0));
+                    }
+                }
+            }
+            continue;
+        }
         let here = Vec2::new(tf.translation.x, tf.translation.z);
         if let Some(&next) = v.path.front() {
             npc.mode = NpcMode::Busy;
@@ -639,15 +717,23 @@ pub fn villager_routine(
                 }
             }
         } else if matches!(v.phase, Phase::Night | Phase::Rest) {
-            // Arrivato alla porta: entra e va a letto (senza casa, sparisce).
-            v.hidden = true;
-            npc.mode = NpcMode::Busy;
-            commands.entity(entity).insert(ColliderDisabled);
-            if let Some((_, pos, head)) = home {
-                lie_in_bed(&mut tf, pos, head);
+            // Arrivato alla porta: entra e sale; in fondo al percorso si sdraia. Senza casa, sparisce.
+            if let Some(h) = &home {
+                if !v.entered {
+                    v.entered = true;
+                    v.indoor = h.bed.path.iter().copied().collect();
+                    info!("[VILLAGERS] {} entra in casa", v.def.name);
+                    continue;
+                }
+                lie_in_bed(&mut tf, h.bed.pos, h.bed.head);
+                info!("[VILLAGERS] {} è a letto", v.def.name);
             } else {
                 *vis = Visibility::Hidden;
             }
+            v.entered = false;
+            v.hidden = true;
+            npc.mode = NpcMode::Busy;
+            commands.entity(entity).insert(ColliderDisabled);
             continue;
         } else {
             let (_, look) = spot(&v.def, v.phase, &info);
@@ -665,8 +751,81 @@ pub fn villager_routine(
     }
 }
 
+/// Sistema: la porta si apre davanti a chi ne ha la chiave e si richiude dopo; alla chiusura la bottega si chiude.
+pub fn villager_doors(
+    time: Res<Time>,
+    clock: Res<GameClock>,
+    mut homes: ResMut<crate::world_props::Homes>,
+    walkers: Query<(&Transform, &Villager, &NpcInventory)>,
+    mut doors: Query<(&mut crate::hut::PropState, &crate::hut::Lock)>,
+) {
+    /// Distanza dalla porta a cui si apre e tempo prima di richiuderla.
+    const OPEN_NEAR: f32 = 2.0;
+    const CLOSE_AFTER: f32 = 1.5;
+    for home in &mut homes.list {
+        let Some(Ok((mut state, lock))) = home.state.map(|e| doors.get_mut(e)) else {
+            continue;
+        };
+        let key = home.key();
+        let near = walkers.iter().any(|(t, v, keys)| {
+            !v.indoor.is_empty()
+                && keys.has(&key)
+                && (t.translation - home.door_point).length() < OPEN_NEAR
+        });
+        if near {
+            home.idle = 0.0;
+            if !state.on {
+                state.on = true;
+                home.npc_open = true;
+            }
+        } else if home.npc_open {
+            home.idle += time.delta_secs();
+            if home.idle > CLOSE_AFTER {
+                state.on = false;
+                home.npc_open = false;
+            }
+        }
+        let open = lock.open_to_all(clock.hour);
+        if home.was_open && !open && !near && state.on {
+            state.on = false;
+        }
+        home.was_open = open;
+    }
+}
+
+/// Sistema: all'avvio segnala chi lavora davanti a una porta (anche dopo spostamenti con F4).
+pub fn warn_blocked_doors(homes: Res<crate::world_props::Homes>, mut done: Local<bool>) {
+    /// Distanza minima dal punto davanti alla porta (m).
+    const MIN_FROM_DOOR: f32 = 2.5;
+    if *done || !homes.built {
+        return;
+    }
+    *done = true;
+    for def in load_defs() {
+        let spots = std::iter::once(def.work.0).chain(def.evening.map(|e| e.0));
+        for spot in spots {
+            if def.gate.is_none()
+                && def.wall.is_none()
+                && let Some(h) = homes
+                    .list
+                    .iter()
+                    .find(|h| h.door.distance(spot) < MIN_FROM_DOOR)
+            {
+                warn!(
+                    "[VILLAGERS] {} sta davanti alla porta di {}",
+                    def.name,
+                    h.key()
+                );
+            }
+        }
+    }
+}
+
 pub fn plugin(app: &mut App) {
-    app.add_systems(Update, villager_routine);
+    app.add_systems(
+        Update,
+        (villager_routine, villager_doors, warn_blocked_doors).chain(),
+    );
 }
 
 #[cfg(test)]
@@ -795,6 +954,21 @@ mod tests {
             }
         }
         assert_eq!(v.iter().filter(|d| d.wall.is_some()).count(), 4);
+    }
+
+    #[test]
+    fn every_home_has_someone_with_the_key() {
+        let v = parse(SPEC);
+        for d in v.iter().filter(|d| d.home.is_some()) {
+            let (kind, n, _) = d.home.clone().unwrap();
+            assert!(
+                NpcInventory::of(d).has(&format!("{kind} {n}")),
+                "{}: niente chiave",
+                d.name
+            );
+        }
+        let anselmo = v.iter().find(|d| d.name == "Don Anselmo").unwrap();
+        assert!(NpcInventory::of(anselmo).has("chiesa 0"));
     }
 
     #[test]

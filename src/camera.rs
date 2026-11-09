@@ -80,8 +80,9 @@ pub fn player_visibility(
     // Nascondi sia il corpo fisico (Player) sia il gruppo mesh (PlayerVisual):
     // il corpo ha Visibility perche' e' parent dei mesh figli.
     mut bodies: Query<&mut Visibility, Or<(With<Player>, With<crate::player::PlayerVisual>)>>,
+    cheats: Res<crate::shell::Cheats>,
 ) {
-    let target = if state.mode == CameraMode::FirstPerson {
+    let target = if state.mode == CameraMode::FirstPerson || cheats.invisible {
         Visibility::Hidden
     } else {
         Visibility::Visible

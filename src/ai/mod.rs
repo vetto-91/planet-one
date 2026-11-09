@@ -71,6 +71,7 @@ enum Request {
 
 enum Event {
     Probe(Probe),
+    Models(Vec<String>),
     Reply(u64, Result<Reply, String>),
 }
 
@@ -78,6 +79,8 @@ enum Event {
 #[derive(Resource)]
 pub struct AiState {
     pub status: AiStatus,
+    /// Modelli installati nell'Ollama locale (aggiornati a ogni controllo).
+    pub models: Vec<String>,
     tx: mpsc::Sender<Request>,
     rx: Mutex<mpsc::Receiver<Event>>,
     probe_timer: f32,
@@ -96,6 +99,7 @@ impl Default for AiState {
         std::thread::spawn(move || worker(worker_rx, worker_tx, mock));
         Self {
             status: AiStatus::Off,
+            models: Vec::new(),
             tx,
             rx: Mutex::new(rx),
             probe_timer: PROBE_EVERY,
@@ -115,6 +119,12 @@ fn worker(rx: mpsc::Receiver<Request>, tx: mpsc::Sender<Event>, mock: bool) {
                     ollama::probe(&host, &model)
                 };
                 let _ = tx.send(Event::Probe(r));
+                let models = if mock {
+                    vec!["mock".to_string()]
+                } else {
+                    ollama::list_models(&host)
+                };
+                let _ = tx.send(Event::Models(models));
             }
             Request::Chat {
                 id,
@@ -224,6 +234,13 @@ fn context_line(quest: &QuestState, clock: &GameClock) -> String {
     s
 }
 
+impl AiState {
+    /// Anticipa il prossimo controllo (dopo aver cambiato modello).
+    pub fn refresh(&mut self) {
+        self.probe_timer = 0.0;
+    }
+}
+
 /// Sistema: controlla il servizio a intervalli e scarica il modello quando si spegne la IA.
 pub fn ai_probe(time: Res<Time>, settings: Res<AudioSettings>, mut ai: ResMut<AiState>) {
     if !settings.ai_enabled {
@@ -278,6 +295,7 @@ pub fn ai_pump(
                     AiStatus::Off
                 };
             }
+            Event::Models(list) => ai.models = list,
             Event::Reply(id, result) => {
                 if id != chat.req {
                     continue;

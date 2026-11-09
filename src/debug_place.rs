@@ -322,6 +322,14 @@ impl DebugPlace {
         self.grabbed = None;
     }
 
+    /// Accende o spegne la modalità piazzamenti; restituisce il nuovo stato.
+    pub fn toggle(&mut self) -> bool {
+        self.on = !self.on;
+        self.reset_pending();
+        info!("[DEBUG] modalità piazzamenti: {}", self.on);
+        self.on
+    }
+
     fn reset_pending(&mut self) {
         self.pending.clear();
         self.grabbed = None;
@@ -879,6 +887,7 @@ pub struct DebugCtx<'w, 's> {
     contexts: EguiContexts<'w, 's>,
     state: Res<'w, State<AppState>>,
     keys: Res<'w, ButtonInput<KeyCode>>,
+    cheats: Res<'w, crate::shell::Cheats>,
     mouse: Res<'w, ButtonInput<MouseButton>>,
     cameras: Query<'w, 's, (&'static Camera, &'static GlobalTransform), With<Camera3d>>,
     spatial: SpatialQuery<'w, 's>,
@@ -934,7 +943,8 @@ fn yaw_to(from: Vec2, to: Vec2) -> Option<f32> {
 
 /// Sistema (EguiPrimaryContextPass): tasto F4, pannello, strumenti e anteprime.
 pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
-    if cx.keys.just_pressed(KeyCode::F4)
+    if cx.cheats.debug_keys
+        && cx.keys.just_pressed(KeyCode::F4)
         && matches!(
             cx.state.get(),
             AppState::Playing | AppState::Map | AppState::Paused

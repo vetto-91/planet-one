@@ -79,6 +79,62 @@ pub enum PropKind {
     Gate,
 }
 
+/// Serratura di una porta: chi può aprirla senza chiave.
+#[derive(Component, Clone, Copy, Debug, PartialEq)]
+pub enum Lock {
+    /// Sempre aperta a tutti.
+    Public,
+    /// Aperta negli orari di lavoro del proprietario (inizio, fine).
+    WorkHours(f32, f32),
+    /// Solo con la chiave.
+    Private,
+}
+
+/// Esito del tentativo di aprire una porta chiusa.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Access {
+    Free,
+    /// Si apre, ma solo grazie al passepartout.
+    Master,
+    Locked,
+}
+
+impl Lock {
+    /// La porta è aperta al pubblico a quest'ora?
+    pub fn open_to_all(self, hour: f32) -> bool {
+        match self {
+            Lock::Public => true,
+            Lock::WorkHours(a, b) => (a..b).contains(&hour),
+            Lock::Private => false,
+        }
+    }
+
+    /// Da dentro si esce sempre; da fuori serve l'orario giusto o il passepartout.
+    pub fn access(self, hour: f32, master: bool, from_inside: bool) -> Access {
+        if from_inside || self.open_to_all(hour) {
+            Access::Free
+        } else if master {
+            Access::Master
+        } else {
+            Access::Locked
+        }
+    }
+
+    /// Testo mostrato davanti a una porta chiusa a chiave.
+    pub fn closed_text(self) -> String {
+        match self {
+            Lock::WorkHours(a, _) => format!("Chiusa (apre alle {})", a as u32),
+            _ => "Chiusa a chiave".to_string(),
+        }
+    }
+}
+
+/// La maniglia `door` è dal lato interno rispetto al giocatore? La porta guarda verso +Z locale.
+fn player_inside(door: &GlobalTransform, player: Vec3) -> bool {
+    let out = door.rotation() * Vec3::Z;
+    (player - door.translation()).dot(out) < 0.0
+}
+
 /// Stato di un oggetto, sull'entità "maniglia" (quella con `PropKind` e
 /// `Interactable`). `on`: porta/finestra/serranda = aperta, stufa/luce = accesa.
 #[derive(Component)]
@@ -1424,12 +1480,17 @@ pub fn spawn_hut(
 
 /// Commuta l'oggetto quando il giocatore preme E guardandolo. Se è la stufa, il
 /// Viandante da quel momento non la gestisce più fino al mattino dopo.
+#[allow(clippy::too_many_arguments)]
 pub fn handle_prop_toggle(
     mut reader: MessageReader<PropToggle>,
     mut states: Query<(&PropKind, &mut PropState)>,
     links: Query<&WindowLink>,
     buttons: Query<&crate::village::GateButton>,
     mut keepers: Query<&mut Keeper>,
+    locks: Query<(&Lock, &GlobalTransform)>,
+    players: Query<&GlobalTransform, With<crate::player::Player>>,
+    clock: Res<crate::daynight::GameClock>,
+    inventory: Res<crate::inventory::Inventory>,
 ) {
     for PropToggle(handle) in reader.read() {
         // I bottoni dei cancelli commutano lo stato del cancello.
@@ -1449,6 +1510,17 @@ pub fn handle_prop_toggle(
         let Ok((kind, mut st)) = states.get_mut(target) else {
             continue;
         };
+        // Porta chiusa a chiave: senza accesso non si apre (chiudere è sempre possibile).
+        if !st.on
+            && let (Ok((lock, door)), Ok(player)) = (locks.get(target), players.single())
+        {
+            let master = inventory.qty(crate::inventory::ItemKind::MasterKey) > 0;
+            let inside = player_inside(door, player.translation());
+            if lock.access(clock.hour, master, inside) == Access::Locked {
+                info!("[HUT] porta chiusa a chiave");
+                continue;
+            }
+        }
         st.on = !st.on;
         info!("[HUT] {:?}: {}", kind, if st.on { "on" } else { "off" });
         if *kind == PropKind::Stove {
@@ -1460,6 +1532,7 @@ pub fn handle_prop_toggle(
 }
 
 /// Aggiorna il testo del prompt di ogni oggetto secondo il suo stato.
+#[allow(clippy::type_complexity)]
 pub fn update_prop_prompts(
     states: Query<&PropState>,
     buttons: Query<&crate::village::GateButton>,
@@ -1469,9 +1542,15 @@ pub fn update_prop_prompts(
         &PropState,
         &mut Interactable,
         Option<&WindowLink>,
+        Option<(&Lock, &GlobalTransform)>,
     )>,
+    players: Query<&GlobalTransform, With<crate::player::Player>>,
+    clock: Res<crate::daynight::GameClock>,
+    inventory: Res<crate::inventory::Inventory>,
 ) {
-    for (e, kind, st, mut inter, link) in &mut handles {
+    let master = inventory.qty(crate::inventory::ItemKind::MasterKey) > 0;
+    let player = players.single().ok().map(|p| p.translation());
+    for (e, kind, st, mut inter, link, lock) in &mut handles {
         // Un bottone mostra lo stato del suo cancello.
         let st_on = buttons
             .get(e)
@@ -1504,6 +1583,16 @@ pub fn update_prop_prompts(
                 }
             }
         };
+        // Una porta chiusa dice se è chiusa a chiave o si apre solo col passepartout.
+        let locked = lock.filter(|_| !st.on).and_then(|(l, door)| {
+            let inside = player.is_some_and(|p| player_inside(door, p));
+            match l.access(clock.hour, master, inside) {
+                Access::Free => None,
+                Access::Master => Some("[E] Apri porta (passepartout)".to_string()),
+                Access::Locked => Some(l.closed_text()),
+            }
+        });
+        let text = locked.as_deref().unwrap_or(text);
         if inter.prompt != text {
             inter.prompt = text.to_string();
         }

@@ -80,6 +80,7 @@ pub fn toggle(
         | AppState::Map
         | AppState::Chat
         | AppState::Inventory
+        | AppState::Shell
         | AppState::Shop => next.set(AppState::Playing),
         // Durante il reset ESC non fa nulla: è uno stato transitorio.
         AppState::Resetting => {}
@@ -97,6 +98,7 @@ pub fn toggle(
 // Bevy 0.20 supporta al massimo 16 parametri per sistema.
 #[derive(SystemParam)]
 pub struct UiQueries<'w, 's> {
+    pub cheats: Res<'w, crate::shell::Cheats>,
     pub health: Query<'w, 's, &'static PlayerHealth, With<crate::player::Player>>,
     pub enemies: Query<
         'w,
@@ -262,7 +264,9 @@ pub fn ui(
                     &q.npc_pos,
                     &orbit,
                 );
-                draw_coords(ctx, pp.translation());
+                if q.cheats.coords {
+                    draw_coords(ctx, pp.translation());
+                }
             }
             if let Some((text, _t)) = &quest.title {
                 draw_title_banner(ctx, text);
@@ -430,40 +434,7 @@ pub fn ui(
                             q.audio.dirty = true;
                         }
                         ui.label(format!("Voce: {}", q.tts.status.label()));
-                        if !q.tts.voices.is_empty() {
-                            let current = if q.audio.tts_voice.is_empty() {
-                                "automatica (dal personaggio)".to_string()
-                            } else {
-                                q.audio.tts_voice.clone()
-                            };
-                            egui::ComboBox::from_label("Voce")
-                                .selected_text(current)
-                                .show_ui(ui, |ui| {
-                                    if ui
-                                        .selectable_label(
-                                            q.audio.tts_voice.is_empty(),
-                                            "automatica (dal personaggio)",
-                                        )
-                                        .clicked()
-                                    {
-                                        q.audio.tts_voice.clear();
-                                        q.audio.dirty = true;
-                                    }
-                                    for v in q.tts.voices.clone() {
-                                        if ui.selectable_label(q.audio.tts_voice == v, &v).clicked()
-                                        {
-                                            q.audio.tts_voice = v;
-                                            q.audio.dirty = true;
-                                        }
-                                    }
-                                });
-                        }
-                        ui.horizontal(|ui| {
-                            ui.label("Modello:");
-                            if ui.text_edit_singleline(&mut q.audio.ai_model).lost_focus() {
-                                q.audio.dirty = true;
-                            }
-                        });
+                        ui.label("Modelli e voci si cambiano dalla shell (tasto \\).");
                         ui.separator();
 
                         // Riprendi (equivalente a Esc).
@@ -578,6 +549,8 @@ pub fn ui(
         }
         // L'inventario ha un suo sistema (`inventory_ui::inventory_window`).
         AppState::Inventory => {}
+        // Anche la shell ha il suo sistema (`shell::shell_panel`).
+        AppState::Shell => {}
         // Durante Resetting non mostriamo nulla; la UI riapparirà in Playing/Paused.
         AppState::Resetting => {}
     }

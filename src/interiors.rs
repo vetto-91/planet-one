@@ -37,6 +37,8 @@ pub(crate) struct Room {
     pub z0: f32,
     pub z1: f32,
     pub y: f32,
+    /// Piano (0 = terra): i letti lo ricordano per il percorso degli abitanti.
+    pub floor: usize,
     /// Parete di fondo e ascissa da cui la fascia lungo di essa è libera (a destra della rampa).
     pub back_z: f32,
     pub back_x: f32,
@@ -52,12 +54,14 @@ impl Room {
 }
 
 /// Dove sono finite le scale: serve a non metterci i mobili davanti.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct Layout {
     /// Fine della prima rampa: da qui la fascia di fondo del piano terra è libera.
     pub back_x: f32,
     /// Lato sinistro dell'ultima rampa, che sale al sottotetto lungo la parete destra.
     pub top_x0: f32,
+    /// Per ogni piano, i punti da percorrere dal piano terra fino al pianerottolo.
+    pub routes: Vec<Vec<Vec3>>,
 }
 
 /// Scatola con collider (mobile grande: ferma il giocatore, non la camera).
@@ -116,7 +120,9 @@ pub(crate) fn floors_and_stairs(
     let mut layout = Layout {
         back_x: x0,
         top_x0: x1,
+        routes: vec![Vec::new()],
     };
+    let mut walk: Vec<Vec3> = Vec::new();
     for i in 0..flights {
         let (lower, upper) = (ys[i], ys[i + 1]);
         let n = ((upper - lower) / MAX_RISE).ceil() as usize;
@@ -154,6 +160,18 @@ pub(crate) fn floors_and_stairs(
             if i == 0 {
                 layout.back_x = end;
             }
+            // Percorso degli abitanti: davanti alla corsia, ai piedi della rampa, in cima, fuori dal vano.
+            let lane_x = origin - dir * LANE / 2.0;
+            let mid = z0 + STAIR_WIDTH / 2.0;
+            let front = z0 + STAIR_WIDTH + 0.35;
+            walk.extend([
+                Vec3::new(lane_x, lower, front),
+                Vec3::new(lane_x, lower, mid),
+                Vec3::new(origin, lower, mid),
+                Vec3::new(end, upper, mid),
+                Vec3::new(end, upper, front),
+            ]);
+            layout.routes.push(walk.clone());
             (origin.min(end), origin.max(end), z0, z0 + STAIR_WIDTH)
         };
         slab_with_hole(b, int, rect, hole, upper);
@@ -348,8 +366,8 @@ fn crate_box(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32, size: f32) {
     );
 }
 
-/// Letto con la testata verso `head` (±X o ±Z); registra il posto per chi ci dorme.
-fn bed(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32, head: Vec3, tint: usize) {
+/// Letto con la testata verso `head` (±X o ±Z); registra il posto e il punto da cui ci si sdraia.
+fn bed(b: &mut B, int: &mut Interior, r: &Room, x: f32, z: f32, head: Vec3, tint: usize) {
     let along_x = head.x.abs() > 0.5;
     let axis = |long: f32, short: f32| {
         if along_x {
@@ -358,7 +376,7 @@ fn bed(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32, head: Vec3, tint: 
             Vec3::new(short, 0.0, long)
         }
     };
-    let c = Vec3::new(x, y, z);
+    let c = Vec3::new(x, r.y, z);
     solid(
         b,
         int,
@@ -379,9 +397,15 @@ fn bed(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32, head: Vec3, tint: 
         LINEN,
     );
     b.force = None;
+    // Di fianco, dal lato della stanza, verso i piedi del letto.
+    let side = Vec3::new(head.z.abs(), 0.0, head.x.abs());
+    let to_room = Vec3::new(r.x(0.5) - x, 0.0, r.z(0.5) - z);
+    let sign = if side.dot(to_room) >= 0.0 { 1.0 } else { -1.0 };
     int.beds.push(crate::buildings::Bed {
         pos: c + Vec3::Y * 0.53,
         head,
+        floor: r.floor,
+        stand: c + side * sign * 0.85 - head * 0.7,
     });
 }
 
@@ -425,14 +449,13 @@ fn home_floor(b: &mut B, int: &mut Interior, r: &Room, floor: usize, seed: u32) 
         bench(b, int, x, mid + 0.68, y, 1.4);
         shelf(b, int, r.x0 + 0.75, r.z1 - 0.2, y, 1.3);
     } else {
-        bed(b, int, r.x0 + 0.5, r.z1 - 1.0, y, Vec3::Z, tint);
-        bed(b, int, r.x0 + 2.05, r.z1 - 0.5, y, Vec3::NEG_X, tint + 1);
+        bed(b, int, r, r.x0 + 0.5, r.z1 - 1.0, Vec3::Z, tint);
+        bed(b, int, r, r.x0 + 2.05, r.z1 - 0.5, Vec3::NEG_X, tint + 1);
         if r.x1 - (r.x0 + 3.05) >= 1.1 {
             wardrobe(b, int, r.x0 + 3.6, r.z1 - 0.28, y);
         }
         if r.z1 - r.z0 >= 2.2 {
             chest(b, int, r.x0 + 2.0, r.z1 - 1.3, y);
-            stool(b, r.x0 + 1.2, r.z1 - 1.5, y);
         }
     }
 }
@@ -454,7 +477,7 @@ fn attic(b: &mut B, int: &mut Interior, r: &Room) {
 /// Fila di brande contro la parete di fronte.
 fn dormitory(b: &mut B, int: &mut Interior, r: &Room, seed: usize) {
     for (k, a) in [0.14, 0.42, 0.7, 0.92].into_iter().enumerate() {
-        bed(b, int, r.x(a), r.z1 - 1.0, r.y, Vec3::Z, seed + k);
+        bed(b, int, r, r.x(a), r.z1 - 1.0, Vec3::Z, seed + k);
     }
 }
 
@@ -699,6 +722,7 @@ mod tests {
             z0: -1.0,
             z1: 2.5,
             y: 2.9,
+            floor: 1,
             back_z: -2.3,
             back_x: 0.0,
         };

@@ -172,6 +172,8 @@ pub struct WeatherState {
     pub shelter: bool,
     /// Neve accumulata a terra (0..1), si scioglie sopra lo zero.
     pub snow_cover: f32,
+    /// Meteo forzato (`PLANET_ONE_WEATHER` o shell).
+    pub forced: Option<Kind>,
     /// Tuoni in arrivo: secondi di ritardo.
     pub thunder: Vec<f32>,
     next_flash: f32,
@@ -198,6 +200,7 @@ impl Default for WeatherState {
             next_flash: 6.0,
             flash_t: 99.0,
             first: true,
+            forced: None,
         }
     }
 }
@@ -245,14 +248,15 @@ pub fn update_weather(
     spatial: SpatialQuery,
     cameras: Query<&GlobalTransform, With<Camera3d>>,
     players: Query<(), With<crate::player::Player>>,
-    forced: Local<Option<Option<Kind>>>,
+    mut read_env: Local<bool>,
 ) {
-    let mut forced = forced;
-    let forced = *forced.get_or_insert_with(|| {
-        std::env::var("PLANET_ONE_WEATHER")
+    if !*read_env {
+        *read_env = true;
+        state.forced = std::env::var("PLANET_ONE_WEATHER")
             .ok()
-            .and_then(|v| Kind::parse(&v))
-    });
+            .and_then(|v| Kind::parse(&v));
+    }
+    let forced = state.forced;
     let dt = time.delta_secs().min(0.1);
     let speed = settings.time_speed.max(1) as f32;
     let hour = clock.hour;

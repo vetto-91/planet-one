@@ -84,6 +84,8 @@ const SPRINT_FACTOR: f32 = 1.7;
 const JUMP_SPEED: f32 = 7.5;
 /// Accelerazione di gravità (m/s²), manuale perché il corpo è kinematico.
 const GRAVITY: f32 = 20.0;
+/// Quanto si va più veloci in noclip.
+const NOCLIP_FACTOR: f32 = 2.0;
 
 // --- Ground detection ---
 /// Distanza massima del raycast di rilevamento (m): permette di rilevare il
@@ -199,6 +201,7 @@ pub fn movement(
     cameras: Query<&GlobalTransform, With<Camera3d>>,
     mut players: Query<(&mut LinearVelocity, &mut GroundedState, &mut JumpBuffer), With<Player>>,
     time: Res<Time>,
+    cheats: Res<crate::shell::Cheats>,
 ) {
     let Ok(camera) = cameras.single() else {
         return;
@@ -235,6 +238,17 @@ pub fn movement(
     } else {
         right
     };
+
+    // Noclip: si vola dove si guarda, senza gravità (Spazio sale, Ctrl scende).
+    if cheats.noclip {
+        let lift = f32::from(u8::from(keys.pressed(KeyCode::Space)))
+            - f32::from(u8::from(keys.pressed(KeyCode::ControlLeft)));
+        let fly = cam_forward * input.y + right * input.x + Vec3::Y * lift;
+        for (mut velocity, ..) in &mut players {
+            velocity.0 = fly.clamp_length_max(1.0) * speed * NOCLIP_FACTOR;
+        }
+        return;
+    }
 
     let direction = (forward * input.y + right * input.x).normalize_or_zero();
 
@@ -283,6 +297,7 @@ pub fn movement(
 pub fn run_move_and_slide(
     move_and_slide: MoveAndSlide,
     time: Res<Time>,
+    cheats: Res<crate::shell::Cheats>,
     mut players: Query<
         (
             Entity,
@@ -296,6 +311,10 @@ pub fn run_move_and_slide(
 ) {
     let dt = time.delta_secs();
     for (entity, mut transform, mut velocity, collider, mut state) in &mut players {
+        if cheats.noclip {
+            transform.translation += velocity.0 * dt;
+            continue;
+        }
         let mut hit_ground = false;
         let output = move_and_slide.move_and_slide(
             collider,

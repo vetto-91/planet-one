@@ -5,35 +5,37 @@
 # "guardia: si" = sempre al posto (di notte con la lanterna).
 # Guardie ai cancelli: "cancello: Nord|Sud" + "turno: 1|2|3" (6-14, 14-22, 22-6; fuori turno riposano alla casa delle guardie).
 # "casa: tipo n letto" = edificio dove dorme (n-esimo di quel tipo, da 0, nell'ordine di debug/placements.txt) e posto letto.
+# "chiave: tipo n" = chiave in più oltre a quella di casa (per esempio dell'edificio dove lavora).
 # Guardie di ronda sul camminamento delle mura: "muro: nord|sud|est|ovest". Il posto si calcola dalla geometria (lavoro: è il ripiego).
 
 [Osvaldo]
 casa: locanda 0 0
 ruolo: locandiere
 modello: civile-m-ocra
-lavoro: 16.5 8.4 0 1
+lavoro: 20.0 8.2 0 1
 orari: 8 24 24
 
 [Marta]
 casa: forno 0 0
 ruolo: fornaia
 modello: civile-f-rosa
-lavoro: 2.2 19.8 -1 0
-sera: 3.4 12.6 -1 0
+lavoro: 2.2 23.4 -1 0
+sera: 0.4 16.0 -1 0
 orari: 5.5 18.5 21.5
 
 [Don Anselmo]
 casa: casa 0 0
+chiave: chiesa 0
 ruolo: prete
 modello: prete
-lavoro: -5.6 12.3 1 0
+lavoro: -5.4 8.4 1 0
 orari: 7 20 21
 
 [Rosa]
 casa: casa-piccola 0 0
 ruolo: anziana
 modello: civile-f-viola
-lavoro: -9.5 1.9 0 1
+lavoro: -5.8 1.9 1 0
 sera: 3.0 -2.3 1 0
 orari: 7 17 20
 
@@ -49,7 +51,7 @@ orari: 8 19 21
 casa: casa-media 0 1
 ruolo: contadino
 modello: civile-m-rosso
-lavoro: -3.4 21.0 1 0
+lavoro: -3.4 24.6 1 0
 sera: -2.8 7.6 1 0
 orari: 6 18 22
 
@@ -140,7 +142,7 @@ casa: fabbro 0 0
 ruolo: fabbro
 modello: civile-m-rosso
 negozio: armaiolo
-lavoro: -8.4 -1.5 0 1
+lavoro: -5.2 -1.5 0 1
 orari: 7 19 21
 
 [Silvia]
@@ -148,7 +150,7 @@ casa: arcere 0 0
 ruolo: arciera
 modello: arciera
 negozio: arciere
-lavoro: -17.5 -0.9 0 1
+lavoro: -13.6 -1.0 0 1
 orari: 7 19 21
 
 [Agnese]

@@ -2,6 +2,13 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Abitanti ai piani** (ADR 0020): di sera entrano dalla porta, salgono le scale e vanno a letto; al mattino scendono ed escono. Nessuno sta più fermo davanti a un ingresso.
+- **Chiavi e serrature** (ADR 0020): locanda e chiesa aperte, botteghe aperte negli orari di lavoro, case e caserma chiuse. Ogni abitante porta le sue chiavi.
+- **Shell dei trucchi** (tasto `\`, ADR 0021): godmode, noclip, invisibilità, teletrasporto, passepartout, oggetti, ora, meteo, modelli IA e voci, collider e piazzamenti. F3, F4 e coordinate restano spenti giocando normalmente; modello e voce escono dal menu Esc.
+- **Correzione**: i soffitti erano trasparenti visti da sotto.
+
 ## v0.0.31.0 — Interni degli edifici (2026-11-09)
 
 - **Interni visitabili** (ADR 0019): case, locanda, caserma, fabbro, forno, arciere e chiesa hanno porte vere, piani con scale, sottotetto e arredi per tipo di edificio; il campanile si sale fino alla cella delle campane. Terreno spianato sotto gli edifici, finestre visibili anche da dentro, luci nell'edificio in cui si è (nuova opzione grafica).

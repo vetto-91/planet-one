@@ -71,6 +71,28 @@ pub fn probe(host: &str, model: &str) -> Probe {
     if found { Probe::Ready } else { Probe::NoModel }
 }
 
+/// Nomi dei modelli installati nell'Ollama locale (vuoto se non risponde).
+pub fn list_models(host: &str) -> Vec<String> {
+    let Some(base) = local_base(host) else {
+        return Vec::new();
+    };
+    agent(3)
+        .get(&format!("{base}/api/tags"))
+        .call()
+        .ok()
+        .and_then(|r| r.into_string().ok())
+        .and_then(|t| serde_json::from_str::<Value>(&t).ok())
+        .map(|v| {
+            v["models"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|m| m["name"].as_str().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 /// Una battuta del giocatore (`true`) o dell'NPC (`false`).
 pub type Turn = (bool, String);
 

@@ -23,6 +23,8 @@ pub enum ItemKind {
     Arrow,
     Apple,
     Fish,
+    /// Passepartout: apre ogni porta (solo dalla shell).
+    MasterKey,
 }
 
 /// Categoria dell'inventario.
@@ -57,7 +59,7 @@ impl Category {
 
 impl ItemKind {
     /// Tutti i tipi di oggetto.
-    pub const ALL: [ItemKind; 10] = [
+    pub const ALL: [ItemKind; 11] = [
         ItemKind::HealthPotion,
         ItemKind::Coin,
         ItemKind::ShortSword,
@@ -68,6 +70,7 @@ impl ItemKind {
         ItemKind::Arrow,
         ItemKind::Apple,
         ItemKind::Fish,
+        ItemKind::MasterKey,
     ];
 
     /// Peso reale di un'unità (kg). Monete e munizioni non pesano.
@@ -81,6 +84,7 @@ impl ItemKind {
             ItemKind::Bow => Some(0.9),
             ItemKind::Apple => Some(0.15),
             ItemKind::Fish => Some(0.8),
+            ItemKind::MasterKey => Some(0.05),
             ItemKind::Coin | ItemKind::Arrow => None,
         }
     }
@@ -94,7 +98,7 @@ impl ItemKind {
             ItemKind::Shield => Category::Defense,
             ItemKind::Arrow => Category::Ammo,
             ItemKind::HealthPotion | ItemKind::Apple | ItemKind::Fish => Category::Food,
-            ItemKind::Coin => Category::Valuables,
+            ItemKind::Coin | ItemKind::MasterKey => Category::Valuables,
         }
     }
 
@@ -111,12 +115,13 @@ impl ItemKind {
             ItemKind::Arrow => "frecce",
             ItemKind::Apple => "mela",
             ItemKind::Fish => "pesce",
+            ItemKind::MasterKey => "passepartout",
         }
     }
 
     /// Le monete hanno il loro contatore: nella barra non vanno mai.
     pub fn can_go_in_hotbar(self) -> bool {
-        self != ItemKind::Coin
+        !matches!(self, ItemKind::Coin | ItemKind::MasterKey)
     }
 
     /// Nome mostrato nell'inventario.
@@ -132,6 +137,7 @@ impl ItemKind {
             ItemKind::Arrow => "Frecce",
             ItemKind::Apple => "Mela",
             ItemKind::Fish => "Pesce",
+            ItemKind::MasterKey => "Passepartout",
         }
     }
 
@@ -148,6 +154,7 @@ impl ItemKind {
             ItemKind::Arrow => "Munizioni per l'arco (pacco da 10).",
             ItemKind::Apple => "Cura 10 punti vita.",
             ItemKind::Fish => "Cura 20 punti vita.",
+            ItemKind::MasterKey => "Apre qualsiasi porta del paese.",
         }
     }
 
@@ -182,6 +189,7 @@ impl ItemKind {
             ItemKind::Arrow => Color::srgb(0.85, 0.78, 0.55),
             ItemKind::Apple => Color::srgb(0.5, 0.8, 0.3),
             ItemKind::Fish => Color::srgb(0.45, 0.6, 0.75),
+            ItemKind::MasterKey => Color::srgb(0.9, 0.75, 0.3),
         }
     }
 }

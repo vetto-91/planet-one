@@ -258,12 +258,18 @@ pub fn contact_damage(
     time: Res<Time>,
     mut orbit: ResMut<crate::camera::OrbitCamera>,
     equip: Res<crate::inventory::Equipment>,
+    cheats: Res<crate::shell::Cheats>,
 ) {
     let Ok((pt, mut hp, mut combat, mut transform)) = player.single_mut() else {
         return;
     };
     combat.iframe = (combat.iframe - time.delta_secs()).max(0.0);
     cd.left = (cd.left - time.delta_secs()).max(0.0);
+
+    // Godmode e invisibilità: i nemici non fanno danno.
+    if cheats.god || cheats.invisible {
+        return;
+    }
 
     if combat.iframe > 0.0 || cd.left > 0.0 || hp.current <= 0.0 {
         return;

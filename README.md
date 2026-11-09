@@ -47,6 +47,20 @@ cargo fmt            # formatta
 cargo clippy         # linter
 ```
 
+## Shell dei trucchi (tasto `\`)
+
+Giocando normalmente non ci sono trucchi. Con il tasto `\` si apre una shell (Esc o `\` la chiudono), e a ogni avvio si riparte con tutto spento. `aiuto` mostra i comandi:
+
+| Comando | Effetto |
+|---|---|
+| `god`, `noclip`, `invisibile` | Nessun danno; volo senza collisioni (Spazio sale, Ctrl scende); invisibili ai nemici |
+| `tp x y z`, `tp chiesa`, `tp porta nord`, `tp marta`, `tp casa-media 1` | Teletrasporto |
+| `passepartout [off]`, `chiavi`, `dai mela 3` | Chiave che apre tutto, chi ha quali chiavi, oggetti |
+| `f3`, `f4`, `debug on`, `coordinate` | Collider, piazzamenti, tasti F3 e F4, coordinate nell'HUD |
+| `ora 21.5`, `meteo neve`, `meteo auto` | Ora e meteo |
+| `ia [on\|off]`, `ia modelli`, `ia modello <nome>` | Dialoghi IA, sempre e solo locali |
+| `tts [on\|off]`, `tts voci`, `tts voce <nome\|auto>` | Voce IA |
+
 ## Debug piazzamenti (F4)
 
 Per indicare dove mettere alberi o qualunque oggetto: F4 apre il pannello. In 3D il punto è quello del **mirino** (clic sinistro conferma, trascina = direzione, **R** = ruota 15°);
@@ -87,10 +101,11 @@ grep "\[EVENT\]" run.log    # eventi finestra/cursore
 | Space | Salto |
 | Mouse | Orbita camera (sensibilità dal menu) |
 | Esc | Menu pausa (tasti, slider sensibilità, checkbox FPS, reset scena) |
-| F3 | Wireframe dei collider (debug fisico) |
+| \\ | Shell dei trucchi (vedi sotto) |
+| F3 | Wireframe dei collider: attivo solo dopo `debug on` nella shell |
 | F11 | Schermo intero on/off (in fullscreen il cursore è bloccato e nascosto) |
 | M | Mappa dall'alto (vista drone, nord in alto, bussola in alto a sinistra); rotella o +/- = zoom; frecce/WASD o tasto centrale = sposta, C = su di te; M/Esc = chiudi |
-| F4 | Modalità debug piazzamenti (vedi sotto): strumenti Piazza / Gomma / Sposta, clic sinistro (mappa e 3D) |
+| F4 | Modalità debug piazzamenti, attiva solo dopo `debug on` nella shell (vedi sotto): strumenti Piazza / Gomma / Sposta, clic sinistro (mappa e 3D) |
 | I | Inventario: categorie, ricerca, filtri, peso, assegnazione ai tasti 1-9 e 0 |
 | T | "Aspetta": fa avanzare l'ora di gioco di N ore (T o Esc per chiudere) |
 | J | Diario delle quest (tab Da fare / Completate, quest espandibili); J o Esc per chiudere |
@@ -183,7 +198,7 @@ iniziale (edifici, lampioni, cartelli e stradine; `--preview` salva un'anteprima
 
 ### Abitanti e guardie
 
-Gli edifici sono **visitabili**: case, locanda, caserma, fabbro, forno, arciere e chiesa hanno una porta da aprire con E, piani collegati da scale, un **sottotetto** e mobili per ogni tipo di edificio; il campanile si sale fino alla cella delle campane. Di notte gli abitanti rientrano a casa e dormono nel loro letto; le guardie fuori turno dormono in caserma.
+Gli edifici hanno porte da aprire con E, piani collegati da scale, un **sottotetto** e mobili per ogni tipo di edificio; il campanile si sale fino alla cella delle campane. **Locanda e chiesa** sono sempre aperte, **forno, fabbro e arciere** negli orari di lavoro, **case e caserma** sono chiuse a chiave: ogni abitante ha la sua chiave. Di sera gli abitanti rientrano, salgono le scale e dormono nel loro letto; le guardie fuori turno dormono in caserma.
 
 Fontevivo è abitata: 6 abitanti (locandiere, fornaia, prete, anziana, ragazzo, contadino) e 10 guardie: 6 ai cancelli e 4 di ronda sulle mura. Ognuno ha un saluto scritto
 e poi, a fine dialogo, la **chat con la IA locale** ("Parliamo d'altro…") con il proprio carattere e la propria voce (Piper). Di giorno stanno

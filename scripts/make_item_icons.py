@@ -173,6 +173,18 @@ def coin():
     return im
 
 
+def master_key():
+    im = layer()
+    d = ImageDraw.Draw(im)
+    gold, dark = (232, 190, 80, 255), (136, 98, 28, 255)
+    d.ellipse([96, 66, 276, 246], outline=dark, width=44)
+    d.ellipse([106, 76, 266, 236], outline=gold, width=24)
+    d.polygon([(218, 214), (250, 186), (420, 356), (388, 388)], fill=gold, outline=dark)
+    d.polygon([(346, 346), (378, 314), (436, 372), (404, 404)], fill=gold, outline=dark)
+    d.polygon([(292, 292), (324, 260), (382, 318), (350, 350)], fill=gold, outline=dark)
+    return im
+
+
 ICONS = {
     "spada-corta": lambda: sword(310, 58, 124),
     "spada-lunga": lambda: sword(430, 46, 150),
@@ -184,6 +196,7 @@ ICONS = {
     "mela": apple,
     "pesce": fish,
     "moneta": coin,
+    "passepartout": master_key,
 }
 
 

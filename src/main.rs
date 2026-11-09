@@ -33,6 +33,7 @@ mod props;
 mod quests;
 mod scene;
 mod seasons;
+mod shell;
 mod shop;
 mod sky;
 mod terrain;
@@ -81,6 +82,8 @@ pub enum AppState {
     Chat,
     /// Inventario aperto (I): gioco sospeso, cursore libero.
     Inventory,
+    /// Shell dei trucchi aperta (\\): gioco sospeso, cursore libero.
+    Shell,
     /// Negozio aperto (acquisto con le monete): gameplay sospeso, cursore libero.
     Shop,
     /// Reset della scena in corso (un frame, non interattivo).
@@ -140,6 +143,7 @@ fn main() {
         .add_plugins(ai::plugin)
         .add_plugins(village::plugin)
         .add_plugins(villagers::plugin)
+        .add_plugins(shell::plugin)
         .add_plugins(shop::plugin)
         .add_plugins(bells::plugin)
         .add_plugins(seasons::plugin)
@@ -279,6 +283,7 @@ fn main() {
                 menu::ui,
                 debug_place::debug_ui,
                 inventory_ui::inventory_window.run_if(in_state(AppState::Inventory)),
+                shell::shell_panel.run_if(in_state(AppState::Shell)),
             )
                 .chain(),
         )
@@ -490,8 +495,12 @@ fn toggle_fullscreen(
 
 /// Toggle con F3 del rendering debug dei collider (wireframe arancione).
 /// Utile in fase di sviluppo per confrontare il collider fisico con la mesh.
-fn toggle_physics_debug(keys: Res<ButtonInput<KeyCode>>, mut store: ResMut<GizmoConfigStore>) {
-    if keys.just_pressed(KeyCode::F3) {
+fn toggle_physics_debug(
+    keys: Res<ButtonInput<KeyCode>>,
+    cheats: Res<shell::Cheats>,
+    mut store: ResMut<GizmoConfigStore>,
+) {
+    if cheats.debug_keys && keys.just_pressed(KeyCode::F3) {
         let cfg = store.config_mut::<avian3d::prelude::PhysicsGizmos>();
         cfg.0.enabled = !cfg.0.enabled;
         info!("physics debug wireframe: {}", cfg.0.enabled);

@@ -491,8 +491,9 @@ pub fn thief_notice_player(
     texts: Res<crate::quests::QuestTexts>,
     players: Query<&GlobalTransform, With<Player>>,
     thieves: Query<(Entity, &GlobalTransform), With<QuestThief>>,
+    cheats: Res<crate::shell::Cheats>,
 ) {
-    if quest.thief_spotted {
+    if quest.thief_spotted || cheats.invisible {
         return;
     }
     let (Ok(player), Ok((thief, tt))) = (players.single(), thieves.single()) else {

@@ -79,6 +79,10 @@ pub struct Bed {
     pub pos: Vec3,
     /// Direzione della testata (±X o ±Z).
     pub head: Vec3,
+    /// Piano del letto (0 = terra).
+    pub floor: usize,
+    /// Punto libero accanto al letto, a livello del pavimento.
+    pub stand: Vec3,
 }
 
 /// Parti interne di un edificio visitabile.
@@ -94,6 +98,22 @@ pub struct Interior {
     pub beds: Vec<Bed>,
     /// Luci interne, una per piano.
     pub lights: Vec<Vec3>,
+    /// Punto subito dentro la porta.
+    pub door_inside: Option<Vec3>,
+    /// Per ogni piano, il percorso da dentro la porta al pianerottolo.
+    pub routes: Vec<Vec<Vec3>>,
+}
+
+impl Interior {
+    /// Percorso a piedi da dentro la porta al fianco del letto (coordinate locali).
+    pub fn route_to_bed(&self, bed: &Bed) -> Vec<Vec3> {
+        let mut path: Vec<Vec3> = self.door_inside.into_iter().collect();
+        if let Some(stairs) = self.routes.get(bed.floor) {
+            path.extend(stairs.iter().copied());
+        }
+        path.push(bed.stand);
+        path
+    }
 }
 
 pub(crate) type Col = [f32; 4];
@@ -282,6 +302,15 @@ impl B {
             v(x1, y1, z1),
             v(x0, y1, z1),
             Vec3::Y,
+            col,
+        );
+        // Faccia inferiore: si vede da sotto (soffitti, gradini della chiocciola).
+        self.quad(
+            v(x0, y0, z0),
+            v(x1, y0, z0),
+            v(x1, y0, z1),
+            v(x0, y0, z1),
+            Vec3::NEG_Y,
             col,
         );
     }
@@ -754,6 +783,8 @@ fn house(
     // Semi-larghezza del sottotetto in cui si sta in piedi.
     let knee = hd * (1.0 - 1.85 / rh).max(0.25);
     let layout = rooms::floors_and_stairs(b, int, (x0, x1, z0, z1), &ys, knee);
+    int.door_inside = Some(Vec3::new(door_x, y0, hd - t - 0.45));
+    int.routes = layout.routes.clone();
     for (f, &y) in ys.iter().enumerate().take(floors) {
         // L'ultimo piano lascia libera la rampa del sottotetto, a destra.
         let room_x1 = if f + 1 == floors {
@@ -767,6 +798,7 @@ fn house(
             z0: z0 + 1.2,
             z1: z1 - 0.1,
             y,
+            floor: f,
             back_z: z0,
             back_x: layout.back_x,
         };
@@ -806,6 +838,7 @@ fn house(
         z0: -knee + 0.05,
         z1: knee - 0.05,
         y: attic_y,
+        floor: floors,
         back_z: z0,
         back_x: x0,
     };
@@ -1093,6 +1126,7 @@ fn church(b: &mut B, r: &mut Rng, int: &mut Interior) {
         z0: z_back + t,
         z1: z_front - t,
         y: y0,
+        floor: 0,
         back_z: z_back + t,
         back_x: -hw + t,
     };
@@ -1672,6 +1706,39 @@ mod tests {
     use super::*;
 
     /// Ogni tipo che ha un modello deve essere riconosciuto come edificio (e viceversa).
+    #[test]
+    fn every_bed_can_be_reached_on_foot() {
+        for kind in [
+            "casa",
+            "casa-piccola",
+            "casa-media",
+            "casa-grande",
+            "locanda",
+            "caserma",
+            "fabbro",
+            "forno",
+            "arcere",
+        ] {
+            let int = model(kind, 7).interior;
+            for bed in &int.beds {
+                let path = int.route_to_bed(bed);
+                assert!((path[0].y - GROUND_FLOOR).abs() < 1e-3, "{kind}");
+                let last = path.last().unwrap();
+                assert!(
+                    (last.y - (bed.pos.y - 0.53)).abs() < 1e-3,
+                    "{kind}: {path:?}"
+                );
+                // Si sale soltanto, e con la pendenza di una scala.
+                for w in path.windows(2) {
+                    let dy = w[1].y - w[0].y;
+                    assert!(dy >= -1e-3, "{kind}");
+                    let run = Vec2::new(w[1].x - w[0].x, w[1].z - w[0].z).length();
+                    assert!(dy <= run * 1.1 + 1e-3, "{kind}: {w:?}");
+                }
+            }
+        }
+    }
+
     #[test]
     fn every_building_kind_has_a_model() {
         for k in [

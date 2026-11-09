@@ -45,3 +45,5 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0017 | Animazioni dei personaggi | accettato (Fase 3) |
 | 0018 | Mura percorribili e torri attraversabili | accettato |
 | 0019 | Interni degli edifici | accettato |
+| 0020 | Abitanti ai piani, chiavi e serrature | accettato |
+| 0021 | Shell dei trucchi | accettato |

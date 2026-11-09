@@ -49,13 +49,36 @@ pub struct InteriorLight;
 const INTERIOR_LUMENS: f32 = 90_000.0;
 const DOOR_OPEN_ANGLE: f32 = 1.45;
 
-/// Posti letto e porta di un edificio, in coordinate del mondo.
+/// Posto letto: materasso, testata e percorso a piedi dalla strada al fianco del letto (mondo).
+pub struct HomeBed {
+    pub pos: Vec3,
+    pub head: Vec3,
+    pub path: Vec<Vec3>,
+}
+
+/// Porta e posti letto di un edificio, in coordinate del mondo.
 pub struct HomeEntry {
     pub kind: String,
     pub occurrence: usize,
+    /// Punto sulla strada davanti alla porta.
     pub door: Vec2,
-    /// Centro del materasso e direzione della testata.
-    pub beds: Vec<(Vec3, Vec3)>,
+    /// Centro dell'anta, per aprirla al passaggio.
+    pub door_point: Vec3,
+    pub beds: Vec<HomeBed>,
+    /// Maniglia della porta.
+    pub state: Option<Entity>,
+    /// Aperta da un abitante di passaggio: si richiude da sola.
+    pub npc_open: bool,
+    pub idle: f32,
+    /// Era aperta al pubblico nell'ultimo controllo.
+    pub was_open: bool,
+}
+
+impl HomeEntry {
+    /// Nome della chiave di questo edificio.
+    pub fn key(&self) -> String {
+        format!("{} {}", self.kind, self.occurrence)
+    }
 }
 
 /// Case del paese: gli abitanti vi dormono (`casa:` in `abitanti.txt`).
@@ -118,6 +141,28 @@ fn mat(materials: &mut Assets<StandardMaterial>, color: Color) -> Handle<Standar
     })
 }
 
+/// Serratura di un edificio: locanda e chiesa aperte, botteghe negli orari del proprietario, il resto privato.
+fn lock_for(
+    kind: &str,
+    occurrence: usize,
+    defs: &[crate::villagers::VillagerDef],
+) -> crate::hut::Lock {
+    use crate::hut::Lock;
+    match kind {
+        "locanda" | "chiesa" => Lock::Public,
+        "forno" | "fabbro" | "arcere" => {
+            let owner = defs.iter().find(|d| {
+                d.home
+                    .as_ref()
+                    .is_some_and(|(k, n, _)| k == kind && *n == occurrence)
+            });
+            let (start, end) = owner.map_or((8.0, 18.0), |d| (d.hours.0, d.hours.1));
+            Lock::WorkHours(start, end)
+        }
+        _ => Lock::Private,
+    }
+}
+
 /// Sistema: (ri)crea gli oggetti quando cambiano i piazzamenti o la scena è stata azzerata.
 #[allow(clippy::too_many_arguments)]
 pub fn sync_world_props(
@@ -131,6 +176,7 @@ pub fn sync_world_props(
     field: Option<Res<crate::terrain::TerrainField>>,
     props: Query<Entity, With<WorldProp>>,
     mut homes: ResMut<Homes>,
+    clock: Res<GameClock>,
     mut built: Local<(Option<u32>, usize)>,
 ) {
     // Prima che il terreno esista non si può appoggiare nulla: si aspetta.
@@ -180,6 +226,7 @@ pub fn sync_world_props(
     let (mut spawned, mut skipped) = (0usize, 0usize);
     let door_mesh_cache: &mut Vec<(f32, f32, Handle<Mesh>)> = &mut Vec::new();
     homes.list.clear();
+    let defs = crate::villagers::load_defs();
     let mut occurrences: std::collections::HashMap<String, usize> = Default::default();
     for pl in &dbg.items {
         if matches!(pl.kind.as_str(), "campo" | "orto") {
@@ -230,25 +277,45 @@ pub fn sync_world_props(
                 let model_half = model.half;
                 let interior = model.interior;
                 // Posti letto e porta in coordinate del mondo, per gli abitanti.
+                let mut home_index = None;
+                let mut lock = crate::hut::Lock::Private;
                 if let Some(door) = interior.door {
-                    let occurrence = occurrences.entry(kind.clone()).or_insert(0);
+                    let occurrence = *occurrences
+                        .entry(kind.clone())
+                        .and_modify(|n| *n += 1)
+                        .or_insert(0);
+                    lock = lock_for(&kind, occurrence, &defs);
                     let y = crate::props::ground_under(&field, p, model_half) - 0.05;
                     let origin = Vec3::new(p.x, y, p.y);
                     let rot = Quat::from_rotation_y(yaw);
-                    let outside =
-                        origin + rot * (door.hinge + Vec3::new(door.width / 2.0, 0.0, 1.0));
+                    let world = |l: Vec3| origin + rot * l;
+                    let outside = world(door.hinge + Vec3::new(door.width / 2.0, 0.0, 1.0));
+                    let street =
+                        Vec3::new(outside.x, field.height_at(outside.x, outside.z), outside.z);
                     homes.list.push(HomeEntry {
                         kind: kind.clone(),
-                        occurrence: *occurrence,
+                        occurrence,
                         door: Vec2::new(outside.x, outside.z),
+                        door_point: world(door.hinge + Vec3::new(door.width / 2.0, 1.0, 0.0)),
                         beds: interior
                             .beds
                             .iter()
-                            .map(|b| (origin + rot * b.pos, rot * b.head))
+                            .map(|b| HomeBed {
+                                pos: world(b.pos),
+                                head: rot * b.head,
+                                path: std::iter::once(street)
+                                    .chain(interior.route_to_bed(b).into_iter().map(world))
+                                    .collect(),
+                            })
                             .collect(),
+                        state: None,
+                        npc_open: false,
+                        idle: 0.0,
+                        was_open: lock.open_to_all(clock.hour),
                     });
-                    *occurrence += 1;
+                    home_index = Some(homes.list.len() - 1);
                 }
+                let mut door_state = None;
                 let mut e = commands.spawn((
                     WorldProp,
                     SceneNode,
@@ -342,6 +409,7 @@ pub fn sync_world_props(
                             .spawn((
                                 crate::hut::PropKind::Door,
                                 crate::hut::PropState { on: false },
+                                lock,
                                 crate::entities::Interactable {
                                     prompt: "[E] Apri porta".to_string(),
                                     range: 3.0,
@@ -353,6 +421,7 @@ pub fn sync_world_props(
                                 ),
                             ))
                             .id();
+                        door_state = Some(state);
                         c.spawn((
                             crate::hut::Hinge {
                                 state,
@@ -413,6 +482,9 @@ pub fn sync_world_props(
                         ));
                     }
                 });
+                if let Some(i) = home_index {
+                    homes.list[i].state = door_state;
+                }
                 spawned += 1;
                 continue;
             }
