@@ -54,6 +54,7 @@ Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, 
 - `src/seasons.rs`: stagioni visibili (tinte erba/chiome, fiori, neve a terra e sui tetti, foglie che cadono) da `look(giorno)`, ADR 0012.
 - `src/daynight.rs`: orologio (1 h = 60 s), data e stagioni (`GameDate`), alba/tramonto stagionali (ADR 0011), sole/luna (luci e dischi), stato `Wait` (tasto T).
 - `src/figure.rs`: personaggi glTF CC0 con scheletro comune in `assets/models/characters/` (composti da `scripts/build_characters.py` partendo da `assets_src/`, non in git), clip di riposo e oggetti agganciati alle ossa delle mani (ADR 0015).
+- `src/pbr.rs`: materiali PBR condivisi (texture CC0 Poly Haven in `assets/textures/pbr/`, `scripts/fetch_pbr_textures.py`); `src/trees.rs`: abeti con corteccia e rami a carte (ADR 0016).
 - `src/world_props.rs`: alberi, fiori, panchine, lampioni veri creati da `debug/placements.txt`.
 - `src/audio.rs`: musica di sottofondo giorno/notte con dissolvenza (OGG in `assets/audio/music/`), volume musiche salvato in `~/.config/planet-one/settings.txt`.
 - `src/hut.rs`: casetta-chiosco del Viandante (mesh con UV dalla foto `assets/textures/capanna.png`, fondamenta e scale di pietra, interni, oggetti con stato `PropState`: porta, finestre, stufa con fumo, luce, serranda) e routine giornaliera del negoziante (`Keeper`). Gli oggetti si usano col mirino (`Interactable.aim`, vedi `entities::interact`).
@@ -66,7 +67,7 @@ Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, 
 - `docs/voci/` + `scripts/export_voci.py`: battute per creare le voci; rigenerare dopo aver cambiato `dialoghi.txt`.
 - `src/ui_style.rs`: palette, targhette (`plate`) e tema egui condiviso (stesso stile dei dialoghi).
 - `src/ai/`: dialoghi con IA SOLO LOCALE (Ollama su loopback, niente TLS/cloud; ADR 0005): `ollama.rs` client, `persona.rs` prompt da `assets/ai/<nome>.txt`, `tts.rs` voce con Piper locale (ADR 0006), `ui.rs` chat; stato `AppState::Chat`.
-- `src/village.rs` e `src/buildings.rs`: villaggio murato (mura da piazzamenti `muro`, cancelli, edifici procedurali con colori di vertice; ADR 0007; dati in `assets/world/villaggio.txt`).
+- `src/village.rs` e `src/buildings.rs`: villaggio murato (mura da piazzamenti `muro`, cancelli, edifici procedurali con parti per materiale PBR e UV in metri; ADR 0007, ADR 0016; dati in `assets/world/villaggio.txt`).
 - `src/villagers.rs`: abitanti e guardie (turni, `Phase::Rest` alla caserma, posti calcolati dai cancelli e dai camminamenti; ADR 0013) (dati in `assets/world/abitanti.txt`, persona IA in `assets/ai/`), routine e percorsi sulle strade (ADR 0008).
 - `src/shop.rs`, `src/equipment.rs`, `src/inventory.rs`, `src/combat.rs`: negozi con le monete, armi/scudo/arco impugnabili e frecce (ADR 0009).
 - `src/bells.rs`: campana della chiesa sintetizzata e rintocchi alle ore; porto, faro e molo in `buildings.rs`/`world_props.rs` (ADR 0010, `scripts/gen_porto.py`).

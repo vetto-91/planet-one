@@ -2,6 +2,11 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Mondo e materiali PBR (Grafica realistica, Fase 2)**: terreno, sabbia, selciato, intonaco, travi, pietra, tegole, ardesia e paglia con texture fotografiche CC0 (colore, normal, ruvidità); abeti veri con corteccia e rami al posto dei coni;
+  rendering HDR con tonemapping, bagliore delle luci, occlusione ambientale, ombre a cascata e luce d'ambiente dal cielo; prato, chiome e neve adattati alle nuove texture (ADR 0016).
+
 ## v0.0.25.0 — Personaggi veri (2026-11-09)
 
 - **Personaggi veri (Grafica realistica, Fase 1)**: giocatore, Viandante, abitanti, guardie e ladro sono ora modelli umani con scheletro (asset CC0 Quaternius), al posto dei parallelepipedi, con posa di riposo;

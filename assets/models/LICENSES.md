@@ -12,3 +12,7 @@ Per rigenerarli: scaricare gli zip in `assets_src/zips/` (`UAL_Standard.zip`, `B
 python3 -I scripts/extract_character_packs.py assets_src
 python3 -I scripts/build_characters.py assets_src assets/models/characters
 ```
+
+## Texture PBR
+
+`../textures/pbr/` viene da **Poly Haven** (https://polyhaven.com), licenza **CC0 1.0**: leafy_grass, coast_sand_01, cobblestone_floor_04, white_plaster_02, weathered_brown_planks, castle_wall_slates, ceramic_roof_01, roof_slates_03, thatch_roof_angled e, di fir_tree_01, le texture di corteccia e rametti. Si riscaricano con `scripts/fetch_pbr_textures.py`.

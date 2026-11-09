@@ -23,6 +23,7 @@ mod hut;
 mod inventory;
 mod map;
 mod menu;
+mod pbr;
 mod player;
 mod props;
 mod quests;
@@ -31,6 +32,7 @@ mod seasons;
 mod shop;
 mod sky;
 mod terrain;
+mod trees;
 mod ui_style;
 mod version;
 mod village;
@@ -115,7 +117,7 @@ fn main() {
         .insert_resource(ClearColor(Color::srgb(0.02, 0.03, 0.05)))
         .insert_resource(GlobalAmbientLight {
             color: Color::srgb(0.9, 0.92, 0.98),
-            brightness: 80.0,
+            brightness: 60.0,
             ..Default::default()
         })
         .init_resource::<camera::OrbitCamera>()
@@ -143,6 +145,8 @@ fn main() {
         .init_resource::<audio::MusicDuck>()
         .add_message::<hut::PropToggle>()
         .init_resource::<daynight::GameClock>()
+        .init_resource::<pbr::PbrMaterials>()
+        .insert_resource(bevy::light::DirectionalLightShadowMap { size: 4096 })
         .init_resource::<daynight::WaitUi>()
         .init_resource::<combat::ContactDamageCd>()
         .init_resource::<combat::SwingTimer>()

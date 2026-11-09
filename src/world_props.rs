@@ -86,6 +86,7 @@ pub fn sync_world_props(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
+    pbr: Res<crate::pbr::PbrMaterials>,
     village: Res<crate::village::VillageInfo>,
     field: Option<Res<crate::terrain::TerrainField>>,
     props: Query<Entity, With<WorldProp>>,
@@ -103,15 +104,9 @@ pub fn sync_world_props(
     for e in &props {
         commands.entity(e).despawn();
     }
-    let trunk = mat(&mut materials, Color::srgb(0.38, 0.26, 0.15));
     let wood = mat(&mut materials, Color::srgb(0.55, 0.38, 0.22));
     let iron = mat(&mut materials, Color::srgb(0.16, 0.17, 0.2));
     let stem = mat(&mut materials, Color::srgb(0.25, 0.55, 0.22));
-    let leaves = [
-        mat(&mut materials, Color::srgb(0.16, 0.5, 0.2)),
-        mat(&mut materials, Color::srgb(0.22, 0.58, 0.24)),
-        mat(&mut materials, Color::srgb(0.12, 0.42, 0.22)),
-    ];
     let petals = [
         mat(&mut materials, Color::srgb(0.95, 0.45, 0.7)),
         mat(&mut materials, Color::srgb(0.98, 0.85, 0.25)),
@@ -124,12 +119,7 @@ pub fn sync_world_props(
         emissive: LinearRgba::rgb(0.2, 0.15, 0.05),
         ..default()
     });
-    let trunk_mesh = meshes.add(Cylinder::new(0.2, 2.1));
-    let cones = [
-        meshes.add(Cone::new(1.35, 1.9)),
-        meshes.add(Cone::new(1.05, 1.7)),
-        meshes.add(Cone::new(0.72, 1.5)),
-    ];
+    let firs = crate::trees::FirAssets::new(&mut meshes, &mut materials, &asset_server);
     let stem_mesh = meshes.add(Cylinder::new(0.015, 0.41));
     let head_mesh = meshes.add(Sphere::new(0.09));
     let seat_mesh = meshes.add(Cuboid::new(1.5, 0.08, 0.45));
@@ -216,10 +206,9 @@ pub fn sync_world_props(
                             Visibility::Hidden,
                         ));
                     }
-                    c.spawn((
-                        Mesh3d(meshes.add(model.mesh)),
-                        MeshMaterial3d(building_mat.clone()),
-                    ));
+                    for (m, mesh) in model.parts {
+                        c.spawn((Mesh3d(meshes.add(mesh)), MeshMaterial3d(pbr.get(m))));
+                    }
                     for (i, (center, size)) in model.colliders.into_iter().enumerate() {
                         let mut col = c.spawn((
                             Collider::cuboid(size.x, size.y, size.z),
@@ -346,7 +335,7 @@ pub fn sync_world_props(
                         continue;
                     }
                     let scale = 0.85 + hash01(p, 2.0) * 0.45;
-                    let leaf = leaves[(h * 3.0) as usize % 3].clone();
+                    let variant = (h * 3.0) as usize % 3;
                     commands
                         .spawn((root, RigidBody::Static))
                         .insert(
@@ -356,19 +345,23 @@ pub fn sync_world_props(
                         )
                         .with_children(|c| {
                             c.spawn((
-                                Mesh3d(trunk_mesh.clone()),
-                                MeshMaterial3d(trunk.clone()),
-                                Transform::from_xyz(0.0, 0.65, 0.0),
+                                Mesh3d(firs.trunk.clone()),
+                                MeshMaterial3d(firs.bark.clone()),
                             ));
-                            for (i, (cone, y)) in cones.iter().zip([2.3, 3.2, 4.0]).enumerate() {
-                                let _ = i;
-                                c.spawn((
-                                    crate::seasons::SeasonLeaf((h * 3.0) as usize % 3),
-                                    Mesh3d(cone.clone()),
-                                    MeshMaterial3d(leaf.clone()),
-                                    Transform::from_xyz(0.0, y, 0.0),
-                                ));
-                            }
+                            c.spawn((
+                                crate::seasons::SeasonLeaf(variant),
+                                Mesh3d(firs.foliage[variant].clone()),
+                                MeshMaterial3d(firs.needles[variant].clone()),
+                            ));
+                            // Neve sui rami: stessa chioma, appena più in alto, solo d'inverno.
+                            c.spawn((
+                                crate::seasons::SeasonSnowRoof,
+                                Mesh3d(firs.foliage[variant].clone()),
+                                MeshMaterial3d(firs.snow.clone()),
+                                Transform::from_xyz(0.0, 0.04, 0.0),
+                                Visibility::Hidden,
+                                bevy::light::NotShadowCaster,
+                            ));
                             c.spawn((
                                 Collider::cylinder(0.3, 2.4),
                                 Transform::from_xyz(0.0, 0.8, 0.0),
@@ -481,6 +474,9 @@ pub fn sync_world_props(
     *built = (Some(dbg.revision()), spawned);
 }
 
+/// Potenza dei lampioni (lm), calibrata sulla resa HDR.
+const LAMP_LUMENS: f32 = 50_000.0;
+
 /// I lampioni si accendono al tramonto e si spengono all'alba (con dissolvenza).
 pub fn update_street_lamps(
     time: Res<Time>,
@@ -511,9 +507,9 @@ pub fn update_street_lamps(
         if l.shadow_maps_enabled != shadows {
             l.shadow_maps_enabled = shadows;
         }
-        let target = if on { 220_000.0 } else { 0.0 };
+        let target = if on { LAMP_LUMENS } else { 0.0 };
         l.intensity += (target - l.intensity) * k;
-        level = l.intensity / 220_000.0;
+        level = l.intensity / LAMP_LUMENS;
     }
     if let Some(b) = bulbs.iter().next()
         && let Some(mut m) = materials.get_mut(&b.0)

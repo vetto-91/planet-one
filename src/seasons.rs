@@ -135,7 +135,7 @@ const KEYS: [(f32, Look); 12] = [
     ),
     k(
         266.0,
-        [1.1, 0.9, 0.66],
+        [1.0, 0.95, 0.72],
         0.4,
         0.0,
         0.2,
@@ -146,7 +146,7 @@ const KEYS: [(f32, Look); 12] = [
     ),
     k(
         300.0,
-        [1.05, 0.8, 0.56],
+        [1.0, 0.88, 0.66],
         1.0,
         0.0,
         0.0,
@@ -157,7 +157,7 @@ const KEYS: [(f32, Look); 12] = [
     ),
     k(
         330.0,
-        [0.9, 0.8, 0.66],
+        [0.92, 0.85, 0.68],
         0.5,
         0.2,
         0.0,
@@ -268,15 +268,16 @@ pub struct FallingLeaf {
     fresh: bool,
 }
 
-const LEAF_GREEN: [[f32; 3]; 3] = [[0.16, 0.5, 0.2], [0.22, 0.58, 0.24], [0.12, 0.42, 0.22]];
+const LEAF_GREEN: [[f32; 3]; 3] = [[0.9, 1.05, 0.85], [1.0, 1.1, 0.8], [0.8, 0.98, 0.82]];
+const LEAF_AUTUMN_TINT: [[f32; 3]; 3] = [[1.5, 0.95, 0.45], [1.4, 1.1, 0.5], [1.3, 0.75, 0.4]];
 const LEAF_AUTUMN: [[f32; 3]; 3] = [[0.85, 0.4, 0.1], [0.8, 0.62, 0.12], [0.65, 0.2, 0.1]];
-const LEAF_SNOW: [f32; 3] = [0.9, 0.94, 0.98];
+const LEAF_SNOW: [f32; 3] = [1.3, 1.35, 1.45];
 const POOL: usize = 150;
 
 /// Colore (RGB) della chioma `i` nel `look` dato.
 pub fn leaf_color(l: &Look, i: usize) -> [f32; 3] {
     let i = i % 3;
-    let c = lerp3(LEAF_GREEN[i], LEAF_AUTUMN[i], l.autumn);
+    let c = lerp3(LEAF_GREEN[i], LEAF_AUTUMN_TINT[i], l.autumn);
     lerp3(c, LEAF_SNOW, l.cap)
 }
 
@@ -328,7 +329,11 @@ pub fn apply_season(
     for (g, m) in &ground {
         if let Some(mut mat) = materials.get_mut(&m.0) {
             let mix = if g.sand { 0.35 } else { 1.0 };
-            let c = lerp3([1.0; 3], l.grass, mix);
+            let mut c = lerp3([1.0; 3], l.grass, mix);
+            if !g.sand {
+                // La foto dell'erba è più secca del vecchio prato: la si porta verso il verde.
+                c = [c[0] * 0.86, c[1] * 1.0, c[2] * 0.68];
+            }
             mat.base_color = Color::srgb(c[0], c[1], c[2]);
         }
     }

@@ -47,9 +47,13 @@ pub fn spawn_camera(
 
     commands.spawn((
         Camera3d::default(),
-        // Tonemapping disattivato: il cielo procedurale va visto così com'è,
-        // senza curve che ne alterano i colori.
-        Tonemapping::None,
+        // Resa fisica: HDR, tonemapping, bagliore delle luci, occlusione ambientale (ADR 0016).
+        bevy::camera::Hdr,
+        Tonemapping::TonyMcMapface,
+        bevy::post_process::bloom::Bloom::NATURAL,
+        Msaa::Off,
+        bevy::anti_alias::smaa::Smaa::default(),
+        bevy::pbr::ScreenSpaceAmbientOcclusion::default(),
         Transform::from_xyz(-4.0, 3.5, 6.0),
         Skybox {
             image: Some(skybox),
@@ -90,6 +94,14 @@ pub fn spawn_world(
             shadow_normal_bias: 3.0,
             ..Default::default()
         },
+        bevy::light::CascadeShadowConfigBuilder {
+            num_cascades: 4,
+            minimum_distance: 0.5,
+            first_cascade_far_bound: 12.0,
+            maximum_distance: 180.0,
+            overlap_proportion: 0.2,
+        }
+        .build(),
         Transform::from_xyz(4.0, 10.0, 4.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
 

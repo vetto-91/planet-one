@@ -14,7 +14,7 @@ categories = ["game"]
 # vivono qui, il 4° (BUGFIX) è tracciato nei tag Git e in CHANGELOG.md.
 
 [dependencies]
-bevy = { version = "0.20.1", features = ["file_watcher", "wav"] }
+bevy = { version = "0.20.1", features = ["file_watcher", "wav", "jpeg"] }
 avian3d = { version = "0.8.0", features = ["debug-plugin"] }
 bevy_egui = "0.43.1"
 ureq = { version = "2", default-features = false }

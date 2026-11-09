@@ -321,7 +321,7 @@ pub fn update_sky(
             Without<SkyDisc>,
         ),
     >,
-    mut skyboxes: Query<&mut Skybox>,
+    mut skyboxes: Query<(&mut Skybox, Option<&mut bevy::light::EnvironmentMapLight>)>,
     mut ambient: ResMut<GlobalAmbientLight>,
     season: Res<crate::seasons::SeasonLook>,
     weather: Res<crate::weather::WeatherState>,
@@ -334,7 +334,7 @@ pub fn update_sky(
 
     if let Ok((mut t, mut light)) = sun.single_mut() {
         *t = Transform::from_translation(dir * 20.0).looking_at(Vec3::ZERO, Vec3::Y);
-        light.illuminance = 4000.0 * day * (1.0 - 0.78 * weather.cloud) + weather.flash * 9000.0;
+        light.illuminance = 9000.0 * day * (1.0 - 0.78 * weather.cloud) + weather.flash * 9000.0;
         let c = Vec3::new(1.0, 0.95, 0.85).lerp(Vec3::new(1.0, 0.55, 0.3), warm)
             * Vec3::from(season.0.sun);
         let c = c.lerp(Vec3::new(0.8, 0.85, 0.9), 0.6 * weather.cloud);
@@ -342,20 +342,26 @@ pub fn update_sky(
     }
     if let Ok((mut t, mut light)) = moon.single_mut() {
         *t = Transform::from_translation(-dir * 20.0).looking_at(Vec3::ZERO, Vec3::Y);
-        light.illuminance = 700.0 * night_moon;
+        light.illuminance = 160.0 * night_moon;
     }
 
     let amb = Vec3::new(0.35, 0.42, 0.7).lerp(Vec3::new(0.9, 0.92, 0.98), day);
     ambient.color = Color::srgb(amb.x, amb.y, amb.z);
     ambient.brightness =
-        (70.0 + (80.0 - 70.0) * day) * season.0.ambient * (1.0 - 0.15 * weather.cloud)
+        (8.0 + (40.0 - 8.0) * day) * season.0.ambient * (1.0 - 0.15 * weather.cloud)
             + weather.flash * 700.0;
 
     let sky = smoothstep(-0.15, 0.3, elev);
-    for mut s in &mut skyboxes {
-        s.brightness = (80.0 + (1000.0 - 80.0) * sky)
-            * (1.0 - 0.6 * weather.cloud.max(weather.fog))
-            + weather.flash * 1500.0;
+    for (mut s, env) in &mut skyboxes {
+        let b = (80.0 + (1500.0 - 80.0) * sky) * (1.0 - 0.6 * weather.cloud.max(weather.fog))
+            + weather.flash * 2200.0;
+        s.brightness = b;
+        if let Some(mut env) = env {
+            // Bevy crea `EnvironmentMapLight` una sola volta dalla versione "generata": l'intensità si regola qui.
+            // Di notte il cielo non deve illuminare quasi nulla.
+            env.intensity = (6.0 + 1000.0 * sky) * (1.0 - 0.6 * weather.cloud.max(weather.fog))
+                + weather.flash * 900.0;
+        }
     }
 
     let cam = cameras.single().map(|t| t.translation).unwrap_or_default();

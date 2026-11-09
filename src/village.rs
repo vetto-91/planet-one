@@ -313,6 +313,7 @@ pub fn sync_village(
     mut info: ResMut<VillageInfo>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    pbr: Res<crate::pbr::PbrMaterials>,
     old: Query<Entity, With<VillageWall>>,
     mut built: Local<(Option<u32>, usize)>,
 ) {
@@ -558,11 +559,7 @@ pub fn sync_village(
     }
 
     // --- Cancelli: piloni con torrette, architrave, battenti e maniglia ---
-    let wood = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.34, 0.22, 0.12),
-        perceptual_roughness: 0.9,
-        ..default()
-    });
+    let wood = pbr.get(crate::pbr::Mat::Planks);
     let mut gate_entities = Vec::new();
     for gate in &info.gates {
         let g = gate.pos;
@@ -710,11 +707,6 @@ pub fn sync_village(
     }
 
     // --- Entità del muro: una mesh di pietra, una di tetti, collider a pezzi ---
-    let mat = materials.add(StandardMaterial {
-        base_color: Color::WHITE,
-        perceptual_roughness: 0.95,
-        ..default()
-    });
     let snow_mat = crate::seasons::snow_material(&mut materials);
     let snows = [stone.snow_mesh(), roofs.snow_mesh()];
     commands
@@ -726,10 +718,9 @@ pub fn sync_village(
             Visibility::default(),
         ))
         .with_children(|c| {
-            c.spawn((
-                Mesh3d(meshes.add(stone.finish())),
-                MeshMaterial3d(mat.clone()),
-            ));
+            for (m, mesh) in stone.finish_parts() {
+                c.spawn((Mesh3d(meshes.add(mesh)), MeshMaterial3d(pbr.get(m))));
+            }
             for snow in snows {
                 c.spawn((
                     crate::seasons::SeasonSnowRoof,
@@ -739,10 +730,9 @@ pub fn sync_village(
                     Visibility::Hidden,
                 ));
             }
-            c.spawn((
-                Mesh3d(meshes.add(roofs.finish())),
-                MeshMaterial3d(mat.clone()),
-            ));
+            for (m, mesh) in roofs.finish_parts() {
+                c.spawn((Mesh3d(meshes.add(mesh)), MeshMaterial3d(pbr.get(m))));
+            }
             for (center, size, yaw) in colliders {
                 c.spawn((
                     Collider::cuboid(size.x, size.y, size.z),

@@ -227,9 +227,10 @@ pub fn equirect_to_cubemap(src: &Image) -> Option<Image> {
 /// Sistema: appena la panoramica è caricata la converte in cubemap e la
 /// assegna allo `Skybox` della camera (il gradiente resta come segnaposto).
 pub fn apply_sky_texture(
+    mut commands: Commands,
     sky: Option<Res<SkyTexture>>,
     mut images: ResMut<Assets<Image>>,
-    mut skyboxes: Query<&mut Skybox>,
+    mut skyboxes: Query<(Entity, &mut Skybox)>,
     mut done: Local<bool>,
 ) {
     let Some(sky) = sky else { return };
@@ -245,8 +246,16 @@ pub fn apply_sky_texture(
         return;
     };
     let handle = images.add(cube);
-    for mut skybox in &mut skyboxes {
+    for (entity, mut skybox) in &mut skyboxes {
         skybox.image = Some(handle.clone());
+        // Il cielo illumina anche la scena (luce diffusa e riflessi): intensità in `daynight::update_sky`.
+        commands
+            .entity(entity)
+            .insert(bevy::light::GeneratedEnvironmentMapLight {
+                environment_map: handle.clone(),
+                intensity: 6.0,
+                ..default()
+            });
     }
     info!("[SKY] cubemap generata dalla panoramica");
 }

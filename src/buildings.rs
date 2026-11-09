@@ -5,6 +5,7 @@
 //! condiviso) più qualche collider a parallelepipedo. Sistema locale: origine a terra al centro,
 //! +Y su, **+Z = davanti** (lato della porta). Le varianti (colori, finestre) dipendono dal seme.
 
+use crate::pbr::{MATS, Mat};
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
 
@@ -37,7 +38,8 @@ pub fn is_building(kind: &str) -> bool {
 
 /// Edificio costruito: mesh, collider (centro, dimensioni) e semi-lati dell'impronta.
 pub struct Building {
-    pub mesh: Mesh,
+    /// Una mesh per materiale.
+    pub parts: Vec<(Mat, Mesh)>,
     /// Manto di neve sui tetti (mostrato solo d'inverno); vuoto se non ci sono tetti.
     pub snow: Mesh,
     pub colliders: Vec<(Vec3, Vec3)>,
@@ -45,6 +47,7 @@ pub struct Building {
 }
 
 pub(crate) type Col = [f32; 4];
+const WHITE: Col = [1.0, 1.0, 1.0, 1.0];
 
 pub(crate) const STONE: Col = [0.74, 0.72, 0.68, 1.0];
 pub(crate) const STONE_DARK: Col = [0.5, 0.5, 0.52, 1.0];
@@ -89,8 +92,11 @@ impl Rng {
 pub(crate) struct B {
     pos: Vec<[f32; 3]>,
     nor: Vec<[f32; 3]>,
+    uv: Vec<[f32; 2]>,
     col: Vec<Col>,
     idx: Vec<u32>,
+    /// Materiale di ogni triangolo.
+    tri_mat: Vec<Mat>,
     /// Triangoli del manto di neve (sopra le falde dei tetti).
     snow: Vec<[Vec3; 3]>,
 }
@@ -127,6 +133,25 @@ impl B {
         m
     }
 
+    /// Aggiunge i vertici di una faccia piana, con UV in metri e tinta secondo il materiale.
+    fn face(&mut self, pts: &[Vec3], n: Vec3, col: Col) -> (u32, Mat) {
+        let (mat, tint) = classify(col);
+        let u = if n.y.abs() > 0.99 {
+            Vec3::X
+        } else {
+            Vec3::Y.cross(n).normalize()
+        };
+        let v = n.cross(u).normalize();
+        let base = self.pos.len() as u32;
+        for p in pts {
+            self.pos.push(p.to_array());
+            self.nor.push(n.to_array());
+            self.uv.push([p.dot(u), -p.dot(v)]);
+            self.col.push(tint);
+        }
+        (base, mat)
+    }
+
     /// Quadrilatero; `hint` è la direzione "verso l'esterno" per orientare la faccia.
     pub(crate) fn quad(&mut self, a: Vec3, b: Vec3, c: Vec3, d: Vec3, hint: Vec3, col: Col) {
         let mut n = (b - a).cross(d - a).normalize_or_zero();
@@ -136,14 +161,10 @@ impl B {
         } else {
             [a, b, c, d]
         };
-        let base = self.pos.len() as u32;
-        for p in pts {
-            self.pos.push(p.to_array());
-            self.nor.push(n.to_array());
-            self.col.push(col);
-        }
+        let (base, mat) = self.face(&pts, n, col);
         self.idx
             .extend([base, base + 1, base + 2, base, base + 2, base + 3]);
+        self.tri_mat.extend([mat, mat]);
     }
 
     pub(crate) fn tri(&mut self, a: Vec3, b: Vec3, c: Vec3, hint: Vec3, col: Col) {
@@ -154,13 +175,9 @@ impl B {
         } else {
             [a, b, c]
         };
-        let base = self.pos.len() as u32;
-        for p in pts {
-            self.pos.push(p.to_array());
-            self.nor.push(n.to_array());
-            self.col.push(col);
-        }
+        let (base, mat) = self.face(&pts, n, col);
         self.idx.extend([base, base + 1, base + 2]);
+        self.tri_mat.push(mat);
     }
 
     /// Parallelepipedo (sei facce).
@@ -322,19 +339,107 @@ impl B {
         self.snow_tri(p(a, y1), p(cc, y1), p(d, y1));
     }
 
+    /// Mesh unica a colori di vertice (campi coltivati).
     pub(crate) fn finish(self) -> Mesh {
         let mut m = Mesh::new(
             PrimitiveTopology::TriangleList,
             bevy::asset::RenderAssetUsages::default(),
         );
-        let n = self.pos.len();
         m.insert_attribute(Mesh::ATTRIBUTE_POSITION, self.pos);
         m.insert_attribute(Mesh::ATTRIBUTE_NORMAL, self.nor);
-        m.insert_attribute(Mesh::ATTRIBUTE_UV_0, vec![[0.0f32, 0.0]; n]);
+        m.insert_attribute(Mesh::ATTRIBUTE_UV_0, self.uv);
         m.insert_attribute(Mesh::ATTRIBUTE_COLOR, self.col);
         m.insert_indices(Indices::U32(self.idx));
         m
     }
+
+    /// Una mesh per materiale, con le tangenti per le normal map.
+    pub(crate) fn finish_parts(self) -> Vec<(Mat, Mesh)> {
+        let mut out = Vec::new();
+        for mat in MATS {
+            let mut remap = std::collections::HashMap::new();
+            let (mut pos, mut nor, mut uv, mut col, mut idx) =
+                (Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new());
+            for (t, tri) in self.idx.as_chunks::<3>().0.iter().enumerate() {
+                if self.tri_mat[t] != mat {
+                    continue;
+                }
+                for &i in tri {
+                    let new = *remap.entry(i).or_insert_with(|| {
+                        let i = i as usize;
+                        pos.push(self.pos[i]);
+                        nor.push(self.nor[i]);
+                        uv.push(self.uv[i]);
+                        col.push(self.col[i]);
+                        pos.len() as u32 - 1
+                    });
+                    idx.push(new);
+                }
+            }
+            if idx.is_empty() {
+                continue;
+            }
+            let mut m = Mesh::new(
+                PrimitiveTopology::TriangleList,
+                bevy::asset::RenderAssetUsages::default(),
+            );
+            m.insert_attribute(Mesh::ATTRIBUTE_POSITION, pos);
+            m.insert_attribute(Mesh::ATTRIBUTE_NORMAL, nor);
+            m.insert_attribute(Mesh::ATTRIBUTE_UV_0, uv);
+            m.insert_attribute(Mesh::ATTRIBUTE_COLOR, col);
+            m.insert_indices(Indices::U32(idx));
+            if m.generate_tangents().is_err() {
+                warn!("[EDIFICI] tangenti non generate per {mat:?}");
+            }
+            out.push((mat, m));
+        }
+        out
+    }
+}
+
+/// Materiale e tinta di un colore della tavolozza. Le tinte leggermente variate (`tint`) restano riconosciute.
+fn classify(col: Col) -> (Mat, Col) {
+    let near = |c: Col| (0..3).all(|i| ((col[i] / c[i].max(0.001)) - 1.0).abs() < 0.12);
+    let ratio = |c: Col| {
+        let k = (col[0] + col[1] + col[2]) / (c[0] + c[1] + c[2]).max(0.001);
+        [k, k, k, 1.0]
+    };
+    if near(STONE) {
+        return (Mat::Stone, ratio(STONE));
+    }
+    if near(STONE_DARK) {
+        let k = ratio(STONE_DARK)[0] * 0.68;
+        return (Mat::Stone, [k, k, k, 1.0]);
+    }
+    if near(ROOFS[0]) {
+        return (Mat::Tiles, WHITE);
+    }
+    if near(ROOFS[1]) {
+        return (Mat::Slate, WHITE);
+    }
+    if near(ROOFS[2]) {
+        return (Mat::Thatch, WHITE);
+    }
+    if near(GLASS) {
+        return (Mat::Glass, [col[0] * 0.3, col[1] * 0.3, col[2] * 0.3, 1.0]);
+    }
+    if near(TIMBER) {
+        return (Mat::Planks, [0.8, 0.75, 0.7, 1.0]);
+    }
+    if near(DOOR) {
+        return (Mat::Planks, [1.05, 0.95, 0.85, 1.0]);
+    }
+    if SHUTTERS.iter().any(|c| near(*c)) {
+        let k = 1.9;
+        return (Mat::Planks, [col[0] * k, col[1] * k, col[2] * k, 1.0]);
+    }
+    if WALLS.iter().any(|c| near(*c)) {
+        return (
+            Mat::Plaster,
+            [col[0] * 1.7, col[1] * 1.7, col[2] * 1.7, 1.0],
+        );
+    }
+    (Mat::Plain, col)
 }
 
 /// Finestra sul fronte (`z_face`, normale `n` = ±Z o ±X) con imposte.
@@ -1073,7 +1178,7 @@ pub fn model(kind: &str, seed: u32) -> Building {
     };
     Building {
         snow: b.snow_mesh(),
-        mesh: b.finish(),
+        parts: b.finish_parts(),
         colliders,
         half: Vec2::new(w / 2.0, d / 2.0),
     }
@@ -1162,7 +1267,14 @@ mod tests {
         ] {
             assert!(is_building(k), "{k} non riconosciuto");
             let m = model(k, 7);
-            assert!(m.mesh.count_vertices() > 8, "{k} senza mesh");
+            assert!(
+                m.parts
+                    .iter()
+                    .map(|(_, p)| p.count_vertices())
+                    .sum::<usize>()
+                    > 8,
+                "{k} senza mesh"
+            );
         }
     }
 }

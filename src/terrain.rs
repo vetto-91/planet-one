@@ -16,11 +16,8 @@ use crate::scene::{Ground, SceneNode};
 use crate::village::{Road, VillageInfo, dist_to_segment, signed_distance};
 use avian3d::prelude::*;
 use bevy::asset::AssetEvent;
-use bevy::image::{
-    Image, ImageAddressMode, ImageFilterMode, ImageLoaderSettings, ImageSampler,
-    ImageSamplerDescriptor,
-};
-use bevy::math::{Affine2, UVec3, Vec2};
+use bevy::image::Image;
+use bevy::math::{UVec3, Vec2};
 use bevy::prelude::*;
 use bevy::render::mesh::{Indices, PrimitiveTopology, VertexAttributeValues};
 
@@ -39,7 +36,9 @@ const SHORE_LEVEL: f32 = -0.3;
 /// vengono moltiplicati per `HEIGHT_SCALE` (m).
 const HEIGHT_SCALE: f32 = 4.0;
 /// Lato (m) di un tile della texture erba.
-const GRASS_TILE_M: f32 = 10.0;
+const GRASS_TILE_M: f32 = 4.0;
+/// Segno della bitangente per la griglia del terreno (V cresce verso +Z).
+const TANGENT_W: f32 = 1.0;
 
 /// Asset e stato del terreno.
 #[derive(Resource)]
@@ -85,8 +84,8 @@ impl TerrainField {
 }
 
 /// Lato (m) di una piastrella della texture sabbia e del selciato.
-const SAND_TILE_M: f32 = 8.0;
-const ROAD_TILE_M: f32 = 3.0;
+const SAND_TILE_M: f32 = 12.0;
+const ROAD_TILE_M: f32 = 2.4;
 
 /// Carica la heightmap e inserisce la resource [`TerrainAssets`].
 ///
@@ -111,21 +110,6 @@ pub fn spawn_terrain(
     materials: &mut Assets<StandardMaterial>,
     asset_server: &AssetServer,
 ) {
-    // Texture erba ripetuta: sampler in modalità Repeat, un tile ogni GRASS_TILE_M metri.
-    let grass = asset_server
-        .load_builder()
-        .with_settings(|s: &mut ImageLoaderSettings| {
-            s.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
-                address_mode_u: ImageAddressMode::Repeat,
-                address_mode_v: ImageAddressMode::Repeat,
-                mag_filter: ImageFilterMode::Linear,
-                min_filter: ImageFilterMode::Linear,
-                mipmap_filter: ImageFilterMode::Linear,
-                anisotropy_clamp: 16,
-                ..Default::default()
-            });
-        })
-        .load("textures/grass.png");
     let placeholder_mesh = meshes.add(Plane3d {
         half_size: Vec2::splat(TERRAIN_SIZE / 2.0),
         ..Default::default()
@@ -142,14 +126,11 @@ pub fn spawn_terrain(
         DebugRender::none(),
         Collider::cuboid(TERRAIN_SIZE, 1.0, TERRAIN_SIZE),
         Mesh3d(placeholder_mesh),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::WHITE,
-            base_color_texture: Some(grass),
-            uv_transform: Affine2::from_scale(Vec2::splat(TERRAIN_SIZE / GRASS_TILE_M)),
-            perceptual_roughness: 0.85,
-            metallic: 0.0,
-            ..Default::default()
-        })),
+        MeshMaterial3d(materials.add(crate::pbr::material(
+            asset_server,
+            "grass",
+            Vec2::splat(TERRAIN_SIZE / GRASS_TILE_M),
+        ))),
     ));
 }
 
@@ -253,63 +234,35 @@ pub fn update_terrain(
     for e in &extras {
         commands.entity(e).despawn();
     }
-    let sand_tex = asset_server
-        .load_builder()
-        .with_settings(|s: &mut ImageLoaderSettings| {
-            s.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
-                address_mode_u: ImageAddressMode::Repeat,
-                address_mode_v: ImageAddressMode::Repeat,
-                mag_filter: ImageFilterMode::Linear,
-                min_filter: ImageFilterMode::Linear,
-                mipmap_filter: ImageFilterMode::Linear,
-                anisotropy_clamp: 16,
-                ..Default::default()
-            });
-        })
-        .load("textures/sand.png");
     commands.spawn((
         SceneNode,
         TerrainExtra,
         crate::seasons::SeasonGround { sand: true },
         Mesh3d(meshes.add(sand_mesh)),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::WHITE,
-            base_color_texture: Some(sand_tex),
-            uv_transform: Affine2::from_scale(Vec2::splat(TERRAIN_SIZE / SAND_TILE_M)),
-            perceptual_roughness: 0.95,
             alpha_mode: AlphaMode::Blend,
             depth_bias: 0.5,
-            ..Default::default()
+            ..crate::pbr::material(
+                &asset_server,
+                "sand",
+                Vec2::splat(TERRAIN_SIZE / SAND_TILE_M),
+            )
         })),
         Transform::default(),
         bevy::light::NotShadowCaster,
     ));
-    let road_tex = asset_server
-        .load_builder()
-        .with_settings(|s: &mut ImageLoaderSettings| {
-            s.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
-                address_mode_u: ImageAddressMode::Repeat,
-                address_mode_v: ImageAddressMode::Repeat,
-                mag_filter: ImageFilterMode::Linear,
-                min_filter: ImageFilterMode::Linear,
-                mipmap_filter: ImageFilterMode::Linear,
-                anisotropy_clamp: 16,
-                ..Default::default()
-            });
-        })
-        .load("textures/selciato.png");
     commands.spawn((
         SceneNode,
         TerrainExtra,
         Mesh3d(meshes.add(road_mesh)),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::WHITE,
-            base_color_texture: Some(road_tex),
-            uv_transform: Affine2::from_scale(Vec2::splat(TERRAIN_SIZE / ROAD_TILE_M)),
-            perceptual_roughness: 0.95,
             alpha_mode: AlphaMode::Blend,
             depth_bias: 1.5,
-            ..Default::default()
+            ..crate::pbr::material(
+                &asset_server,
+                "cobble",
+                Vec2::splat(TERRAIN_SIZE / ROAD_TILE_M),
+            )
         })),
         Transform::default(),
         bevy::light::NotShadowCaster,
@@ -337,11 +290,12 @@ pub fn update_terrain(
         TerrainExtra,
         Mesh3d(meshes.add(sea_mesh)),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::srgba(0.12, 0.38, 0.55, 0.82),
+            base_color: Color::srgba(0.05, 0.22, 0.33, 0.86),
+            reflectance: 0.6,
             alpha_mode: AlphaMode::Blend,
             // Il mare si disegna dopo sabbia e strade (anche dall'alto, nella mappa).
             depth_bias: 4.0,
-            perceptual_roughness: 0.15,
+            perceptual_roughness: 0.08,
             metallic: 0.0,
             ..Default::default()
         })),
@@ -633,7 +587,35 @@ fn build_terrain_mesh(field: &Field) -> Mesh {
         }
     }
     mesh.compute_normals();
+    add_ground_detail(&mut mesh, field);
     mesh
+}
+
+/// Tangenti analitiche (per le normal map) e leggere variazioni di colore su larga scala, che
+/// nascondono la ripetizione della texture.
+fn add_ground_detail(mesh: &mut Mesh, field: &Field) {
+    let n = field.n;
+    let tangents: Vec<[f32; 4]> = (0..n * n)
+        .map(|i| {
+            let x = i % n;
+            let z = i / n;
+            let left = field.h[z * n + x.saturating_sub(1)];
+            let right = field.h[z * n + (x + 1).min(n - 1)];
+            let t = Vec3::new(2.0 * STEP, right - left, 0.0).normalize();
+            [t.x, t.y, t.z, TANGENT_W]
+        })
+        .collect();
+    mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, tangents);
+    let colors: Vec<[f32; 4]> = (0..n * n)
+        .map(|i| {
+            let (x, z) = ((i % n) as f32 * STEP, (i / n) as f32 * STEP);
+            let low = (x * 0.041).sin() * (z * 0.033).cos() + (x * 0.013 + z * 0.021).sin();
+            let high = (x * 0.31 + 1.3).sin() * (z * 0.27).cos();
+            let k = 1.0 + low * 0.12 + high * 0.04;
+            [k * 0.97, k * (1.04 + 0.05 * high), k * 0.92, 1.0]
+        })
+        .collect();
+    mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
 }
 
 /// Collider heightfield Avian dalla stessa griglia: heights[x][z] (riga = X, colonna = Z).
@@ -881,5 +863,28 @@ fn sample_height(image: &Image, x: u32, y: u32) -> f32 {
             raw * 2.0 - 1.0
         }
         _ => 0.0,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::mesh::{Mesh, Meshable, VertexAttributeValues};
+
+    /// Le tangenti analitiche devono avere lo stesso segno di quelle generate da mikktspace.
+    #[test]
+    fn analytic_tangent_sign_matches_mikktspace() {
+        let mut m = Plane3d {
+            half_size: Vec2::splat(1.0),
+            ..Default::default()
+        }
+        .mesh()
+        .build();
+        m.generate_tangents().unwrap();
+        let Some(VertexAttributeValues::Float32x4(t)) = m.attribute(Mesh::ATTRIBUTE_TANGENT) else {
+            panic!("senza tangenti");
+        };
+        assert!(t[0][0].abs() > 0.9, "tangente lungo X: {:?}", t[0]);
+        assert_eq!(t[0][3].signum(), TANGENT_W, "{:?}", t[0]);
     }
 }
