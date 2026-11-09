@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.40.0 — Paese vissuto (2026-11-09)
 
 - **Paese vissuto**: fumo dai comignoli (la mattina, la sera e col freddo; forno, fabbro e locanda per tutta la giornata di lavoro), torce sulle mura accese al buio, carretti, botti, casse, panni stesi, reti al porto, insegna del forno.
 - I nuovi carretti, botti e casse si aprono come gli altri contenitori e si spostano con F4.
