@@ -20,11 +20,14 @@ pub struct ShopItem {
 pub fn stock(key: &str) -> Vec<ShopItem> {
     let i = |kind, price, qty| ShopItem { kind, price, qty };
     match key {
-        "viandante" | "erborista" => vec![i(
-            ItemKind::HealthPotion,
-            if key == "viandante" { 12 } else { 10 },
-            1,
-        )],
+        "viandante" => vec![
+            i(ItemKind::HealthPotion, 12, 1),
+            i(ItemKind::CarryBelt, 450, 1),
+        ],
+        "erborista" => vec![
+            i(ItemKind::HealthPotion, 10, 1),
+            i(ItemKind::MulePotion, 35, 1),
+        ],
         "frutta" => vec![i(ItemKind::Apple, 2, 1)],
         "pesce" => vec![i(ItemKind::Fish, 4, 1)],
         "armaiolo" => vec![
@@ -32,6 +35,10 @@ pub fn stock(key: &str) -> Vec<ShopItem> {
             i(ItemKind::LongSword, 90, 1),
             i(ItemKind::Axe, 70, 1),
             i(ItemKind::Shield, 55, 1),
+            i(ItemKind::Satchel, 25, 1),
+            i(ItemKind::CanvasPack, 60, 1),
+            i(ItemKind::LeatherPack, 140, 1),
+            i(ItemKind::ExpeditionPack, 300, 1),
         ],
         "arciere" => vec![i(ItemKind::Bow, 80, 1), i(ItemKind::Arrow, 15, 10)],
         _ => Vec::new(),
@@ -58,25 +65,30 @@ impl ShopState {
 }
 
 /// Sistema (stato Shop): applica l'acquisto richiesto dalla UI.
-pub fn shop_buy(mut shop: ResMut<ShopState>, mut inv: ResMut<Inventory>) {
+pub fn shop_buy(
+    mut shop: ResMut<ShopState>,
+    mut inv: ResMut<Inventory>,
+    character: Res<crate::character::Character>,
+) {
     let Some(idx) = shop.pending.take() else {
         return;
     };
     let Some(item) = stock(&shop.key).get(idx).copied() else {
         return;
     };
-    if inv.qty(ItemKind::Coin) < item.price {
+    let price = character.stats.price(item.price);
+    if inv.qty(ItemKind::Coin) < price {
         shop.message = "Non hai abbastanza monete.".into();
         return;
     }
-    inv.consume(ItemKind::Coin, item.price);
+    inv.consume(ItemKind::Coin, price);
     inv.add(item.kind, item.qty);
     shop.message = format!("Hai comprato: {}", item.kind.name());
     info!(
         "[SHOP] {} comprato da {} per {}",
         item.kind.name(),
         shop.vendor,
-        item.price
+        price
     );
 }
 
@@ -88,6 +100,7 @@ pub fn shop_panel(
     shop: &mut ShopState,
     coins: u32,
     icons: Option<&crate::inventory_ui::ItemIcons>,
+    stats: crate::character::Stats,
 ) {
     let size = ctx.viewport_rect().size();
     let w = 640.0_f32.min(size.x - 40.0);
@@ -142,16 +155,14 @@ pub fn shop_panel(
                             );
                         });
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            let ok = coins >= item.price;
+                            let price = stats.price(item.price);
+                            let ok = coins >= price;
                             if ui
                                 .add_enabled(
                                     ok,
                                     egui::Button::new(
-                                        egui::RichText::new(format!(
-                                            "Compra  ({} monete)",
-                                            item.price
-                                        ))
-                                        .size(18.0),
+                                        egui::RichText::new(format!("Compra  ({price} monete)"))
+                                            .size(18.0),
                                     ),
                                 )
                                 .clicked()

@@ -25,6 +25,7 @@ const HELP: &[&str] = &[
     "ia [on|off] · ia modelli · ia modello <nome>",
     "tts [on|off] · tts voci · tts voce <nome|auto>",
     "stt [on|off] · stt modelli · stt modello <nome>",
+    "stat [<nome> <valore>] · effetto peso <kg> [secondi] · effetto via",
 ];
 
 /// Trucchi attivi: non salvati, tutti spenti a ogni avvio.
@@ -112,6 +113,11 @@ pub enum Cmd {
     Ai(AiCmd),
     Tts(TtsCmd),
     Stt(SttCmd),
+    Stats,
+    SetStat(crate::character::Stat, u8),
+    /// Chili e secondi (`None` = senza scadenza).
+    CarryEffect(f32, Option<f32>),
+    ClearEffects,
 }
 
 fn switch(arg: Option<&&str>) -> Result<Option<bool>, String> {
@@ -191,6 +197,39 @@ pub fn parse(line: &str) -> Result<Cmd, String> {
                 .ok_or_else(|| "uso: stt on|off".to_string()),
             _ => Err("uso: stt [on|off] · stt modelli · stt modello <nome>".into()),
         },
+        "stat" | "statistiche" => match args {
+            [] => Ok(Cmd::Stats),
+            [name, value] => {
+                let stat = crate::character::Stat::parse(name)
+                    .ok_or_else(|| format!("statistica sconosciuta: {name}"))?;
+                let value: u8 = value.parse().map_err(|_| "il valore va da 1 a 20")?;
+                if (crate::character::STAT_MIN..=crate::character::STAT_MAX).contains(&value) {
+                    Ok(Cmd::SetStat(stat, value))
+                } else {
+                    Err("il valore va da 1 a 20".into())
+                }
+            }
+            _ => Err("uso: stat [<nome> <valore>]".into()),
+        },
+        "effetto" => match args {
+            ["via"] => Ok(Cmd::ClearEffects),
+            ["peso", kg, rest @ ..] if rest.len() <= 1 => {
+                let kg: f32 = kg
+                    .replace(',', ".")
+                    .parse()
+                    .map_err(|_| "uso: effetto peso <kg> [secondi]")?;
+                let secs = match rest.first() {
+                    Some(s) => Some(
+                        s.replace(',', ".")
+                            .parse::<f32>()
+                            .map_err(|_| "uso: effetto peso <kg> [secondi]")?,
+                    ),
+                    None => None,
+                };
+                Ok(Cmd::CarryEffect(kg, secs))
+            }
+            _ => Err("uso: effetto peso <kg> [secondi] · effetto via".into()),
+        },
         other => Err(format!("comando sconosciuto: {other} (scrivi aiuto)")),
     }
 }
@@ -235,6 +274,8 @@ fn parse_give(args: &[&str]) -> Result<Cmd, String> {
 #[derive(SystemParam)]
 pub struct ShellCtx<'w, 's> {
     cheats: ResMut<'w, Cheats>,
+    character: ResMut<'w, crate::character::Character>,
+    effects: ResMut<'w, crate::character::ActiveEffects>,
     inventory: ResMut<'w, Inventory>,
     clock: ResMut<'w, crate::daynight::GameClock>,
     weather: ResMut<'w, crate::weather::WeatherState>,
@@ -431,6 +472,31 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
         Cmd::Ai(cmd) => run_ai(cmd, shell, ctx),
         Cmd::Tts(cmd) => run_tts(cmd, shell, ctx),
         Cmd::Stt(cmd) => run_stt(cmd, shell, ctx),
+        Cmd::Stats => {
+            for stat in crate::character::Stat::ALL {
+                shell.say(format!(
+                    "{}: {}",
+                    stat.name(),
+                    ctx.character.stats.get(stat)
+                ));
+            }
+        }
+        Cmd::SetStat(stat, value) => {
+            ctx.character.stats.set(stat, value);
+            shell.say(format!("{}: {value}", stat.name()));
+        }
+        Cmd::CarryEffect(carry_kg, remaining) => {
+            ctx.effects.add(crate::character::Effect {
+                source: "Magia di prova".to_string(),
+                carry_kg,
+                remaining,
+            });
+            shell.say(format!("portata {carry_kg:+.1} kg"));
+        }
+        Cmd::ClearEffects => {
+            ctx.effects.0.clear();
+            shell.say("effetti tolti");
+        }
     }
 }
 
@@ -726,6 +792,20 @@ mod tests {
             parse("stt modello ggml-base"),
             Ok(Cmd::Stt(SttCmd::Model("ggml-base".into())))
         );
+    }
+
+    #[test]
+    fn stat_and_effect_commands() {
+        use crate::character::Stat;
+        assert_eq!(parse("stat"), Ok(Cmd::Stats));
+        assert_eq!(parse("stat forza 15"), Ok(Cmd::SetStat(Stat::Strength, 15)));
+        assert!(parse("stat forza 40").is_err());
+        assert_eq!(
+            parse("effetto peso 20 60"),
+            Ok(Cmd::CarryEffect(20.0, Some(60.0)))
+        );
+        assert_eq!(parse("effetto peso 5"), Ok(Cmd::CarryEffect(5.0, None)));
+        assert_eq!(parse("effetto via"), Ok(Cmd::ClearEffects));
     }
 
     #[test]

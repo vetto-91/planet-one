@@ -23,6 +23,15 @@ pub enum ItemKind {
     Arrow,
     Apple,
     Fish,
+    /// Zaini: aumentano il peso che si può portare.
+    Satchel,
+    CanvasPack,
+    LeatherPack,
+    ExpeditionPack,
+    /// Porta più peso per qualche minuto.
+    MulePotion,
+    /// Oggetto incantato: più peso finché è indossato.
+    CarryBelt,
     /// Passepartout: apre ogni porta (solo dalla shell).
     MasterKey,
 }
@@ -34,15 +43,17 @@ pub enum Category {
     Defense,
     Ammo,
     Food,
+    Gear,
     Valuables,
 }
 
 impl Category {
-    pub const ALL: [Category; 5] = [
+    pub const ALL: [Category; 6] = [
         Category::Weapons,
         Category::Defense,
         Category::Ammo,
         Category::Food,
+        Category::Gear,
         Category::Valuables,
     ];
 
@@ -52,6 +63,7 @@ impl Category {
             Category::Defense => "Difesa",
             Category::Ammo => "Munizioni",
             Category::Food => "Cibo e cure",
+            Category::Gear => "Equipaggiamento",
             Category::Valuables => "Valori",
         }
     }
@@ -59,7 +71,7 @@ impl Category {
 
 impl ItemKind {
     /// Tutti i tipi di oggetto.
-    pub const ALL: [ItemKind; 11] = [
+    pub const ALL: [ItemKind; 17] = [
         ItemKind::HealthPotion,
         ItemKind::Coin,
         ItemKind::ShortSword,
@@ -70,6 +82,12 @@ impl ItemKind {
         ItemKind::Arrow,
         ItemKind::Apple,
         ItemKind::Fish,
+        ItemKind::Satchel,
+        ItemKind::CanvasPack,
+        ItemKind::LeatherPack,
+        ItemKind::ExpeditionPack,
+        ItemKind::MulePotion,
+        ItemKind::CarryBelt,
         ItemKind::MasterKey,
     ];
 
@@ -84,6 +102,12 @@ impl ItemKind {
             ItemKind::Bow => Some(0.9),
             ItemKind::Apple => Some(0.15),
             ItemKind::Fish => Some(0.8),
+            ItemKind::Satchel => Some(0.4),
+            ItemKind::CanvasPack => Some(0.8),
+            ItemKind::LeatherPack => Some(1.5),
+            ItemKind::ExpeditionPack => Some(2.5),
+            ItemKind::MulePotion => Some(0.4),
+            ItemKind::CarryBelt => Some(0.3),
             ItemKind::MasterKey => Some(0.05),
             ItemKind::Coin | ItemKind::Arrow => None,
         }
@@ -97,7 +121,14 @@ impl ItemKind {
             }
             ItemKind::Shield => Category::Defense,
             ItemKind::Arrow => Category::Ammo,
-            ItemKind::HealthPotion | ItemKind::Apple | ItemKind::Fish => Category::Food,
+            ItemKind::HealthPotion | ItemKind::Apple | ItemKind::Fish | ItemKind::MulePotion => {
+                Category::Food
+            }
+            ItemKind::Satchel
+            | ItemKind::CanvasPack
+            | ItemKind::LeatherPack
+            | ItemKind::ExpeditionPack
+            | ItemKind::CarryBelt => Category::Gear,
             ItemKind::Coin | ItemKind::MasterKey => Category::Valuables,
         }
     }
@@ -115,6 +146,12 @@ impl ItemKind {
             ItemKind::Arrow => "frecce",
             ItemKind::Apple => "mela",
             ItemKind::Fish => "pesce",
+            ItemKind::Satchel => "bisaccia",
+            ItemKind::CanvasPack => "zaino-tela",
+            ItemKind::LeatherPack => "zaino-cuoio",
+            ItemKind::ExpeditionPack => "zaino-spedizione",
+            ItemKind::MulePotion => "pozione-mulo",
+            ItemKind::CarryBelt => "cintura",
             ItemKind::MasterKey => "passepartout",
         }
     }
@@ -137,6 +174,12 @@ impl ItemKind {
             ItemKind::Arrow => "Frecce",
             ItemKind::Apple => "Mela",
             ItemKind::Fish => "Pesce",
+            ItemKind::Satchel => "Bisaccia",
+            ItemKind::CanvasPack => "Zaino di tela",
+            ItemKind::LeatherPack => "Zaino di cuoio",
+            ItemKind::ExpeditionPack => "Zaino da spedizione",
+            ItemKind::MulePotion => "Pozione del mulo",
+            ItemKind::CarryBelt => "Cintura del portatore",
             ItemKind::MasterKey => "Passepartout",
         }
     }
@@ -154,8 +197,35 @@ impl ItemKind {
             ItemKind::Arrow => "Munizioni per l'arco (pacco da 10).",
             ItemKind::Apple => "Cura 10 punti vita.",
             ItemKind::Fish => "Cura 20 punti vita.",
+            ItemKind::Satchel => "Porta 5 kg in più.",
+            ItemKind::CanvasPack => "Porta 10 kg in più.",
+            ItemKind::LeatherPack => "Porta 20 kg in più.",
+            ItemKind::ExpeditionPack => "Porta 30 kg in più.",
+            ItemKind::MulePotion => "Per 5 minuti porti 20 kg in più.",
+            ItemKind::CarryBelt => "Incantata: porti 10 kg in più finché la indossi.",
             ItemKind::MasterKey => "Apre qualsiasi porta del paese.",
         }
+    }
+
+    /// Chili in più se è uno zaino.
+    pub fn backpack_kg(self) -> Option<f32> {
+        match self {
+            ItemKind::Satchel => Some(5.0),
+            ItemKind::CanvasPack => Some(10.0),
+            ItemKind::LeatherPack => Some(20.0),
+            ItemKind::ExpeditionPack => Some(30.0),
+            _ => None,
+        }
+    }
+
+    /// Chili in più se è un oggetto incantato da indossare.
+    pub fn charm_kg(self) -> Option<f32> {
+        (self == ItemKind::CarryBelt).then_some(10.0)
+    }
+
+    /// Effetto a tempo se bevuto: chili in più e secondi.
+    pub fn carry_potion(self) -> Option<(f32, f32)> {
+        (self == ItemKind::MulePotion).then_some((20.0, 300.0))
     }
 
     /// Arma che si impugna (spada, ascia, arco).
@@ -189,6 +259,12 @@ impl ItemKind {
             ItemKind::Arrow => Color::srgb(0.85, 0.78, 0.55),
             ItemKind::Apple => Color::srgb(0.5, 0.8, 0.3),
             ItemKind::Fish => Color::srgb(0.45, 0.6, 0.75),
+            ItemKind::Satchel => Color::srgb(0.6, 0.48, 0.3),
+            ItemKind::CanvasPack => Color::srgb(0.55, 0.55, 0.42),
+            ItemKind::LeatherPack => Color::srgb(0.5, 0.3, 0.16),
+            ItemKind::ExpeditionPack => Color::srgb(0.3, 0.4, 0.3),
+            ItemKind::MulePotion => Color::srgb(0.3, 0.55, 0.9),
+            ItemKind::CarryBelt => Color::srgb(0.7, 0.4, 0.8),
             ItemKind::MasterKey => Color::srgb(0.9, 0.75, 0.3),
         }
     }
@@ -229,6 +305,35 @@ impl Default for Inventory {
 pub struct Equipment {
     pub weapon: Option<ItemKind>,
     pub shield: bool,
+    pub backpack: Option<ItemKind>,
+    /// Oggetto incantato indossato.
+    pub charm: Option<ItemKind>,
+}
+
+impl Equipment {
+    /// L'oggetto è impugnato o indossato?
+    pub fn is_worn(&self, kind: ItemKind) -> bool {
+        self.weapon == Some(kind)
+            || (kind == ItemKind::Shield && self.shield)
+            || self.backpack == Some(kind)
+            || self.charm == Some(kind)
+    }
+
+    /// Toglie ciò che non si possiede più.
+    pub fn drop_missing(&mut self, inventory: &Inventory) {
+        if self.weapon.is_some_and(|k| inventory.qty(k) == 0) {
+            self.weapon = None;
+        }
+        if self.shield && inventory.qty(ItemKind::Shield) == 0 {
+            self.shield = false;
+        }
+        if self.backpack.is_some_and(|k| inventory.qty(k) == 0) {
+            self.backpack = None;
+        }
+        if self.charm.is_some_and(|k| inventory.qty(k) == 0) {
+            self.charm = None;
+        }
+    }
 }
 
 /// Statistiche di un'arma (a mani nude se `None`).
@@ -358,8 +463,31 @@ pub fn use_item(
     inventory: &mut Inventory,
     equip: &mut Equipment,
     health: Option<Mut<crate::player::PlayerHealth>>,
+    effects: &mut crate::character::ActiveEffects,
 ) {
-    if let Some(heal) = kind.heal() {
+    if let Some((carry_kg, seconds)) = kind.carry_potion() {
+        effects.add(crate::character::Effect {
+            source: kind.name().to_string(),
+            carry_kg,
+            remaining: Some(seconds),
+        });
+        inventory.consume(kind, 1);
+        info!("[INVENTORY] {} bevuta", kind.name());
+    } else if kind.backpack_kg().is_some() {
+        equip.backpack = if equip.backpack == Some(kind) {
+            None
+        } else {
+            Some(kind)
+        };
+        info!("[INVENTORY] zaino: {:?}", equip.backpack);
+    } else if kind.charm_kg().is_some() {
+        equip.charm = if equip.charm == Some(kind) {
+            None
+        } else {
+            Some(kind)
+        };
+        info!("[INVENTORY] oggetto indossato: {:?}", equip.charm);
+    } else if let Some(heal) = kind.heal() {
         let Some(mut hp) = health else {
             return;
         };
@@ -397,6 +525,7 @@ pub fn use_hotbar_items(
     mut inventory: ResMut<Inventory>,
     mut equip: ResMut<Equipment>,
     mut health: Query<&mut crate::player::PlayerHealth, With<crate::player::Player>>,
+    mut effects: ResMut<crate::character::ActiveEffects>,
 ) {
     if dialog.open {
         return;
@@ -420,7 +549,13 @@ pub fn use_hotbar_items(
         let Some(kind) = inventory.hotbar_slot(i).map(|s| s.kind) else {
             continue;
         };
-        use_item(kind, &mut inventory, &mut equip, health.single_mut().ok());
+        use_item(
+            kind,
+            &mut inventory,
+            &mut equip,
+            health.single_mut().ok(),
+            &mut effects,
+        );
     }
 }
 

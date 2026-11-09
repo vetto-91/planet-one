@@ -185,6 +185,47 @@ def master_key():
     return im
 
 
+def pack(body, flap, strap, wide=1.0, tall=1.0):
+    im = layer()
+    d = ImageDraw.Draw(im)
+    c = S / 2
+    hw, top, bottom = 150 * wide, c - 170 * tall, c + 190 * tall
+    d.arc([c - 80, top - 66, c + 80, top + 70], 180, 360, fill=strap, width=22)
+    d.rounded_rectangle([c - hw, top, c + hw, bottom], 46, fill=body, outline=(40, 28, 16, 255), width=10)
+    d.rounded_rectangle([c - hw - 8, top - 6, c + hw + 8, top + (bottom - top) * 0.42], 40, fill=flap, outline=(40, 28, 16, 255), width=10)
+    d.rounded_rectangle([c - 26, top + (bottom - top) * 0.32, c + 26, top + (bottom - top) * 0.52], 8, fill=(214, 170, 62, 255), outline=(136, 98, 28, 255), width=5)
+    d.rounded_rectangle([c - hw * 0.62, c + 70 * tall, c + hw * 0.62, bottom - 26], 18, outline=(40, 28, 16, 200), width=7)
+    return im
+
+
+def potion_of(color, dark):
+    im = layer()
+    d = ImageDraw.Draw(im)
+    c = S / 2
+    d.rectangle([c - 44, 70, c + 44, 170], fill=(206, 224, 236, 200), outline=(90, 110, 130, 255), width=7)
+    d.ellipse([c - 150, 140, c + 150, 440], fill=(206, 224, 236, 220), outline=(90, 110, 130, 255), width=9)
+    d.chord([c - 138, 152, c + 138, 428], 8, 172, fill=color, outline=dark, width=6)
+    d.rounded_rectangle([c - 54, 46, c + 54, 96], 12, fill=(130, 90, 52, 255), outline=(70, 44, 22, 255), width=6)
+    d.ellipse([c - 92, 212, c - 40, 300], fill=(255, 255, 255, 110))
+    return im
+
+
+def belt():
+    im = layer()
+    d = ImageDraw.Draw(im)
+    c = S / 2
+    d.arc([60, 110, 452, 402], 0, 360, fill=(104, 66, 34, 255), width=62)
+    d.arc([76, 126, 436, 386], 0, 360, fill=(70, 44, 22, 255), width=6)
+    d.rounded_rectangle([c - 74, 196, c + 74, 316], 22, fill=(214, 170, 62, 255), outline=(136, 98, 28, 255), width=9)
+    star = []
+    for k in range(10):
+        r = 44 if k % 2 == 0 else 18
+        a = -math.pi / 2 + k * math.pi / 5
+        star.append((c + r * math.cos(a), 256 + r * math.sin(a)))
+    d.polygon(star, fill=(150, 90, 220, 255), outline=(90, 50, 150, 255))
+    return im
+
+
 ICONS = {
     "spada-corta": lambda: sword(310, 58, 124),
     "spada-lunga": lambda: sword(430, 46, 150),
@@ -197,6 +238,12 @@ ICONS = {
     "pesce": fish,
     "moneta": coin,
     "passepartout": master_key,
+    "bisaccia": lambda: pack((156, 120, 74, 255), (134, 100, 58, 255), (92, 66, 36, 255), 0.72, 0.62),
+    "zaino-tela": lambda: pack((168, 164, 124, 255), (142, 138, 100, 255), (100, 82, 50, 255), 0.84, 0.8),
+    "zaino-cuoio": lambda: pack((130, 78, 42, 255), (104, 60, 30, 255), (70, 44, 22, 255), 0.94, 0.92),
+    "zaino-spedizione": lambda: pack((86, 112, 84, 255), (66, 90, 66, 255), (60, 46, 28, 255), 1.08, 1.06),
+    "pozione-mulo": lambda: potion_of((70, 130, 230, 255), (34, 70, 140, 255)),
+    "cintura": belt,
 }
 
 

@@ -47,6 +47,8 @@ pub fn toggle(
             (true, AppState::Wait)
         } else if keys.just_pressed(KeyCode::KeyM) {
             (true, AppState::Map)
+        } else if keys.just_pressed(KeyCode::KeyC) && *state.get() != AppState::Map {
+            (true, AppState::Character)
         } else if keys.just_pressed(KeyCode::KeyI)
             && !(inventory_ui.typing && *state.get() == AppState::Inventory)
         {
@@ -82,6 +84,7 @@ pub fn toggle(
         | AppState::Inventory
         | AppState::Shell
         | AppState::Container
+        | AppState::Character
         | AppState::Shop => next.set(AppState::Playing),
         // Durante il reset ESC non fa nulla: è uno stato transitorio.
         AppState::Resetting => {}
@@ -100,6 +103,8 @@ pub fn toggle(
 #[derive(SystemParam)]
 pub struct UiQueries<'w, 's> {
     pub cheats: Res<'w, crate::shell::Cheats>,
+    pub character: Res<'w, crate::character::Character>,
+    pub load: Res<'w, crate::character::Load>,
     pub health: Query<'w, 's, &'static PlayerHealth, With<crate::player::Player>>,
     pub enemies: Query<
         'w,
@@ -208,6 +213,19 @@ pub fn ui(
                 .show(ctx, |ui| {
                     hud_chip(ui, &q.weather.label());
                 });
+            if q.load.overloaded {
+                egui::Area::new(egui::Id::new("overload"))
+                    .fixed_pos(egui::pos2(12.0, 196.0))
+                    .show(ctx, |ui| {
+                        hud_chip(
+                            ui,
+                            &format!(
+                                "Sovraccarico: {:.1} / {:.1} kg",
+                                q.load.weight, q.load.capacity
+                            ),
+                        );
+                    });
+            }
             egui::Area::new(egui::Id::new("clock"))
                 .fixed_pos(egui::pos2(12.0, 104.0))
                 .show(ctx, |ui| {
@@ -355,7 +373,7 @@ pub fn ui(
                         ui.label("• Mouse — orbita camera");
                         ui.label("• Esc — menu / riprendi");
                         ui.label("• J — diario delle quest, T — aspetta, TAB (tenuto) — obiettivi");
-                        ui.label("• I — inventario, E / Invio — dialogo, 1–0 — usa oggetti");
+                        ui.label("• I — inventario, C — personaggio, E / Invio — dialogo, 1–0 — usa oggetti");
                         ui.label("• F3 — wireframe collider (debug)");
                         ui.label("• F11 — schermo intero on/off");
                         ui.label(
@@ -550,7 +568,13 @@ pub fn ui(
         }
         AppState::Shop => {
             let coins = inventory.qty(crate::inventory::ItemKind::Coin);
-            crate::shop::shop_panel(ctx, &mut q.shop, coins, q.icons.as_deref());
+            crate::shop::shop_panel(
+                ctx,
+                &mut q.shop,
+                coins,
+                q.icons.as_deref(),
+                q.character.stats,
+            );
         }
         AppState::Chat => {
             let status = q.ai.status.clone();
@@ -563,6 +587,7 @@ pub fn ui(
         AppState::Shell => {}
         // I mobili aperti hanno il loro sistema (`containers::container_window`).
         AppState::Container => {}
+        AppState::Character => {}
         // Durante Resetting non mostriamo nulla; la UI riapparirà in Playing/Paused.
         AppState::Resetting => {}
     }

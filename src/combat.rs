@@ -101,6 +101,7 @@ pub fn player_attack(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     time: Res<Time>,
+    character: Res<crate::character::Character>,
 ) {
     swing.0 = (swing.0 - time.delta_secs()).max(0.0);
     if dialog.open {
@@ -180,7 +181,7 @@ pub fn player_attack(
     combat.attack_cd = stats.cooldown;
     for (_, entity) in hit {
         if let Ok((_, mut hp, _)) = enemies.get_mut(entity) {
-            hp.current = (hp.current - stats.damage).max(0.0);
+            hp.current = (hp.current - stats.damage * character.stats.melee_factor()).max(0.0);
             info!("attacco su enemy {entity:?}: vita -> {:.0}", hp.current);
         }
     }
@@ -315,6 +316,7 @@ type EnemiesQuery<'w, 's> = Query<
 >;
 
 /// Gestione morte nemici: despawn + marker di respawn con i waypoint.
+#[allow(clippy::too_many_arguments)]
 pub fn handle_enemy_death(
     mut commands: Commands,
     mut quest: ResMut<crate::quests::denaro_rubato::QuestState>,
@@ -323,6 +325,7 @@ pub fn handle_enemy_death(
     mut materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
     names: Query<&crate::figure::ModelName>,
+    character: Res<crate::character::Character>,
 ) {
     for (entity, hp, patrol, transform, is_thief) in &enemies {
         if hp.current <= 0.0 {
@@ -351,7 +354,7 @@ pub fn handle_enemy_death(
                     &mut meshes,
                     &mut materials,
                     crate::inventory::ItemKind::Coin,
-                    4,
+                    character.stats.enemy_coins(),
                     transform.translation() + Vec3::Y * 0.2,
                 );
                 let wps = patrol.waypoints.clone();

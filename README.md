@@ -61,6 +61,7 @@ Giocando normalmente non ci sono trucchi. Con il tasto `\` si apre una shell (Es
 | `ia [on\|off]`, `ia modelli`, `ia modello <nome>` | Dialoghi IA, sempre e solo locali |
 | `tts [on\|off]`, `tts voci`, `tts voce <nome\|auto>` | Voce IA |
 | `stt [on\|off]`, `stt modelli`, `stt modello <nome>` | Microfono nella chat, solo locale |
+| `stat`, `stat forza 15`, `effetto peso 20 60`, `effetto via` | Statistiche e peso |
 
 ## Debug piazzamenti (F4)
 
@@ -103,6 +104,7 @@ grep "\[EVENT\]" run.log    # eventi finestra/cursore
 | Mouse | Orbita camera (sensibilità dal menu) |
 | Esc | Menu pausa (tasti, slider sensibilità, checkbox FPS, reset scena) |
 | \\ | Shell dei trucchi (vedi sotto) |
+| C | Pannello del personaggio |
 | F3 | Wireframe dei collider: attivo solo dopo `debug on` nella shell |
 | F11 | Schermo intero on/off (in fullscreen il cursore è bloccato e nascosto) |
 | M | Mappa dall'alto (vista drone, nord in alto, bussola in alto a sinistra); rotella o +/- = zoom; frecce/WASD o tasto centrale = sposta, C = su di te; M/Esc = chiudi |
@@ -200,6 +202,8 @@ iniziale (edifici, lampioni, cartelli e stradine; `--preview` salva un'anteprima
 ### Abitanti e guardie
 
 Gli edifici hanno porte da aprire con E, piani collegati da scale, un **sottotetto** e mobili per ogni tipo di edificio; il campanile si sale fino alla cella delle campane. **Locanda e chiesa** sono sempre aperte, **forno, fabbro e arciere** negli orari di lavoro, **case e caserma** sono chiuse a chiave: ogni abitante ha la sua chiave. Di sera gli abitanti rientrano, salgono le scale e dormono nel loro letto; le guardie fuori turno dormono in caserma.
+
+Il personaggio ha sette **statistiche** (tasto C) e porta **30 kg** di base: oltre il limite cammina lento e non corre. Il fabbro vende quattro **zaini**, fino a 60 kg; la Pozione del mulo e la Cintura del portatore aggiungono altri chili, per un po' o finché la si indossa.
 
 **Bauli, armadi, botti, casse e scaffali** si aprono con E: si possono prendere e posare oggetti, con un limite di peso legato alla grandezza del mobile. Anche il **faro** si visita: alloggio del guardiano, scala a chiocciola, lanterna e balconata; è chiuso a chiave.
 

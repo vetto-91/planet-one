@@ -202,6 +202,7 @@ pub fn movement(
     mut players: Query<(&mut LinearVelocity, &mut GroundedState, &mut JumpBuffer), With<Player>>,
     time: Res<Time>,
     cheats: Res<crate::shell::Cheats>,
+    load: Res<crate::character::Load>,
 ) {
     let Ok(camera) = cameras.single() else {
         return;
@@ -223,7 +224,15 @@ pub fn movement(
     let input = input.clamp_length_max(1.0);
 
     let sprinting = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
-    let speed = WALK_SPEED * if sprinting { SPRINT_FACTOR } else { 1.0 };
+    let overloaded = load.overloaded && !cheats.noclip;
+    let pace = if overloaded {
+        crate::character::OVERLOAD_SPEED
+    } else if sprinting {
+        SPRINT_FACTOR
+    } else {
+        1.0
+    };
+    let speed = WALK_SPEED * pace * load.speed_factor;
 
     let cam_forward = camera.forward().normalize_or_zero();
     let forward = Vec3::new(cam_forward.x, 0.0, cam_forward.z).normalize_or_zero();

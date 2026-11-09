@@ -106,7 +106,7 @@ pub fn normalize(text: &str) -> String {
 }
 
 fn is_equipped(kind: ItemKind, equip: &Equipment) -> bool {
-    equip.weapon == Some(kind) || (kind == ItemKind::Shield && equip.shield)
+    equip.is_worn(kind)
 }
 
 /// Oggetti che passano i filtri, in ordine alfabetico.
@@ -155,6 +155,8 @@ pub fn inventory_window(
     icons: Option<Res<ItemIcons>>,
     mut state: ResMut<InventoryUi>,
     mut next: ResMut<NextState<AppState>>,
+    mut effects: ResMut<crate::character::ActiveEffects>,
+    load: Res<crate::character::Load>,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
@@ -286,8 +288,17 @@ pub fn inventory_window(
                                         }
                                     }
                                 });
-                                let action = if kind.heal().is_some() {
+                                let action = if kind.heal().is_some()
+                                    || kind.carry_potion().is_some()
+                                {
                                     Some("Usa")
+                                } else if kind.backpack_kg().is_some() || kind.charm_kg().is_some()
+                                {
+                                    Some(if is_equipped(kind, &equip) {
+                                        "Togli"
+                                    } else {
+                                        "Indossa"
+                                    })
                                 } else if kind.is_weapon() || kind == ItemKind::Shield {
                                     Some(if is_equipped(kind, &equip) {
                                         "Riponi"
@@ -349,8 +360,9 @@ pub fn inventory_window(
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.label(
                             egui::RichText::new(format!(
-                                "Peso trasportato: {}",
-                                kg(inventory.total_weight())
+                                "Peso trasportato: {} / {}",
+                                kg(load.weight),
+                                kg(load.capacity)
                             ))
                             .strong()
                             .color(GOLD),
@@ -362,7 +374,7 @@ pub fn inventory_window(
         });
     if let Some(kind) = used {
         let hp = health.single_mut().ok();
-        use_item(kind, &mut inventory, &mut equip, hp);
+        use_item(kind, &mut inventory, &mut equip, hp, &mut effects);
     }
     if let Some((kind, slot)) = assign {
         inventory.assign_hotbar(kind, slot);
@@ -440,7 +452,7 @@ mod tests {
     fn equipped_and_hotbar_filters() {
         let equip = Equipment {
             weapon: Some(ItemKind::ShortSword),
-            shield: false,
+            ..Default::default()
         };
         let f = Filter {
             only_equipped: true,

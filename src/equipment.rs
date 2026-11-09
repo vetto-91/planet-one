@@ -17,6 +17,9 @@ const REST_TILT: f32 = std::f32::consts::FRAC_PI_2;
 /// Posizione dell'impugnatura nel palmo (riferimento dell'osso `hand_r`).
 const GRIP: Vec3 = Vec3::new(-0.02, 0.09, 0.0);
 
+/// Arma, scudo e zaino dell'ultimo aggiornamento.
+type WornItems = (Option<ItemKind>, bool, Option<ItemKind>);
+
 /// Sistema: ricrea i modelli impugnati quando cambia l'equipaggiamento.
 #[allow(clippy::too_many_arguments)]
 pub fn update_held_items(
@@ -27,14 +30,14 @@ pub fn update_held_items(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     pbr: Res<crate::pbr::PbrMaterials>,
-    mut last: Local<Option<(Option<ItemKind>, bool)>>,
+    mut last: Local<Option<WornItems>>,
 ) {
-    let state = (equip.weapon, equip.shield);
+    let state = (equip.weapon, equip.shield, equip.backpack);
     let Ok(visual) = visuals.single() else {
         return;
     };
     // Dopo un reset della scena il player è nuovo e senza modelli: si ricostruiscono.
-    let missing = held.is_empty() && (state.0.is_some() || state.1);
+    let missing = held.is_empty() && (state.0.is_some() || state.1 || state.2.is_some());
     if *last == Some(state) && !missing {
         return;
     }
@@ -178,5 +181,23 @@ pub fn update_held_items(
             .id();
         commands.entity(shield).add_child(boss);
         commands.entity(visual).add_child(shield);
+    }
+    if let Some(pack) = equip.backpack {
+        // Sulla schiena (+Z del modello): più capiente, più grande.
+        let k = pack.backpack_kg().unwrap_or(5.0) / 30.0;
+        let size = Vec3::new(0.26 + 0.14 * k, 0.26 + 0.34 * k, 0.12 + 0.14 * k);
+        let cloth = pbr.get(crate::pbr::Mat::Cloth);
+        let body = commands
+            .spawn((
+                HeldItem,
+                Mesh3d(meshes.add(crate::pbr::with_tangents(Cuboid::new(
+                    size.x, size.y, size.z,
+                )))),
+                MeshMaterial3d(cloth),
+                Transform::from_xyz(0.0, 0.32, 0.15 + size.z / 2.0),
+                Visibility::default(),
+            ))
+            .id();
+        commands.entity(visual).add_child(body);
     }
 }

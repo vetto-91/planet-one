@@ -12,6 +12,7 @@ mod audio;
 mod bells;
 mod buildings;
 mod camera;
+mod character;
 mod combat;
 mod containers;
 mod daynight;
@@ -83,6 +84,8 @@ pub enum AppState {
     Chat,
     /// Inventario aperto (I): gioco sospeso, cursore libero.
     Inventory,
+    /// Pannello del personaggio (C): gioco sospeso, cursore libero.
+    Character,
     /// Mobile aperto (casse, armadi…): gioco sospeso, cursore libero.
     Container,
     /// Shell dei trucchi aperta (\\): gioco sospeso, cursore libero.
@@ -148,6 +151,7 @@ fn main() {
         .add_plugins(villagers::plugin)
         .add_plugins(shell::plugin)
         .add_plugins(containers::plugin)
+        .add_plugins(character::plugin)
         .add_plugins(shop::plugin)
         .add_plugins(bells::plugin)
         .add_plugins(seasons::plugin)
@@ -289,6 +293,7 @@ fn main() {
                 inventory_ui::inventory_window.run_if(in_state(AppState::Inventory)),
                 shell::shell_panel.run_if(in_state(AppState::Shell)),
                 containers::container_window.run_if(in_state(AppState::Container)),
+                character::character_window.run_if(in_state(AppState::Character)),
             )
                 .chain(),
         )

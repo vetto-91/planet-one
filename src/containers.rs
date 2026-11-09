@@ -325,6 +325,7 @@ pub fn container_window(
     mut equip: ResMut<Equipment>,
     icons: Option<Res<ItemIcons>>,
     mut next: ResMut<NextState<AppState>>,
+    load: Res<crate::character::Load>,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
@@ -360,7 +361,7 @@ pub fn container_window(
                             .size(20.0)
                             .color(crate::ui_style::GOLD),
                     );
-                    cols[0].label(format!("{:.1} kg", inventory.total_weight()));
+                    cols[0].label(format!("{:.1} / {:.1} kg", load.weight, load.capacity));
                     cols[0].separator();
                     egui::ScrollArea::vertical()
                         .id_salt("container_player")
@@ -431,13 +432,8 @@ pub fn container_window(
         }
         None => {}
     }
-    // Ciò che non si possiede più non resta in mano.
-    if equip.weapon.is_some_and(|w| inventory.qty(w) == 0) {
-        equip.weapon = None;
-    }
-    if equip.shield && inventory.qty(ItemKind::Shield) == 0 {
-        equip.shield = false;
-    }
+    // Ciò che non si possiede più non resta addosso.
+    equip.drop_missing(&inventory);
     if close {
         next.set(AppState::Playing);
     }

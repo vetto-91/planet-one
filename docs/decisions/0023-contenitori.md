@@ -9,7 +9,7 @@ Casse, bauli, botti, armadi e scaffali erano solo scenografia. Il faro era l'uni
 
 ## Decisione
 - `src/containers.rs`: ogni mobile è registrato dall'edificio (`Interior.containers`) o dalla casetta, con una maniglia `PropKind::Container` e la finestra `AppState::Container`.
-- Capienza da 5 a 10 volte il riferimento `PLAYER_CARRY_KG` (30 kg): scaffale ×5, cassa ×6, botte ×7, baule ×8, armadio ×10. Il giocatore non ha un limite di peso: la costante serve solo da base.
+- Capienza da 5 a 10 volte il riferimento `PLAYER_CARRY_KG` (30 kg): scaffale ×5, cassa ×6, botte ×7, baule ×8, armadio ×10. La costante è anche la portata base del giocatore (ADR 0024).
 - `Capacity::Unlimited` è già gestito: serve per la casa di proprietà e il deposito del giocatore, quando esisteranno, che avranno contenuto infinito.
 - Contenuto iniziale a tema, generato alla prima apertura dalla chiave del mobile (`id piazzamento:punto:indice`) e sempre uguale. La chiave non cambia se l'edificio viene ricostruito con F4.
 - Come l'inventario del giocatore, i contenuti non vengono salvati su disco.

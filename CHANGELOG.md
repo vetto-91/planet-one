@@ -2,6 +2,12 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Statistiche** (ADR 0024): forza, costituzione, agilità, intelligenza, saggezza, carisma e fortuna, con il pannello del personaggio (tasto C).
+- **Peso** (ADR 0024): si portano 30 kg di base; oltre il limite si cammina lenti e non si corre.
+- **Zaini e oggetti nuovi**: quattro zaini fino a 60 kg dal fabbro, Pozione del mulo dall'erborista, Cintura del portatore dal Viandante.
+
 ## v0.0.34.0 — Contenitori e faro (2026-11-09)
 
 - **Contenitori** (ADR 0023): bauli, armadi, botti, casse e scaffali di case, botteghe, bancarelle, molo e casetta si aprono con E: si prendono e si posano oggetti, con capienza da 5 a 10 volte quanto porta il giocatore. Contengono poche cose a tema, sempre le stesse.

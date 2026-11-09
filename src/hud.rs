@@ -107,10 +107,7 @@ pub fn draw_hud(
                         egui::CornerRadius::same(4),
                         egui::Color32::from_rgba_unmultiplied(25, 28, 38, 230),
                     );
-                    let equipped = stack.is_some_and(|s| {
-                        equip.weapon == Some(s.kind)
-                            || (s.kind == crate::inventory::ItemKind::Shield && equip.shield)
-                    });
+                    let equipped = stack.is_some_and(|s| equip.is_worn(s.kind));
                     ui.painter().rect_stroke(
                         rect,
                         egui::CornerRadius::same(4),
