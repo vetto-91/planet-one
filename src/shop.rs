@@ -83,7 +83,12 @@ pub fn shop_buy(mut shop: ResMut<ShopState>, mut inv: ResMut<Inventory>) {
 const GOLD: egui::Color32 = egui::Color32::from_rgb(255, 214, 102);
 
 /// Pannello del negozio (UI egui).
-pub fn shop_panel(ctx: &egui::Context, shop: &mut ShopState, coins: u32) {
+pub fn shop_panel(
+    ctx: &egui::Context,
+    shop: &mut ShopState,
+    coins: u32,
+    icons: Option<&crate::inventory_ui::ItemIcons>,
+) {
     let size = ctx.viewport_rect().size();
     let w = 640.0_f32.min(size.x - 40.0);
     let frame = egui::Frame::default()
@@ -116,18 +121,9 @@ pub fn shop_panel(ctx: &egui::Context, shop: &mut ShopState, coins: u32) {
                 let key = shop.key.clone();
                 for (i, item) in stock(&key).iter().enumerate() {
                     ui.horizontal(|ui| {
-                        let c = item.kind.color().to_srgba();
                         let (rect, _) =
-                            ui.allocate_exact_size(egui::vec2(30.0, 30.0), egui::Sense::hover());
-                        ui.painter().rect_filled(
-                            rect,
-                            egui::CornerRadius::same(4),
-                            egui::Color32::from_rgb(
-                                (c.red * 255.0) as u8,
-                                (c.green * 255.0) as u8,
-                                (c.blue * 255.0) as u8,
-                            ),
-                        );
+                            ui.allocate_exact_size(egui::vec2(36.0, 36.0), egui::Sense::hover());
+                        crate::inventory_ui::paint_icon(ui, icons, item.kind, rect);
                         ui.vertical(|ui| {
                             let qty = if item.qty > 1 {
                                 format!(" ×{}", item.qty)

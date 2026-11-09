@@ -2,6 +2,12 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **FPS**: nel menu grafica casella VSync e limite Illimitati/30/60/90/120/144/165/240; predefinito senza limiti.
+- **Barra oggetti**: sempre 10 riquadri (1-9 e 0) con icone disegnate, assegnabili dall'inventario.
+- **Inventario** (tasto I): categorie, ordine alfabetico, ricerca, filtri (equipaggiati, nella barra, peso massimo), usa/impugna, assegnazione ai tasti e peso reale in kg (monete e munizioni non pesano, le monete non vanno in barra).
+
 ## v0.0.28.0 — Animazioni dei personaggi (2026-11-09)
 
 - **Animazioni (Grafica realistica, Fase 3)**: camminata, corsa, salto, attacco per arma, colpito, conversazione per giocatore, abitanti e nemici, con clip accelerate secondo la velocità reale; il nemico colpito e morto si anima e resta a terra qualche secondo; opzione per fermare le animazioni lontane (ADR 0017).

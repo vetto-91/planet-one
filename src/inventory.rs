@@ -25,7 +25,100 @@ pub enum ItemKind {
     Fish,
 }
 
+/// Categoria dell'inventario.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum Category {
+    Weapons,
+    Defense,
+    Ammo,
+    Food,
+    Valuables,
+}
+
+impl Category {
+    pub const ALL: [Category; 5] = [
+        Category::Weapons,
+        Category::Defense,
+        Category::Ammo,
+        Category::Food,
+        Category::Valuables,
+    ];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Category::Weapons => "Armi",
+            Category::Defense => "Difesa",
+            Category::Ammo => "Munizioni",
+            Category::Food => "Cibo e cure",
+            Category::Valuables => "Valori",
+        }
+    }
+}
+
 impl ItemKind {
+    /// Tutti i tipi di oggetto.
+    pub const ALL: [ItemKind; 10] = [
+        ItemKind::HealthPotion,
+        ItemKind::Coin,
+        ItemKind::ShortSword,
+        ItemKind::LongSword,
+        ItemKind::Axe,
+        ItemKind::Shield,
+        ItemKind::Bow,
+        ItemKind::Arrow,
+        ItemKind::Apple,
+        ItemKind::Fish,
+    ];
+
+    /// Peso reale di un'unità (kg). Monete e munizioni non pesano.
+    pub fn weight_kg(self) -> Option<f32> {
+        match self {
+            ItemKind::HealthPotion => Some(0.4),
+            ItemKind::ShortSword => Some(1.0),
+            ItemKind::LongSword => Some(1.5),
+            ItemKind::Axe => Some(1.8),
+            ItemKind::Shield => Some(3.5),
+            ItemKind::Bow => Some(0.9),
+            ItemKind::Apple => Some(0.15),
+            ItemKind::Fish => Some(0.8),
+            ItemKind::Coin | ItemKind::Arrow => None,
+        }
+    }
+
+    /// Categoria nell'inventario.
+    pub fn category(self) -> Category {
+        match self {
+            ItemKind::ShortSword | ItemKind::LongSword | ItemKind::Axe | ItemKind::Bow => {
+                Category::Weapons
+            }
+            ItemKind::Shield => Category::Defense,
+            ItemKind::Arrow => Category::Ammo,
+            ItemKind::HealthPotion | ItemKind::Apple | ItemKind::Fish => Category::Food,
+            ItemKind::Coin => Category::Valuables,
+        }
+    }
+
+    /// File dell'icona (`assets/textures/icone/<nome>.png`).
+    pub fn icon(self) -> &'static str {
+        match self {
+            ItemKind::HealthPotion => "pozione",
+            ItemKind::Coin => "moneta",
+            ItemKind::ShortSword => "spada-corta",
+            ItemKind::LongSword => "spada-lunga",
+            ItemKind::Axe => "ascia",
+            ItemKind::Shield => "scudo",
+            ItemKind::Bow => "arco",
+            ItemKind::Arrow => "frecce",
+            ItemKind::Apple => "mela",
+            ItemKind::Fish => "pesce",
+        }
+    }
+
+    /// Le monete hanno il loro contatore: nella barra non vanno mai.
+    pub fn can_go_in_hotbar(self) -> bool {
+        self != ItemKind::Coin
+    }
+
     /// Nome mostrato nell'inventario.
     pub fn name(self) -> &'static str {
         match self {
@@ -107,6 +200,8 @@ pub const START_COINS: u32 = 30;
 #[derive(Resource)]
 pub struct Inventory {
     pub slots: Vec<ItemStack>,
+    /// Oggetto assegnato a ogni tasto della barra (1..9 e 0).
+    pub hotbar: [Option<ItemKind>; 10],
 }
 
 impl Default for Inventory {
@@ -116,6 +211,7 @@ impl Default for Inventory {
                 kind: ItemKind::Coin,
                 qty: START_COINS,
             }],
+            hotbar: [None; 10],
         }
     }
 }
@@ -159,13 +255,63 @@ pub fn weapon_stats(w: Option<ItemKind>) -> WeaponStats {
 pub const SHIELD_FACTOR: f32 = 0.4;
 
 impl Inventory {
-    /// Aggiunge (o incrementa) una quantità di un tipo.
+    /// Aggiunge (o incrementa) una quantità di un tipo. Un oggetto nuovo prende il primo tasto libero.
     pub fn add(&mut self, kind: ItemKind, qty: u32) {
         if let Some(slot) = self.slots.iter_mut().find(|s| s.kind == kind) {
             slot.qty += qty;
-        } else {
-            self.slots.push(ItemStack { kind, qty });
+            return;
         }
+        self.slots.push(ItemStack { kind, qty });
+        if kind.can_go_in_hotbar()
+            && self.hotbar_position(kind).is_none()
+            && let Some(free) = self.hotbar.iter().position(Option::is_none)
+        {
+            self.hotbar[free] = Some(kind);
+        }
+    }
+
+    /// Tasto (0..10) a cui è assegnato l'oggetto.
+    pub fn hotbar_position(&self, kind: ItemKind) -> Option<usize> {
+        self.hotbar.iter().position(|k| *k == Some(kind))
+    }
+
+    /// Oggetto nello slot `i` della barra, se posseduto.
+    pub fn hotbar_slot(&self, i: usize) -> Option<&ItemStack> {
+        let kind = (*self.hotbar.get(i)?)?;
+        self.slots.iter().find(|s| s.kind == kind && s.qty > 0)
+    }
+
+    /// Assegna un oggetto a un tasto (o lo toglie con `None`). Se il tasto è occupato i due si scambiano.
+    pub fn assign_hotbar(&mut self, kind: ItemKind, slot: Option<usize>) {
+        if !kind.can_go_in_hotbar() {
+            return;
+        }
+        let previous = self.hotbar_position(kind);
+        match slot {
+            None => {
+                if let Some(p) = previous {
+                    self.hotbar[p] = None;
+                }
+            }
+            Some(i) if i < self.hotbar.len() => {
+                let occupant = self.hotbar[i];
+                self.hotbar[i] = Some(kind);
+                if let Some(p) = previous
+                    && p != i
+                {
+                    self.hotbar[p] = occupant;
+                }
+            }
+            Some(_) => {}
+        }
+    }
+
+    /// Peso totale trasportato (kg): monete e munizioni non contano.
+    pub fn total_weight(&self) -> f32 {
+        self.slots
+            .iter()
+            .filter_map(|s| s.kind.weight_kg().map(|w| w * s.qty as f32))
+            .sum()
     }
 
     /// Quantità posseduta di un tipo (0 se assente).
@@ -176,33 +322,66 @@ impl Inventory {
             .map_or(0, |s| s.qty)
     }
 
-    /// Slot mostrati nella barra in basso, in ordine di raccolta: niente
-    /// monete (hanno il loro contatore) e solo quantità > 0, massimo 10
-    /// (tasti 1..9 e 0). HUD e uso degli oggetti condividono questa lista,
-    /// così il numero a schermo corrisponde al tasto da premere.
-    pub fn hotbar(&self) -> Vec<&ItemStack> {
-        self.slots
-            .iter()
-            .filter(|s| s.kind != ItemKind::Coin && s.qty > 0)
-            .take(10)
-            .collect()
-    }
-
     /// Consuma `qty` unità di un tipo; lo slot sparisce a quantità 0.
     pub fn consume(&mut self, kind: ItemKind, qty: u32) {
         if let Some(slot) = self.slots.iter_mut().find(|s| s.kind == kind) {
             slot.qty = slot.qty.saturating_sub(qty);
         }
         self.slots.retain(|s| s.qty > 0);
+        // Finito un oggetto, il suo tasto si libera.
+        for i in 0..self.hotbar.len() {
+            if let Some(k) = self.hotbar[i]
+                && self.qty(k) == 0
+            {
+                self.hotbar[i] = None;
+            }
+        }
     }
 }
 
 /// Punti vita ripristinati da una pozione.
 pub const POTION_HEAL: f32 = 25.0;
 
-/// Sistema: i tasti 1..9 e 0 usano l'oggetto nello slot corrispondente della
-/// barra in basso. La pozione cura [`POTION_HEAL`] HP (non si consuma se la
-/// vita è già piena). Disattivato mentre un dialogo è aperto.
+/// Usa un oggetto: cura (si consuma; non se la vita è piena), impugna o ripone l'arma, imbraccia lo scudo.
+/// Condivisa da barra e inventario.
+pub fn use_item(
+    kind: ItemKind,
+    inventory: &mut Inventory,
+    equip: &mut Equipment,
+    health: Option<Mut<crate::player::PlayerHealth>>,
+) {
+    if let Some(heal) = kind.heal() {
+        let Some(mut hp) = health else {
+            return;
+        };
+        if hp.current >= hp.max {
+            info!("[INVENTORY] {} non usato: vita già piena", kind.name());
+            return;
+        }
+        hp.current = (hp.current + heal).min(hp.max);
+        inventory.consume(kind, 1);
+        info!(
+            "[INVENTORY] {} usato: vita {:.0}/{:.0}",
+            kind.name(),
+            hp.current,
+            hp.max
+        );
+    } else if kind.is_weapon() {
+        // Impugna / rimette via l'arma.
+        equip.weapon = if equip.weapon == Some(kind) {
+            None
+        } else {
+            Some(kind)
+        };
+        info!("[INVENTORY] arma impugnata: {:?}", equip.weapon);
+    } else if kind == ItemKind::Shield {
+        equip.shield = !equip.shield;
+        info!("[INVENTORY] scudo: {}", equip.shield);
+    }
+}
+
+/// Sistema: i tasti 1..9 e 0 usano l'oggetto assegnato al riquadro corrispondente della barra.
+/// Disattivato mentre un dialogo è aperto.
 pub fn use_hotbar_items(
     keys: Res<ButtonInput<KeyCode>>,
     dialog: Res<crate::entities::DialogState>,
@@ -229,38 +408,10 @@ pub fn use_hotbar_items(
         if !keys.just_pressed(*key) {
             continue;
         }
-        let Some(kind) = inventory.hotbar().get(i).map(|s| s.kind) else {
+        let Some(kind) = inventory.hotbar_slot(i).map(|s| s.kind) else {
             continue;
         };
-        if let Some(heal) = kind.heal() {
-            let Ok(mut hp) = health.single_mut() else {
-                continue;
-            };
-            if hp.current >= hp.max {
-                info!("[INVENTORY] {} non usato: vita già piena", kind.name());
-                continue;
-            }
-            hp.current = (hp.current + heal).min(hp.max);
-            inventory.consume(kind, 1);
-            info!(
-                "[INVENTORY] {} usato (slot {}): vita {:.0}/{:.0}",
-                kind.name(),
-                i + 1,
-                hp.current,
-                hp.max
-            );
-        } else if kind.is_weapon() {
-            // Impugna / rimette via l'arma.
-            equip.weapon = if equip.weapon == Some(kind) {
-                None
-            } else {
-                Some(kind)
-            };
-            info!("[INVENTORY] arma impugnata: {:?}", equip.weapon);
-        } else if kind == ItemKind::Shield {
-            equip.shield = !equip.shield;
-            info!("[INVENTORY] scudo: {}", equip.shield);
-        }
+        use_item(kind, &mut inventory, &mut equip, health.single_mut().ok());
     }
 }
 
@@ -323,6 +474,74 @@ pub fn collect_pickups(
             inventory.add(pickup.kind, pickup.qty);
             commands.entity(entity).despawn();
             info!("raccolto {:?} x{}", pickup.kind, pickup.qty);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn coins_and_ammo_have_no_weight_the_rest_does() {
+        for k in ItemKind::ALL {
+            match k {
+                ItemKind::Coin | ItemKind::Arrow => assert!(k.weight_kg().is_none()),
+                _ => assert!(k.weight_kg().unwrap() > 0.0, "{k:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn total_weight_ignores_coins_and_ammo() {
+        let mut i = Inventory::default();
+        i.add(ItemKind::Arrow, 20);
+        i.add(ItemKind::Apple, 2);
+        assert!((i.total_weight() - 0.3).abs() < 1e-5);
+    }
+
+    #[test]
+    fn coins_never_enter_the_hotbar() {
+        let mut i = Inventory::default();
+        i.add(ItemKind::Coin, 50);
+        assert!(i.hotbar_position(ItemKind::Coin).is_none());
+        i.assign_hotbar(ItemKind::Coin, Some(2));
+        assert!(i.hotbar_position(ItemKind::Coin).is_none());
+    }
+
+    #[test]
+    fn new_items_take_free_keys_and_finished_ones_free_them() {
+        let mut i = Inventory::default();
+        i.add(ItemKind::Apple, 1);
+        i.add(ItemKind::Bow, 1);
+        assert_eq!(i.hotbar_position(ItemKind::Apple), Some(0));
+        assert_eq!(i.hotbar_position(ItemKind::Bow), Some(1));
+        i.consume(ItemKind::Apple, 1);
+        assert_eq!(i.hotbar[0], None);
+        i.add(ItemKind::Fish, 1);
+        assert_eq!(i.hotbar_position(ItemKind::Fish), Some(0));
+    }
+
+    #[test]
+    fn assigning_to_an_occupied_key_swaps() {
+        let mut i = Inventory::default();
+        i.add(ItemKind::Apple, 1);
+        i.add(ItemKind::Bow, 1);
+        i.assign_hotbar(ItemKind::Bow, Some(0));
+        assert_eq!(i.hotbar_position(ItemKind::Bow), Some(0));
+        assert_eq!(i.hotbar_position(ItemKind::Apple), Some(1));
+        i.assign_hotbar(ItemKind::Apple, None);
+        assert_eq!(i.hotbar_position(ItemKind::Apple), None);
+        // Un'altra aggiunta non lo rimette in barra da solo.
+        i.add(ItemKind::Apple, 1);
+        assert_eq!(i.hotbar_position(ItemKind::Apple), None);
+    }
+
+    #[test]
+    fn every_item_has_its_icon_file() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/textures/icone");
+        for k in ItemKind::ALL {
+            assert!(dir.join(format!("{}.png", k.icon())).exists(), "{k:?}");
         }
     }
 }

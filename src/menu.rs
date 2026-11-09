@@ -36,6 +36,7 @@ pub fn toggle(
     keys: Res<ButtonInput<KeyCode>>,
     state: Res<State<AppState>>,
     dialog: Res<crate::entities::DialogState>,
+    inventory_ui: Res<crate::inventory_ui::InventoryUi>,
     mut next: ResMut<NextState<AppState>>,
 ) {
     // J: diario, T: "Aspetta" (non durante un dialogo).
@@ -46,6 +47,10 @@ pub fn toggle(
             (true, AppState::Wait)
         } else if keys.just_pressed(KeyCode::KeyM) {
             (true, AppState::Map)
+        } else if keys.just_pressed(KeyCode::KeyI)
+            && !(inventory_ui.typing && *state.get() == AppState::Inventory)
+        {
+            (true, AppState::Inventory)
         } else {
             (false, AppState::Playing)
         };
@@ -74,6 +79,7 @@ pub fn toggle(
         | AppState::Wait
         | AppState::Map
         | AppState::Chat
+        | AppState::Inventory
         | AppState::Shop => next.set(AppState::Playing),
         // Durante il reset ESC non fa nulla: è uno stato transitorio.
         AppState::Resetting => {}
@@ -125,6 +131,7 @@ pub struct UiQueries<'w, 's> {
     pub tts: Res<'w, crate::ai::tts::TtsState>,
     pub village: Res<'w, crate::village::VillageInfo>,
     pub equip: Res<'w, crate::inventory::Equipment>,
+    pub icons: Option<Res<'w, crate::inventory_ui::ItemIcons>>,
     pub shop: ResMut<'w, crate::shop::ShopState>,
     pub occluded: Res<'w, hud::Occluded>,
     pub map_view: Res<'w, map::MapView>,
@@ -221,7 +228,7 @@ pub fn ui(
 
             // HUD di gioco: barra vita (basso-sx), crosshair, inventario.
             if let Ok(hp) = q.health.single() {
-                hud::draw_hud(ctx, hp, &inventory, &q.equip);
+                hud::draw_hud(ctx, hp, &inventory, &q.equip, q.icons.as_deref());
             }
 
             // Barre vita dei nemici sopra le loro teste (proiezione world→screen).
@@ -342,7 +349,7 @@ pub fn ui(
                         ui.label("• Mouse — orbita camera");
                         ui.label("• Esc — menu / riprendi");
                         ui.label("• J — diario delle quest, T — aspetta, TAB (tenuto) — obiettivi");
-                        ui.label("• E / Invio — dialogo, 1–0 — usa oggetti");
+                        ui.label("• I — inventario, E / Invio — dialogo, 1–0 — usa oggetti");
                         ui.label("• F3 — wireframe collider (debug)");
                         ui.label("• F11 — schermo intero on/off");
                         ui.label(
@@ -563,12 +570,14 @@ pub fn ui(
         }
         AppState::Shop => {
             let coins = inventory.qty(crate::inventory::ItemKind::Coin);
-            crate::shop::shop_panel(ctx, &mut q.shop, coins);
+            crate::shop::shop_panel(ctx, &mut q.shop, coins, q.icons.as_deref());
         }
         AppState::Chat => {
             let status = q.ai.status.clone();
             crate::ai::ui::chat_panel(ctx, &mut q.chat, &status);
         }
+        // L'inventario ha un suo sistema (`inventory_ui::inventory_window`).
+        AppState::Inventory => {}
         // Durante Resetting non mostriamo nulla; la UI riapparirà in Playing/Paused.
         AppState::Resetting => {}
     }

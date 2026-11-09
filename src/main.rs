@@ -23,6 +23,7 @@ mod graphics;
 mod hud;
 mod hut;
 mod inventory;
+mod inventory_ui;
 mod map;
 mod menu;
 mod pbr;
@@ -77,6 +78,8 @@ pub enum AppState {
     Map,
     /// Chat con la IA locale dopo un dialogo: gameplay sospeso, cursore libero.
     Chat,
+    /// Inventario aperto (I): gioco sospeso, cursore libero.
+    Inventory,
     /// Negozio aperto (acquisto con le monete): gameplay sospeso, cursore libero.
     Shop,
     /// Reset della scena in corso (un frame, non interattivo).
@@ -127,6 +130,7 @@ fn main() {
         .init_resource::<entities::DialogState>()
         .init_resource::<entities::NearestInteract>()
         .init_resource::<inventory::Inventory>()
+        .init_resource::<inventory_ui::InventoryUi>()
         .init_resource::<quest::QuestState>()
         .init_resource::<quests::QuestTexts>()
         .init_resource::<quests::Barks>()
@@ -268,7 +272,13 @@ fn main() {
         // disponibili solo durante il pass).
         .add_systems(
             EguiPrimaryContextPass,
-            (menu::ui, debug_place::debug_ui).chain(),
+            (
+                inventory_ui::load_item_icons,
+                menu::ui,
+                debug_place::debug_ui,
+                inventory_ui::inventory_window.run_if(in_state(AppState::Inventory)),
+            )
+                .chain(),
         )
         .add_systems(Update, debug_place::sync_markers)
         .add_systems(

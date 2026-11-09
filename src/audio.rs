@@ -50,6 +50,8 @@ pub struct AudioSettings {
     pub time_speed: u32,
     /// Impostazioni grafiche (solo aspetto visivo).
     pub gfx: crate::graphics::GfxOptions,
+    /// VSync e limite di FPS.
+    pub fps: crate::graphics::FpsOptions,
     /// Da salvare su file appena il mouse viene rilasciato.
     pub dirty: bool,
 }
@@ -66,6 +68,7 @@ impl Default for AudioSettings {
             tts_voice: String::new(),
             time_speed: 1,
             gfx: Default::default(),
+            fps: Default::default(),
             dirty: false,
         };
         if let Some(text) = settings_path().and_then(|p| std::fs::read_to_string(p).ok()) {
@@ -95,6 +98,7 @@ impl Default for AudioSettings {
                     s.tts_voice = v.trim().to_string();
                 }
                 s.gfx.read_line(line);
+                s.fps.read_line(line);
                 if let Some(v) = line.trim().strip_prefix("time_speed=")
                     && let Ok(v) = v.trim().parse::<u32>()
                     && [1, 2, 4, 8].contains(&v)
@@ -243,7 +247,7 @@ pub fn save_settings(mut settings: ResMut<AudioSettings>, mouse: Res<ButtonInput
     match std::fs::write(
         &path,
         format!(
-            "music_volume={:.2}\nvoice_volume={:.2}\nai_enabled={}\nai_model={}\nai_host={}\ntts_enabled={}\ntts_voice={}\ntime_speed={}\n{}",
+            "music_volume={:.2}\nvoice_volume={:.2}\nai_enabled={}\nai_model={}\nai_host={}\ntts_enabled={}\ntts_voice={}\ntime_speed={}\n{}{}",
             settings.music_volume,
             settings.voice_volume,
             u8::from(settings.ai_enabled),
@@ -252,7 +256,8 @@ pub fn save_settings(mut settings: ResMut<AudioSettings>, mouse: Res<ButtonInput
             u8::from(settings.tts_enabled),
             settings.tts_voice,
             settings.time_speed,
-            settings.gfx.to_lines()
+            settings.gfx.to_lines(),
+            settings.fps.to_lines()
         ),
     ) {
         Ok(()) => info!("[AUDIO] impostazioni salvate in {}", path.display()),

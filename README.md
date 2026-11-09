@@ -91,6 +91,7 @@ grep "\[EVENT\]" run.log    # eventi finestra/cursore
 | F11 | Schermo intero on/off (in fullscreen il cursore è bloccato e nascosto) |
 | M | Mappa dall'alto (vista drone, nord in alto, bussola in alto a sinistra); rotella o +/- = zoom; frecce/WASD o tasto centrale = sposta, C = su di te; M/Esc = chiudi |
 | F4 | Modalità debug piazzamenti (vedi sotto): strumenti Piazza / Gomma / Sposta, clic sinistro (mappa e 3D) |
+| I | Inventario: categorie, ricerca, filtri, peso, assegnazione ai tasti 1-9 e 0 |
 | T | "Aspetta": fa avanzare l'ora di gioco di N ore (T o Esc per chiudere) |
 | J | Diario delle quest (tab Da fare / Completate, quest espandibili); J o Esc per chiudere |
 | TAB (tenuto) | Obiettivi della quest (solo a quest attiva) |

@@ -17,6 +17,7 @@ pub fn draw_hud(
     health: &PlayerHealth,
     inventory: &Inventory,
     equip: &crate::inventory::Equipment,
+    icons: Option<&crate::inventory_ui::ItemIcons>,
 ) {
     let size = ctx.viewport_rect().size();
 
@@ -86,88 +87,73 @@ pub fn draw_hud(
             );
         });
 
-    // --- Inventario in basso al centro: slot quadrati con icona colore + qty ---
-    // Le monete NON compaiono qui (solo nel contatore in alto a sinistra).
-    // Gli slot si creano in ordine di raccolta (vedi Inventory::add), max 10 (tasti 1..0).
-    let visible = inventory.hotbar();
-    if !visible.is_empty() {
-        let slot = 44.0_f32;
-        let gap = 6.0;
-        let total_w = visible.len() as f32 * (slot + gap) - gap;
-        let start_x = size.x / 2.0 - total_w / 2.0;
-        let start_y = size.y - slot - 16.0;
-
-        egui::Area::new(egui::Id::new("inventory_bar"))
-            .fixed_pos(egui::pos2(start_x, start_y))
-            .show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    for (i, stack) in visible.iter().enumerate() {
-                        let (rect, _resp) =
-                            ui.allocate_exact_size(egui::vec2(slot, slot), egui::Sense::hover());
-                        // Sfondo slot.
-                        ui.painter().rect_filled(
-                            rect,
-                            egui::CornerRadius::same(4),
-                            egui::Color32::from_rgba_unmultiplied(25, 28, 38, 230),
-                        );
-                        let equipped = equip.weapon == Some(stack.kind)
-                            || (stack.kind == crate::inventory::ItemKind::Shield && equip.shield);
-                        ui.painter().rect_stroke(
-                            rect,
-                            egui::CornerRadius::same(4),
-                            if equipped {
-                                egui::Stroke::new(2.5, egui::Color32::from_rgb(255, 214, 102))
-                            } else {
-                                egui::Stroke::new(1.0, egui::Color32::from_rgb(90, 100, 130))
-                            },
-                            egui::StrokeKind::Inside,
-                        );
-                        // Tasto associato allo slot: 1..9, poi 0 (10 slot in tutto).
-                        let key = if i == 9 {
+    // --- Barra in basso al centro: sempre 10 riquadri (tasti 1..9 e 0), le monete hanno il loro contatore ---
+    let slot = 44.0_f32;
+    let gap = 6.0;
+    let total_w = 10.0 * (slot + gap) - gap;
+    egui::Area::new(egui::Id::new("inventory_bar"))
+        .fixed_pos(egui::pos2(
+            size.x / 2.0 - total_w / 2.0,
+            size.y - slot - 16.0,
+        ))
+        .show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                for i in 0..10 {
+                    let stack = inventory.hotbar_slot(i);
+                    let (rect, resp) =
+                        ui.allocate_exact_size(egui::vec2(slot, slot), egui::Sense::hover());
+                    ui.painter().rect_filled(
+                        rect,
+                        egui::CornerRadius::same(4),
+                        egui::Color32::from_rgba_unmultiplied(25, 28, 38, 230),
+                    );
+                    let equipped = stack.is_some_and(|s| {
+                        equip.weapon == Some(s.kind)
+                            || (s.kind == crate::inventory::ItemKind::Shield && equip.shield)
+                    });
+                    ui.painter().rect_stroke(
+                        rect,
+                        egui::CornerRadius::same(4),
+                        if equipped {
+                            egui::Stroke::new(2.5, egui::Color32::from_rgb(255, 214, 102))
+                        } else {
+                            egui::Stroke::new(1.0, egui::Color32::from_rgb(90, 100, 130))
+                        },
+                        egui::StrokeKind::Inside,
+                    );
+                    if let Some(stack) = stack {
+                        let icon_rect =
+                            egui::Rect::from_center_size(rect.center(), egui::vec2(36.0, 36.0));
+                        crate::inventory_ui::paint_icon(ui, icons, stack.kind, icon_rect);
+                        resp.on_hover_ui(|ui| {
+                            ui.label(stack.kind.name());
+                        });
+                        if stack.qty > 1 {
+                            ui.painter().text(
+                                egui::pos2(rect.max.x - 3.0, rect.max.y - 2.0),
+                                egui::Align2::RIGHT_BOTTOM,
+                                format!("{}", stack.qty),
+                                egui::FontId::proportional(13.0),
+                                egui::Color32::WHITE,
+                            );
+                        }
+                    }
+                    // Tasto del riquadro: 1..9, poi 0.
+                    ui.painter().text(
+                        egui::pos2(rect.min.x + 4.0, rect.min.y + 3.0),
+                        egui::Align2::LEFT_TOP,
+                        if i == 9 {
                             "0".to_string()
                         } else {
                             (i + 1).to_string()
-                        };
-                        ui.painter().text(
-                            egui::pos2(rect.min.x + 4.0, rect.min.y + 3.0),
-                            egui::Align2::LEFT_TOP,
-                            key,
-                            egui::FontId::proportional(12.0),
-                            egui::Color32::from_rgb(200, 210, 235),
-                        );
-                        // Icona: quadrato colorato al centro.
-                        let icon = 22.0;
-                        let icon_rect = egui::Rect::from_center_size(
-                            rect.center() + egui::vec2(0.0, -5.0),
-                            egui::vec2(icon, icon),
-                        );
-                        let c = stack.kind.color().to_srgba();
-                        ui.painter().rect_filled(
-                            icon_rect,
-                            egui::CornerRadius::same(3),
-                            egui::Color32::from_rgb(
-                                (c.red * 255.0) as u8,
-                                (c.green * 255.0) as u8,
-                                (c.blue * 255.0) as u8,
-                            ),
-                        );
-                        // Tooltip con nome al passaggio del mouse.
-                        _resp.on_hover_ui(|ui| {
-                            ui.label(stack.kind.name());
-                        });
-                        // Quantità in basso a destra dello slot.
-                        ui.painter().text(
-                            egui::pos2(rect.max.x - 4.0, rect.max.y - 4.0),
-                            egui::Align2::RIGHT_BOTTOM,
-                            format!("{}", stack.qty),
-                            egui::FontId::proportional(13.0),
-                            egui::Color32::WHITE,
-                        );
-                        ui.add_space(gap);
-                    }
-                });
+                        },
+                        egui::FontId::proportional(12.0),
+                        egui::Color32::from_rgb(200, 210, 235),
+                    );
+                    ui.add_space(gap);
+                }
             });
-    }
+        });
 }
 
 /// Distanza (m) dal player entro cui compaiono le targhette dei personaggi.

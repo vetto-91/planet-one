@@ -46,6 +46,7 @@ Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, 
 - `src/player.rs`: movimento, salto, corsa, ground-check (in `FixedUpdate`, character controller kinematico).
 - `src/camera.rs`: orbita, terza e prima persona.
 - `src/entities.rs`: NPC, nemico, dialogo.
+- `src/inventory_ui.rs`: inventario (tasto I), filtri, icone egui; icone in `assets/textures/icone/` da `scripts/make_item_icons.py`.
 - `src/combat.rs`, `src/inventory.rs`, `src/hud.rs`: combattimento, inventario, HUD.
 - `src/quests/mod.rs`: parser dei dialoghi, voci del diario, fumetti (barks), registro quest.
 - `src/quests/<quest>/mod.rs` + `assets/quests/<quest>/dialoghi.txt`: logica e testi (modificabili a mano) di ogni quest. Vedi ADR 0003.
