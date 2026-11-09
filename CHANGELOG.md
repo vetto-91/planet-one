@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.25.0 — Personaggi veri (2026-11-09)
 
 - **Personaggi veri (Grafica realistica, Fase 1)**: giocatore, Viandante, abitanti, guardie e ladro sono ora modelli umani con scheletro (asset CC0 Quaternius), al posto dei parallelepipedi, con posa di riposo;
   armi, scudo, lancia e lanterna si agganciano alle ossa delle mani (ADR 0015). Il nemico rosso resta un cubo; chi cammina scivola finché non arriva la Fase 3.

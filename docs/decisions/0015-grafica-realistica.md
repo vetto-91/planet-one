@@ -2,7 +2,7 @@
 
 - Data: 2026-11-09
 - Stato: accettato (Fase 1 di 3)
-- Versione: da rilasciare (v0.0.25.0)
+- Versione: v0.0.25.0
 
 ## Contesto
 I personaggi erano parallelepipedi e tutto il mondo cel-shaded a colori di vertice. Si vuole un aspetto realistico PBR, in tre fasi: personaggi, mondo e materiali, animazioni.
