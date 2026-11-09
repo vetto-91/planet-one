@@ -145,6 +145,7 @@ pub fn sync_world_props(
                 .iter()
                 .copied()
                 .filter(|p| !crate::terrain::is_water(p.x, p.y))
+                .filter(|p| !village.in_wall_band(*p))
                 .collect();
             let mesh =
                 crate::buildings::crop_field_mesh(&pl.kind, &pts, &|p| field.height_at(p.x, p.y));
@@ -332,6 +333,14 @@ pub fn sync_world_props(
                     if crate::village::in_polygon(&village.poly, p) {
                         info!(
                             "[PROPS] albero in ({:.1},{:.1}) saltato: dentro le mura",
+                            p.x, p.y
+                        );
+                        skipped += 1;
+                        continue;
+                    }
+                    if village.in_wall_band(p) {
+                        info!(
+                            "[PROPS] albero in ({:.1},{:.1}) saltato: nelle mura",
                             p.x, p.y
                         );
                         skipped += 1;

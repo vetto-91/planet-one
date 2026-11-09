@@ -299,6 +299,34 @@ impl B {
         self.tri(p(u1, y0, v0), p(u1, y0, v1), p(u1, yr, vc), end(1.0), wall);
     }
 
+    /// Piramide su base rettangolare orientata lungo `t` e `n` (orizzontali).
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn pyramid_oriented(
+        &mut self,
+        c: Vec3,
+        t: Vec2,
+        n: Vec2,
+        half_t: f32,
+        half_n: f32,
+        h: f32,
+        col: Col,
+    ) {
+        let top = c + Vec3::Y * h;
+        let (t3, n3) = (Vec3::new(t.x, 0.0, t.y), Vec3::new(n.x, 0.0, n.y));
+        let pts = [
+            c - t3 * half_t - n3 * half_n,
+            c + t3 * half_t - n3 * half_n,
+            c + t3 * half_t + n3 * half_n,
+            c - t3 * half_t + n3 * half_n,
+        ];
+        for i in 0..4 {
+            let (a, b) = (pts[i], pts[(i + 1) % 4]);
+            let out = ((a + b) / 2.0 - c).normalize_or_zero() + Vec3::Y * 0.3;
+            self.tri(a, b, top, out, col);
+            self.snow_tri(a, b, top);
+        }
+    }
+
     /// Piramide a base quadrata.
     pub(crate) fn pyramid(&mut self, c: Vec3, half: f32, h: f32, col: Col) {
         let top = c + Vec3::Y * h;

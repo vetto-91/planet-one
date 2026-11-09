@@ -2,6 +2,10 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Mura percorribili**: il muro è più spesso verso l'esterno, con un camminamento continuo lungo tutto il perimetro, ponti sopra i cancelli e torri cave attraversabili; scale dentro lo spessore del muro (una per cancello, una a est e una a ovest). Le quattro guardie sulle mura ora fanno la ronda sull'intero anello (ADR 0018).
+
 ## v0.0.29.0 — Inventario, barra a 10 tasti e FPS (2026-11-09)
 
 - **FPS**: nel menu grafica casella VSync e limite Illimitati/30/60/90/120/144/165/240; predefinito senza limiti.

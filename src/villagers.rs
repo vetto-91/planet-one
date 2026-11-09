@@ -17,6 +17,8 @@ use std::collections::VecDeque;
 const SPEC: &str = include_str!("../assets/world/abitanti.txt");
 /// Velocità di camminata (m/s) e altezza del centro del corpo sul terreno.
 const WALK_SPEED: f32 = 1.3;
+/// Passo di ronda sulle mura (m/s).
+const PATROL_SPEED: f32 = 1.3;
 const CENTER_Y: f32 = 0.85;
 
 /// Dati di un abitante letti da `abitanti.txt`.
@@ -122,6 +124,8 @@ pub struct Villager {
     placed: bool,
     /// Nascosto (in casa o alla caserma).
     hidden: bool,
+    /// Distanza percorsa sull'anello delle mura (guardie di ronda).
+    patrol: f32,
 }
 
 /// Lanterna di una guardia (accesa di notte).
@@ -175,11 +179,14 @@ pub fn gate_post(gate: &crate::village::Gate, shift: u8) -> (Vec2, Vec2) {
     )
 }
 
-/// Camminamento di una guardia di ronda: punto a metà del tratto, sguardo verso l'esterno.
-fn wall_post(walk: &crate::village::Walk, info: &VillageInfo) -> (Vec2, Vec2) {
-    let p = walk.pts[walk.pts.len() / 2];
-    let out = (p - info.center).normalize_or_zero();
-    (p, out)
+/// Posizione iniziale sull'anello di una guardia di ronda (frazione del giro).
+fn patrol_start(wall: &str) -> f32 {
+    match wall {
+        "nord" => 0.0,
+        "est" => 0.25,
+        "sud" => 0.5,
+        _ => 0.75,
+    }
 }
 
 fn spot(def: &VillagerDef, phase: Phase, info: &VillageInfo) -> (Vec2, Vec2) {
@@ -187,13 +194,6 @@ fn spot(def: &VillagerDef, phase: Phase, info: &VillageInfo) -> (Vec2, Vec2) {
         Phase::Evening => def.evening.unwrap_or(def.work),
         Phase::Rest => info.barracks.map_or(def.work, |(door, out)| (door, -out)),
         _ => {
-            if let Some(w) = def
-                .wall
-                .as_ref()
-                .and_then(|l| info.walks.iter().find(|w| &w.label == l))
-            {
-                return wall_post(w, info);
-            }
             if let (Some(name), Some(shift)) = (&def.gate, def.shift)
                 && let Some(g) = info
                     .gates
@@ -205,12 +205,6 @@ fn spot(def: &VillagerDef, phase: Phase, info: &VillageInfo) -> (Vec2, Vec2) {
             def.work
         }
     }
-}
-
-/// Quota del piano di camminamento per le guardie di ronda.
-fn wall_y(def: &VillagerDef, info: &VillageInfo) -> Option<f32> {
-    let l = def.wall.as_ref()?;
-    info.walks.iter().find(|w| &w.label == l).map(|w| w.y)
 }
 
 /// Direzione (yaw) perché il davanti (-Z locale) guardi verso `d`.
@@ -280,6 +274,7 @@ pub fn spawn_villagers(
                     path: VecDeque::new(),
                     placed: false,
                     hidden: false,
+                    patrol: 0.0,
                 },
                 RigidBody::Kinematic,
                 Collider::capsule(0.35, 1.0),
@@ -472,13 +467,32 @@ pub fn villager_routine(
     for (entity, mut tf, mut npc, mut v, mut vis) in &mut q {
         let want = desired_phase(&v.def, hour, weather.shelter);
         let here = Vec2::new(tf.translation.x, tf.translation.z);
-        // Primo frame: si mette direttamente nella fase giusta.
-        if !v.placed {
-            // Le guardie di ronda aspettano che il camminamento sia stato costruito.
-            if v.def.wall.is_some() && wall_y(&v.def, &info).is_none() {
+        // Guardie di ronda: percorrono l'anello delle mura senza fermarsi, salvo quando parlano.
+        if let Some(wall) = v.def.wall.clone() {
+            if info.patrol.len() < 2 {
                 *vis = Visibility::Hidden;
                 continue;
             }
+            let length = crate::village::loop_length(&info.patrol);
+            if !v.placed {
+                v.placed = true;
+                v.patrol = patrol_start(&wall) * length;
+                *vis = Visibility::Inherited;
+            }
+            let talking = dialog.open && dialog.speaker_entity == Some(entity);
+            if !talking {
+                v.patrol = (v.patrol + PATROL_SPEED * dt).rem_euclid(length);
+            }
+            let (p, dir) = crate::village::point_on_loop(&info.patrol, v.patrol);
+            tf.translation = p + Vec3::Y * CENTER_Y;
+            if !talking {
+                let want_rot = Quat::from_rotation_y(yaw_towards(dir));
+                tf.rotation = tf.rotation.slerp(want_rot, (6.0 * dt).clamp(0.0, 1.0));
+            }
+            continue;
+        }
+        // Primo frame: si mette direttamente nella fase giusta.
+        if !v.placed {
             v.placed = true;
             v.phase = want;
             let (p, look) = spot(&v.def, want, &info);
@@ -572,10 +586,8 @@ pub fn villager_routine(
                 commands.entity(entity).remove::<ColliderDisabled>();
             }
         }
-        tf.translation.y = match wall_y(&v.def, &info) {
-            Some(y) => y + CENTER_Y,
-            None => ground_y(&field, &dbg.items, tf.translation.x, tf.translation.z) + CENTER_Y,
-        };
+        tf.translation.y =
+            ground_y(&field, &dbg.items, tf.translation.x, tf.translation.z) + CENTER_Y;
     }
 }
 
