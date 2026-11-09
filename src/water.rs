@@ -47,6 +47,24 @@ pub struct IslandSpec {
     pub stream_half: f32,
     pub lake: Option<(Vec2, f32)>,
     pub bridges: Vec<(Vec2, Vec2)>,
+    pub forests: Vec<Forest>,
+}
+
+/// Tipo di bosco.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ForestKind {
+    Firs,
+    Mixed,
+    Broadleaf,
+}
+
+/// Zona di bosco.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Forest {
+    pub center: Vec2,
+    pub radius: f32,
+    pub density: f32,
+    pub kind: ForestKind,
 }
 
 /// Interpreta `isola.txt`; le righe errate vengono ignorate.
@@ -69,6 +87,23 @@ pub fn parse_spec(text: &str) -> IslandSpec {
             continue;
         };
         let n = nums(value);
+        if key.trim() == "bosco" {
+            let kind = match value.split_whitespace().last() {
+                Some("abeti") => Some(ForestKind::Firs),
+                Some("misto") => Some(ForestKind::Mixed),
+                Some("latifoglie") => Some(ForestKind::Broadleaf),
+                _ => None,
+            };
+            if let (Some(kind), [x, z, radius, density]) = (kind, n.as_slice()) {
+                s.forests.push(Forest {
+                    center: Vec2::new(*x, *z),
+                    radius: *radius,
+                    density: *density,
+                    kind,
+                });
+            }
+            continue;
+        }
         match (key.trim(), n.as_slice()) {
             ("altura", [x, z, radius, height]) => s.hills.push(Hill {
                 center: Vec2::new(*x, *z),
@@ -487,6 +522,7 @@ mod tests {
         assert!(s.stream.len() >= 4);
         assert!(s.lake.is_some());
         assert_eq!(s.bridges.len(), 1);
+        assert!(s.forests.len() >= 8);
     }
 
     #[test]

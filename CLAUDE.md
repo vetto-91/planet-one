@@ -58,6 +58,7 @@ Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, 
 - `src/pbr.rs`: materiali PBR condivisi (texture CC0 Poly Haven in `assets/textures/pbr/`, `scripts/fetch_pbr_textures.py`); `src/trees.rs`: abeti con corteccia e rami a carte (ADR 0016).
 - `src/graphics.rs`: impostazioni grafiche del menu Esc (`GfxOptions` in `AudioSettings`), applicate a camera, sole e particelle.
 - `src/animation.rs`: macchina a stati delle animazioni per tutti i personaggi, velocità misurata dallo spostamento (ADR 0017).
+- `src/nature.rs`: boschi, cespugli, rocce, fiori ed erba a riquadri, da `assets/world/isola.txt` (ADR 0027).
 - `src/world_props.rs`: alberi, fiori, panchine, lampioni veri creati da `debug/placements.txt`.
 - `src/audio.rs`: musica di sottofondo giorno/notte con dissolvenza (OGG in `assets/audio/music/`), volume musiche salvato in `~/.config/planet-one/settings.txt`.
 - `src/hut.rs`: casetta-chiosco del Viandante (mesh con UV dalla foto `assets/textures/capanna.png`, fondamenta e scale di pietra, interni, oggetti con stato `PropState`: porta, finestre, stufa con fumo, luce, serranda) e routine giornaliera del negoziante (`Keeper`). Gli oggetti si usano col mirino (`Interactable.aim`, vedi `entities::interact`).

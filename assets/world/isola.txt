@@ -18,3 +18,15 @@ lago: 68 -18 7.5
 #
 # ponte: x1 z1 x2 z2   da sponda a sponda
 ponte: 82.67 -12.18 79.33 -3.82
+#
+# bosco: x z raggio densità tipo   (tipo: abeti, misto, latifoglie; densità da 0 a 1)
+bosco: 36 -52 30 1.0 abeti
+bosco: 72 -52 24 0.9 abeti
+bosco: 62 -8 20 0.7 misto
+bosco: 72 28 26 0.8 latifoglie
+bosco: 40 72 24 0.8 misto
+bosco: -28 74 24 0.7 latifoglie
+bosco: -74 44 24 0.9 misto
+bosco: -80 -20 26 1.0 abeti
+bosco: -52 -62 26 0.9 misto
+bosco: 12 -80 20 0.7 abeti

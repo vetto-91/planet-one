@@ -2,6 +2,10 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Boschi e vegetazione** (ADR 0027): boschi di abeti, latifoglie e misti su tutta l'isola, con radure, cespugli, rocce, fiori ed erba alta che seguono le stagioni. Nuova opzione «Densità vegetazione».
+
 ## v0.0.37.0 — Terreno e acque dell'isola (2026-11-09)
 
 - **Isola** (ADR 0026): alture percorribili, scogliere a est e a sud-ovest, spiagge più larghe, roccia sui pendii e sentieri di terra battuta che collegano le zone dell'isola.

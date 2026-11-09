@@ -75,9 +75,14 @@ fn trunk() -> Mesh {
 
 /// Ramo: una carta in due segmenti (si piega verso il basso), normali morbide verso l'alto.
 fn card(b: &mut Buf, base: Vec3, dir: Vec3, len: f32, droop: f32, twig: usize) {
+    wide_card(b, base, dir, len, droop, twig, 0.9);
+}
+
+/// Come [`card`], con la larghezza in proporzione alla lunghezza: da lontano servono carte più piene.
+fn wide_card(b: &mut Buf, base: Vec3, dir: Vec3, len: f32, droop: f32, twig: usize, wide: f32) {
     let [u0, u1, v0, v1] = TWIGS[twig];
     let side = dir.cross(Vec3::Y).normalize_or_zero();
-    let width = len * 0.9;
+    let width = len * wide;
     let vmid = (v0 + v1) / 2.0;
     let mid = base + dir * (len * 0.5);
     let tip = mid + (dir + Vec3::NEG_Y * droop).normalize() * (len * 0.5);
@@ -123,6 +128,104 @@ fn foliage(seed: f32) -> Mesh {
     b.finish()
 }
 
+/// Chioma semplificata dell'abete, per i boschi lontani: pochi rami grandi.
+pub fn fir_foliage_far(seed: f32) -> Mesh {
+    let mut b = Buf::default();
+    let levels = 8;
+    for l in 0..levels {
+        let t = l as f32 / (levels - 1) as f32;
+        let y = 1.4 + t * (FIR_HEIGHT - 1.7);
+        let len = 2.5 * (1.0 - t).powf(0.85) + 0.55;
+        for c in 0..5 {
+            let a = (c as f32 + l as f32 * 0.5 + seed) / 5.0 * TAU;
+            let dir = Vec3::new(a.cos(), 0.05, a.sin()).normalize();
+            let k = (l + c) % TWIGS.len();
+            wide_card(&mut b, Vec3::new(0.0, y, 0.0), dir, len, 0.4, k, 2.0);
+        }
+    }
+    b.finish()
+}
+
+/// Tronco di latifoglia: corto, largo alla base, con tre rami principali.
+pub fn broadleaf_trunk() -> Mesh {
+    let mut b = Buf::default();
+    let mut limb = |from: Vec3, to: Vec3, r0: f32, r1: f32| {
+        let (sides, rings) = (6u32, 3u32);
+        let base = b.pos.len() as u32;
+        let axis = (to - from).normalize_or(Vec3::Y);
+        let x = axis.cross(Vec3::Z).normalize_or(Vec3::X);
+        let z = x.cross(axis).normalize_or(Vec3::Z);
+        for r in 0..=rings {
+            let t = r as f32 / rings as f32;
+            let c = from.lerp(to, t);
+            let radius = r0 + (r1 - r0) * t;
+            for k in 0..=sides {
+                let a = k as f32 / sides as f32 * TAU;
+                let n = x * a.cos() + z * a.sin();
+                b.vertex(
+                    c + n * radius,
+                    n,
+                    [k as f32 / sides as f32 * 1.5, c.y / 1.5],
+                );
+            }
+        }
+        for r in 0..rings {
+            for k in 0..sides {
+                let i = base + r * (sides + 1) + k;
+                let up = i + sides + 1;
+                b.idx.extend([i, up, i + 1, i + 1, up, up + 1]);
+            }
+        }
+    };
+    let fork = Vec3::Y * 2.6;
+    limb(Vec3::NEG_Y * 0.4, fork, 0.3, 0.2);
+    for a in [0.4f32, 2.5, 4.6] {
+        let tip = fork + Vec3::new(a.cos() * 1.5, 1.9, a.sin() * 1.5);
+        limb(fork, tip, 0.17, 0.05);
+    }
+    b.finish()
+}
+
+/// Chioma di latifoglia: una massa arrotondata di carte, rivolte verso l'esterno.
+pub fn broadleaf_foliage(seed: f32, cards: usize) -> Mesh {
+    let mut b = Buf::default();
+    let size = if cards > 100 { 1.25 } else { 2.2 };
+    let center = Vec3::Y * 4.3;
+    for i in 0..cards {
+        // Punti distribuiti sulla sfera (spirale di Fibonacci), schiacciata in altezza.
+        let t = (i as f32 + 0.5) / cards as f32;
+        let phi = (1.0 - 2.0 * t).acos();
+        let theta = i as f32 * 2.399_963 + seed;
+        let d = Vec3::new(
+            phi.sin() * theta.cos(),
+            phi.cos() * 0.72,
+            phi.sin() * theta.sin(),
+        );
+        let shell = 1.5 + 0.7 * ((i as f32 * 7.77 + seed).sin() * 0.5 + 0.5);
+        let dir = (d + Vec3::Y * 0.15).normalize();
+        card(
+            &mut b,
+            center + d * shell * 0.55,
+            dir,
+            size,
+            0.35,
+            i % TWIGS.len(),
+        );
+    }
+    b.finish()
+}
+
+/// Cespuglio: poche carte da terra verso l'esterno.
+pub fn bush(seed: f32) -> Mesh {
+    let mut b = Buf::default();
+    for i in 0..14 {
+        let a = i as f32 * 2.399_963 + seed;
+        let dir = Vec3::new(a.cos(), 0.55 + 0.35 * (i as f32 * 1.3).sin(), a.sin()).normalize();
+        card(&mut b, Vec3::Y * 0.1, dir, 0.85, 0.45, i % TWIGS.len());
+    }
+    b.finish()
+}
+
 /// Mesh e materiali degli abeti.
 pub struct FirAssets {
     pub trunk: Handle<Mesh>,
@@ -144,7 +247,7 @@ impl FirAssets {
             materials.add(StandardMaterial {
                 base_color_texture: Some(twig.clone()),
                 normal_map_texture: Some(nor.clone()),
-                alpha_mode: AlphaMode::Mask(0.45),
+                alpha_mode: AlphaMode::Mask(0.3),
                 double_sided: true,
                 cull_mode: None,
                 perceptual_roughness: 0.85,

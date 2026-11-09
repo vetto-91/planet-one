@@ -584,6 +584,10 @@ pub fn sync_world_props(
                         skipped += 1;
                         continue;
                     }
+                    if field.in_fresh_water(p.x, p.y) {
+                        skipped += 1;
+                        continue;
+                    }
                     if let Some(why) = tree_blocked(p) {
                         info!("[PROPS] albero in ({:.1},{:.1}) saltato: {why}", p.x, p.y);
                         skipped += 1;

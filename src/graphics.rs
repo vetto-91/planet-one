@@ -71,6 +71,8 @@ pub struct GfxOptions {
     pub far_anim_cull: bool,
     /// Onde, corrente e schiuma sull'acqua.
     pub waves: bool,
+    /// Percentuale di vegetazione: 100, 70 o 40.
+    pub vegetation: u8,
 }
 
 impl GfxOptions {
@@ -84,6 +86,7 @@ impl GfxOptions {
         particles: 100,
         far_anim_cull: true,
         waves: true,
+        vegetation: 100,
     };
     pub const MEDIUM: Self = Self {
         shadows: Shadows::Medium,
@@ -95,6 +98,7 @@ impl GfxOptions {
         particles: 50,
         far_anim_cull: true,
         waves: true,
+        vegetation: 70,
     };
     pub const LOW: Self = Self {
         shadows: Shadows::Low,
@@ -106,6 +110,7 @@ impl GfxOptions {
         particles: 50,
         far_anim_cull: true,
         waves: false,
+        vegetation: 40,
     };
 
     /// Quota delle particelle attive (0..1).
@@ -116,7 +121,7 @@ impl GfxOptions {
     /// Righe da scrivere in `settings.txt`.
     pub fn to_lines(self) -> String {
         format!(
-            "gfx_shadows={}\ngfx_lamp_shadows={}\ngfx_interior_lights={}\ngfx_ssao={}\ngfx_bloom={}\ngfx_antialias={}\ngfx_particles={}\ngfx_far_anim_cull={}\ngfx_waves={}\n",
+            "gfx_shadows={}\ngfx_lamp_shadows={}\ngfx_interior_lights={}\ngfx_ssao={}\ngfx_bloom={}\ngfx_antialias={}\ngfx_particles={}\ngfx_far_anim_cull={}\ngfx_waves={}\ngfx_vegetation={}\n",
             self.shadows.key(),
             u8::from(self.lamp_shadows),
             u8::from(self.interior_lights),
@@ -126,6 +131,7 @@ impl GfxOptions {
             self.particles,
             u8::from(self.far_anim_cull),
             u8::from(self.waves),
+            self.vegetation,
         )
     }
 
@@ -147,6 +153,13 @@ impl GfxOptions {
             "gfx_ssao" => self.ssao = on,
             "gfx_bloom" => self.bloom = on,
             "gfx_antialias" => self.antialias = on,
+            "gfx_vegetation" => {
+                if let Ok(p) = value.parse::<u8>()
+                    && [40, 70, 100].contains(&p)
+                {
+                    self.vegetation = p;
+                }
+            }
             "gfx_particles" => {
                 if let Ok(p) = value.parse::<u8>()
                     && [0, 50, 100].contains(&p)
@@ -353,6 +366,17 @@ pub fn graphics_ui(ui: &mut egui::Ui, audio: &mut AudioSettings) {
     });
     ui.checkbox(&mut gfx.far_anim_cull, "Ferma le animazioni lontane");
     ui.checkbox(&mut gfx.waves, "Onde e schiuma sull'acqua");
+    ui.horizontal(|ui| {
+        ui.label("Densità vegetazione:");
+        for p in [100u8, 70, 40] {
+            if ui
+                .selectable_label(gfx.vegetation == p, format!("{p}%"))
+                .clicked()
+            {
+                gfx.vegetation = p;
+            }
+        }
+    });
     ui.separator();
     let mut fps = audio.fps;
     ui.checkbox(&mut fps.vsync, "VSync (FPS legati al monitor)");
@@ -408,6 +432,7 @@ mod tests {
             particles: 0,
             far_anim_cull: false,
             waves: false,
+            vegetation: 40,
         };
         let mut read = GfxOptions::HIGH;
         for line in original.to_lines().lines() {

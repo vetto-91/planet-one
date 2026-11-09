@@ -85,7 +85,6 @@ impl TerrainField {
     }
 
     /// C'è acqua dolce in (x, z)?
-    #[allow(dead_code)] // usato dalla vegetazione
     pub fn in_fresh_water(&self, x: f32, z: f32) -> bool {
         let i = |w: f32| ((w + TERRAIN_SIZE / 2.0) / STEP).round() as isize;
         let (ix, iz) = (i(x), i(z));
@@ -557,7 +556,7 @@ fn hash2(ix: i32, iz: i32) -> f32 {
 }
 
 /// Value noise liscio 0..1.
-fn noise2(x: f32, z: f32) -> f32 {
+pub(crate) fn noise2(x: f32, z: f32) -> f32 {
     let (ix, iz) = (x.floor() as i32, z.floor() as i32);
     let (fx, fz) = (x - ix as f32, z - iz as f32);
     let (u, v) = (fx * fx * (3.0 - 2.0 * fx), fz * fz * (3.0 - 2.0 * fz));

@@ -30,6 +30,7 @@ mod inventory_ui;
 mod main_menu;
 mod map;
 mod menu;
+mod nature;
 mod pbr;
 mod player;
 mod props;
@@ -165,6 +166,7 @@ fn main() {
         .add_plugins(containers::plugin)
         .add_plugins(character::plugin)
         .add_plugins(water::plugin)
+        .add_plugins(nature::plugin)
         .add_plugins(save::plugin)
         .add_plugins(settings_ui::plugin)
         .add_plugins(main_menu::plugin)
