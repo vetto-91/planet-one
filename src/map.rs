@@ -337,6 +337,14 @@ pub fn draw_map_overlay(
         {
             crate::ui_style::plate(&painter, egui::pos2(p.x, p.y), name, 28.0, gold);
         }
+        static PLACES: std::sync::OnceLock<Vec<(String, Vec2)>> = std::sync::OnceLock::new();
+        let places = PLACES.get_or_init(|| crate::water::load_spec().places);
+        for (name, at) in places {
+            let world = Vec3::new(at.x, 6.0, at.y);
+            if let Ok(p) = cam.world_to_viewport(cam_t, world) {
+                crate::ui_style::plate(&painter, egui::pos2(p.x, p.y), name, 16.0, gold);
+            }
+        }
         if let Some(h) = hut_pos
             && let Ok(p) = cam.world_to_viewport(cam_t, h + Vec3::Y * 6.0)
         {

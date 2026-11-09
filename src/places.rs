@@ -1,0 +1,446 @@
+//! Luoghi da scoprire sull'isola (ADR 0029): campi, rovine, torre, mulino, grotta e santuario.
+//!
+//! Sono piazzamenti normali: la forma sta in [`build`], la posizione in `debug/placements.txt`
+//! (`scripts/gen_luoghi.py`), i nomi sulla mappa in `assets/world/isola.txt`. I banditi ricompaiono
+//! da soli e tornano anche caricando un salvataggio fatto prima che esistessero.
+
+use crate::buildings::{B, Col, Interior, STONE, STONE_DARK, TIMBER};
+use crate::combat::EnemyRespawn;
+use crate::debug_place::DebugPlace;
+use crate::entities::{Enemy, PatrolState};
+use crate::interiors as rooms;
+use crate::pbr::Mat;
+use crate::terrain::TerrainField;
+use bevy::prelude::*;
+
+const ASH: Col = [0.12, 0.11, 0.1, 1.0];
+const LOG: Col = [0.3, 0.2, 0.12, 1.0];
+/// Metri attorno al centro del campo in cui si muovono i banditi.
+const BANDIT_WALK: f32 = 6.0;
+/// Quanti sono i banditi per campo.
+const BANDITS: usize = 3;
+
+/// Tenda aperta sul lato +Z, con la cresta lungo Z.
+fn tent(b: &mut B, c: Vec3, w: f32, l: f32, h: f32, col: Col) {
+    let (x0, x1) = (c.x - w / 2.0, c.x + w / 2.0);
+    let (z0, z1) = (c.z - l / 2.0, c.z + l / 2.0);
+    let top = c.y + h;
+    b.force = Some(Mat::Cloth);
+    b.quad(
+        Vec3::new(x0, c.y, z0),
+        Vec3::new(x0, c.y, z1),
+        Vec3::new(c.x, top, z1),
+        Vec3::new(c.x, top, z0),
+        Vec3::new(-1.0, 1.0, 0.0),
+        col,
+    );
+    b.quad(
+        Vec3::new(x1, c.y, z1),
+        Vec3::new(x1, c.y, z0),
+        Vec3::new(c.x, top, z0),
+        Vec3::new(c.x, top, z1),
+        Vec3::new(1.0, 1.0, 0.0),
+        col,
+    );
+    b.tri(
+        Vec3::new(x0, c.y, z0),
+        Vec3::new(c.x, top, z0),
+        Vec3::new(x1, c.y, z0),
+        Vec3::NEG_Z,
+        col,
+    );
+    b.force = None;
+    b.beam(
+        Vec3::new(c.x, top, z0),
+        Vec3::new(c.x, top, z1),
+        0.04,
+        TIMBER,
+    );
+    for z in [z0, z1] {
+        b.beam(Vec3::new(c.x, c.y, z), Vec3::new(c.x, top, z), 0.04, TIMBER);
+    }
+}
+
+/// Giaciglio di stoffa a terra.
+fn bedroll(b: &mut B, c: Vec3) {
+    b.force = Some(Mat::Cloth);
+    b.cuboid_c(
+        c + Vec3::Y * 0.06,
+        Vec3::new(0.75, 0.12, 1.8),
+        [0.42, 0.34, 0.24, 1.0],
+    );
+    b.force = None;
+}
+
+/// Falò: cerchio di pietre, cenere e ciocchi; il fuoco lo accende `village_life`.
+fn campfire(b: &mut B, int: &mut Interior, c: Vec3) {
+    use std::f32::consts::TAU;
+    for k in 0..9 {
+        let a = k as f32 / 9.0 * TAU;
+        b.cuboid_c(
+            c + Vec3::new(a.cos() * 0.55, 0.08, a.sin() * 0.55),
+            Vec3::new(0.2, 0.17, 0.2),
+            STONE_DARK,
+        );
+    }
+    b.cuboid_c(c + Vec3::Y * 0.02, Vec3::new(0.85, 0.04, 0.85), ASH);
+    for k in 0..3 {
+        let a = k as f32 / 3.0 * TAU;
+        let foot = c + Vec3::new(a.cos() * 0.34, 0.04, a.sin() * 0.34);
+        b.beam(foot, c + Vec3::Y * 0.42, 0.045, LOG);
+    }
+    int.fires.push(c + Vec3::Y * 0.42);
+}
+
+/// Campo del ladro: una tenda, un giaciglio, il falò e il suo baule.
+fn thief_camp(b: &mut B, int: &mut Interior) -> Vec<(Vec3, Vec3)> {
+    tent(
+        b,
+        Vec3::new(-1.4, 0.0, -0.4),
+        2.2,
+        2.8,
+        1.55,
+        [0.36, 0.3, 0.22, 1.0],
+    );
+    bedroll(b, Vec3::new(-1.4, 0.0, -0.5));
+    campfire(b, int, Vec3::new(1.2, 0.0, 1.0));
+    rooms::chest(b, int, 1.7, -1.3, 0.0);
+    rooms::crate_box(b, int, 0.4, -1.5, 0.0, 0.55);
+    vec![(Vec3::new(-1.4, 0.6, -0.4), Vec3::new(2.0, 1.2, 2.6))]
+}
+
+/// Accampamento dei banditi: tende, falò, palizzata a tratti, provviste.
+fn bandit_camp(b: &mut B, int: &mut Interior) -> Vec<(Vec3, Vec3)> {
+    let cloth: Col = [0.33, 0.16, 0.12, 1.0];
+    tent(b, Vec3::new(-3.2, 0.0, -1.8), 2.4, 3.0, 1.7, cloth);
+    tent(b, Vec3::new(3.0, 0.0, -2.0), 2.4, 3.0, 1.7, cloth);
+    bedroll(b, Vec3::new(-3.2, 0.0, -2.0));
+    bedroll(b, Vec3::new(3.0, 0.0, -2.2));
+    campfire(b, int, Vec3::ZERO);
+    rooms::barrel(b, int, -1.0, -3.6, 0.0);
+    rooms::crate_box(b, int, 0.5, -3.7, 0.0, 0.7);
+    rooms::chest(b, int, 1.7, -3.7, 0.0);
+    let mut colliders = vec![
+        (Vec3::new(-3.2, 0.6, -1.8), Vec3::new(2.2, 1.2, 2.8)),
+        (Vec3::new(3.0, 0.6, -2.0), Vec3::new(2.2, 1.2, 2.8)),
+    ];
+    // Pali appuntiti sul retro, con varchi.
+    for k in 0..16 {
+        if k % 6 == 5 {
+            continue;
+        }
+        let x = -6.0 + k as f32 * 0.8;
+        let h = 1.5 + (k % 3) as f32 * 0.25;
+        let foot = Vec3::new(x, 0.0, -5.2 - (k % 2) as f32 * 0.1);
+        b.beam(foot, foot + Vec3::new(0.0, h, 0.12), 0.08, LOG);
+        colliders.push((foot + Vec3::Y * h / 2.0, Vec3::new(0.2, h, 0.2)));
+    }
+    colliders
+}
+
+/// Muri spezzati e colonne di un antico tempio, con un baule in mezzo.
+fn ruins(b: &mut B, int: &mut Interior) -> Vec<(Vec3, Vec3)> {
+    let mut colliders = Vec::new();
+    let mut wall = |b: &mut B, min: Vec3, max: Vec3| {
+        b.cuboid(min, max, STONE);
+        colliders.push(((min + max) / 2.0, max - min));
+    };
+    b.cuboid(
+        Vec3::new(-6.0, -0.2, -5.0),
+        Vec3::new(6.0, 0.08, 5.0),
+        STONE_DARK,
+    );
+    wall(b, Vec3::new(-6.0, 0.0, -5.0), Vec3::new(-1.5, 3.1, -4.4));
+    wall(b, Vec3::new(-1.5, 0.0, -5.0), Vec3::new(1.2, 1.5, -4.4));
+    wall(b, Vec3::new(3.0, 0.0, -5.0), Vec3::new(6.0, 2.2, -4.4));
+    wall(b, Vec3::new(-6.0, 0.0, -4.4), Vec3::new(-5.4, 2.4, 0.5));
+    wall(b, Vec3::new(5.4, 0.0, -4.4), Vec3::new(6.0, 1.2, -1.2));
+    for (x, z, h) in [
+        (-3.4, 3.4, 3.6),
+        (-1.2, 3.4, 1.4),
+        (1.2, 3.4, 3.2),
+        (3.4, 3.4, 2.1),
+        (-3.4, 0.4, 2.6),
+        (3.4, 0.4, 3.5),
+    ] {
+        wall(
+            b,
+            Vec3::new(x - 0.32, 0.0, z - 0.32),
+            Vec3::new(x + 0.32, h, z + 0.32),
+        );
+    }
+    // Rocchi di colonna caduti.
+    for (x, z) in [(-1.0, 1.4), (2.0, 2.2), (0.2, 4.4)] {
+        wall(
+            b,
+            Vec3::new(x - 0.6, 0.0, z - 0.3),
+            Vec3::new(x + 0.6, 0.6, z + 0.3),
+        );
+    }
+    rooms::chest(b, int, 0.0, -3.4, 0.08);
+    colliders
+}
+
+/// Torre in rovina: scala interna fino alla piattaforma, parapetto spezzato e un baule in cima.
+fn ruined_tower(b: &mut B, int: &mut Interior) -> f32 {
+    const HW: f32 = 2.3;
+    const INNER: f32 = 1.75;
+    const FLOOR: f32 = 0.12;
+    const TOP: f32 = 8.0;
+    let door = Some((0.55, FLOOR + 2.1));
+    crate::buildings::tower_shell(b, int, HW, INNER, 0.0, TOP, STONE_DARK, door);
+    let rect = (-INNER, INNER, -INNER, INNER);
+    rooms::slab(b, int, rect.0, rect.1, rect.2, rect.3, FLOOR);
+    let hole = rooms::square_helix(b, int, rect, FLOOR, TOP, 0.85);
+    rooms::slab_with_hole(b, int, (-HW, HW, -HW, HW), hole, TOP);
+    // Merli a tratti: il crollo ha portato via un lato.
+    for (x0, z0, x1, z1, h) in [
+        (-HW, -HW, HW, -HW + 0.4, 1.1),
+        (-HW, -HW, -HW + 0.4, 0.2, 1.1),
+        (HW - 0.4, -HW, HW, -0.9, 0.7),
+        (-HW, 1.1, -HW + 0.4, HW, 0.5),
+    ] {
+        let (min, max) = (Vec3::new(x0, TOP, z0), Vec3::new(x1, TOP + h, z1));
+        b.cuboid(min, max, STONE_DARK);
+        int.walls.push(((min + max) / 2.0, max - min));
+    }
+    rooms::chest(b, int, 1.2, 1.5, TOP);
+    int.lights.clear();
+    TOP
+}
+
+/// Grotta: un cumulo di roccia con corridoio e camera; dentro è buio, rischiarato solo da un falò.
+fn cave(b: &mut B, int: &mut Interior) {
+    const H: f32 = 3.0;
+    let mut wall = |b: &mut B, min: Vec3, max: Vec3| {
+        b.cuboid(min, max, STONE_DARK);
+        int.walls.push(((min + max) / 2.0, max - min));
+    };
+    for (min, max) in [
+        (Vec3::new(-4.8, 0.0, -5.8), Vec3::new(4.8, H, -5.0)),
+        (Vec3::new(-4.8, 0.0, -5.0), Vec3::new(-4.0, H, 1.0)),
+        (Vec3::new(4.0, 0.0, -5.0), Vec3::new(4.8, H, 1.0)),
+        (Vec3::new(-4.8, 0.0, 1.0), Vec3::new(-1.2, H, 1.8)),
+        (Vec3::new(1.2, 0.0, 1.0), Vec3::new(4.8, H, 1.8)),
+        (Vec3::new(-2.0, 0.0, 1.8), Vec3::new(-1.2, 2.5, 5.2)),
+        (Vec3::new(1.2, 0.0, 1.8), Vec3::new(2.0, 2.5, 5.2)),
+        (Vec3::new(-4.8, H, -5.8), Vec3::new(4.8, H + 0.8, 1.8)),
+        (Vec3::new(-2.0, 2.5, 1.8), Vec3::new(2.0, 3.2, 5.2)),
+    ] {
+        wall(b, min, max);
+    }
+    for (min, max) in [
+        (Vec3::new(-4.0, -0.2, -5.0), Vec3::new(4.0, 0.06, 1.0)),
+        (Vec3::new(-1.2, -0.2, 1.0), Vec3::new(1.2, 0.06, 5.2)),
+    ] {
+        b.cuboid(min, max, STONE);
+        int.ground.push(((min + max) / 2.0, max - min));
+    }
+    // Il cumulo visto da fuori.
+    b.pyramid(Vec3::new(0.0, H + 0.8, -2.0), 6.6, 3.4, STONE_DARK);
+    b.pyramid(Vec3::new(3.0, H + 0.2, 2.0), 3.4, 1.9, STONE_DARK);
+    b.pyramid(Vec3::new(-3.2, H + 0.1, 2.0), 3.1, 1.7, STONE_DARK);
+    campfire(b, int, Vec3::new(-1.6, 0.06, -2.6));
+    bedroll(b, Vec3::new(-3.0, 0.06, -3.6));
+    rooms::chest(b, int, 2.6, -4.2, 0.06);
+    rooms::barrel(b, int, 3.4, -2.6, 0.06);
+    rooms::crate_box(b, int, 1.4, -4.3, 0.06, 0.7);
+}
+
+/// Santuario: basamento, altare, quattro colonne e un tetto a piramide.
+fn shrine(b: &mut B, _int: &mut Interior) -> Vec<(Vec3, Vec3)> {
+    b.cuboid(Vec3::new(-2.4, -0.2, -2.4), Vec3::new(2.4, 0.2, 2.4), STONE);
+    let mut colliders = vec![(Vec3::new(0.0, 0.55, -0.6), Vec3::new(1.2, 0.9, 0.7))];
+    b.cuboid_c(
+        Vec3::new(0.0, 0.55, -0.6),
+        Vec3::new(1.2, 0.7, 0.7),
+        STONE_DARK,
+    );
+    b.cuboid_c(
+        Vec3::new(0.0, 0.95, -0.6),
+        Vec3::new(1.4, 0.12, 0.85),
+        STONE,
+    );
+    b.cuboid_c(
+        Vec3::new(0.0, 1.1, -0.6),
+        Vec3::new(0.34, 0.2, 0.34),
+        [0.78, 0.62, 0.22, 1.0],
+    );
+    for (x, z) in [(-1.9, -1.9), (1.9, -1.9), (-1.9, 1.9), (1.9, 1.9)] {
+        b.cuboid_c(Vec3::new(x, 1.6, z), Vec3::new(0.34, 2.8, 0.34), STONE);
+        colliders.push((Vec3::new(x, 1.6, z), Vec3::new(0.4, 2.8, 0.4)));
+    }
+    b.cuboid_c(
+        Vec3::new(0.0, 3.08, 0.0),
+        Vec3::new(4.6, 0.2, 4.6),
+        STONE_DARK,
+    );
+    b.pyramid(
+        Vec3::new(0.0, 3.18, 0.0),
+        2.5,
+        1.6,
+        crate::buildings::ROOFS[1],
+    );
+    colliders
+}
+
+/// Pale del mulino attorno all'origine, nel piano XY (girano attorno a Z).
+pub fn sails() -> Vec<(Mat, Mesh)> {
+    use std::f32::consts::TAU;
+    const LEN: f32 = 3.3;
+    let mut b = B::default();
+    let cloth: Col = [0.84, 0.8, 0.68, 1.0];
+    for k in 0..4 {
+        let a = k as f32 / 4.0 * TAU;
+        let dir = Vec3::new(a.cos(), a.sin(), 0.0);
+        let side = Vec3::new(-dir.y, dir.x, 0.0);
+        b.beam(Vec3::ZERO, dir * LEN, 0.05, TIMBER);
+        for s in [0.75f32, 1.5, 2.25, 3.0] {
+            b.beam(dir * s, dir * s + side * 0.72, 0.02, TIMBER);
+        }
+        b.beam(
+            dir * 0.75 + side * 0.72,
+            dir * LEN + side * 0.72,
+            0.02,
+            TIMBER,
+        );
+        b.force = Some(Mat::Cloth);
+        let z = Vec3::Z * 0.01;
+        b.quad(
+            dir * 0.75 + z,
+            dir * LEN + z,
+            dir * LEN + side * 0.7 + z,
+            dir * 0.75 + side * 0.7 + z,
+            Vec3::Z,
+            cloth,
+        );
+        b.force = None;
+    }
+    b.cuboid_c(Vec3::ZERO, Vec3::new(0.32, 0.32, 0.5), TIMBER);
+    b.finish_parts()
+}
+
+/// È uno dei luoghi fatti da questo modulo (senza la casa del mulino)?
+pub fn is_place(kind: &str) -> bool {
+    matches!(
+        kind,
+        "campo-ladro" | "banditi" | "rovine" | "torre-rovina" | "grotta" | "santuario"
+    )
+}
+
+/// Costruisce il luogo: larghezza, profondità e collider come in `buildings::model`.
+pub fn build(kind: &str, b: &mut B, int: &mut Interior) -> (f32, f32, Vec<(Vec3, Vec3)>) {
+    match kind {
+        "campo-ladro" => (5.0, 5.0, thief_camp(b, int)),
+        "banditi" => (12.0, 11.0, bandit_camp(b, int)),
+        "rovine" => (12.0, 10.0, ruins(b, int)),
+        "torre-rovina" => {
+            ruined_tower(b, int);
+            (4.6, 4.6, Vec::new())
+        }
+        "grotta" => {
+            cave(b, int);
+            (9.6, 11.0, Vec::new())
+        }
+        _ => (4.8, 4.8, shrine(b, int)),
+    }
+}
+
+/// Dove camminano i banditi di un campo con centro `c`.
+pub fn bandit_routes(c: Vec2) -> Vec<(Vec2, Vec2)> {
+    (0..BANDITS)
+        .map(|i| {
+            let a = i as f32 * 2.1 + 0.4;
+            let dir = Vec2::from_angle(a) * BANDIT_WALK;
+            (c + dir, c + dir.perp() * 0.7 + Vec2::new(0.0, 1.5))
+        })
+        .collect()
+}
+
+/// Sistema: se manca un bandito (nuova partita, reset, salvataggio vecchio) lo rimette al suo posto.
+#[allow(clippy::too_many_arguments)]
+fn keep_bandits(
+    mut commands: Commands,
+    server: Res<AssetServer>,
+    time: Res<Time>,
+    dbg: Res<DebugPlace>,
+    field: Option<Res<TerrainField>>,
+    enemies: Query<&PatrolState, With<Enemy>>,
+    waiting: Query<&EnemyRespawn>,
+    mut timer: Local<f32>,
+) {
+    *timer -= time.delta_secs();
+    if *timer > 0.0 {
+        return;
+    }
+    *timer = 2.0;
+    let Some(field) = field else {
+        return;
+    };
+    let camps = dbg
+        .items
+        .iter()
+        .filter(|p| p.kind == "banditi")
+        .flat_map(|p| p.points.iter().copied());
+    for center in camps {
+        for (a, b) in bandit_routes(center) {
+            let known = |w: &[Vec3]| w.first().is_some_and(|p| p.xz().distance(a) < 1.0);
+            if enemies.iter().any(|e| known(&e.waypoints))
+                || waiting.iter().any(|r| known(&r.waypoints))
+            {
+                continue;
+            }
+            let at = |p: Vec2| Vec3::new(p.x, field.height_at(p.x, p.y) + 1.0, p.y);
+            crate::entities::spawn_enemy(&mut commands, &server, at(a), at(b));
+            info!(
+                "[LUOGHI] bandito al campo ({:.0},{:.0})",
+                center.x, center.y
+            );
+        }
+    }
+}
+
+pub fn plugin(app: &mut App) {
+    app.add_systems(
+        Update,
+        keep_bandits.run_if(in_state(crate::AppState::Playing)),
+    );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn top_of(int: &Interior) -> f32 {
+        int.ground
+            .iter()
+            .map(|(c, s)| c.y + s.y / 2.0)
+            .fold(f32::MIN, f32::max)
+    }
+
+    #[test]
+    fn tower_can_be_climbed_to_the_top() {
+        let mut b = B::default();
+        let mut int = Interior::default();
+        let top = ruined_tower(&mut b, &mut int);
+        assert!((top_of(&int) - top).abs() < 0.05);
+        assert_eq!(int.containers.len(), 1);
+    }
+
+    #[test]
+    fn every_place_has_something_to_find_or_a_fire() {
+        for kind in ["campo-ladro", "banditi", "rovine", "grotta"] {
+            let mut b = B::default();
+            let mut int = Interior::default();
+            build(kind, &mut b, &mut int);
+            assert!(!int.containers.is_empty(), "{kind}");
+        }
+    }
+
+    #[test]
+    fn bandits_keep_their_own_route() {
+        let r = bandit_routes(Vec2::ZERO);
+        assert_eq!(r.len(), BANDITS);
+        assert!(r[0].0.distance(r[1].0) > 3.0);
+    }
+}

@@ -40,3 +40,13 @@ pollaio: 12 10.5 1.8 3
 pollaio: -14.5 21 1.8 3
 # gabbiani: x z quanti (girano sopra quel punto)
 gabbiani: 2 92 7
+
+# Nomi sulla mappa. luogo: nome | x z
+luogo: Campo del ladro | 29 -31
+luogo: Fattoria | -42 -36
+luogo: Mulino | 0.5 -66
+luogo: Torre antica | 58.5 -58.5
+luogo: Rovine antiche | -56 62
+luogo: Grotta | 90.5 18
+luogo: Campo dei banditi | 76 40
+luogo: Santuario | -66 22

@@ -20,6 +20,12 @@ SIGNS = {
     "fabbro": ("Fabbro", ""),
     "faro": ("Faro", "a sud, sulla scogliera"),
     "porticciolo": ("Porticciolo", "barche e pesca"),
+    "mulino": ("Mulino", "a nord"),
+    "fattoria": ("Fattoria", ""),
+    "torre": ("Torre antica", "sull'altura"),
+    "rovine": ("Rovine", "antico tempio"),
+    "grotta": ("Grotta", "attenti ai banditi"),
+    "santuario": ("Santuario", ""),
 }
 W, H = 512, 192
 

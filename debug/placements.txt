@@ -754,3 +754,155 @@ quantità: 1   seed: 1
 nota: paese
 punti: (-8.00,91.00)
 rotazioni: 0
+
+[P-0700] tipo: campo-ladro | modalità: singolo
+quando: generato da gen_luoghi.py
+punto: x 29.00, z -31.00
+quantità: 1   seed: 1
+nota: luoghi
+punti: (29.00,-31.00)
+rotazioni: 0
+
+[P-0701] tipo: casa-grande | modalità: singolo
+quando: generato da gen_luoghi.py
+punto: x -42.00, z -30.00
+quantità: 1   seed: 1
+nota: luoghi
+punti: (-42.00,-30.00)
+rotazioni: 90
+
+[P-0702] tipo: stalla | modalità: singolo
+quando: generato da gen_luoghi.py
+punto: x -42.00, z -42.00
+quantità: 1   seed: 1
+nota: luoghi
+punti: (-42.00,-42.00)
+rotazioni: 90
+
+[P-0703] tipo: pagliaio | modalità: singolo
+quando: generato da gen_luoghi.py
+punto: x -35.00, z -44.50
+quantità: 1   seed: 1
+nota: luoghi
+punti: (-35.00,-44.50)
+rotazioni: 0
+
+[P-0704] tipo: pagliaio | modalità: singolo
+quando: generato da gen_luoghi.py
+punto: x -48.50, z -36.00
+quantità: 1   seed: 1
+nota: luoghi
+punti: (-48.50,-36.00)
+rotazioni: 0
+
+[P-0705] tipo: mulino | modalità: singolo
+quando: generato da gen_luoghi.py
+punto: x 0.50, z -66.00
+quantità: 1   seed: 1
+nota: luoghi
+punti: (0.50,-66.00)
+rotazioni: 0
+
+[P-0706] tipo: torre-rovina | modalità: singolo
+quando: generato da gen_luoghi.py
+punto: x 58.50, z -58.50
+quantità: 1   seed: 1
+nota: luoghi
+punti: (58.50,-58.50)
+rotazioni: 315
+
+[P-0707] tipo: rovine | modalità: singolo
+quando: generato da gen_luoghi.py
+punto: x -56.00, z 62.00
+quantità: 1   seed: 1
+nota: luoghi
+punti: (-56.00,62.00)
+rotazioni: 30
+
+[P-0708] tipo: grotta | modalità: singolo
+quando: generato da gen_luoghi.py
+punto: x 90.50, z 18.00
+quantità: 1   seed: 1
+nota: luoghi
+punti: (90.50,18.00)
+rotazioni: 180
+
+[P-0709] tipo: banditi | modalità: singolo
+quando: generato da gen_luoghi.py
+punto: x 76.00, z 40.00
+quantità: 1   seed: 1
+nota: luoghi
+punti: (76.00,40.00)
+rotazioni: 40
+
+[P-0710] tipo: santuario | modalità: singolo
+quando: generato da gen_luoghi.py
+punto: x -66.00, z 22.00
+quantità: 1   seed: 1
+nota: luoghi
+punti: (-66.00,22.00)
+rotazioni: 90
+
+[P-0711] tipo: cartello | modalità: singolo
+quando: generato da gen_luoghi.py
+punto: x 3.00, z -50.00
+quantità: 1   seed: 1
+nota: mulino
+punti: (3.00,-50.00)
+rotazioni: 0
+
+[P-0712] tipo: cartello | modalità: singolo
+quando: generato da gen_luoghi.py
+punto: x -34.50, z -33.00
+quantità: 1   seed: 1
+nota: fattoria
+punti: (-34.50,-33.00)
+rotazioni: 90
+
+[P-0713] tipo: cartello | modalità: singolo
+quando: generato da gen_luoghi.py
+punto: x 44.00, z -51.00
+quantità: 1   seed: 1
+nota: torre
+punti: (44.00,-51.00)
+rotazioni: 0
+
+[P-0714] tipo: cartello | modalità: singolo
+quando: generato da gen_luoghi.py
+punto: x -46.00, z 54.00
+quantità: 1   seed: 1
+nota: rovine
+punti: (-46.00,54.00)
+rotazioni: 0
+
+[P-0715] tipo: cartello | modalità: singolo
+quando: generato da gen_luoghi.py
+punto: x 82.00, z 8.50
+quantità: 1   seed: 1
+nota: grotta
+punti: (82.00,8.50)
+rotazioni: 270
+
+[P-0716] tipo: cartello | modalità: singolo
+quando: generato da gen_luoghi.py
+punto: x -70.00, z 16.00
+quantità: 1   seed: 1
+nota: santuario
+punti: (-70.00,16.00)
+rotazioni: 90
+
+[P-0717] tipo: panchina | modalità: singolo
+quando: generato da gen_luoghi.py
+punto: x 53.50, z -51.00
+quantità: 1   seed: 1
+nota: luoghi
+punti: (53.50,-51.00)
+rotazioni: 200
+
+[P-0718] tipo: panchina | modalità: singolo
+quando: generato da gen_luoghi.py
+punto: x -61.50, z 19.00
+quantità: 1   seed: 1
+nota: luoghi
+punti: (-61.50,19.00)
+rotazioni: 270

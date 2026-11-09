@@ -190,3 +190,17 @@ ruolo: guardiano del faro
 modello: guardia
 guardia: si
 lavoro: -10.6 90.4 1 0
+
+[Gino]
+casa: mulino 0 0
+ruolo: mugnaio
+modello: civile-m-ocra
+lavoro: 4.2 -62.2 -1 0
+orari: 6 18 21
+
+[Ida]
+casa: casa-grande 1 0
+ruolo: contadina
+modello: civile-f-rosa
+lavoro: -36.5 -37.5 1 0
+orari: 5.5 18 21

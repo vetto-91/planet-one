@@ -294,7 +294,7 @@ fn container(int: &mut Interior, pos: Vec3, kind: ContainerKind) {
     int.containers.push(ContainerSpot { pos, kind });
 }
 
-fn chest(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32) {
+pub(crate) fn chest(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32) {
     solid(
         b,
         int,

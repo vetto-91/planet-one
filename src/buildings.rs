@@ -22,6 +22,10 @@ pub fn interior_half(kind: &str) -> Option<Vec2> {
         "arcere" | "casa" | "casa-media" => Vec2::new(3.1, 2.5),
         "chiesa" => Vec2::new(3.7, 8.5),
         "faro" => Vec2::new(2.6, 2.6),
+        "mulino" => Vec2::new(2.7, 2.7),
+        "torre-rovina" => Vec2::new(2.3, 2.3),
+        "grotta" => Vec2::new(4.8, 5.8),
+        "santuario" => Vec2::new(2.4, 2.4),
         _ => return None,
     })
 }
@@ -55,6 +59,13 @@ pub fn is_building(kind: &str) -> bool {
             | "casse"
             | "panni"
             | "reti"
+            | "mulino"
+            | "campo-ladro"
+            | "banditi"
+            | "rovine"
+            | "torre-rovina"
+            | "grotta"
+            | "santuario"
     )
 }
 
@@ -108,6 +119,8 @@ pub struct Interior {
     pub containers: Vec<crate::containers::ContainerSpot>,
     /// Bocche dei camini, da dove esce il fumo.
     pub chimneys: Vec<Vec3>,
+    /// Falò sempre accesi.
+    pub fires: Vec<Vec3>,
     /// Punto subito dentro la porta.
     pub door_inside: Option<Vec3>,
     /// Per ogni piano, il percorso da dentro la porta al pianerottolo.
@@ -134,7 +147,7 @@ const HAY_DARK: Col = [0.8, 0.62, 0.22, 1.0];
 
 pub(crate) const STONE: Col = [0.74, 0.72, 0.68, 1.0];
 pub(crate) const STONE_DARK: Col = [0.5, 0.5, 0.52, 1.0];
-const TIMBER: Col = [0.3, 0.2, 0.12, 1.0];
+pub(crate) const TIMBER: Col = [0.3, 0.2, 0.12, 1.0];
 const DOOR: Col = [0.38, 0.24, 0.13, 1.0];
 const GLASS: Col = [0.16, 0.22, 0.32, 1.0];
 const WALLS: [Col; 5] = [
@@ -1408,7 +1421,7 @@ fn stall(b: &mut B, int: &mut Interior, kind: &str) -> Vec<(Vec3, Vec3)> {
 /// Faro: zoccolo di pietra, torre a fasce bianche e rosse, balconata, lanterna e cupola.
 /// Anello di pareti di una sezione di torre attorno a un vano quadrato, con l'eventuale porta sul fronte (+Z).
 #[allow(clippy::too_many_arguments)]
-fn tower_shell(
+pub(crate) fn tower_shell(
     b: &mut B,
     int: &mut Interior,
     hw: f32,
@@ -1898,6 +1911,11 @@ pub fn model(kind: &str, seed: u32) -> Building {
             (7.4, 17.0, Vec::new())
         }
         "pozzo" => (2.4, 2.4, well(&mut b)),
+        "mulino" => {
+            house(&mut b, &mut r, &mut int, kind, 5.4, 5.4, 2, false, 0, seed);
+            (5.4, 5.4, Vec::new())
+        }
+        k if crate::places::is_place(k) => crate::places::build(k, &mut b, &mut int),
         "carretto" => (1.6, 3.2, cart(&mut b, &mut int)),
         "botti" => {
             for (x, z) in [(-0.42, 0.0), (0.42, 0.12), (0.02, -0.68)] {

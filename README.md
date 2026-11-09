@@ -249,6 +249,8 @@ volume dipende dalla distanza dal campanile (si sente anche fuori dalle mura, pi
 
 L'isola si sente: onde secondo la distanza dal mare, ruscello, vento in quota, uccelli di giorno, grilli nelle notti tiepide, brusio in piazza nelle ore di mercato, e passi diversi su erba, terra, sabbia, pietra, legno, acqua e neve. Tutti i suoni sono sintetizzati in locale.
 
+Fuori dalle mura ci sono posti da scoprire, con il nome sulla mappa: il campo del ladro nel bosco, la fattoria di Ida, il mulino di Gino in fondo alla strada nord, la torre in rovina sull'altura (si sale fino in cima), le rovine del tempio a sud-ovest, la grotta nella scogliera est, l'accampamento dei banditi e il santuario a ovest.
+
 Il paese è vissuto: dai comignoli esce il fumo, di notte sulle mura si accendono le torce, e per strada e al porto trovi carretti, botti, casse, panni stesi e reti. Carretti, botti e casse si aprono con E.
 
 Ci sono anche gli animali: mucche e pecore pascolano e si scostano se ti avvicini, le galline razzolano in paese, i gabbiani girano sul porto, gli uccelli si alzano quando arrivi, nel laghetto nuotano i pesci, e con i fiori compaiono le farfalle. Modelli di mucca, pecora e latifoglie: CC0 di Quaternius. Mandrie e pollai si cambiano in `assets/world/isola.txt`.

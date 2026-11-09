@@ -50,6 +50,8 @@ pub struct IslandSpec {
     pub forests: Vec<Forest>,
     pub herds: Vec<Herd>,
     pub coops: Vec<Coop>,
+    /// Nomi da scrivere sulla mappa.
+    pub places: Vec<(String, Vec2)>,
     /// Centro dell'orbita dei gabbiani e quanti sono.
     pub gulls: Option<(Vec2, usize)>,
 }
@@ -122,6 +124,14 @@ pub fn parse_spec(text: &str) -> IslandSpec {
                     density: *density,
                     kind,
                 });
+            }
+            continue;
+        }
+        if key.trim() == "luogo" {
+            if let Some((name, at)) = value.split_once('|')
+                && let [x, z] = nums(at).as_slice()
+            {
+                s.places.push((name.trim().to_string(), Vec2::new(*x, *z)));
             }
             continue;
         }

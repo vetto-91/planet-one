@@ -34,6 +34,7 @@ mod map;
 mod menu;
 mod nature;
 mod pbr;
+mod places;
 mod player;
 mod props;
 mod quests;
@@ -177,6 +178,7 @@ fn main() {
         .add_plugins(bells::plugin)
         .add_plugins(ambience::plugin)
         .add_plugins(animals::plugin)
+        .add_plugins(places::plugin)
         .add_plugins(village_life::plugin)
         .add_plugins(seasons::plugin)
         .add_plugins(weather::plugin)

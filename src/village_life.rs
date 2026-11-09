@@ -26,6 +26,18 @@ const TORCH_LUMENS: f32 = 90_000.0;
 #[derive(Component)]
 pub struct TownChimney {
     pub works: bool,
+    /// Falò all'aperto: fuma sempre.
+    pub always: bool,
+}
+
+/// Pale del mulino.
+#[derive(Component)]
+pub struct MillSails;
+
+/// Fuoco di un falò: fiamma e luce tremolano.
+#[derive(Component)]
+struct Campfire {
+    seed: f32,
 }
 
 /// Sbuffo uscito da un camino del paese (non conta nel limite della stufa della casetta).
@@ -93,11 +105,17 @@ fn town_smoke(
         return;
     };
     let me = me.translation;
-    let mut lit: Vec<(f32, Vec3)> = chimneys
+    let mut lit: Vec<(f32, Vec3, bool)> = chimneys
         .iter()
-        .filter(|(c, _)| fire_lit(c.works, clock.hour, weather.temp))
-        .map(|(_, g)| (g.translation().distance_squared(me), g.translation()))
-        .filter(|(d, _)| *d < SMOKE_RANGE * SMOKE_RANGE)
+        .filter(|(c, _)| c.always || fire_lit(c.works, clock.hour, weather.temp))
+        .map(|(c, g)| {
+            (
+                g.translation().distance_squared(me),
+                g.translation(),
+                c.always,
+            )
+        })
+        .filter(|(d, ..)| *d < SMOKE_RANGE * SMOKE_RANGE)
         .collect();
     if lit.is_empty() {
         return;
@@ -109,7 +127,7 @@ fn town_smoke(
     lit.sort_by(|a, b| a.0.total_cmp(&b.0));
     lit.truncate(MAX_SMOKING);
     state.1 = (state.1 + 1) % lit.len();
-    let top = lit[state.1].1;
+    let (_, top, campfire) = lit[state.1];
     let t = time.elapsed_secs();
     let m = mesh
         .get_or_insert_with(|| meshes.add(Sphere::new(0.5)))
@@ -121,9 +139,9 @@ fn town_smoke(
         SmokePuff {
             age: 0.0,
             life: 6.0,
-            size: 3.5,
-            grey: 0.4,
-            alpha: 0.78,
+            size: if campfire { 1.2 } else { 3.5 },
+            grey: if campfire { 0.55 } else { 0.4 },
+            alpha: if campfire { 0.35 } else { 0.78 },
             drift: Vec2::new(
                 push + (t * 12.9).sin() * 0.05,
                 push * 0.4 + (t * 78.2).cos() * 0.05,
@@ -250,8 +268,73 @@ fn light_torches(
     }
 }
 
+/// Aggiunge a un luogo un falò acceso, con fumo e luce.
+pub fn spawn_campfire(
+    parent: &mut ChildSpawnerCommands,
+    at: Vec3,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+) {
+    parent.spawn((
+        TownChimney {
+            works: true,
+            always: true,
+        },
+        Transform::from_translation(at + Vec3::Y * 0.6),
+    ));
+    parent.spawn((
+        Campfire { seed: at.x * 3.1 },
+        Mesh3d(meshes.add(Sphere::new(0.2).mesh().uv(8, 6))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::srgb(1.0, 0.55, 0.15),
+            emissive: LinearRgba::rgb(9.0, 3.4, 0.6),
+            ..default()
+        })),
+        PointLight {
+            color: Color::srgb(1.0, 0.62, 0.3),
+            intensity: 60_000.0,
+            range: 11.0,
+            shadow_maps_enabled: false,
+            ..default()
+        },
+        Transform::from_translation(at),
+        NotShadowCaster,
+    ));
+}
+
+/// Sistema: le fiamme dei falò tremano.
+fn flicker_fires(time: Res<Time>, mut fires: Query<(&Campfire, &mut Transform, &mut PointLight)>) {
+    let now = time.elapsed_secs();
+    for (fire, mut t, mut light) in &mut fires {
+        let k = 1.0 + 0.2 * (now * 9.0 + fire.seed).sin() * (now * 6.1 + fire.seed).cos();
+        t.scale = Vec3::new(k, k * 1.7, k);
+        light.intensity = 60_000.0 * k;
+    }
+}
+
+/// Sistema: girano le pale del mulino, più in fretta col vento.
+fn turn_sails(
+    time: Res<Time>,
+    weather: Res<WeatherState>,
+    mut sails: Query<&mut Transform, With<MillSails>>,
+) {
+    let speed = 0.25 + weather.wind * 0.08;
+    for mut t in &mut sails {
+        t.rotate_local_z(-speed * time.delta_secs());
+    }
+}
+
 pub fn plugin(app: &mut App) {
-    app.add_systems(Update, (town_smoke, sync_torches, light_torches));
+    app.add_systems(
+        Update,
+        (
+            town_smoke,
+            sync_torches,
+            light_torches,
+            flicker_fires,
+            turn_sails,
+        ),
+    );
 }
 
 #[cfg(test)]

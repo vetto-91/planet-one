@@ -390,9 +390,27 @@ pub fn sync_world_props(
                     let works = matches!(kind.as_str(), "forno" | "fabbro" | "locanda");
                     for at in interior.chimneys {
                         c.spawn((
-                            crate::village_life::TownChimney { works },
+                            crate::village_life::TownChimney {
+                                works,
+                                always: false,
+                            },
                             Transform::from_translation(at),
                         ));
+                    }
+                    for at in interior.fires {
+                        crate::village_life::spawn_campfire(c, at, &mut meshes, &mut materials);
+                    }
+                    if kind == "mulino" {
+                        c.spawn((
+                            crate::village_life::MillSails,
+                            Transform::from_xyz(0.0, 5.6, 2.95),
+                            Visibility::default(),
+                        ))
+                        .with_children(|s| {
+                            for (m, mesh) in crate::places::sails() {
+                                s.spawn((Mesh3d(meshes.add(mesh)), MeshMaterial3d(pbr.get(m))));
+                            }
+                        });
                     }
                     for at in interior.lights {
                         c.spawn((
