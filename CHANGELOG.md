@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.38.0 — Boschi e vegetazione (2026-11-09)
 
 - **Boschi e vegetazione** (ADR 0027): boschi di abeti, latifoglie e misti su tutta l'isola, con radure, cespugli, rocce, fiori ed erba alta che seguono le stagioni. Nuova opzione «Densità vegetazione».
 
