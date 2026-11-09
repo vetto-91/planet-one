@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.35.0 — Statistiche, peso e zaini (2026-11-09)
 
 - **Statistiche** (ADR 0024): forza, costituzione, agilità, intelligenza, saggezza, carisma e fortuna, con il pannello del personaggio (tasto C).
 - **Peso** (ADR 0024): si portano 30 kg di base; oltre il limite si cammina lenti e non si corre.
