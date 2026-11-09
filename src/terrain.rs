@@ -58,6 +58,30 @@ pub struct TerrainMesh;
 #[derive(Component)]
 pub struct TerrainExtra;
 
+/// Materiale del suolo, per i passi.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Surface {
+    Grass,
+    Dirt,
+    Sand,
+    Stone,
+    Wood,
+    Water,
+    Snow,
+}
+
+impl Surface {
+    pub const ALL: [Surface; 7] = [
+        Surface::Grass,
+        Surface::Dirt,
+        Surface::Sand,
+        Surface::Stone,
+        Surface::Wood,
+        Surface::Water,
+        Surface::Snow,
+    ];
+}
+
 /// Campo di altezze del terreno (dopo la generazione) e punti della riva per il debug F3.
 /// Serve ad appoggiare gli oggetti a terra senza dipendere dalla fisica.
 #[derive(Resource)]
@@ -67,6 +91,12 @@ pub struct TerrainField {
     shore: Vec<Vec2>,
     /// Vertici coperti da ruscello e laghetto.
     wet: Vec<bool>,
+    /// Materiale del suolo per vertice.
+    surface: Vec<Surface>,
+    /// Punti radi di ruscello e laghetto, per la distanza dall'acqua.
+    wet_points: Vec<Vec2>,
+    /// Laghetto: centro, raggio e quota dell'acqua.
+    lake: Option<(Vec2, f32, f32)>,
 }
 
 impl TerrainField {
@@ -84,6 +114,33 @@ impl TerrainField {
         top * (1.0 - v) + bot * v
     }
 
+    /// Materiale del suolo nel vertice più vicino a (x, z).
+    pub fn surface_at(&self, x: f32, z: f32) -> Surface {
+        let i = |w: f32| ((w + TERRAIN_SIZE / 2.0) / STEP).round() as isize;
+        let (ix, iz) = (i(x), i(z));
+        let n = self.n as isize;
+        if (0..n).contains(&ix) && (0..n).contains(&iz) {
+            self.surface[(iz * n + ix) as usize]
+        } else {
+            Surface::Sand
+        }
+    }
+
+    /// Laghetto: centro, raggio e quota dell'acqua.
+    pub fn lake(&self) -> Option<(Vec2, f32, f32)> {
+        self.lake
+    }
+
+    /// Distanza (m) dal punto più vicino della riva.
+    pub fn distance_to_shore(&self, p: Vec2) -> f32 {
+        nearest(&self.shore, p)
+    }
+
+    /// Distanza (m) da ruscello e laghetto.
+    pub fn distance_to_fresh_water(&self, p: Vec2) -> f32 {
+        nearest(&self.wet_points, p)
+    }
+
     /// C'è acqua dolce in (x, z)?
     pub fn in_fresh_water(&self, x: f32, z: f32) -> bool {
         let i = |w: f32| ((w + TERRAIN_SIZE / 2.0) / STEP).round() as isize;
@@ -91,6 +148,14 @@ impl TerrainField {
         let n = self.n as isize;
         (0..n).contains(&ix) && (0..n).contains(&iz) && self.wet[(iz * n + ix) as usize]
     }
+}
+
+fn nearest(points: &[Vec2], p: Vec2) -> f32 {
+    points
+        .iter()
+        .map(|q| q.distance_squared(p))
+        .fold(f32::MAX, f32::min)
+        .sqrt()
 }
 
 /// Lato (m) di una piastrella della texture sabbia e del selciato.
@@ -235,8 +300,10 @@ pub fn update_terrain(
         vil.spec.roads.iter().cloned().partition(|r| !r.dirt);
     let road_w = road_weights(&field, &paved);
     let road_mesh = build_sand_mesh(&mesh, &road_w);
-    let dirt_mesh = build_sand_mesh(&mesh, &road_weights(&field, &paths));
-    let rock_mesh = build_sand_mesh(&mesh, &rock_weights(&field));
+    let dirt_w = road_weights(&field, &paths);
+    let dirt_mesh = build_sand_mesh(&mesh, &dirt_w);
+    let rock_w = rock_weights(&field);
+    let rock_mesh = build_sand_mesh(&mesh, &rock_w);
     let foam_mesh = build_foam_mesh(&mesh, &field, &ocean);
     let snow_mesh = build_sand_mesh(&mesh, &snow_weights(&field, &ocean, &sand_w, &road_w));
     let sea_mesh = build_sea_mesh(&field, &ocean);
@@ -258,11 +325,39 @@ pub fn update_terrain(
         shore.len(),
         sand_w.iter().filter(|w| **w > 0.02).count()
     );
+    let surface = (0..field.h.len())
+        .map(|i| {
+            if road_w[i] > 0.4 || rock_w[i] > 0.5 {
+                Surface::Stone
+            } else if dirt_w[i] > 0.4 {
+                Surface::Dirt
+            } else if sand_w[i] > 0.5 {
+                Surface::Sand
+            } else {
+                Surface::Grass
+            }
+        })
+        .collect();
+    // Un punto ogni 2,5 m basta per sapere quanto è vicina l'acqua.
+    let wet_points = (0..n)
+        .step_by(5)
+        .flat_map(|z| (0..n).step_by(5).map(move |x| (x, z)))
+        .filter(|(x, z)| water.1[z * n + x])
+        .map(|(x, z)| {
+            Vec2::new(
+                x as f32 * STEP - TERRAIN_SIZE / 2.0,
+                z as f32 * STEP - TERRAIN_SIZE / 2.0,
+            )
+        })
+        .collect();
     commands.insert_resource(TerrainField {
         n,
         h: field.h.clone(),
         shore,
         wet: water.1,
+        surface,
+        wet_points,
+        lake: water.0.lake,
     });
 
     let mesh_handle = meshes.add(mesh);

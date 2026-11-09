@@ -48,6 +48,27 @@ pub struct IslandSpec {
     pub lake: Option<(Vec2, f32)>,
     pub bridges: Vec<(Vec2, Vec2)>,
     pub forests: Vec<Forest>,
+    pub herds: Vec<Herd>,
+    pub coops: Vec<Coop>,
+    /// Centro dell'orbita dei gabbiani e quanti sono.
+    pub gulls: Option<(Vec2, usize)>,
+}
+
+/// Mandria o gregge: `kind` è l'indice in `animals::GRAZERS`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Herd {
+    pub kind: usize,
+    pub center: Vec2,
+    pub radius: f32,
+    pub count: usize,
+}
+
+/// Galline attorno a un punto.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Coop {
+    pub center: Vec2,
+    pub radius: f32,
+    pub count: usize,
 }
 
 /// Tipo di bosco.
@@ -104,6 +125,22 @@ pub fn parse_spec(text: &str) -> IslandSpec {
             }
             continue;
         }
+        if key.trim() == "gregge" {
+            let kind = match value.split_whitespace().next() {
+                Some("mucca") => Some(0),
+                Some("pecora") => Some(1),
+                _ => None,
+            };
+            if let (Some(kind), [x, z, radius, count]) = (kind, n.as_slice()) {
+                s.herds.push(Herd {
+                    kind,
+                    center: Vec2::new(*x, *z),
+                    radius: *radius,
+                    count: *count as usize,
+                });
+            }
+            continue;
+        }
         match (key.trim(), n.as_slice()) {
             ("altura", [x, z, radius, height]) => s.hills.push(Hill {
                 center: Vec2::new(*x, *z),
@@ -115,6 +152,12 @@ pub fn parse_spec(text: &str) -> IslandSpec {
                 to: *to,
                 height: *height,
             }),
+            ("pollaio", [x, z, r, count]) => s.coops.push(Coop {
+                center: Vec2::new(*x, *z),
+                radius: *r,
+                count: *count as usize,
+            }),
+            ("gabbiani", [x, z, count]) => s.gulls = Some((Vec2::new(*x, *z), *count as usize)),
             ("lago", [x, z, r]) => s.lake = Some((Vec2::new(*x, *z), *r)),
             ("ponte", [x1, z1, x2, z2]) => {
                 s.bridges.push((Vec2::new(*x1, *z1), Vec2::new(*x2, *z2)));
@@ -323,7 +366,9 @@ pub fn water_mesh(plan: &WaterPlan) -> Mesh {
             pos.push([q.x, p.surface, q.y]);
             uv.push([v, along / 3.0]);
         }
-        if i > 0 {
+        // Dentro il laghetto basta la sua superficie: due strati si vedrebbero come una fascia.
+        let in_lake = |q: Vec2| plan.lake.is_some_and(|(c, r, _)| q.distance(c) < r - 0.2);
+        if i > 0 && !(in_lake(p.pos) && in_lake(prev)) {
             let b = (pos.len() - 4) as u32;
             idx.extend([b, b + 1, b + 2, b + 1, b + 3, b + 2]);
         }

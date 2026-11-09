@@ -100,6 +100,7 @@ fn audio_tab(ui: &mut egui::Ui, a: &mut AudioSettings) {
     };
     let mut dirty = a.dirty;
     volume(ui, &mut a.music_volume, "Volume musica %", &mut dirty);
+    volume(ui, &mut a.ambient_volume, "Volume ambiente %", &mut dirty);
     volume(ui, &mut a.voice_volume, "Volume voci %", &mut dirty);
     a.dirty = dirty;
 }

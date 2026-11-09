@@ -544,12 +544,20 @@ pub fn update_precip(
 // Audio sintetizzato in locale (nessun file, nessuna rete)
 // ---------------------------------------------------------------------------------------------
 
-const RATE: u32 = 22_050;
+pub(crate) const RATE: u32 = 22_050;
 
-struct Noise(u32);
+pub(crate) struct Noise(pub(crate) u32);
 
 impl Noise {
-    fn next(&mut self) -> f32 {
+    /// Un passo del generatore con lo stato tenuto altrove.
+    pub(crate) fn step(state: &mut u32) -> f32 {
+        let mut n = Noise(*state);
+        let v = n.next();
+        *state = n.0;
+        v
+    }
+
+    pub(crate) fn next(&mut self) -> f32 {
         self.0 ^= self.0 << 13;
         self.0 ^= self.0 >> 17;
         self.0 ^= self.0 << 5;
@@ -558,7 +566,7 @@ impl Noise {
 }
 
 /// Rende un buffer ciclico senza cucitura: gli ultimi `c` campioni sfumano nell'inizio.
-fn make_loop(buf: &[f32], n: usize) -> Vec<f32> {
+pub(crate) fn make_loop(buf: &[f32], n: usize) -> Vec<f32> {
     let c = buf.len() - n;
     let mut out = buf[..n].to_vec();
     for i in 0..c {
@@ -568,7 +576,7 @@ fn make_loop(buf: &[f32], n: usize) -> Vec<f32> {
     out
 }
 
-fn to_wav(samples: &[f32], gain: f32) -> Vec<u8> {
+pub(crate) fn to_wav(samples: &[f32], gain: f32) -> Vec<u8> {
     let peak = samples.iter().fold(0.0f32, |m, s| m.max(s.abs())).max(1e-3);
     let mut pcm = Vec::with_capacity(samples.len() * 2);
     for s in samples {
@@ -678,7 +686,7 @@ pub fn update_weather_audio(
     mut state: ResMut<WeatherState>,
     mut loops: Query<(&WeatherLoop, &mut AudioSink)>,
 ) {
-    let master = settings.music_volume * 1.2;
+    let master = settings.ambient_volume * 1.2;
     let inside = 1.0 - 0.6 * state.sheltered;
     for (l, mut sink) in &mut loops {
         let level = if l.rain {

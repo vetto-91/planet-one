@@ -136,7 +136,7 @@ pub fn bell_gain(distance: f32) -> f32 {
     (1.0 - distance / HEARING_RANGE).clamp(0.0, 1.0).powi(2)
 }
 
-/// Sistema: aggiorna il volume dei rintocchi secondo la distanza (e il volume musica).
+/// Sistema: aggiorna il volume dei rintocchi secondo la distanza (e il volume ambiente).
 pub fn update_bell_volume(
     settings: Res<AudioSettings>,
     players: Query<&GlobalTransform, With<Player>>,
@@ -147,7 +147,7 @@ pub fn update_bell_volume(
     };
     for (b, mut sink) in &mut bells {
         let d = p.translation().distance(b.0);
-        let target = Volume::Linear(settings.music_volume * 1.4 * bell_gain(d));
+        let target = Volume::Linear(settings.ambient_volume * 1.4 * bell_gain(d));
         if sink.volume() != target {
             sink.set_volume(target);
         }

@@ -53,3 +53,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0025 | Menu principale e salvataggi | accettato |
 | 0026 | Forma dell'isola e acque | accettato |
 | 0027 | Vegetazione dell'isola | accettato |
+| 0028 | Suoni d'ambiente e animali | accettato |

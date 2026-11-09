@@ -2,6 +2,15 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Suoni dell'isola** (ADR 0028): onde, ruscello, vento in quota, uccelli, gabbiani, grilli, brusio della piazza e passi diversi per superficie, sintetizzati in locale, con il nuovo volume «Ambiente» (ora include anche meteo e campane).
+- **Animali** (ADR 0028): mucche e pecore animate (modelli CC0 Quaternius) che pascolano e si scostano, galline in paese, gabbiani sul porto, uccelli che si alzano in volo, pesci nel laghetto, farfalle nella stagione dei fiori. Si ricreano a ogni avvio, non vengono salvati.
+- **Latifoglie nuove**: betulle e alberi frondosi da modelli CC0 Quaternius al posto delle chiome che sembravano palme, con corteccia propria e versione semplificata da lontano.
+
+### Correzioni
+- La superficie del ruscello non si sovrappone più a quella del laghetto.
+
 ## v0.0.38.0 — Boschi e vegetazione (2026-11-09)
 
 - **Boschi e vegetazione** (ADR 0027): boschi di abeti, latifoglie e misti su tutta l'isola, con radure, cespugli, rocce, fiori ed erba alta che seguono le stagioni. Nuova opzione «Densità vegetazione».

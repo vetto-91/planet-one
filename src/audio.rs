@@ -23,6 +23,7 @@ fn is_night_music(clock: &crate::daynight::GameClock) -> bool {
 }
 /// Volume iniziale delle musiche (0..1).
 const DEFAULT_MUSIC_VOLUME: f32 = 0.6;
+const DEFAULT_AMBIENT_VOLUME: f32 = 0.6;
 /// Modello e host predefiniti dei dialoghi IA (solo locale).
 const DEFAULT_AI_MODEL: &str = "gemma4:e4b";
 const DEFAULT_AI_HOST: &str = "http://127.0.0.1:11434";
@@ -34,6 +35,8 @@ const DEFAULT_VOICE_VOLUME: f32 = 0.9;
 pub struct AudioSettings {
     /// Volume delle musiche, 0..1.
     pub music_volume: f32,
+    /// Volume dei suoni d'ambiente, del meteo, delle campane e dei passi, 0..1.
+    pub ambient_volume: f32,
     /// Volume delle voci dei personaggi, 0..1.
     pub voice_volume: f32,
     /// Dialoghi con IA locale (Ollama) attivi?
@@ -69,6 +72,7 @@ impl Default for AudioSettings {
     fn default() -> Self {
         let mut s = Self {
             music_volume: DEFAULT_MUSIC_VOLUME,
+            ambient_volume: DEFAULT_AMBIENT_VOLUME,
             voice_volume: DEFAULT_VOICE_VOLUME,
             ai_enabled: true,
             ai_model: DEFAULT_AI_MODEL.to_string(),
@@ -91,6 +95,11 @@ impl Default for AudioSettings {
                     && let Ok(v) = v.trim().parse::<f32>()
                 {
                     s.music_volume = v.clamp(0.0, 1.0);
+                }
+                if let Some(v) = line.trim().strip_prefix("ambient_volume=")
+                    && let Ok(v) = v.trim().parse::<f32>()
+                {
+                    s.ambient_volume = v.clamp(0.0, 1.0);
                 }
                 if let Some(v) = line.trim().strip_prefix("voice_volume=")
                     && let Ok(v) = v.trim().parse::<f32>()
@@ -278,8 +287,9 @@ pub fn save_settings(mut settings: ResMut<AudioSettings>, mouse: Res<ButtonInput
     match std::fs::write(
         &path,
         format!(
-            "music_volume={:.2}\nvoice_volume={:.2}\nai_enabled={}\nai_model={}\nai_host={}\ntts_enabled={}\ntts_voice={}\nstt_enabled={}\nstt_model={}\ntime_speed={}\nmouse_sensitivity={:.5}\nshow_fps={}\nfullscreen={}\n{}{}",
+            "music_volume={:.2}\nambient_volume={:.2}\nvoice_volume={:.2}\nai_enabled={}\nai_model={}\nai_host={}\ntts_enabled={}\ntts_voice={}\nstt_enabled={}\nstt_model={}\ntime_speed={}\nmouse_sensitivity={:.5}\nshow_fps={}\nfullscreen={}\n{}{}",
             settings.music_volume,
+            settings.ambient_volume,
             settings.voice_volume,
             u8::from(settings.ai_enabled),
             settings.ai_model,

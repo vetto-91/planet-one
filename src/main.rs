@@ -7,6 +7,8 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 mod ai;
+mod ambience;
+mod animals;
 mod animation;
 mod audio;
 mod bells;
@@ -172,6 +174,8 @@ fn main() {
         .add_plugins(main_menu::plugin)
         .add_plugins(shop::plugin)
         .add_plugins(bells::plugin)
+        .add_plugins(ambience::plugin)
+        .add_plugins(animals::plugin)
         .add_plugins(seasons::plugin)
         .add_plugins(weather::plugin)
         .add_plugins(figure::plugin)

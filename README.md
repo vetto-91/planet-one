@@ -160,7 +160,7 @@ e va a dormire (da addormentato non parla: "Zzz…").
 La colonna sonora (`assets/audio/music/legacy_of_the_first_light.ogg`, in loop) parte
 all'avvio; dal tramonto (18:00) fino a poco prima dell'alba (5:54) suona `lanterns_in_the_grove.ogg`
 con dissolvenza incrociata. Il volume delle musiche e quello delle voci dei personaggi si regolano dal menu Esc
-("Volume musica", "Volume voci") e vengono salvati in `~/.config/planet-one/settings.txt`.
+("Volume musica", "Volume voci") e vengono salvati in `~/.config/planet-one/settings.txt`. "Volume ambiente" regola meteo, campane, passi e suoni dell'isola.
 Le voci registrate (`assets/audio/voci/`) già presenti sono state generate con voci neurali Microsoft (edge-tts, online) in una
 fase precedente: verificarne i termini d'uso prima di distribuire il gioco. Le **nuove** si generano solo in locale con
 `scripts/gen_tts_voci.py` (Piper + ffmpeg, solo i clip mancanti; `--force` per rigenerarli tutti). Autore e licenza del brano da
@@ -246,6 +246,10 @@ faro, molo, barche, lampioni, cartelli) senza toccare il resto; i tipi F4 sono `
 
 La **campana della chiesa** suona alle ore piene dal mattino alle 21 (7 rintocchi alle 7, 12 a mezzogiorno…): il suono è sintetizzato in locale e il
 volume dipende dalla distanza dal campanile (si sente anche fuori dalle mura, più piano).
+
+L'isola si sente: onde secondo la distanza dal mare, ruscello, vento in quota, uccelli di giorno, grilli nelle notti tiepide, brusio in piazza nelle ore di mercato, e passi diversi su erba, terra, sabbia, pietra, legno, acqua e neve. Tutti i suoni sono sintetizzati in locale.
+
+Ci sono anche gli animali: mucche e pecore pascolano e si scostano se ti avvicini, le galline razzolano in paese, i gabbiani girano sul porto, gli uccelli si alzano quando arrivi, nel laghetto nuotano i pesci, e con i fiori compaiono le farfalle. Modelli di mucca, pecora e latifoglie: CC0 di Quaternius. Mandrie e pollai si cambiano in `assets/world/isola.txt`.
 
 ### Giorno e notte
 

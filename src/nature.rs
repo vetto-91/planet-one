@@ -49,7 +49,58 @@ fn attr3(mesh: &Mesh, a: MeshVertexAttribute) -> Vec<Vec3> {
     }
 }
 
+/// Modelli di `scripts/build_animals_trees.py`: nome e tipo di corteccia e foglie.
+const LEAFY_MODELS: [(&str, &str, &str); 3] = [
+    ("birch_a", "birch_bark.png", "birch_leaves.png"),
+    ("leafy_a", "tree_bark.jpg", "tree_leaves.png"),
+    ("birch_b", "birch_bark.png", "birch_leaves.png"),
+];
+
+/// Un albero importato: corteccia e foglie, da vicino e da lontano.
+struct LeafyTree {
+    bark: Proto,
+    leaves: Proto,
+    bark_far: Proto,
+    leaves_far: Proto,
+}
+
 impl Proto {
+    /// Legge una parte di un file `.pmesh`; `None` se il file è tronco.
+    fn read(data: &[u8], at: &mut usize) -> Option<Self> {
+        let number = |at: &mut usize| -> Option<u32> {
+            let raw = data.get(*at..*at + 4)?;
+            *at += 4;
+            Some(u32::from_le_bytes(raw.try_into().ok()?))
+        };
+        let verts = number(at)? as usize;
+        let count = number(at)? as usize;
+        let mut p = Self {
+            pos: Vec::with_capacity(verts),
+            nor: Vec::with_capacity(verts),
+            uv: Vec::with_capacity(verts),
+            tan: None,
+            col: None,
+            idx: Vec::with_capacity(count),
+        };
+        for _ in 0..verts {
+            let mut v = [0.0f32; 8];
+            for x in &mut v {
+                *x = f32::from_bits(number(at)?);
+            }
+            p.pos.push(Vec3::new(v[0], v[1], v[2]));
+            p.nor.push(Vec3::new(v[3], v[4], v[5]));
+            p.uv.push([v[6], v[7]]);
+        }
+        for _ in 0..count {
+            let i = number(at)?;
+            if i as usize >= verts {
+                return None;
+            }
+            p.idx.push(i);
+        }
+        Some(p)
+    }
+
     fn of(mesh: &Mesh) -> Self {
         let uv = match mesh.attribute(Mesh::ATTRIBUTE_UV_0) {
             Some(VertexAttributeValues::Float32x2(v)) => v.clone(),
@@ -77,6 +128,24 @@ impl Proto {
             idx,
         }
     }
+}
+
+/// Carica un albero importato; se manca o è rovinato si usa quello generato nel codice.
+fn load_leafy(name: &str) -> Option<LeafyTree> {
+    let rel = format!("assets/models/trees/{name}.pmesh");
+    let data = std::fs::read(&rel)
+        .or_else(|_| std::fs::read(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(&rel)))
+        .ok()?;
+    if data.get(..4)? != b"PMS1" {
+        return None;
+    }
+    let mut at = 4;
+    Some(LeafyTree {
+        bark: Proto::read(&data, &mut at)?,
+        leaves: Proto::read(&data, &mut at)?,
+        bark_far: Proto::read(&data, &mut at)?,
+        leaves_far: Proto::read(&data, &mut at)?,
+    })
 }
 
 /// Dove mettere una copia di un prototipo.
@@ -224,7 +293,7 @@ fn flower(color: [f32; 4]) -> Mesh {
 }
 
 /// Mappa a celle di 1 m dei punti dove non crescono piante.
-struct Blocked {
+pub(crate) struct Blocked {
     n: usize,
     cells: Vec<bool>,
 }
@@ -237,7 +306,7 @@ impl Blocked {
         ((0..n).contains(&x) && (0..n).contains(&z)).then(|| (z * n + x) as usize)
     }
 
-    fn is(&self, p: Vec2) -> bool {
+    pub(crate) fn is(&self, p: Vec2) -> bool {
         self.index(p).is_none_or(|i| self.cells[i])
     }
 
@@ -257,7 +326,7 @@ impl Blocked {
 }
 
 /// Dove non si pianta: paese, strade, sentieri, edifici, campi, ponti.
-fn blocked_map(dbg: &DebugPlace, village: &VillageInfo, island: &IslandSpec) -> Blocked {
+pub(crate) fn blocked_map(dbg: &DebugPlace, village: &VillageInfo, island: &IslandSpec) -> Blocked {
     let n = TERRAIN_SIZE as usize + 1;
     let mut b = Blocked {
         n,
@@ -495,6 +564,8 @@ pub enum NatureGroup {
 struct Kit {
     fir_trunk: Handle<Mesh>,
     bark: Handle<StandardMaterial>,
+    /// Corteccia di ogni variante di latifoglia.
+    broad_bark: [Handle<StandardMaterial>; 3],
     needles: [Handle<StandardMaterial>; 3],
     leaves: [Handle<StandardMaterial>; 3],
     /// Da lontano la trasparenza si taglia più in basso, altrimenti i rami spariscono.
@@ -511,7 +582,8 @@ struct Protos {
     fir_trunk: Proto,
     fir: [Proto; 3],
     fir_far: [Proto; 3],
-    broad_trunk: Proto,
+    broad_bark: [Proto; 3],
+    broad_bark_far: [Proto; 3],
     broad: [Proto; 3],
     broad_far: [Proto; 3],
     bush: [Proto; 3],
@@ -530,11 +602,33 @@ fn make_kit(
     let copy = |m: &Handle<Mesh>, meshes: &Assets<Mesh>| {
         Proto::of(meshes.get(m).expect("mesh dell'abete appena creata"))
     };
-    let leaves = firs.needles.clone().map(|h| {
+    let mut leaves = firs.needles.clone().map(|h| {
         let mut m = materials.get(&h).cloned().unwrap_or_default();
         m.perceptual_roughness = 0.7;
         materials.add(m)
     });
+    let models = LEAFY_MODELS.map(|(name, ..)| load_leafy(name));
+    let mut broad_bark = [firs.bark.clone(), firs.bark.clone(), firs.bark.clone()];
+    for (v, (model, bark, leaf)) in LEAFY_MODELS.iter().enumerate().map(|(v, m)| (v, *m)) {
+        if models[v].is_none() {
+            warn!("[NATURE] modello {model} assente: uso la latifoglia generata");
+            continue;
+        }
+        broad_bark[v] = materials.add(StandardMaterial {
+            base_color: Color::srgb(0.95, 0.9, 0.82),
+            base_color_texture: Some(server.load(format!("textures/alberi/{bark}"))),
+            perceptual_roughness: 0.92,
+            ..default()
+        });
+        leaves[v] = materials.add(StandardMaterial {
+            base_color_texture: Some(server.load(format!("textures/alberi/{leaf}"))),
+            perceptual_roughness: 0.7,
+            alpha_mode: AlphaMode::Mask(0.3),
+            cull_mode: None,
+            double_sided: true,
+            ..default()
+        });
+    }
     let mut far = |h: &Handle<StandardMaterial>| {
         let mut m = materials.get(h).cloned().unwrap_or_default();
         m.alpha_mode = AlphaMode::Mask(0.12);
@@ -550,13 +644,29 @@ fn make_kit(
             ..default()
         })
     };
+    let part = |v: usize, pick: fn(&LeafyTree) -> &Proto, fallback: &dyn Fn() -> Proto| {
+        models[v]
+            .as_ref()
+            .map_or_else(fallback, |t| pick(t).clone())
+    };
+    let seeds = [0.3, 2.1, 4.4];
+    let trunk = || Proto::of(&broadleaf_trunk());
     let protos = Protos {
         fir_trunk: copy(&firs.trunk, meshes),
         fir: [0, 1, 2].map(|i| copy(&firs.foliage[i], meshes)),
         fir_far: [0.0, 1.7, 3.9].map(|s| Proto::of(&fir_foliage_far(s))),
-        broad_trunk: Proto::of(&broadleaf_trunk()),
-        broad: [0.3, 2.1, 4.4].map(|s| Proto::of(&broadleaf_foliage(s, 130))),
-        broad_far: [0.3, 2.1, 4.4].map(|s| Proto::of(&broadleaf_foliage(s, 34))),
+        broad_bark: [0, 1, 2].map(|v| part(v, |t| &t.bark, &trunk)),
+        broad_bark_far: [0, 1, 2].map(|v| part(v, |t| &t.bark_far, &trunk)),
+        broad: [0, 1, 2].map(|v| {
+            part(v, |t| &t.leaves, &|| {
+                Proto::of(&broadleaf_foliage(seeds[v], 130))
+            })
+        }),
+        broad_far: [0, 1, 2].map(|v| {
+            part(v, |t| &t.leaves_far, &|| {
+                Proto::of(&broadleaf_foliage(seeds[v], 34))
+            })
+        }),
         bush: [0.5, 1.9, 3.3].map(|s| Proto::of(&bush(s))),
         rock: [0.7, 2.9, 5.1].map(|s| Proto::of(&rock(s))),
         grass: Proto::of(&grass_tuft(0.4)),
@@ -571,6 +681,7 @@ fn make_kit(
     Kit {
         fir_trunk: firs.trunk.clone(),
         bark: firs.bark.clone(),
+        broad_bark,
         needles: firs.needles.clone(),
         leaves,
         needles_far,
@@ -620,13 +731,6 @@ fn spawn_chunks(
                         MeshMaterial3d(kit.bark.clone()),
                     ));
                 }
-                let broad: Vec<Place> = c.broad.iter().flatten().copied().collect();
-                if !broad.is_empty() {
-                    root.spawn((
-                        Mesh3d(meshes.add(merge(&p.broad_trunk, &broad))),
-                        MeshMaterial3d(kit.bark.clone()),
-                    ));
-                }
                 for v in 0..3 {
                     if !c.rocks[v].is_empty() {
                         root.spawn((
@@ -635,9 +739,14 @@ fn spawn_chunks(
                         ));
                     }
                 }
-                for (group, fir_set, broad_set) in [
-                    (NatureGroup::NearTrees, &p.fir, &p.broad),
-                    (NatureGroup::FarTrees, &p.fir_far, &p.broad_far),
+                for (group, fir_set, broad_set, bark_set) in [
+                    (NatureGroup::NearTrees, &p.fir, &p.broad, &p.broad_bark),
+                    (
+                        NatureGroup::FarTrees,
+                        &p.fir_far,
+                        &p.broad_far,
+                        &p.broad_bark_far,
+                    ),
                 ] {
                     let far = group == NatureGroup::FarTrees;
                     root.spawn((group, Transform::default(), Visibility::Hidden))
@@ -667,6 +776,13 @@ fn spawn_chunks(
                                     ));
                                 }
                                 if !c.broad[v].is_empty() {
+                                    let mut trunk = g.spawn((
+                                        Mesh3d(meshes.add(merge(&bark_set[v], &c.broad[v]))),
+                                        MeshMaterial3d(kit.broad_bark[v].clone()),
+                                    ));
+                                    if far {
+                                        trunk.insert(NotShadowCaster);
+                                    }
                                     let mut e = g.spawn((
                                         SeasonLeaf(v),
                                         SeasonGate::Leaves,
