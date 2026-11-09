@@ -2,7 +2,7 @@
 
 - Data: 2026-11-09
 - Stato: accettato (sostituisce i camminamenti a tratti di ADR 0013)
-- Versione: da rilasciare (v0.0.30.0)
+- Versione: v0.0.30.0
 
 ## Contesto
 I camminamenti erano quattro tratti separati dalle torrette piene e le guardie di ronda stavano ferme.

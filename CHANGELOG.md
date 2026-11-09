@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.30.0 — Mura percorribili (2026-11-09)
 
 - **Mura percorribili**: il muro è più spesso verso l'esterno, con un camminamento continuo lungo tutto il perimetro, ponti sopra i cancelli e torri cave attraversabili; scale dentro lo spessore del muro (una per cancello, una a est e una a ovest). Le quattro guardie sulle mura ora fanno la ronda sull'intero anello (ADR 0018).
 

@@ -37,6 +37,7 @@ Strategia: **vertical slice prima**. Una demo giocabile (1 quest, 1 NPC, 1 nemic
 | 9.2.1 — Rifinitura PBR | Tende, ferro e legno ovunque, sotto-menu impostazioni grafiche | `v0.0.27.0` |
 | 9.3 — Animazioni | Camminata, corsa, salto, attacchi, colpiti e morte per tutti i personaggi | `v0.0.28.0` |
 | 9.4 — Inventario e FPS | Inventario con categorie, ricerca e peso, barra a 10 tasti assegnabile con icone, VSync e limite FPS | `v0.0.29.0` |
+| 10.1 — Mura percorribili | Camminamento continuo, torri attraversabili, ponti sui cancelli, ronde | `v0.0.30.0` |
 | 5.y — Mondo vivo | Colonna sonora con volume, casetta-chiosco esplorabile (porta, interni, stufa con fumo), routine giorno/notte del Viandante, voci dei personaggi, versione nel menu | `v0.0.7.0` |
 | 5.z — Mondo vivo, rifiniture | Interazione col mirino, casetta con serranda/interruttore/finestre e luci con ombre, routine del Viandante v2, voci normalizzate con ducking della musica | `v0.0.8.0` |
 | 5.w — Mappa e strumenti | Mappa dall'alto (M) con bussola e zoom, modalità debug piazzamenti (F4) con file `debug/placements.txt`, vetri e scuri spessi, il Viandante chiude porta e finestre | `v0.0.9.0` |
