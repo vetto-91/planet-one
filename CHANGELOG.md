@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.29.0 — Inventario, barra a 10 tasti e FPS (2026-11-09)
 
 - **FPS**: nel menu grafica casella VSync e limite Illimitati/30/60/90/120/144/165/240; predefinito senza limiti.
 - **Barra oggetti**: sempre 10 riquadri (1-9 e 0) con icone disegnate, assegnabili dall'inventario.
