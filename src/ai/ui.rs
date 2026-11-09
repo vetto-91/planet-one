@@ -6,7 +6,12 @@ use bevy_egui::egui;
 const GOLD: egui::Color32 = egui::Color32::from_rgb(255, 214, 102);
 
 /// Disegna la chat in basso, stile del pannello dei dialoghi. Scrive l'azione scelta in `chat.action`.
-pub fn chat_panel(ctx: &egui::Context, chat: &mut AiChat, status: &AiStatus) {
+pub fn chat_panel(
+    ctx: &egui::Context,
+    chat: &mut AiChat,
+    status: &AiStatus,
+    stt: Option<&super::stt::SttStatus>,
+) {
     let size = ctx.viewport_rect().size();
     let w = 820.0_f32.min(size.x - 40.0);
     let frame = egui::Frame::default()
@@ -118,6 +123,22 @@ pub fn chat_panel(ctx: &egui::Context, chat: &mut AiChat, status: &AiStatus) {
                         send_text = true;
                     }
                 });
+                // Microfono: solo se acceso nel menu o dalla shell.
+                chat.mic_held = false;
+                if let Some(mic) = stt {
+                    ui.horizontal(|ui| {
+                        let speak = egui::Button::new(egui::RichText::new("Parla (F2)").size(18.0))
+                            .sense(egui::Sense::click_and_drag());
+                        chat.mic_held = ui
+                            .add_enabled(!chat.thinking, speak)
+                            .is_pointer_button_down_on();
+                        ui.label(
+                            egui::RichText::new(format!("Microfono: {}", mic.label()))
+                                .size(14.0)
+                                .color(egui::Color32::from_rgb(160, 170, 190)),
+                        );
+                    });
+                }
                 if send_text {
                     chosen = Some(chat.input.clone());
                 }

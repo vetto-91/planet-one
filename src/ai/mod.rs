@@ -8,6 +8,7 @@
 
 pub mod ollama;
 pub mod persona;
+pub mod stt;
 pub mod tts;
 pub mod ui;
 
@@ -193,6 +194,8 @@ pub struct AiChat {
     pub error: Option<String>,
     pub action: Option<ChatAction>,
     pub focus_input: bool,
+    /// Il pulsante «Parla» è tenuto premuto.
+    pub mic_held: bool,
     /// Voce e velocità del personaggio (dalla persona).
     voice: String,
     speed: f32,
@@ -407,6 +410,7 @@ pub fn ai_handle_action(
 /// OnExit(Chat): chiude la conversazione.
 pub fn ai_exit_chat(mut chat: ResMut<AiChat>, mut tts: ResMut<tts::TtsState>) {
     tts.stop();
+    chat.mic_held = false;
     chat.action = None;
     chat.thinking = false;
     chat.req += 1; // scarta eventuali risposte in arrivo
@@ -417,7 +421,19 @@ pub fn plugin(app: &mut App) {
     app.init_resource::<AiState>()
         .init_resource::<AiChat>()
         .init_resource::<tts::TtsState>()
-        .add_systems(Update, (ai_probe, ai_pump, tts::tts_scan, tts::tts_pump))
+        .init_resource::<stt::SttState>()
+        .add_systems(
+            Update,
+            (
+                ai_probe,
+                ai_pump,
+                tts::tts_scan,
+                tts::tts_pump,
+                stt::stt_scan,
+                stt::stt_push_to_talk,
+                stt::stt_pump,
+            ),
+        )
         .add_systems(OnEnter(AppState::Chat), ai_enter_chat)
         .add_systems(OnExit(AppState::Chat), ai_exit_chat)
         .add_systems(Update, ai_handle_action.run_if(in_state(AppState::Chat)));

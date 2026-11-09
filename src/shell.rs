@@ -24,6 +24,7 @@ const HELP: &[&str] = &[
     "ora <0-24> · meteo <sereno|nuvoloso|pioggia|temporale|nebbia|neve|auto>",
     "ia [on|off] · ia modelli · ia modello <nome>",
     "tts [on|off] · tts voci · tts voce <nome|auto>",
+    "stt [on|off] · stt modelli · stt modello <nome>",
 ];
 
 /// Trucchi attivi: non salvati, tutti spenti a ogni avvio.
@@ -81,6 +82,14 @@ pub enum TtsCmd {
     Voice(String),
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub enum SttCmd {
+    Status,
+    Switch(bool),
+    Models,
+    Model(String),
+}
+
 /// Comando riconosciuto. `None` nei trucchi vuol dire "inverti".
 #[derive(Debug, PartialEq, Clone)]
 pub enum Cmd {
@@ -102,6 +111,7 @@ pub enum Cmd {
     Weather(Option<crate::weather::Kind>),
     Ai(AiCmd),
     Tts(TtsCmd),
+    Stt(SttCmd),
 }
 
 fn switch(arg: Option<&&str>) -> Result<Option<bool>, String> {
@@ -172,6 +182,15 @@ pub fn parse(line: &str) -> Result<Cmd, String> {
                 .ok_or_else(|| "uso: tts on|off".to_string()),
             _ => Err("uso: tts [on|off] · tts voci · tts voce <nome|auto>".into()),
         },
+        "stt" => match args {
+            [] => Ok(Cmd::Stt(SttCmd::Status)),
+            ["modelli"] => Ok(Cmd::Stt(SttCmd::Models)),
+            ["modello", name] => Ok(Cmd::Stt(SttCmd::Model((*name).to_string()))),
+            [_] => switch(args.first())?
+                .map(|on| Cmd::Stt(SttCmd::Switch(on)))
+                .ok_or_else(|| "uso: stt on|off".to_string()),
+            _ => Err("uso: stt [on|off] · stt modelli · stt modello <nome>".into()),
+        },
         other => Err(format!("comando sconosciuto: {other} (scrivi aiuto)")),
     }
 }
@@ -222,6 +241,7 @@ pub struct ShellCtx<'w, 's> {
     audio: ResMut<'w, crate::audio::AudioSettings>,
     ai: ResMut<'w, crate::ai::AiState>,
     tts: Res<'w, crate::ai::tts::TtsState>,
+    stt: Res<'w, crate::ai::stt::SttState>,
     place: ResMut<'w, crate::debug_place::DebugPlace>,
     gizmos: ResMut<'w, GizmoConfigStore>,
     homes: Res<'w, crate::world_props::Homes>,
@@ -410,6 +430,7 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
         }
         Cmd::Ai(cmd) => run_ai(cmd, shell, ctx),
         Cmd::Tts(cmd) => run_tts(cmd, shell, ctx),
+        Cmd::Stt(cmd) => run_stt(cmd, shell, ctx),
     }
 }
 
@@ -472,6 +493,41 @@ fn run_tts(cmd: TtsCmd, shell: &mut Shell, ctx: &mut ShellCtx) {
                 shell.say("voce impostata");
             } else {
                 shell.say(format!("voce sconosciuta: {name}"));
+            }
+        }
+    }
+}
+
+fn run_stt(cmd: SttCmd, shell: &mut Shell, ctx: &mut ShellCtx) {
+    match cmd {
+        SttCmd::Status => shell.say(format!(
+            "microfono: {} · modello {}",
+            ctx.stt.status.label(),
+            if ctx.audio.stt_model.is_empty() {
+                "automatico"
+            } else {
+                ctx.audio.stt_model.as_str()
+            }
+        )),
+        SttCmd::Switch(on) => {
+            ctx.audio.stt_enabled = on;
+            ctx.audio.dirty = true;
+            shell.say(format!("microfono {}", on_off(on)));
+        }
+        SttCmd::Models => {
+            if ctx.stt.models.is_empty() {
+                shell.say("nessun modello: microfono spento o non installato");
+            } else {
+                shell.say(format!("modelli: {}", ctx.stt.models.join(", ")));
+            }
+        }
+        SttCmd::Model(name) => {
+            if ctx.stt.models.contains(&name) {
+                shell.say(format!("modello: {name}"));
+                ctx.audio.stt_model = name;
+                ctx.audio.dirty = true;
+            } else {
+                shell.say(format!("modello sconosciuto: {name}"));
             }
         }
     }
@@ -659,6 +715,16 @@ mod tests {
         assert_eq!(
             parse("tts voce auto"),
             Ok(Cmd::Tts(TtsCmd::Voice(String::new())))
+        );
+    }
+
+    #[test]
+    fn stt_commands() {
+        assert_eq!(parse("stt"), Ok(Cmd::Stt(SttCmd::Status)));
+        assert_eq!(parse("stt on"), Ok(Cmd::Stt(SttCmd::Switch(true))));
+        assert_eq!(
+            parse("stt modello ggml-base"),
+            Ok(Cmd::Stt(SttCmd::Model("ggml-base".into())))
         );
     }
 

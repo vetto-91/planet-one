@@ -46,6 +46,10 @@ pub struct AudioSettings {
     pub tts_enabled: bool,
     /// Voce Piper da usare al posto di quella del personaggio (vuoto = automatica).
     pub tts_voice: String,
+    /// Microfono nella chat (whisper.cpp locale): spento finché non lo si accende.
+    pub stt_enabled: bool,
+    /// Modello whisper da usare (vuoto = il primo installato).
+    pub stt_model: String,
     /// Velocità del tempo di gioco: 1, 2, 4 o 8.
     pub time_speed: u32,
     /// Impostazioni grafiche (solo aspetto visivo).
@@ -64,6 +68,8 @@ impl Default for AudioSettings {
             ai_enabled: true,
             ai_model: DEFAULT_AI_MODEL.to_string(),
             ai_host: DEFAULT_AI_HOST.to_string(),
+            stt_enabled: false,
+            stt_model: String::new(),
             tts_enabled: true,
             tts_voice: String::new(),
             time_speed: 1,
@@ -96,6 +102,12 @@ impl Default for AudioSettings {
                 }
                 if let Some(v) = line.trim().strip_prefix("tts_voice=") {
                     s.tts_voice = v.trim().to_string();
+                }
+                if let Some(v) = line.trim().strip_prefix("stt_enabled=") {
+                    s.stt_enabled = v.trim() != "0";
+                }
+                if let Some(v) = line.trim().strip_prefix("stt_model=") {
+                    s.stt_model = v.trim().to_string();
                 }
                 s.gfx.read_line(line);
                 s.fps.read_line(line);
@@ -247,7 +259,7 @@ pub fn save_settings(mut settings: ResMut<AudioSettings>, mouse: Res<ButtonInput
     match std::fs::write(
         &path,
         format!(
-            "music_volume={:.2}\nvoice_volume={:.2}\nai_enabled={}\nai_model={}\nai_host={}\ntts_enabled={}\ntts_voice={}\ntime_speed={}\n{}{}",
+            "music_volume={:.2}\nvoice_volume={:.2}\nai_enabled={}\nai_model={}\nai_host={}\ntts_enabled={}\ntts_voice={}\nstt_enabled={}\nstt_model={}\ntime_speed={}\n{}{}",
             settings.music_volume,
             settings.voice_volume,
             u8::from(settings.ai_enabled),
@@ -255,6 +267,8 @@ pub fn save_settings(mut settings: ResMut<AudioSettings>, mouse: Res<ButtonInput
             settings.ai_host,
             u8::from(settings.tts_enabled),
             settings.tts_voice,
+            u8::from(settings.stt_enabled),
+            settings.stt_model,
             settings.time_speed,
             settings.gfx.to_lines(),
             settings.fps.to_lines()

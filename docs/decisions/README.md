@@ -47,3 +47,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0019 | Interni degli edifici | accettato |
 | 0020 | Abitanti ai piani, chiavi e serrature | accettato |
 | 0021 | Shell dei trucchi | accettato |
+| 0022 | Riconoscimento vocale locale | accettato |

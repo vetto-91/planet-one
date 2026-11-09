@@ -2,6 +2,10 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Microfono nella chat** (ADR 0022): tenendo premuto F2 o «Parla» si parla agli abitanti, con whisper.cpp solo in locale. Il testo si può rileggere prima di inviarlo. Spento finché non lo si attiva; si installa con `setup_ai --stt`.
+
 ## v0.0.32.0 — Abitanti ai piani, chiavi e shell (2026-11-09)
 
 - **Abitanti ai piani** (ADR 0020): di sera entrano dalla porta, salgono le scale e vanno a letto; al mattino scendono ed escono. Nessuno sta più fermo davanti a un ingresso.

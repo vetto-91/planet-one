@@ -5171,6 +5171,7 @@ dependencies = [
  "avian3d",
  "bevy",
  "bevy_egui",
+ "cpal",
  "serde",
  "serde_json",
  "ureq",

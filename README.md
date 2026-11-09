@@ -60,6 +60,7 @@ Giocando normalmente non ci sono trucchi. Con il tasto `\` si apre una shell (Es
 | `ora 21.5`, `meteo neve`, `meteo auto` | Ora e meteo |
 | `ia [on\|off]`, `ia modelli`, `ia modello <nome>` | Dialoghi IA, sempre e solo locali |
 | `tts [on\|off]`, `tts voci`, `tts voce <nome\|auto>` | Voce IA |
+| `stt [on\|off]`, `stt modelli`, `stt modello <nome>` | Microfono nella chat, solo locale |
 
 ## Debug piazzamenti (F4)
 
@@ -180,7 +181,7 @@ Prima di scaricare lo script mostra il link alla model card (licenza) di ogni vo
 per spegnerla; senza Piper il gioco mostra solo il testo. Per provare senza Piper: `PLANET_ONE_TTS_MOCK=1`.
 
 Il carattere dei personaggi è in `assets/ai/<nome>.txt` (modificabile a mano). Per provare l'interfaccia senza modello:
-`PLANET_ONE_AI_MOCK=1`. Microfono (STT) arriverà nella fase successiva, sempre in locale.
+`PLANET_ONE_AI_MOCK=1`. Il microfono si installa con `./scripts/setup_ai.sh --stt` (Windows: `.\scripts\setup_ai.ps1 -Stt`), che compila whisper.cpp e scarica un modello da 148 MB; serve `cmake`. Si accende dal menu Esc o con `stt on` nella shell, poi in chat si tiene premuto **F2** o «Parla». Anche la voce resta sul tuo PC e l'audio viene cancellato subito dopo la trascrizione.
 
 ### Il villaggio di Fontevivo
 

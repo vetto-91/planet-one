@@ -131,6 +131,7 @@ pub struct UiQueries<'w, 's> {
     pub weather: Res<'w, crate::weather::WeatherState>,
     pub gfx_panel: ResMut<'w, crate::graphics::GfxPanelOpen>,
     pub tts: Res<'w, crate::ai::tts::TtsState>,
+    pub stt: Res<'w, crate::ai::stt::SttState>,
     pub village: Res<'w, crate::village::VillageInfo>,
     pub equip: Res<'w, crate::inventory::Equipment>,
     pub icons: Option<Res<'w, crate::inventory_ui::ItemIcons>>,
@@ -434,6 +435,13 @@ pub fn ui(
                             q.audio.dirty = true;
                         }
                         ui.label(format!("Voce: {}", q.tts.status.label()));
+                        if ui
+                            .checkbox(&mut q.audio.stt_enabled, "Microfono (Whisper locale)")
+                            .changed()
+                        {
+                            q.audio.dirty = true;
+                        }
+                        ui.label(format!("Microfono: {}", q.stt.status.label()));
                         ui.label("Modelli e voci si cambiano dalla shell (tasto \\).");
                         ui.separator();
 
@@ -545,7 +553,8 @@ pub fn ui(
         }
         AppState::Chat => {
             let status = q.ai.status.clone();
-            crate::ai::ui::chat_panel(ctx, &mut q.chat, &status);
+            let mic = q.audio.stt_enabled.then_some(&q.stt.status);
+            crate::ai::ui::chat_panel(ctx, &mut q.chat, &status, mic);
         }
         // L'inventario ha un suo sistema (`inventory_ui::inventory_window`).
         AppState::Inventory => {}
