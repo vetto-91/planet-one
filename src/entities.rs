@@ -178,38 +178,28 @@ pub fn spawn_npc(
 }
 
 /// Spawn del nemico con patrol tra due waypoint.
-pub fn spawn_enemy(
-    commands: &mut Commands,
-    meshes: &mut Assets<Mesh>,
-    materials: &mut Assets<StandardMaterial>,
-    start: Vec3,
-    end: Vec3,
-) {
-    let mesh = meshes.add(Cuboid::new(0.8, 1.2, 0.8));
-    let mat = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.75, 0.20, 0.20),
-        perceptual_roughness: 0.6,
-        ..default()
-    });
-
-    commands.spawn((
-        SceneNode,
-        Enemy,
-        EnemyHealth::default(),
-        PatrolState {
-            waypoints: vec![start, end],
-            current: 0,
-            speed: 2.5,
-        },
-        RigidBody::Kinematic,
-        Collider::capsule(0.4, 0.8),
-        LockedAxes::ROTATION_LOCKED,
-        LinearVelocity::ZERO,
-        CustomPositionIntegration,
-        Mesh3d(mesh),
-        MeshMaterial3d(mat),
-        Transform::from_translation(start),
-    ));
+pub fn spawn_enemy(commands: &mut Commands, asset_server: &AssetServer, start: Vec3, end: Vec3) {
+    commands
+        .spawn((
+            SceneNode,
+            Enemy,
+            EnemyHealth::default(),
+            PatrolState {
+                waypoints: vec![start, end],
+                current: 0,
+                speed: 2.5,
+            },
+            RigidBody::Kinematic,
+            Collider::capsule(0.4, 0.8),
+            LockedAxes::ROTATION_LOCKED,
+            LinearVelocity::ZERO,
+            CustomPositionIntegration,
+            crate::figure::ModelName("ladro"),
+            crate::hud::NameAnchor(1.1),
+            Transform::from_translation(start),
+            Visibility::default(),
+        ))
+        .with_children(|c| crate::figure::spawn_character(c, asset_server, "ladro"));
 }
 
 /// Interagibile più vicino: (distanza, entità, componente, NPC, proprietà).

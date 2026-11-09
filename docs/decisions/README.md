@@ -42,3 +42,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0014 | Meteo | accettato (Fase 3) |
 | 0015 | Grafica realistica, personaggi CC0 | accettato (Fase 1) |
 | 0016 | Mondo e materiali PBR | accettato (Fase 2) |
+| 0017 | Animazioni dei personaggi | accettato (Fase 3) |

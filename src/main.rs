@@ -7,6 +7,7 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 mod ai;
+mod animation;
 mod audio;
 mod bells;
 mod buildings;
@@ -139,6 +140,7 @@ fn main() {
         .add_plugins(seasons::plugin)
         .add_plugins(weather::plugin)
         .add_plugins(figure::plugin)
+        .add_plugins(animation::plugin)
         .add_plugins(graphics::plugin)
         .init_resource::<debug_place::DebugPlace>()
         .init_resource::<hud::Occluded>()
@@ -276,7 +278,6 @@ fn main() {
                 terrain::terrain_debug_gizmos,
                 combat::update_arrows.run_if(in_state(AppState::Playing)),
                 equipment::update_held_items,
-                equipment::animate_swing,
             ),
         )
         .add_systems(

@@ -257,6 +257,7 @@ pub fn graphics_window(ctx: &egui::Context, audio: &mut AudioSettings, open: &mu
                     }
                 }
             });
+            ui.checkbox(&mut gfx.far_anim_cull, "Ferma le animazioni lontane");
             if gfx != audio.gfx {
                 audio.gfx = gfx;
                 audio.dirty = true;

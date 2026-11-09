@@ -86,6 +86,7 @@ const ARROW_SPEED: f32 = 38.0;
 /// Gira in Update (input), solo in Playing e se nessun dialogo è aperto.
 #[allow(clippy::too_many_arguments)]
 pub fn player_attack(
+    visuals: Query<&GlobalTransform, With<crate::player::PlayerVisual>>,
     mouse: Res<ButtonInput<MouseButton>>,
     mut raw_mouse: MessageReader<bevy::input::mouse::MouseButtonInput>,
     mut combat: Query<&mut CombatState, With<Player>>,
@@ -125,7 +126,8 @@ pub fn player_attack(
         return;
     };
     let p = player.translation();
-    let pf = *player.forward();
+    // Il corpo fisico non ruota: la direzione è quella del modello visibile.
+    let pf = visuals.single().map_or(*player.forward(), |v| *v.forward());
 
     // Arco: una freccia verso il mirino.
     if stats.ranged {
@@ -313,9 +315,22 @@ pub fn handle_enemy_death(
     enemies: EnemiesQuery,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
+    names: Query<&crate::figure::ModelName>,
 ) {
     for (entity, hp, patrol, transform, is_thief) in &enemies {
         if hp.current <= 0.0 {
+            // Il corpo resta a terra qualche secondo: solo visivo, senza collider.
+            if let Ok(name) = names.get(entity) {
+                let (_, rotation, translation) = transform.to_scale_rotation_translation();
+                crate::figure::spawn_corpse(
+                    &mut commands,
+                    &asset_server,
+                    name.0,
+                    translation,
+                    rotation,
+                );
+            }
             commands.entity(entity).despawn();
             // Il ladro della quest NON respawna: morte definitiva. La posizione
             // viene registrata qui (prima del despawn) così la quest non dipende
@@ -353,8 +368,7 @@ pub fn handle_enemy_death(
 pub fn enemy_respawn_tick(
     mut commands: Commands,
     mut respawns: Query<(Entity, &mut EnemyRespawn)>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
     time: Res<Time>,
 ) {
     let mut to_spawn: Vec<(Vec3, Vec3)> = Vec::new();
@@ -368,6 +382,6 @@ pub fn enemy_respawn_tick(
         }
     }
     for (start, end) in to_spawn {
-        crate::entities::spawn_enemy(&mut commands, &mut meshes, &mut materials, start, end);
+        crate::entities::spawn_enemy(&mut commands, &asset_server, start, end);
     }
 }

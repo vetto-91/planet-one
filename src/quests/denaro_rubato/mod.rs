@@ -519,6 +519,7 @@ pub fn spawn_thief(commands: &mut Commands, asset_server: &AssetServer, start: V
             crate::scene::SceneNode,
             crate::entities::Enemy,
             QuestThief,
+            crate::figure::ModelName("ladro"),
             crate::hud::NameAnchor(1.1),
             crate::combat::EnemyHealth {
                 current: 30.0,

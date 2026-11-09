@@ -1,6 +1,5 @@
-//! Armi e scudo impugnati: modelli semplici attaccati al player, con oscillazione all'attacco.
+//! Armi e scudo impugnati: modelli semplici agganciati alle ossa delle mani del giocatore.
 
-use crate::combat::{SWING_TIME, SwingTimer};
 use crate::inventory::{Equipment, ItemKind};
 use crate::player::PlayerVisual;
 use bevy::prelude::*;
@@ -9,7 +8,7 @@ use bevy::prelude::*;
 #[derive(Component)]
 pub struct HeldItem;
 
-/// Radice dell'arma impugnata (ruota nell'oscillazione).
+/// Radice dell'arma impugnata (segue l'osso della mano).
 #[derive(Component)]
 pub struct HeldWeapon;
 
@@ -179,18 +178,5 @@ pub fn update_held_items(
             .id();
         commands.entity(shield).add_child(boss);
         commands.entity(visual).add_child(shield);
-    }
-}
-
-/// Sistema: oscillazione dell'arma quando si attacca.
-pub fn animate_swing(swing: Res<SwingTimer>, mut q: Query<&mut Transform, With<HeldWeapon>>) {
-    for mut tf in &mut q {
-        let angle = if swing.0 > 0.0 {
-            let t = 1.0 - swing.0 / SWING_TIME;
-            REST_TILT - (t * std::f32::consts::PI).sin() * 1.9
-        } else {
-            REST_TILT
-        };
-        tf.rotation = Quat::from_rotation_x(angle);
     }
 }

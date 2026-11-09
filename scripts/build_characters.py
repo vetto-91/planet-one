@@ -29,6 +29,7 @@ UAL_FILE = "Universal Animation Library[Standard]/Unreal-Godot/UAL1_Standard.glb
 CLIPS = [
     "Idle_Loop", "Walk_Loop", "Jog_Fwd_Loop", "Sprint_Loop", "Jump_Start", "Jump_Loop", "Jump_Land",
     "Sword_Idle", "Sword_Attack", "Punch_Jab", "Hit_Chest", "Death01", "Idle_Talking_Loop", "Interact",
+    "Spell_Simple_Shoot",
 ]
 TEX_SIZE = 1024
 TINT = {  # tinta del tessuto chiaro degli abiti da contadino

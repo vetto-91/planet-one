@@ -3,7 +3,8 @@
 //! I file in `assets/models/characters/` sono composti da `scripts/build_characters.py`: ogni aspetto ha
 //! lo stesso scheletro (65 ossa), le clip stanno in `animations.gltf`. Il modello è un figlio del
 //! corpo, abbassato ai piedi e girato di 180° (il glTF guarda +Z, il gioco -Z). Quando la scena è pronta
-//! parte la clip di riposo e le ossa delle mani diventano disponibili per gli oggetti impugnati.
+//! parte la clip di riposo, `animation.rs` prende il controllo e le ossa delle mani diventano disponibili per
+//! gli oggetti impugnati.
 
 use bevy::prelude::*;
 use bevy::world_serialization::WorldInstanceReady;
@@ -12,7 +13,7 @@ use std::time::Duration;
 /// Altezza del centro del corpo sul terreno (capsula da 1,7 m).
 pub const CENTER_Y: f32 = 0.85;
 /// Clip in `animations.gltf`, nell'ordine scritto da `scripts/build_characters.py`.
-pub const CLIPS: [&str; 14] = [
+pub const CLIPS: [&str; 15] = [
     "Idle_Loop",
     "Walk_Loop",
     "Jog_Fwd_Loop",
@@ -27,6 +28,7 @@ pub const CLIPS: [&str; 14] = [
     "Death01",
     "Idle_Talking_Loop",
     "Interact",
+    "Spell_Simple_Shoot",
 ];
 const ANIMATIONS: &str = "models/characters/animations.gltf";
 
@@ -36,6 +38,31 @@ pub struct CharacterAnims {
     graph: Handle<AnimationGraph>,
     clips: Vec<AnimationNodeIndex>,
 }
+
+impl CharacterAnims {
+    /// Nodo del grafo della clip `index` di `CLIPS`.
+    pub fn clip(&self, index: usize) -> AnimationNodeIndex {
+        self.clips[index]
+    }
+}
+
+/// Radice del modello (figlio del corpo).
+#[derive(Component)]
+pub struct CharacterModel;
+
+/// Aspetto del corpo: serve a ricreare il modello quando il personaggio muore.
+#[derive(Component, Clone)]
+pub struct ModelName(pub &'static str);
+
+/// Corpo senza vita: mostra la clip di morte, poi sparisce.
+#[derive(Component)]
+pub struct Corpse {
+    pub timer: f32,
+}
+
+/// Durata (s) della permanenza di un corpo a terra.
+const CORPSE_SECONDS: f32 = 6.0;
+const DEATH_CLIP: usize = 11;
 
 /// Radice del modello, in attesa di sapere se il file si è caricato.
 #[derive(Component)]
@@ -77,6 +104,7 @@ pub fn spawn_character(parent: &mut ChildSpawnerCommands, asset_server: &AssetSe
     parent
         .spawn((
             PendingModel,
+            CharacterModel,
             WorldAssetRoot(scene),
             Transform::from_xyz(0.0, -CENTER_Y, 0.0)
                 .with_rotation(Quat::from_rotation_y(std::f32::consts::PI)),
@@ -85,6 +113,7 @@ pub fn spawn_character(parent: &mut ChildSpawnerCommands, asset_server: &AssetSe
 }
 
 /// Scena pronta: avvia la clip di riposo (fase diversa per ciascuno) e registra le ossa delle mani.
+#[allow(clippy::too_many_arguments)]
 fn on_character_ready(
     ready: On<WorldInstanceReady>,
     mut commands: Commands,
@@ -92,9 +121,12 @@ fn on_character_ready(
     children: Query<&Children>,
     parents: Query<&ChildOf>,
     names: Query<&Name>,
+    corpses: Query<(), With<Corpse>>,
     mut players: Query<(Entity, &mut AnimationPlayer)>,
 ) {
     let root = ready.entity;
+    let body = parents.get(root).ok().map(|p| p.parent());
+    let dying = body.is_some_and(|b| corpses.contains(b));
     let (mut right, mut left) = (None, None);
     for e in children.iter_descendants(root) {
         if let Ok(name) = names.get(e) {
@@ -106,11 +138,20 @@ fn on_character_ready(
         }
         if let Ok((player_entity, mut player)) = players.get_mut(e) {
             let mut transitions = AnimationTransitions::new();
-            let phase = (root.to_bits().wrapping_mul(2_654_435_761) % 1000) as f32 / 1000.0;
-            transitions
-                .play(&mut player, anims.clips[0], Duration::ZERO)
-                .repeat()
-                .seek_to(phase);
+            if dying {
+                transitions.play(&mut player, anims.clips[DEATH_CLIP], Duration::ZERO);
+            } else {
+                let phase = (root.to_bits().wrapping_mul(2_654_435_761) % 1000) as f32 / 1000.0;
+                transitions
+                    .play(&mut player, anims.clips[0], Duration::ZERO)
+                    .repeat()
+                    .seek_to(phase);
+                if let Some(body) = body {
+                    commands
+                        .entity(body)
+                        .insert(crate::animation::Animator::new(player_entity, root));
+                }
+            }
             commands
                 .entity(player_entity)
                 .insert((AnimationGraphHandle(anims.graph.clone()), transitions));
@@ -171,9 +212,43 @@ pub fn model_fallback(
     }
 }
 
+/// Crea un corpo senza collider che esegue la clip di morte.
+pub fn spawn_corpse(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    model: &str,
+    at: Vec3,
+    yaw: Quat,
+) {
+    commands
+        .spawn((
+            crate::scene::SceneNode,
+            Corpse {
+                timer: CORPSE_SECONDS,
+            },
+            Transform::from_translation(at).with_rotation(yaw),
+            Visibility::default(),
+        ))
+        .with_children(|c| spawn_character(c, asset_server, model));
+}
+
+/// Sistema: toglie i corpi dopo qualche secondo.
+pub fn tick_corpses(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut corpses: Query<(Entity, &mut Corpse)>,
+) {
+    for (e, mut c) in &mut corpses {
+        c.timer -= time.delta_secs();
+        if c.timer <= 0.0 {
+            commands.entity(e).despawn();
+        }
+    }
+}
+
 pub fn plugin(app: &mut App) {
     app.add_systems(Startup, load_character_anims)
-        .add_systems(Update, (attach_to_hands, model_fallback));
+        .add_systems(Update, (attach_to_hands, model_fallback, tick_corpses));
 }
 
 #[cfg(test)]
