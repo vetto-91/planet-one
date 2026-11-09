@@ -18,6 +18,7 @@ mod devtools;
 mod entities;
 mod equipment;
 mod figure;
+mod graphics;
 mod hud;
 mod hut;
 mod inventory;
@@ -138,6 +139,7 @@ fn main() {
         .add_plugins(seasons::plugin)
         .add_plugins(weather::plugin)
         .add_plugins(figure::plugin)
+        .add_plugins(graphics::plugin)
         .init_resource::<debug_place::DebugPlace>()
         .init_resource::<hud::Occluded>()
         .init_resource::<audio::AudioSettings>()

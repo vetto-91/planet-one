@@ -48,6 +48,8 @@ pub struct AudioSettings {
     pub tts_voice: String,
     /// Velocità del tempo di gioco: 1, 2, 4 o 8.
     pub time_speed: u32,
+    /// Impostazioni grafiche (solo aspetto visivo).
+    pub gfx: crate::graphics::GfxOptions,
     /// Da salvare su file appena il mouse viene rilasciato.
     pub dirty: bool,
 }
@@ -63,6 +65,7 @@ impl Default for AudioSettings {
             tts_enabled: true,
             tts_voice: String::new(),
             time_speed: 1,
+            gfx: Default::default(),
             dirty: false,
         };
         if let Some(text) = settings_path().and_then(|p| std::fs::read_to_string(p).ok()) {
@@ -91,6 +94,7 @@ impl Default for AudioSettings {
                 if let Some(v) = line.trim().strip_prefix("tts_voice=") {
                     s.tts_voice = v.trim().to_string();
                 }
+                s.gfx.read_line(line);
                 if let Some(v) = line.trim().strip_prefix("time_speed=")
                     && let Ok(v) = v.trim().parse::<u32>()
                     && [1, 2, 4, 8].contains(&v)
@@ -239,7 +243,7 @@ pub fn save_settings(mut settings: ResMut<AudioSettings>, mouse: Res<ButtonInput
     match std::fs::write(
         &path,
         format!(
-            "music_volume={:.2}\nvoice_volume={:.2}\nai_enabled={}\nai_model={}\nai_host={}\ntts_enabled={}\ntts_voice={}\ntime_speed={}\n",
+            "music_volume={:.2}\nvoice_volume={:.2}\nai_enabled={}\nai_model={}\nai_host={}\ntts_enabled={}\ntts_voice={}\ntime_speed={}\n{}",
             settings.music_volume,
             settings.voice_volume,
             u8::from(settings.ai_enabled),
@@ -247,7 +251,8 @@ pub fn save_settings(mut settings: ResMut<AudioSettings>, mouse: Res<ButtonInput
             settings.ai_host,
             u8::from(settings.tts_enabled),
             settings.tts_voice,
-            settings.time_speed
+            settings.time_speed,
+            settings.gfx.to_lines()
         ),
     ) {
         Ok(()) => info!("[AUDIO] impostazioni salvate in {}", path.display()),

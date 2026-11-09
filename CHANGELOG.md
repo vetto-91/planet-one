@@ -2,6 +2,11 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Impostazioni grafiche**: nuovo sotto-menu nel menu Esc con preset Alta/Media/Bassa, qualità delle ombre, ombre dei lampioni, occlusione ambientale, bagliore, antialiasing e particelle (solo aspetto visivo, salvate in `settings.txt`).
+- **Materiali**: tende e merci in tela, lampioni e gambe delle panchine in ferro, molo, barche, casse e pali in legno, pagliai in paglia, armi e scudo adeguati; tangenti anche sulle primitive, così le normal map funzionano ovunque.
+
 ## v0.0.26.0 — Mondo e materiali PBR (2026-11-09)
 
 - **Mondo e materiali PBR (Grafica realistica, Fase 2)**: terreno, sabbia, selciato, intonaco, travi, pietra, tegole, ardesia e paglia con texture fotografiche CC0 (colore, normal, ruvidità); abeti veri con corteccia e rami al posto dei coni;

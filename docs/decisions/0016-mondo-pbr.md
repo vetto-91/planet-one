@@ -17,4 +17,5 @@ Dopo i personaggi veri (ADR 0015) il mondo era ancora cel-shaded: terreno con te
 
 ## Conseguenze
 - SSAO e ombre costano: 50–75 FPS in scena (RTX 3080 Ti); sui PC deboli potrebbe servire un'opzione per spegnerle.
-- I materiali non classificati (tende, merci, lampioni, panchine) restano a colori semplici; la casetta del Viandante mantiene la sua foto.
+- Tela (`hessian_230`) e ferro (`rust_coarse_01`) completano la tavolozza: i colori non riconosciuti diventano legno se marroni, intonaco tinto altrimenti. La casetta del Viandante mantiene la sua foto.
+- Ciò che pesa è spegnibile dal sotto-menu "Impostazioni grafiche" (`graphics.rs`, opzioni `gfx_*` in `settings.txt`).

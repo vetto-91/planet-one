@@ -121,6 +121,7 @@ pub struct UiQueries<'w, 's> {
     pub chat: ResMut<'w, crate::ai::AiChat>,
     pub ai: Res<'w, crate::ai::AiState>,
     pub weather: Res<'w, crate::weather::WeatherState>,
+    pub gfx_panel: ResMut<'w, crate::graphics::GfxPanelOpen>,
     pub tts: Res<'w, crate::ai::tts::TtsState>,
     pub village: Res<'w, crate::village::VillageInfo>,
     pub equip: Res<'w, crate::inventory::Equipment>,
@@ -324,6 +325,11 @@ pub fn ui(
                         });
                         ui.separator();
 
+                        if ui.button("Impostazioni grafiche…").clicked() {
+                            q.gfx_panel.0 = !q.gfx_panel.0;
+                        }
+                        ui.separator();
+
                         // Lista dei controlli disponibili.
                         ui.label(
                             egui::RichText::new("Controlli")
@@ -477,6 +483,11 @@ pub fn ui(
                         }
                     });
                 });
+            if q.gfx_panel.0 {
+                let mut open = true;
+                crate::graphics::graphics_window(ctx, &mut q.audio, &mut open);
+                q.gfx_panel.0 = open;
+            }
         }
         AppState::Wait => {
             let mut wait_now = false;

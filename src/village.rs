@@ -650,7 +650,7 @@ pub fn sync_village(
             } else {
                 -sign_in * 1.55
             };
-            let leaf = Cuboid::new(GATE_HALF, 3.1, 0.14);
+            let leaf = crate::pbr::with_tangents(Cuboid::new(GATE_HALF, 3.1, 0.14));
             commands
                 .spawn((
                     VillageWall,

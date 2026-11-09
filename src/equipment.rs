@@ -19,6 +19,7 @@ const REST_TILT: f32 = std::f32::consts::FRAC_PI_2;
 const GRIP: Vec3 = Vec3::new(-0.02, 0.09, 0.0);
 
 /// Sistema: ricrea i modelli impugnati quando cambia l'equipaggiamento.
+#[allow(clippy::too_many_arguments)]
 pub fn update_held_items(
     mut commands: Commands,
     equip: Res<Equipment>,
@@ -26,6 +27,7 @@ pub fn update_held_items(
     held: Query<Entity, With<HeldItem>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    pbr: Res<crate::pbr::PbrMaterials>,
     mut last: Local<Option<(Option<ItemKind>, bool)>>,
 ) {
     let state = (equip.weapon, equip.shield);
@@ -49,8 +51,8 @@ pub fn update_held_items(
             ..default()
         })
     };
-    let steel = mat(Color::srgb(0.78, 0.8, 0.86), 0.7);
-    let wood = mat(Color::srgb(0.42, 0.28, 0.15), 0.0);
+    let steel = mat(Color::srgb(0.78, 0.8, 0.86), 0.9);
+    let wood = pbr.get(crate::pbr::Mat::Planks);
     let gold = mat(Color::srgb(0.85, 0.7, 0.25), 0.4);
     if let Some(w) = equip.weapon {
         let mut blade = |len: f32, w: f32| meshes.add(Cuboid::new(w, len, 0.025));
@@ -148,11 +150,20 @@ pub fn update_held_items(
         }
     }
     if equip.shield {
+        // Scudo in legno dipinto: le stesse assi con una tinta blu.
+        let shield_mat = {
+            let base = pbr.get(crate::pbr::Mat::Planks);
+            let tinted = materials.get(&base).cloned();
+            materials.add(StandardMaterial {
+                base_color: Color::srgb(0.55, 0.75, 1.3),
+                ..tinted.unwrap_or_default()
+            })
+        };
         let shield = commands
             .spawn((
                 HeldItem,
                 Mesh3d(meshes.add(Cuboid::new(0.07, 0.75, 0.55))),
-                MeshMaterial3d(mat(Color::srgb(0.25, 0.4, 0.75), 0.1)),
+                MeshMaterial3d(shield_mat),
                 crate::figure::AttachToHand { right: false },
                 // Sul dorso della mano sinistra (osso `hand_l`).
                 Transform::from_xyz(-0.08, 0.05, 0.0),

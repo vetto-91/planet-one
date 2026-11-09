@@ -431,6 +431,7 @@ fn rnd(seed: f32, k: u32) -> f32 {
 /// fino al suolo e vengono riciclate quando toccano terra o escono dal raggio attorno al giocatore.
 pub fn update_leaves(
     time: Res<Time>,
+    settings: Res<crate::audio::AudioSettings>,
     season: Res<SeasonLook>,
     wind: Res<Wind>,
     field: Option<Res<crate::terrain::TerrainField>>,
@@ -443,7 +444,7 @@ pub fn update_leaves(
     let cam = cam.translation();
     let dt = time.delta_secs().min(0.1);
     let t = time.elapsed_secs();
-    let active = (season.0.leaf_fall * POOL as f32) as usize;
+    let active = (season.0.leaf_fall * POOL as f32 * settings.gfx.particle_scale()) as usize;
     for (i, (mut leaf, mut tf, mut vis)) in leaves.iter_mut().enumerate() {
         if i >= active {
             *vis = Visibility::Hidden;

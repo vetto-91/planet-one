@@ -22,10 +22,12 @@ pub enum Mat {
     Slate,
     Thatch,
     Glass,
+    Cloth,
+    Iron,
 }
 
 /// Tutti i materiali, nell'ordine in cui si generano le parti.
-pub const MATS: [Mat; 8] = [
+pub const MATS: [Mat; 10] = [
     Mat::Plain,
     Mat::Plaster,
     Mat::Planks,
@@ -34,6 +36,8 @@ pub const MATS: [Mat; 8] = [
     Mat::Slate,
     Mat::Thatch,
     Mat::Glass,
+    Mat::Cloth,
+    Mat::Iron,
 ];
 
 /// Materiali condivisi dagli edifici e dalle mura.
@@ -63,6 +67,15 @@ pub fn load_tex(server: &AssetServer, path: String, srgb: bool) -> Handle<Image>
             });
         })
         .load(path)
+}
+
+/// Mesh di una primitiva con le tangenti, necessarie alle normal map.
+pub fn with_tangents(mesh: impl Into<Mesh>) -> Mesh {
+    let mut mesh = mesh.into();
+    if mesh.generate_tangents().is_err() {
+        warn!("[PBR] tangenti non generate per una primitiva");
+    }
+    mesh
 }
 
 /// Materiale PBR completo `name` (`pbr/<name>_diff.jpg`, `_nor.jpg`, `_arm.jpg`).
@@ -101,9 +114,17 @@ impl FromWorld for PbrMaterials {
             (Mat::Tiles, "tiles", 2.4),
             (Mat::Slate, "slate", 3.0),
             (Mat::Thatch, "thatch", 2.2),
+            (Mat::Cloth, "cloth", 1.3),
+            (Mat::Iron, "iron", 1.0),
         ] {
             let scale = Vec2::splat(1.0 / metres);
             map.insert(m, materials.add(material(&server, name, scale)));
+        }
+        // Il ferro nasce ruggine chiara: scurito, resta ferro battuto.
+        if let Some(iron) = map.get(&Mat::Iron).cloned()
+            && let Some(mut m) = materials.get_mut(&iron)
+        {
+            m.base_color = Color::srgb(0.32, 0.31, 0.32);
         }
         map.insert(
             Mat::Plain,

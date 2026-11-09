@@ -233,6 +233,7 @@ pub fn spawn_villagers(
     });
     let wood = materials.add(StandardMaterial {
         base_color: Color::srgb(0.4, 0.27, 0.15),
+        perceptual_roughness: 0.85,
         ..default()
     });
     for def in load_defs() {

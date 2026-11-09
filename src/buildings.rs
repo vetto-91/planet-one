@@ -48,6 +48,9 @@ pub struct Building {
 
 pub(crate) type Col = [f32; 4];
 const WHITE: Col = [1.0, 1.0, 1.0, 1.0];
+const WATER: Col = [0.1, 0.25, 0.4, 1.0];
+const HAY: Col = [0.85, 0.7, 0.3, 1.0];
+const HAY_DARK: Col = [0.8, 0.62, 0.22, 1.0];
 
 pub(crate) const STONE: Col = [0.74, 0.72, 0.68, 1.0];
 pub(crate) const STONE_DARK: Col = [0.5, 0.5, 0.52, 1.0];
@@ -97,6 +100,8 @@ pub(crate) struct B {
     idx: Vec<u32>,
     /// Materiale di ogni triangolo.
     tri_mat: Vec<Mat>,
+    /// Materiale imposto alle prossime facce (`None` = dedotto dal colore).
+    force: Option<Mat>,
     /// Triangoli del manto di neve (sopra le falde dei tetti).
     snow: Vec<[Vec3; 3]>,
 }
@@ -135,7 +140,11 @@ impl B {
 
     /// Aggiunge i vertici di una faccia piana, con UV in metri e tinta secondo il materiale.
     fn face(&mut self, pts: &[Vec3], n: Vec3, col: Col) -> (u32, Mat) {
-        let (mat, tint) = classify(col);
+        let (mat, tint) = match self.force {
+            Some(Mat::Plain) => (Mat::Plain, col),
+            Some(m) => (m, [col[0] * 1.8, col[1] * 1.8, col[2] * 1.8, 1.0]),
+            None => classify(col),
+        };
         let u = if n.y.abs() > 0.99 {
             Vec3::X
         } else {
@@ -423,6 +432,12 @@ fn classify(col: Col) -> (Mat, Col) {
     if near(GLASS) {
         return (Mat::Glass, [col[0] * 0.3, col[1] * 0.3, col[2] * 0.3, 1.0]);
     }
+    if near(WATER) {
+        return (Mat::Glass, col);
+    }
+    if near(HAY) || near(HAY_DARK) {
+        return (Mat::Thatch, [1.25, 1.1, 0.75, 1.0]);
+    }
     if near(TIMBER) {
         return (Mat::Planks, [0.8, 0.75, 0.7, 1.0]);
     }
@@ -439,7 +454,17 @@ fn classify(col: Col) -> (Mat, Col) {
             [col[0] * 1.7, col[1] * 1.7, col[2] * 1.7, 1.0],
         );
     }
-    (Mat::Plain, col)
+    // Marroni sparsi (molo, barche, pali, casse): legno, schiarito o scurito come il colore originale.
+    let lum = (col[0] + col[1] + col[2]) / 3.0;
+    if col[0] > col[1] && col[1] > col[2] && col[0] / col[2].max(0.01) > 1.4 && lum < 0.62 {
+        let k = lum / 0.3;
+        return (Mat::Planks, [k, k * 0.95, k * 0.9, 1.0]);
+    }
+    // Il resto (fasce del faro, stendardi): vernice su intonaco.
+    (
+        Mat::Plaster,
+        [col[0] * 1.7, col[1] * 1.7, col[2] * 1.7, 1.0],
+    )
 }
 
 /// Finestra sul fronte (`z_face`, normale `n` = ±Z o ±X) con imposte.
@@ -745,6 +770,7 @@ fn stall(b: &mut B, kind: &str) -> Vec<(Vec3, Vec3)> {
         b.cuboid_c(Vec3::new(x, h / 2.0, z), Vec3::new(0.1, h, 0.1), TIMBER);
     }
     // Tendone inclinato a strisce alternate.
+    b.force = Some(Mat::Cloth);
     let n = 7;
     for i in 0..n {
         let (x0, x1) = (
@@ -766,6 +792,7 @@ fn stall(b: &mut B, kind: &str) -> Vec<(Vec3, Vec3)> {
         let x = -1.1 + 0.44 * i as f32;
         b.cuboid_c(Vec3::new(x, 1.12, 0.45), Vec3::new(0.28, 0.2, 0.28), goods);
     }
+    b.force = None;
     b.cuboid_c(
         Vec3::new(-0.9, 0.3, -0.8),
         Vec3::new(0.7, 0.6, 0.6),
@@ -1063,11 +1090,13 @@ pub fn model(kind: &str, seed: u32) -> Building {
             // Casa delle guardie: due piani, travi a vista, stendardo rosso accanto alla porta.
             house(&mut b, &mut r, 8.0, 6.0, 5.2, 2, true, 1);
             b.cuboid_c(Vec3::new(1.9, 3.6, 3.4), Vec3::new(0.08, 0.08, 0.9), TIMBER);
+            b.force = Some(Mat::Cloth);
             b.cuboid_c(
                 Vec3::new(1.9, 3.1, 3.8),
                 Vec3::new(0.7, 0.9, 0.06),
                 [0.7, 0.14, 0.12, 1.0],
             );
+            b.force = None;
             (8.0, 6.0, body_colliders(8.0, 6.0, 5.2))
         }
         "fabbro" => {
@@ -1187,7 +1216,10 @@ pub fn model(kind: &str, seed: u32) -> Building {
 /// Mesh unica di un campo coltivato: una zolla di terra e una pianta per ogni punto
 /// (`kind` = "campo" grano, "orto" cavoli). `height` dà la quota del terreno in un punto.
 pub fn crop_field_mesh(kind: &str, pts: &[Vec2], height: &dyn Fn(Vec2) -> f32) -> Mesh {
-    let mut b = B::default();
+    let mut b = B {
+        force: Some(Mat::Plain),
+        ..Default::default()
+    };
     let soil: Col = [0.4, 0.28, 0.17, 1.0];
     for (i, p) in pts.iter().enumerate() {
         let y = height(*p);
@@ -1276,5 +1308,18 @@ mod tests {
                 "{k} senza mesh"
             );
         }
+    }
+
+    #[test]
+    fn palette_colors_get_a_real_material() {
+        assert_eq!(classify(STONE).0, Mat::Stone);
+        assert_eq!(classify(ROOFS[0]).0, Mat::Tiles);
+        assert_eq!(classify(ROOFS[2]).0, Mat::Thatch);
+        assert_eq!(classify(WALLS[0]).0, Mat::Plaster);
+        assert_eq!(classify([0.55, 0.4, 0.25, 1.0]).0, Mat::Planks);
+        assert_eq!(classify(HAY).0, Mat::Thatch);
+        assert_eq!(classify(WATER).0, Mat::Glass);
+        // Nessun colore della tavolozza resta piatto.
+        assert_ne!(classify([0.78, 0.18, 0.15, 1.0]).0, Mat::Plain);
     }
 }

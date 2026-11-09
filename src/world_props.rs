@@ -104,8 +104,8 @@ pub fn sync_world_props(
     for e in &props {
         commands.entity(e).despawn();
     }
-    let wood = mat(&mut materials, Color::srgb(0.55, 0.38, 0.22));
-    let iron = mat(&mut materials, Color::srgb(0.16, 0.17, 0.2));
+    let wood = pbr.get(crate::pbr::Mat::Planks);
+    let iron = pbr.get(crate::pbr::Mat::Iron);
     let stem = mat(&mut materials, Color::srgb(0.25, 0.55, 0.22));
     let petals = [
         mat(&mut materials, Color::srgb(0.95, 0.45, 0.7)),
@@ -122,13 +122,13 @@ pub fn sync_world_props(
     let firs = crate::trees::FirAssets::new(&mut meshes, &mut materials, &asset_server);
     let stem_mesh = meshes.add(Cylinder::new(0.015, 0.41));
     let head_mesh = meshes.add(Sphere::new(0.09));
-    let seat_mesh = meshes.add(Cuboid::new(1.5, 0.08, 0.45));
-    let back_mesh = meshes.add(Cuboid::new(1.5, 0.36, 0.06));
-    let leg_mesh = meshes.add(Cuboid::new(0.08, 0.7, 0.08));
-    let pole_mesh = meshes.add(Cylinder::new(0.06, 3.4));
-    let base_mesh = meshes.add(Cylinder::new(0.15, 0.7));
+    let seat_mesh = meshes.add(crate::pbr::with_tangents(Cuboid::new(1.5, 0.08, 0.45)));
+    let back_mesh = meshes.add(crate::pbr::with_tangents(Cuboid::new(1.5, 0.36, 0.06)));
+    let leg_mesh = meshes.add(crate::pbr::with_tangents(Cuboid::new(0.08, 0.7, 0.08)));
+    let pole_mesh = meshes.add(crate::pbr::with_tangents(Cylinder::new(0.06, 3.4)));
+    let base_mesh = meshes.add(crate::pbr::with_tangents(Cylinder::new(0.15, 0.7)));
     let lantern_mesh = meshes.add(Cuboid::new(0.28, 0.4, 0.28));
-    let cap_mesh = meshes.add(Cone::new(0.26, 0.22));
+    let cap_mesh = meshes.add(crate::pbr::with_tangents(Cone::new(0.26, 0.22)));
 
     let building_mat = materials.add(StandardMaterial {
         base_color: Color::WHITE,
@@ -300,12 +300,20 @@ pub fn sync_world_props(
                         .with_children(|c| {
                             c.spawn((
                                 // Il palo sta dietro la tabella: non copre la scritta.
-                                Mesh3d(meshes.add(Cuboid::new(0.12, 2.9, 0.12))),
+                                Mesh3d(
+                                    meshes.add(crate::pbr::with_tangents(Cuboid::new(
+                                        0.12, 2.9, 0.12,
+                                    ))),
+                                ),
                                 MeshMaterial3d(wood.clone()),
                                 Transform::from_xyz(0.0, 1.25, -0.1),
                             ));
                             c.spawn((
-                                Mesh3d(meshes.add(Cuboid::new(1.74, 0.68, 0.07))),
+                                Mesh3d(
+                                    meshes.add(crate::pbr::with_tangents(Cuboid::new(
+                                        1.74, 0.68, 0.07,
+                                    ))),
+                                ),
                                 MeshMaterial3d(wood.clone()),
                                 Transform::from_xyz(0.0, 2.05, 0.0),
                             ));
@@ -478,10 +486,12 @@ pub fn sync_world_props(
 const LAMP_LUMENS: f32 = 50_000.0;
 
 /// I lampioni si accendono al tramonto e si spengono all'alba (con dissolvenza).
+#[allow(clippy::too_many_arguments)]
 pub fn update_street_lamps(
     time: Res<Time>,
     clock: Res<GameClock>,
     weather: Res<crate::weather::WeatherState>,
+    settings: Res<crate::audio::AudioSettings>,
     mut lights: Query<(&GlobalTransform, &mut PointLight), With<LampLight>>,
     cameras: Query<&GlobalTransform, With<Camera3d>>,
     bulbs: Query<&LampBulb>,
@@ -503,7 +513,7 @@ pub fn update_street_lamps(
     dists.sort_by(|a, b| a.total_cmp(b));
     let limit = dists.get(2).copied().unwrap_or(f32::MAX).min(30.0);
     for (t, mut l) in &mut lights {
-        let shadows = t.translation().distance(cam) <= limit;
+        let shadows = settings.gfx.lamp_shadows && t.translation().distance(cam) <= limit;
         if l.shadow_maps_enabled != shadows {
             l.shadow_maps_enabled = shadows;
         }

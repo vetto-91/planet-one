@@ -465,6 +465,7 @@ pub fn spawn_precip(
 /// Sistema: muove la pioggia e la neve in coordinate di mondo, riciclandole a terra o fuori raggio.
 pub fn update_precip(
     time: Res<Time>,
+    settings: Res<AudioSettings>,
     state: Res<WeatherState>,
     wind: Res<Wind>,
     field: Option<Res<crate::terrain::TerrainField>>,
@@ -477,7 +478,7 @@ pub fn update_precip(
     let cam = cam.translation();
     let dt = time.delta_secs().min(0.1);
     let t = time.elapsed_secs();
-    let open = 1.0 - 0.9 * state.sheltered;
+    let open = (1.0 - 0.9 * state.sheltered) * settings.gfx.particle_scale();
     let rain_n = (state.rain * RAIN_POOL as f32 * open) as usize;
     let snow_n = (state.snow * SNOW_POOL as f32 * open) as usize;
     for (mut p, mut tf, mut vis) in &mut parts {

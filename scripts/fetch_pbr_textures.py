@@ -25,6 +25,8 @@ MATERIALS = {
     "tiles": "ceramic_roof_01",
     "slate": "roof_slates_03",
     "thatch": "thatch_roof_angled",
+    "cloth": "hessian_230",
+    "iron": "rust_coarse_01",
 }
 ALLOWED_HOST = "https://dl.polyhaven.org/"
 
