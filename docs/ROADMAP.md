@@ -43,6 +43,7 @@ Strategia: **vertical slice prima**. Una demo giocabile (1 quest, 1 NPC, 1 nemic
 | 10.4 — Microfono locale | Riconoscimento vocale nella chat con whisper.cpp, solo in locale | `v0.0.33.0` |
 | 10.5 — Contenitori e faro | Inventari di casse, armadi, botti e scaffali; faro visitabile | `v0.0.34.0` |
 | 10.6 — Statistiche e peso | Statistiche del personaggio, limite di peso, zaini ed effetti | `v0.0.35.0` |
+| 10.7 — Menu e salvataggi | Menu principale, personaggi, salvataggi di testo permanenti | `v0.0.36.0` |
 | 5.y — Mondo vivo | Colonna sonora con volume, casetta-chiosco esplorabile (porta, interni, stufa con fumo), routine giorno/notte del Viandante, voci dei personaggi, versione nel menu | `v0.0.7.0` |
 | 5.z — Mondo vivo, rifiniture | Interazione col mirino, casetta con serranda/interruttore/finestre e luci con ombre, routine del Viandante v2, voci normalizzate con ducking della musica | `v0.0.8.0` |
 | 5.w — Mappa e strumenti | Mappa dall'alto (M) con bussola e zoom, modalità debug piazzamenti (F4) con file `debug/placements.txt`, vetri e scuri spessi, il Viandante chiude porta e finestre | `v0.0.9.0` |

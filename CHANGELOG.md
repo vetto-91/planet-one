@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.36.0 — Menu principale e salvataggi (2026-11-09)
 
 - **Menu principale** (ADR 0025): Continua, Nuova partita con classi o punti da distribuire, Carica partita per personaggio, Impostazioni a schede (Gioco, Audio, Video, Controlli), Esci.
 - **Salvataggi permanenti** (ADR 0025): un file di testo modificabile per ogni salvataggio, con tempo, personaggio, oggetti, porte, mobili, quest, nemici e abitanti. Automatico ogni 5 minuti e all'uscita, F5 rapido e F9 per ricaricarlo.
