@@ -199,6 +199,7 @@ pub fn reset_scene(
     mut quest: ResMut<quest::QuestState>,
     asset_server: Res<AssetServer>,
     mut texts: ResMut<crate::quests::QuestTexts>,
+    mut homes: ResMut<crate::world_props::Homes>,
 ) {
     // 1. Despawn di tutte le entità radice della scena.
     //    In Bevy 0.20 despawn() è già ricorsivo sui Children (relationship).
@@ -217,6 +218,7 @@ pub fn reset_scene(
     // 3. Ricostruzione del mondo: la camera esistente viene solo riposizionata.
     spawn_world(&mut commands, &mut meshes, &mut materials, &asset_server);
 
-    // 4. Rientro in Playing; i sistemi di gameplay riprenderono dal frame successivo.
-    next.set(AppState::Playing);
+    // 4. Attesa che terreno ed edifici siano pronti, poi `save::finish_loading` entra in gioco.
+    homes.built = false;
+    next.set(AppState::Loading);
 }

@@ -188,6 +188,15 @@ impl GameClock {
         self.date.day_of_year() as f32 + self.hour / 24.0
     }
 
+    /// Imposta data e ora (da un salvataggio).
+    pub fn set(&mut self, date: GameDate, hour: f32) {
+        self.date = date;
+        self.hour = hour;
+        let (r, s) = sunrise_sunset(self.date.day_of_year() as f32);
+        self.sunrise = r;
+        self.sunset = s;
+    }
+
     /// Fa avanzare l'orologio di `hours` ore di gioco, cambiando data e orari del sole.
     pub fn advance(&mut self, hours: f32) {
         self.hour += hours;

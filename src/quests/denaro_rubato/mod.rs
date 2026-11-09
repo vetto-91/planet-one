@@ -261,24 +261,13 @@ pub fn quest_on_thief_death(
 }
 
 /// Spawn di N monete gialle (cubetti) attorno a una posizione (cerchio).
-pub fn spawn_loot(
+fn spawn_coins(
     commands: &mut Commands,
     meshes: &mut Assets<Mesh>,
-    materials: &mut Assets<StandardMaterial>,
-    center: Vec3,
-    count: u32,
+    gold: Handle<StandardMaterial>,
+    spots: &[Vec3],
 ) {
-    let gold = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.95, 0.80, 0.15),
-        emissive: LinearRgba::new(0.6, 0.45, 0.05, 0.0),
-        perceptual_roughness: 0.3,
-        metallic: 0.8,
-        ..default()
-    });
-    for i in 0..count {
-        let angle = (i as f32) / (count as f32) * std::f32::consts::TAU;
-        let radius = 1.0 + ((i % 3) as f32) * 0.4;
-        let pos = center + Vec3::new(angle.cos() * radius, 0.2, angle.sin() * radius);
+    for pos in spots {
         commands.spawn((
             SceneNode,
             QuestCoin,
@@ -286,9 +275,48 @@ pub fn spawn_loot(
             Collider::cuboid(0.35, 0.35, 0.35),
             Mesh3d(meshes.add(Cuboid::new(0.35, 0.35, 0.35))),
             MeshMaterial3d(gold.clone()),
-            Transform::from_translation(pos),
+            Transform::from_translation(*pos),
         ));
     }
+}
+
+/// Monete della quest nelle posizioni di un salvataggio.
+pub fn spawn_coins_at(
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+    spots: &[Vec3],
+) {
+    let gold = gold_material(materials);
+    spawn_coins(commands, meshes, gold, spots);
+}
+
+fn gold_material(materials: &mut Assets<StandardMaterial>) -> Handle<StandardMaterial> {
+    materials.add(StandardMaterial {
+        base_color: Color::srgb(0.95, 0.80, 0.15),
+        emissive: LinearRgba::new(0.6, 0.45, 0.05, 0.0),
+        perceptual_roughness: 0.3,
+        metallic: 0.8,
+        ..default()
+    })
+}
+
+pub fn spawn_loot(
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+    center: Vec3,
+    count: u32,
+) {
+    let gold = gold_material(materials);
+    let spots: Vec<Vec3> = (0..count)
+        .map(|i| {
+            let angle = (i as f32) / (count as f32) * std::f32::consts::TAU;
+            let radius = 1.0 + ((i % 3) as f32) * 0.4;
+            center + Vec3::new(angle.cos() * radius, 0.2, angle.sin() * radius)
+        })
+        .collect();
+    spawn_coins(commands, meshes, gold, &spots);
     info!("[QUEST] spawnate {} monete", count);
 }
 
@@ -514,7 +542,12 @@ pub fn thief_notice_player(
 }
 
 /// Spawn del ladro (enemy rosso con marker QuestThief) in un angolo della mappa.
-pub fn spawn_thief(commands: &mut Commands, asset_server: &AssetServer, start: Vec3, end: Vec3) {
+pub fn spawn_thief(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    start: Vec3,
+    end: Vec3,
+) -> Entity {
     commands
         .spawn((
             crate::scene::SceneNode,
@@ -540,5 +573,6 @@ pub fn spawn_thief(commands: &mut Commands, asset_server: &AssetServer, start: V
             Transform::from_translation(start),
             NeedsGroundSnap,
         ))
-        .with_children(|c| crate::figure::spawn_character(c, asset_server, "ladro"));
+        .with_children(|c| crate::figure::spawn_character(c, asset_server, "ladro"))
+        .id()
 }

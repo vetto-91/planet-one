@@ -207,6 +207,14 @@ impl ItemKind {
         }
     }
 
+    /// Cerca un oggetto per nome (per i salvataggi), senza badare a maiuscole e accenti.
+    pub fn from_name(text: &str) -> Option<ItemKind> {
+        let wanted = crate::inventory_ui::normalize(text.trim());
+        ItemKind::ALL
+            .into_iter()
+            .find(|k| crate::inventory_ui::normalize(k.name()) == wanted)
+    }
+
     /// Chili in più se è uno zaino.
     pub fn backpack_kg(self) -> Option<f32> {
         match self {
@@ -562,6 +570,8 @@ pub fn use_hotbar_items(
 /// Marker su entità raccoglibili nella scena 3D.
 #[derive(Component)]
 pub struct Pickup {
+    /// Gettato dal giocatore: si riprende con E, non da solo.
+    pub dropped: bool,
     pub kind: ItemKind,
     pub qty: u32,
 }
@@ -585,7 +595,11 @@ pub fn spawn_pickup(
     commands
         .spawn((
             SceneNode,
-            Pickup { kind, qty },
+            Pickup {
+                kind,
+                qty,
+                dropped: false,
+            },
             RigidBody::Static,
             Collider::cuboid(size, size, size),
             Mesh3d(meshes.add(Cuboid::new(size, size, size))),
@@ -597,6 +611,82 @@ pub fn spawn_pickup(
             Transform::from_translation(position),
         ))
         .id()
+}
+
+/// Oggetto a terra: originale (raccolta automatica) o gettato dal giocatore (si riprende con E).
+#[allow(clippy::too_many_arguments)]
+pub fn spawn_ground_item(
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+    kind: ItemKind,
+    qty: u32,
+    position: Vec3,
+    dropped: bool,
+) -> Entity {
+    let entity = spawn_pickup(commands, meshes, materials, kind, qty, position);
+    if dropped {
+        commands.entity(entity).insert((
+            Pickup {
+                kind,
+                qty,
+                dropped: true,
+            },
+            crate::hut::PropKind::Pickup,
+            crate::entities::Interactable {
+                prompt: if qty > 1 {
+                    format!("[E] Raccogli {} ×{qty}", kind.name())
+                } else {
+                    format!("[E] Raccogli {}", kind.name())
+                },
+                range: 2.6,
+                aim: Some(0.5),
+                use_from: None,
+            },
+        ));
+    }
+    entity
+}
+
+/// Sistema: «Getta a terra» dall'inventario, davanti ai piedi del giocatore.
+#[allow(clippy::too_many_arguments)]
+pub fn drop_requested_items(
+    mut commands: Commands,
+    mut ui: ResMut<crate::inventory_ui::InventoryUi>,
+    mut inventory: ResMut<Inventory>,
+    mut equip: ResMut<Equipment>,
+    players: Query<&GlobalTransform, With<crate::player::Player>>,
+    visuals: Query<&GlobalTransform, With<crate::player::PlayerVisual>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let Some(kind) = ui.drop_request.take() else {
+        return;
+    };
+    let Ok(player) = players.single() else {
+        return;
+    };
+    if inventory.qty(kind) == 0 {
+        return;
+    }
+    let ahead = visuals
+        .single()
+        .map_or(*player.forward(), |v| *v.forward())
+        .with_y(0.0)
+        .normalize_or_zero();
+    let at = player.translation() + ahead * 1.0 - Vec3::Y * 0.6;
+    inventory.consume(kind, 1);
+    equip.drop_missing(&inventory);
+    spawn_ground_item(
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+        kind,
+        1,
+        at,
+        true,
+    );
+    info!("[INVENTORY] gettato a terra: {}", kind.name());
 }
 
 /// Sistema di raccolta: se il player è vicino a un Pickup (<= 2.0 m),
@@ -614,7 +704,7 @@ pub fn collect_pickups(
     let p = player.translation();
 
     for (entity, t, pickup) in &pickups {
-        if t.translation().distance(p) <= 2.0 {
+        if !pickup.dropped && t.translation().distance(p) <= 2.0 {
             inventory.add(pickup.kind, pickup.qty);
             commands.entity(entity).despawn();
             info!("raccolto {:?} x{}", pickup.kind, pickup.qty);

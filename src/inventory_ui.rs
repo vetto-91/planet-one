@@ -88,6 +88,8 @@ pub struct InventoryUi {
     pub filter: Filter,
     /// Si sta scrivendo nella ricerca: il tasto I non deve chiudere la finestra.
     pub typing: bool,
+    /// Oggetto da gettare a terra (applicato da `inventory::drop_requested_items`).
+    pub drop_request: Option<ItemKind>,
 }
 
 /// Minuscole e senza accenti, per confronti e ordinamento.
@@ -308,6 +310,9 @@ pub fn inventory_window(
                                 } else {
                                     None
                                 };
+                                if ui.button("Getta").clicked() {
+                                    state.drop_request = Some(kind);
+                                }
                                 ui.vertical(|ui| {
                                     ui.set_width(96.0);
                                     if let Some(label) = action

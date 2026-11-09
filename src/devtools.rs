@@ -6,6 +6,8 @@
 //! - `PLANET_ONE_POS=x,y,z`: teletrasporta il player (dopo ~1 s).
 //! - `PLANET_ONE_GIVE=1`: tutti gli oggetti in inventario (armi, scudo, frecce, 200 monete).
 //! - `PLANET_ONE_SHELL="god;coordinate"`: comandi della shell eseguiti all'avvio, separati da `;`.
+//! - `PLANET_ONE_SESSION=Nome`: partita attiva senza menu (salvataggi di prova; F5/F9).
+//! - `PLANET_ONE_MENU=1`: mostra il menu anche con le altre variabili; `PLANET_ONE_WINDOWED=1`: a finestra.
 //! - `PLANET_ONE_DELAY_SCALE=0.1`: moltiplica i ritardi con cui il Viandante chiude porta/finestre.
 //! - `PLANET_ONE_LOOK=yaw,pitch[,distanza[,1]]`: orientamento della camera in gradi
 //!   (il quarto valore 1 attiva la prima persona).
@@ -16,17 +18,37 @@ use crate::camera::OrbitCamera;
 use crate::player::Player;
 use bevy::prelude::*;
 
+/// Con le variabili di prova si entra subito in partita, a finestra, senza menu.
+/// `PLANET_ONE_MENU=1` mostra comunque il menu.
+pub fn skip_menu() -> bool {
+    let test = [
+        "PLANET_ONE_POS",
+        "PLANET_ONE_HOUR",
+        "PLANET_ONE_LOOK",
+        "PLANET_ONE_SHELL",
+    ]
+    .iter()
+    .any(|v| std::env::var_os(v).is_some());
+    test && std::env::var_os("PLANET_ONE_MENU").is_none()
+}
+
 /// Sistema (Update): applica una sola volta posizione e orientamento di debug.
 pub fn apply_debug_env(
     mut orbit: ResMut<OrbitCamera>,
     mut players: Query<&mut Transform, With<Player>>,
     mut inventory: ResMut<crate::inventory::Inventory>,
     mut shell: ResMut<crate::shell::Shell>,
+    mut session: ResMut<crate::save::Session>,
+    mut character: ResMut<crate::character::Character>,
     mut frames: Local<u32>,
 ) {
     *frames += 1;
     if *frames != 60 {
         return;
+    }
+    if let Ok(name) = std::env::var("PLANET_ONE_SESSION") {
+        crate::save::start_test_session(&mut session, &name);
+        character.name = name;
     }
     if let Ok(commands) = std::env::var("PLANET_ONE_SHELL") {
         shell

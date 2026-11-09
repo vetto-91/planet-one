@@ -87,8 +87,17 @@ pub fn toggle(
         | AppState::Character
         | AppState::Shop => next.set(AppState::Playing),
         // Durante il reset ESC non fa nulla: è uno stato transitorio.
-        AppState::Resetting => {}
+        AppState::Resetting | AppState::Loading | AppState::MainMenu => {}
     }
+}
+
+/// Ciò che il menu Esc può chiedere.
+#[derive(SystemParam)]
+pub struct MenuActions<'w> {
+    pub save: ResMut<'w, crate::save::SaveRequest>,
+    pub session: Res<'w, crate::save::Session>,
+    pub menu_ui: ResMut<'w, crate::main_menu::MenuUi>,
+    pub settings: ResMut<'w, crate::settings_ui::SettingsPanel>,
 }
 
 /// UI egui: hint discreto in gioco, menu completo in pausa.
@@ -102,6 +111,7 @@ pub fn toggle(
 // Bevy 0.20 supporta al massimo 16 parametri per sistema.
 #[derive(SystemParam)]
 pub struct UiQueries<'w, 's> {
+    pub actions: MenuActions<'w>,
     pub cheats: Res<'w, crate::shell::Cheats>,
     pub character: Res<'w, crate::character::Character>,
     pub load: Res<'w, crate::character::Load>,
@@ -135,8 +145,6 @@ pub struct UiQueries<'w, 's> {
     pub chat: ResMut<'w, crate::ai::AiChat>,
     pub ai: Res<'w, crate::ai::AiState>,
     pub weather: Res<'w, crate::weather::WeatherState>,
-    pub gfx_panel: ResMut<'w, crate::graphics::GfxPanelOpen>,
-    pub tts: Res<'w, crate::ai::tts::TtsState>,
     pub stt: Res<'w, crate::ai::stt::SttState>,
     pub village: Res<'w, crate::village::VillageInfo>,
     pub equip: Res<'w, crate::inventory::Equipment>,
@@ -171,8 +179,8 @@ pub fn ui(
     mut contexts: EguiContexts,
     state: Res<State<AppState>>,
     mut next: ResMut<NextState<AppState>>,
-    mut orbit: ResMut<OrbitCamera>,
-    mut show_fps: ResMut<ShowFps>,
+    orbit: Res<OrbitCamera>,
+    show_fps: Res<ShowFps>,
     diagnostics: Res<DiagnosticsStore>,
     dialog: Res<DialogState>,
     nearest: Res<NearestInteract>,
@@ -319,179 +327,70 @@ pub fn ui(
             }
         }
         AppState::Paused => {
-            // Versione del gioco in basso a destra.
-            egui::Area::new(egui::Id::new("game_version"))
-                .anchor(egui::Align2::RIGHT_BOTTOM, egui::vec2(-12.0, -12.0))
-                .show(ctx, |ui| {
-                    hud_chip(ui, &format!("Planet One {}", crate::version::GAME_VERSION));
-                });
-
-            // In egui 0.36 i CentralPanel si mostrano dentro una Ui radice:
-            // la creiamo dal contesto con il pattern degli esempi bevy_egui.
-            let mut viewport_ui = egui::Ui::new(
-                ctx.clone(),
-                "menu_root".into(),
-                egui::UiBuilder::new()
-                    .layer_id(egui::LayerId::background())
-                    .max_rect(ctx.viewport_rect()),
-            );
-
-            // Frame scuro semi-trasparente per coprire il mondo in pausa.
-            let frame = egui::Frame::default()
-                .fill(egui::Color32::from_rgba_unmultiplied(8, 10, 15, 225))
-                .inner_margin(egui::Margin::symmetric(40, 24));
-
-            egui::CentralPanel::default()
-                .frame(frame)
-                .show(&mut viewport_ui, |ui| {
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        ui.vertical_centered(|ui| {
-                            ui.label(
-                                egui::RichText::new("Planet One")
-                                    .strong()
-                                    .size(34.0)
-                                    .color(crate::ui_style::GOLD),
-                            );
-                            ui.label("— pausa —");
-                        });
-                        ui.separator();
-
-                        if ui.button("Impostazioni grafiche…").clicked() {
-                            q.gfx_panel.0 = !q.gfx_panel.0;
-                        }
-                        ui.separator();
-
-                        // Lista dei controlli disponibili.
-                        ui.label(
-                            egui::RichText::new("Controlli")
-                                .strong()
-                                .color(crate::ui_style::GOLD),
-                        );
-                        ui.label("• W/A/S/D o frecce — movimento");
-                        ui.label("• Shift — corsa");
-                        ui.label("• Space — salto");
-                        ui.label("• Mouse — orbita camera");
-                        ui.label("• Esc — menu / riprendi");
-                        ui.label("• J — diario delle quest, T — aspetta, TAB (tenuto) — obiettivi");
-                        ui.label("• I — inventario, C — personaggio, E / Invio — dialogo, 1–0 — usa oggetti");
-                        ui.label("• F3 — wireframe collider (debug)");
-                        ui.label("• F11 — schermo intero on/off");
-                        ui.label(
-                            "• V — prima persona on/off, RMB tenuto = prima persona temporanea",
-                        );
-                        ui.separator();
-
-                        // Sensibilità del mouse: modifica la resource in tempo reale.
-                        ui.add(
-                            egui::Slider::new(&mut orbit.sensitivity, 0.0005..=0.010)
-                                .text("Sensibilità mouse"),
-                        );
-
-                        // Volume delle sole musiche (salvato su file).
-                        let mut pct = q.audio.music_volume * 100.0;
-                        if ui
-                            .add(
-                                egui::Slider::new(&mut pct, 0.0..=100.0)
-                                    .text("Volume musica %")
-                                    .fixed_decimals(0),
-                            )
-                            .changed()
-                        {
-                            q.audio.music_volume = pct / 100.0;
-                            q.audio.dirty = true;
-                        }
-
-                        // Volume delle voci dei personaggi.
-                        let mut vpct = q.audio.voice_volume * 100.0;
-                        if ui
-                            .add(
-                                egui::Slider::new(&mut vpct, 0.0..=100.0)
-                                    .text("Volume voci %")
-                                    .fixed_decimals(0),
-                            )
-                            .changed()
-                        {
-                            q.audio.voice_volume = vpct / 100.0;
-                            q.audio.dirty = true;
-                        }
-
-                        // Toggle contatore FPS.
-                        ui.checkbox(&mut show_fps.0, "Mostra FPS");
-                        ui.horizontal(|ui| {
-                            ui.label("Velocità del tempo:");
-                            for speed in [1u32, 2, 4, 8] {
-                                if ui
-                                    .selectable_label(
-                                        q.audio.time_speed == speed,
-                                        format!("x{speed}"),
-                                    )
-                                    .clicked()
-                                {
-                                    q.audio.time_speed = speed;
-                                    q.audio.dirty = true;
+            // Con «Carica» aperto disegna tutto `main_menu::main_menu_ui`.
+            if q.actions.menu_ui.screen != crate::main_menu::Screen::Load
+                && !q.actions.settings.open
+            {
+                let frame = egui::Frame::default()
+                    .fill(egui::Color32::from_rgba_unmultiplied(10, 12, 20, 240))
+                    .stroke(egui::Stroke::new(2.0, crate::ui_style::GOLD))
+                    .inner_margin(egui::Margin::symmetric(36, 22))
+                    .corner_radius(egui::CornerRadius::same(10));
+                egui::Area::new(egui::Id::new("pause_menu"))
+                    .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+                    .show(ctx, |ui| {
+                        frame.show(ui, |ui| {
+                            ui.vertical_centered(|ui| {
+                                ui.label(
+                                    egui::RichText::new("Planet One")
+                                        .strong()
+                                        .size(34.0)
+                                        .color(crate::ui_style::GOLD),
+                                );
+                                ui.label(crate::version::GAME_VERSION);
+                                ui.add_space(12.0);
+                                let bsize = egui::vec2(260.0, 40.0);
+                                let btn =
+                                    |t: &str| egui::Button::new(egui::RichText::new(t).strong());
+                                let a = &mut q.actions;
+                                let active = a.session.active;
+                                if ui.add_sized(bsize, btn("Riprendi")).clicked() {
+                                    next.set(AppState::Playing);
                                 }
-                            }
+                                if ui
+                                    .add_enabled_ui(active, |ui| {
+                                        ui.add_sized(bsize, btn("Salva")).clicked()
+                                    })
+                                    .inner
+                                {
+                                    a.save.kind = Some(crate::save::SaveKind::Manual);
+                                }
+                                if ui.add_sized(bsize, btn("Carica")).clicked() {
+                                    a.menu_ui.open_load();
+                                }
+                                if ui.add_sized(bsize, btn("Impostazioni")).clicked() {
+                                    a.settings.open = true;
+                                }
+                                if ui.add_sized(bsize, btn("Menu principale")).clicked() {
+                                    if active {
+                                        a.save.kind = Some(crate::save::SaveKind::Auto);
+                                        a.save.after = crate::save::AfterSave::MainMenu;
+                                    } else {
+                                        next.set(AppState::MainMenu);
+                                    }
+                                }
+                                if ui.add_sized(bsize, btn("Esci dal gioco")).clicked() {
+                                    info!("[EVENT] richiesta uscita dal gioco");
+                                    if active {
+                                        a.save.kind = Some(crate::save::SaveKind::Auto);
+                                        a.save.after = crate::save::AfterSave::Exit;
+                                    } else {
+                                        exit.write(AppExit::Success);
+                                    }
+                                }
+                            });
                         });
-                        ui.separator();
-
-                        // Dialoghi con IA locale (Ollama, solo su questo PC).
-                        ui.label(
-                            egui::RichText::new("Dialoghi con IA (locale)")
-                                .strong()
-                                .color(crate::ui_style::GOLD),
-                        );
-                        if ui
-                            .checkbox(&mut q.audio.ai_enabled, "Dialoghi IA (spegni sui PC lenti)")
-                            .changed()
-                        {
-                            q.audio.dirty = true;
-                        }
-                        ui.label(format!("Stato: {}", q.ai.status.label()));
-                        if ui
-                            .checkbox(&mut q.audio.tts_enabled, "Voce IA (Piper locale)")
-                            .changed()
-                        {
-                            q.audio.dirty = true;
-                        }
-                        ui.label(format!("Voce: {}", q.tts.status.label()));
-                        if ui
-                            .checkbox(&mut q.audio.stt_enabled, "Microfono (Whisper locale)")
-                            .changed()
-                        {
-                            q.audio.dirty = true;
-                        }
-                        ui.label(format!("Microfono: {}", q.stt.status.label()));
-                        ui.label("Modelli e voci si cambiano dalla shell (tasto \\).");
-                        ui.separator();
-
-                        // Riprendi (equivalente a Esc).
-                        let btn = |t: &str| egui::Button::new(egui::RichText::new(t).strong());
-                        let bsize = egui::vec2(240.0, 40.0);
-                        if ui.add_sized(bsize, btn("Riprendi")).clicked() {
-                            next.set(AppState::Playing);
-                        }
-
-                        // Reset della scena: ricostruzione da zero.
-                        // Entra nello stato transitorio `Resetting`, in cui tutti i
-                        // sistemi di gameplay sono spenti; questo evita il panic
-                        // "Entity despawned" che accadeva quando il reset era
-                        // eseguito in `Update` insieme al ground-check.
-                        if ui.add_sized(bsize, btn("Reset scena")).clicked() {
-                            next.set(AppState::Resetting);
-                        }
-
-                        ui.add_space(8.0);
-                        // Esci dal gioco: chiude la finestra con AppExit::Success.
-                        if ui.add_sized(bsize, btn("Esci dal gioco")).clicked() {
-                            info!("[EVENT] richiesta uscita dal gioco");
-                            exit.write(AppExit::Success);
-                        }
                     });
-                });
-            if q.gfx_panel.0 {
-                let mut open = true;
-                crate::graphics::graphics_window(ctx, &mut q.audio, &mut open);
-                q.gfx_panel.0 = open;
             }
         }
         AppState::Wait => {
@@ -588,6 +487,8 @@ pub fn ui(
         // I mobili aperti hanno il loro sistema (`containers::container_window`).
         AppState::Container => {}
         AppState::Character => {}
+        // Menu principale e attesa hanno i loro sistemi.
+        AppState::MainMenu | AppState::Loading => {}
         // Durante Resetting non mostriamo nulla; la UI riapparirà in Playing/Paused.
         AppState::Resetting => {}
     }

@@ -256,12 +256,14 @@ pub fn starting_items(kind: ContainerKind, building: &str, key: &str) -> Vec<(It
 #[derive(Resource, Default)]
 pub struct Containers {
     stores: HashMap<String, Store>,
+    kinds: HashMap<String, ContainerKind>,
     open: Option<(String, ContainerKind)>,
 }
 
 impl Containers {
     /// Apre un mobile; alla prima apertura ne genera il contenuto.
     pub fn open(&mut self, c: &Container) {
+        self.kinds.insert(c.key.clone(), c.kind);
         self.stores.entry(c.key.clone()).or_insert_with(|| {
             let mut store = Store::empty(c.kind.capacity());
             for (item, qty) in starting_items(c.kind, &c.building, &c.key) {
@@ -271,6 +273,36 @@ impl Containers {
         });
         self.open = Some((c.key.clone(), c.kind));
         info!("[CONTAINER] aperto {} ({})", c.key, c.kind.name());
+    }
+
+    /// Contenuti per il salvataggio: solo i mobili già aperti, gli altri si rigenerano uguali.
+    pub fn snapshot(&self) -> Vec<crate::save::ContainerSave> {
+        let mut list: Vec<crate::save::ContainerSave> = self
+            .stores
+            .iter()
+            .map(|(key, store)| crate::save::ContainerSave {
+                key: key.clone(),
+                kind: self.kinds.get(key).copied().unwrap_or(ContainerKind::Crate),
+                items: store.items.iter().map(|s| (s.kind, s.qty)).collect(),
+            })
+            .collect();
+        list.sort_by(|a, b| a.key.cmp(&b.key));
+        list
+    }
+
+    /// Ripristina i contenuti letti da un salvataggio.
+    pub fn restore(&mut self, saved: &[crate::save::ContainerSave]) {
+        self.stores.clear();
+        self.kinds.clear();
+        self.open = None;
+        for c in saved {
+            let mut store = Store::empty(c.kind.capacity());
+            for (item, qty) in &c.items {
+                store.add(*item, *qty);
+            }
+            self.stores.insert(c.key.clone(), store);
+            self.kinds.insert(c.key.clone(), c.kind);
+        }
     }
 }
 

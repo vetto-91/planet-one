@@ -27,14 +27,17 @@ mod hut;
 mod interiors;
 mod inventory;
 mod inventory_ui;
+mod main_menu;
 mod map;
 mod menu;
 mod pbr;
 mod player;
 mod props;
 mod quests;
+mod save;
 mod scene;
 mod seasons;
+mod settings_ui;
 mod shell;
 mod shop;
 mod sky;
@@ -69,8 +72,12 @@ const DEBUG_WIREFRAME: bool = false;
 ///   su entità che stanno per essere distrutte.
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub enum AppState {
-    /// Gameplay attivo.
+    /// Menu principale, all'avvio.
     #[default]
+    MainMenu,
+    /// Attesa della scena dopo una nuova partita o un caricamento.
+    Loading,
+    /// Gameplay attivo.
     Playing,
     /// Menu aperto (Esc): gameplay sospeso.
     Paused,
@@ -122,7 +129,11 @@ fn main() {
             FrameTimeDiagnosticsPlugin::default(),
         ))
         // Stato applicativo + risorse.
-        .init_state::<AppState>()
+        .insert_state(if devtools::skip_menu() {
+            AppState::Playing
+        } else {
+            AppState::MainMenu
+        })
         // Wireframe delle mesh disattivato di default (era diagnostico);
         // riattivabile con DEBUG_WIREFRAME.
         .insert_resource(WireframeConfig {
@@ -152,6 +163,9 @@ fn main() {
         .add_plugins(shell::plugin)
         .add_plugins(containers::plugin)
         .add_plugins(character::plugin)
+        .add_plugins(save::plugin)
+        .add_plugins(settings_ui::plugin)
+        .add_plugins(main_menu::plugin)
         .add_plugins(shop::plugin)
         .add_plugins(bells::plugin)
         .add_plugins(seasons::plugin)
@@ -187,15 +201,12 @@ fn main() {
         // All'avvio il wireframe dei collider è DISATTIVO; F3 lo attiva
         // (utile in sviluppo per confrontare mesh e collider del terreno).
         .add_systems(Startup, disable_physics_debug_default)
-        // Disabilita temporaneamente fullscreen di default per test input (F11 per riattivare)
-        .add_systems(
-            Startup,
-            |mut q: Query<&mut bevy::window::Window, With<bevy::window::PrimaryWindow>>| {
-                if let Ok(mut w) = q.single_mut() {
-                    w.mode = bevy::window::WindowMode::Windowed;
-                }
-            },
-        )
+        // Prove automatiche sempre a finestra; altrimenti vale l'impostazione salvata.
+        .add_systems(Startup, |mut audio: ResMut<audio::AudioSettings>| {
+            if devtools::skip_menu() || std::env::var_os("PLANET_ONE_WINDOWED").is_some() {
+                audio.fullscreen = false;
+            }
+        })
         // Ricostruzione del terreno quando la heightmap è disponibile o cambia.
         .add_systems(
             Update,
@@ -274,6 +285,7 @@ fn main() {
                 hud::update_occlusion,
                 inventory::collect_pickups,
                 inventory::use_hotbar_items,
+                inventory::drop_requested_items,
                 combat::player_attack,
                 combat::contact_damage,
                 combat::handle_enemy_death,
@@ -294,6 +306,12 @@ fn main() {
                 shell::shell_panel.run_if(in_state(AppState::Shell)),
                 containers::container_window.run_if(in_state(AppState::Container)),
                 character::character_window.run_if(in_state(AppState::Character)),
+                main_menu::main_menu_ui.run_if(|s: Res<State<AppState>>| {
+                    matches!(s.get(), AppState::MainMenu | AppState::Paused)
+                }),
+                main_menu::loading_ui.run_if(in_state(AppState::Loading)),
+                settings_ui::settings_window,
+                save::draw_notice,
             )
                 .chain(),
         )
@@ -483,24 +501,12 @@ fn log_input_events(
 }
 
 /// F11: toggle fullscreen (usa il sistema operativo per catturare input).
-fn toggle_fullscreen(
-    keys: Res<ButtonInput<KeyCode>>,
-    mut windows: Query<&mut Window, With<bevy::window::PrimaryWindow>>,
-) {
-    use bevy::window::{MonitorSelection, VideoModeSelection, WindowMode};
-    if !keys.just_pressed(KeyCode::F11) {
-        return;
+fn toggle_fullscreen(keys: Res<ButtonInput<KeyCode>>, mut audio: ResMut<audio::AudioSettings>) {
+    if keys.just_pressed(KeyCode::F11) {
+        audio.fullscreen = !audio.fullscreen;
+        audio.dirty = true;
+        info!("fullscreen: {}", audio.fullscreen);
     }
-    let Ok(mut window) = windows.single_mut() else {
-        return;
-    };
-    window.mode = match window.mode {
-        WindowMode::Windowed => {
-            WindowMode::Fullscreen(MonitorSelection::Current, VideoModeSelection::Current)
-        }
-        _ => WindowMode::Windowed,
-    };
-    info!("fullscreen: {:?}", window.mode);
 }
 
 /// Toggle con F3 del rendering debug dei collider (wireframe arancione).

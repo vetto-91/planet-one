@@ -2,6 +2,13 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Menu principale** (ADR 0025): Continua, Nuova partita con classi o punti da distribuire, Carica partita per personaggio, Impostazioni a schede (Gioco, Audio, Video, Controlli), Esci.
+- **Salvataggi permanenti** (ADR 0025): un file di testo modificabile per ogni salvataggio, con tempo, personaggio, oggetti, porte, mobili, quest, nemici e abitanti. Automatico ogni 5 minuti e all'uscita, F5 rapido e F9 per ricaricarlo.
+- **Getta a terra**: gli oggetti gettati restano dove sono e si riprendono con E.
+- Sensibilità del mouse, FPS a schermo e schermo intero restano impostati tra una sessione e l'altra.
+
 ## v0.0.35.0 — Statistiche, peso e zaini (2026-11-09)
 
 - **Statistiche** (ADR 0024): forza, costituzione, agilità, intelligenza, saggezza, carisma e fortuna, con il pannello del personaggio (tasto C).

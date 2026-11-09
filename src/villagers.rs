@@ -148,6 +148,60 @@ pub struct Villager {
     indoor: VecDeque<Vec3>,
     /// È già entrato: quando `indoor` finisce si mette a letto.
     entered: bool,
+    /// Appena letto da un salvataggio: la routine riprende da dove era.
+    resume: bool,
+}
+
+/// Stato di un abitante nel salvataggio.
+#[derive(Clone, Debug, PartialEq)]
+pub struct VillagerSave {
+    pub name: String,
+    pub phase: String,
+    pub hidden: bool,
+    pub pos: Vec3,
+    pub rot: Quat,
+    pub patrol: f32,
+}
+
+impl Villager {
+    pub fn name(&self) -> &str {
+        &self.def.name
+    }
+
+    /// Fotografia: chi è a metà di una scala viene considerato già arrivato in fondo al percorso.
+    pub fn snapshot(&self, tf: &Transform) -> VillagerSave {
+        let pos = self
+            .indoor
+            .back()
+            .map_or(tf.translation, |p| *p + Vec3::Y * CENTER_Y);
+        VillagerSave {
+            name: self.def.name.clone(),
+            phase: format!("{:?}", self.phase),
+            hidden: self.hidden,
+            pos,
+            rot: tf.rotation,
+            patrol: self.patrol,
+        }
+    }
+
+    /// Riprende da un salvataggio; la routine ricalcola il percorso al frame dopo.
+    pub fn restore(&mut self, saved: &VillagerSave, tf: &mut Transform) {
+        self.phase = match saved.phase.as_str() {
+            "Evening" => Phase::Evening,
+            "Night" => Phase::Night,
+            "Rest" => Phase::Rest,
+            _ => Phase::Work,
+        };
+        self.hidden = saved.hidden;
+        self.patrol = saved.patrol;
+        self.placed = true;
+        self.resume = true;
+        self.entered = false;
+        self.path.clear();
+        self.indoor.clear();
+        tf.translation = saved.pos;
+        tf.rotation = saved.rot;
+    }
 }
 
 /// Inventario di un abitante: le chiavi che porta con sé.
@@ -329,6 +383,7 @@ pub fn spawn_villagers(
                     patrol: 0.0,
                     indoor: VecDeque::new(),
                     entered: false,
+                    resume: false,
                 },
                 RigidBody::Kinematic,
                 Collider::capsule(0.35, 1.0),
@@ -618,6 +673,31 @@ pub fn villager_routine(
                 }
             } else {
                 *vis = Visibility::Inherited;
+            }
+        }
+        // Appena caricato: chi non è a letto riprende la strada verso il suo posto.
+        if v.resume {
+            v.resume = false;
+            if v.hidden {
+                npc.mode = NpcMode::Busy;
+                commands.entity(entity).insert(ColliderDisabled);
+                *vis = if home.is_some() {
+                    Visibility::Inherited
+                } else {
+                    Visibility::Hidden
+                };
+            } else {
+                *vis = Visibility::Inherited;
+                let (to, _) = spot(&v.def, v.phase, &info);
+                let dest = match (&home, v.phase) {
+                    (Some(h), Phase::Night | Phase::Rest) => h.door,
+                    _ => to,
+                };
+                if here.distance(dest) > 0.5 {
+                    v.path = graph
+                        .as_ref()
+                        .map_or_else(|| VecDeque::from([dest]), |g| g.route(here, dest));
+                }
             }
         }
         // Cambio di fase: si parte (o si compare/scompare).

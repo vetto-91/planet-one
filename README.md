@@ -47,6 +47,12 @@ cargo fmt            # formatta
 cargo clippy         # linter
 ```
 
+## Menu e salvataggi
+
+All'avvio c'è il menu principale: **Continua** riprende l'ultima partita, **Nuova partita** crea un personaggio (classe pronta o punti da distribuire), **Carica partita** elenca i salvataggi di ogni personaggio, **Impostazioni** raccoglie gioco, audio, video e controlli.
+
+Il gioco salva da solo ogni 5 minuti e all'uscita; dal menu Esc si salva a mano, **F5** salva al volo e **F9** ricarica quel salvataggio. Ogni salvataggio è un file di testo modificabile in `~/.local/share/planet-one/saves/<personaggio>/` (Windows: `%LOCALAPPDATA%\planet-one\saves`, macOS: `~/Library/Application Support/planet-one/saves`).
+
 ## Shell dei trucchi (tasto `\`)
 
 Giocando normalmente non ci sono trucchi. Con il tasto `\` si apre una shell (Esc o `\` la chiudono), e a ogni avvio si riparte con tutto spento. `aiuto` mostra i comandi:
@@ -105,6 +111,7 @@ grep "\[EVENT\]" run.log    # eventi finestra/cursore
 | Esc | Menu pausa (tasti, slider sensibilità, checkbox FPS, reset scena) |
 | \\ | Shell dei trucchi (vedi sotto) |
 | C | Pannello del personaggio |
+| F5 / F9 | Salvataggio rapido / ricarica |
 | F3 | Wireframe dei collider: attivo solo dopo `debug on` nella shell |
 | F11 | Schermo intero on/off (in fullscreen il cursore è bloccato e nascosto) |
 | M | Mappa dall'alto (vista drone, nord in alto, bussola in alto a sinistra); rotella o +/- = zoom; frecce/WASD o tasto centrale = sposta, C = su di te; M/Esc = chiudi |

@@ -37,6 +37,18 @@ impl Kind {
         }
     }
 
+    /// Nome scritto nei salvataggi (lo stesso che `parse` riconosce).
+    pub fn save_name(self) -> &'static str {
+        match self {
+            Kind::Clear => "sereno",
+            Kind::Cloudy => "nuvoloso",
+            Kind::Rain => "pioggia",
+            Kind::Storm => "temporale",
+            Kind::Fog => "nebbia",
+            Kind::Snow => "neve",
+        }
+    }
+
     /// Legge il nome da `PLANET_ONE_WEATHER`.
     pub fn parse(text: &str) -> Option<Kind> {
         match text.trim().to_lowercase().as_str() {

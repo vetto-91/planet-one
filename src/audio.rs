@@ -52,6 +52,11 @@ pub struct AudioSettings {
     pub stt_model: String,
     /// Velocità del tempo di gioco: 1, 2, 4 o 8.
     pub time_speed: u32,
+    /// Sensibilità del mouse (rad per pixel).
+    pub mouse_sensitivity: f32,
+    /// Contatore degli FPS a schermo.
+    pub show_fps: bool,
+    pub fullscreen: bool,
     /// Impostazioni grafiche (solo aspetto visivo).
     pub gfx: crate::graphics::GfxOptions,
     /// VSync e limite di FPS.
@@ -73,6 +78,9 @@ impl Default for AudioSettings {
             tts_enabled: true,
             tts_voice: String::new(),
             time_speed: 1,
+            mouse_sensitivity: 0.003,
+            show_fps: true,
+            fullscreen: true,
             gfx: Default::default(),
             fps: Default::default(),
             dirty: false,
@@ -108,6 +116,17 @@ impl Default for AudioSettings {
                 }
                 if let Some(v) = line.trim().strip_prefix("stt_model=") {
                     s.stt_model = v.trim().to_string();
+                }
+                if let Some(v) = line.trim().strip_prefix("mouse_sensitivity=")
+                    && let Ok(v) = v.trim().parse::<f32>()
+                {
+                    s.mouse_sensitivity = v.clamp(0.0005, 0.01);
+                }
+                if let Some(v) = line.trim().strip_prefix("show_fps=") {
+                    s.show_fps = v.trim() != "0";
+                }
+                if let Some(v) = line.trim().strip_prefix("fullscreen=") {
+                    s.fullscreen = v.trim() != "0";
                 }
                 s.gfx.read_line(line);
                 s.fps.read_line(line);
@@ -259,7 +278,7 @@ pub fn save_settings(mut settings: ResMut<AudioSettings>, mouse: Res<ButtonInput
     match std::fs::write(
         &path,
         format!(
-            "music_volume={:.2}\nvoice_volume={:.2}\nai_enabled={}\nai_model={}\nai_host={}\ntts_enabled={}\ntts_voice={}\nstt_enabled={}\nstt_model={}\ntime_speed={}\n{}{}",
+            "music_volume={:.2}\nvoice_volume={:.2}\nai_enabled={}\nai_model={}\nai_host={}\ntts_enabled={}\ntts_voice={}\nstt_enabled={}\nstt_model={}\ntime_speed={}\nmouse_sensitivity={:.5}\nshow_fps={}\nfullscreen={}\n{}{}",
             settings.music_volume,
             settings.voice_volume,
             u8::from(settings.ai_enabled),
@@ -270,6 +289,9 @@ pub fn save_settings(mut settings: ResMut<AudioSettings>, mouse: Res<ButtonInput
             u8::from(settings.stt_enabled),
             settings.stt_model,
             settings.time_speed,
+            settings.mouse_sensitivity,
+            u8::from(settings.show_fps),
+            u8::from(settings.fullscreen),
             settings.gfx.to_lines(),
             settings.fps.to_lines()
         ),

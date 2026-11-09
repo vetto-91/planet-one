@@ -79,7 +79,13 @@ pub enum PropKind {
     Gate,
     /// Mobile che contiene oggetti (vedi `containers`).
     Container,
+    /// Oggetto gettato a terra dal giocatore.
+    Pickup,
 }
+
+/// Identificativo stabile di un oggetto con stato, per i salvataggi.
+#[derive(Component, Clone, Debug)]
+pub struct PropId(pub String);
 
 /// Serratura di una porta: chi può aprirla senza chiave.
 #[derive(Component, Clone, Copy, Debug, PartialEq)]
@@ -916,6 +922,7 @@ pub fn spawn_hut(
         let door_h = c
             .spawn((
                 PropKind::Door,
+                PropId("casetta:porta".to_string()),
                 PropState { on: false },
                 Interactable {
                     prompt: "[E] Apri porta".to_string(),
@@ -1135,6 +1142,7 @@ pub fn spawn_hut(
         let stove_h = c
             .spawn((
                 PropKind::Stove,
+                PropId("casetta:stufa".to_string()),
                 PropState { on: false },
                 Interactable {
                     prompt: "[E] Accendi stufa".to_string(),
@@ -1286,6 +1294,7 @@ pub fn spawn_hut(
         let light_h = c
             .spawn((
                 PropKind::Light,
+                PropId("casetta:luce".to_string()),
                 PropState { on: true },
                 Interactable {
                     prompt: "[E] Spegni luce".to_string(),
@@ -1323,6 +1332,7 @@ pub fn spawn_hut(
         let shutter_h = c
             .spawn((
                 PropKind::Shutter,
+                PropId("casetta:serranda".to_string()),
                 PropState { on: true },
                 Interactable {
                     prompt: "[E] Abbassa serranda".to_string(),
@@ -1370,6 +1380,7 @@ pub fn spawn_hut(
             let win_h = c
                 .spawn((
                     PropKind::Window,
+                    PropId(format!("casetta:scuri:{}", window_handles.len())),
                     PropState { on: false },
                     Interactable {
                         prompt: "[E] Apri finestra".to_string(),
@@ -1386,6 +1397,7 @@ pub fn spawn_hut(
             let glass_h = c
                 .spawn((
                     PropKind::WindowGlass,
+                    PropId(format!("casetta:vetro:{}", glass_handles.len())),
                     PropState { on: false },
                     Interactable {
                         prompt: "[E] Alza vetro".to_string(),
@@ -1504,12 +1516,21 @@ pub fn handle_prop_toggle(
     locks: Query<(&Lock, &GlobalTransform)>,
     players: Query<&GlobalTransform, With<crate::player::Player>>,
     clock: Res<crate::daynight::GameClock>,
-    inventory: Res<crate::inventory::Inventory>,
     furniture: Query<&crate::containers::Container>,
     mut containers: ResMut<crate::containers::Containers>,
     mut next: ResMut<NextState<crate::AppState>>,
+    mut commands: Commands,
+    pickups: Query<&crate::inventory::Pickup>,
+    mut carried: ResMut<crate::inventory::Inventory>,
 ) {
     for PropToggle(handle) in reader.read() {
+        // Un oggetto gettato si riprende.
+        if let Ok(p) = pickups.get(*handle) {
+            carried.add(p.kind, p.qty);
+            commands.entity(*handle).despawn();
+            info!("[INVENTORY] ripreso {} x{}", p.kind.name(), p.qty);
+            continue;
+        }
         // Un mobile non cambia stato: si apre la sua finestra.
         if let Ok(c) = furniture.get(*handle) {
             containers.open(c);
@@ -1537,7 +1558,7 @@ pub fn handle_prop_toggle(
         if !st.on
             && let (Ok((lock, door)), Ok(player)) = (locks.get(target), players.single())
         {
-            let master = inventory.qty(crate::inventory::ItemKind::MasterKey) > 0;
+            let master = carried.qty(crate::inventory::ItemKind::MasterKey) > 0;
             let inside = player_inside(door, player.translation());
             if lock.access(clock.hour, master, inside) == Access::Locked {
                 info!("[HUT] porta chiusa a chiave");
@@ -1582,7 +1603,7 @@ pub fn update_prop_prompts(
             .map_or(st.on, |s| s.on);
         let text = match (kind, st_on) {
             // I mobili hanno un testo fisso, scelto quando vengono creati.
-            (PropKind::Container, _) => continue,
+            (PropKind::Container | PropKind::Pickup, _) => continue,
             (PropKind::Door, true) => "[E] Chiudi porta",
             (PropKind::Door, false) => "[E] Apri porta",
             (PropKind::Window, true) => "[E] Chiudi scuri",
@@ -1914,6 +1935,32 @@ pub struct Keeper {
 }
 
 impl Keeper {
+    pub fn is_asleep(&self) -> bool {
+        self.phase == KeeperPhase::Asleep
+    }
+
+    pub fn stove_manual(&self) -> bool {
+        self.stove_manual
+    }
+
+    /// Stato letto da un salvataggio: a letto, oppure sveglio al banco.
+    pub fn restore(
+        &mut self,
+        asleep: bool,
+        stove_manual: bool,
+        tf: &mut Transform,
+        npc: &mut crate::entities::Npc,
+    ) {
+        self.stove_manual = stove_manual;
+        self.steps.clear();
+        if asleep {
+            self.phase = KeeperPhase::Asleep;
+            npc.mode = crate::entities::NpcMode::Asleep;
+            tf.translation = BED_LIE;
+            tf.rotation = Quat::from_rotation_x(std::f32::consts::FRAC_PI_2);
+        }
+    }
+
     pub fn new() -> Self {
         // Seme dall'orologio di sistema (nessuna dipendenza esterna).
         let seed = std::time::SystemTime::now()

@@ -50,3 +50,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0022 | Riconoscimento vocale locale | accettato |
 | 0023 | Contenitori e faro visitabile | accettato |
 | 0024 | Statistiche, peso e zaini | accettato |
+| 0025 | Menu principale e salvataggi | accettato |

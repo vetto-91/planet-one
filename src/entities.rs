@@ -178,7 +178,12 @@ pub fn spawn_npc(
 }
 
 /// Spawn del nemico con patrol tra due waypoint.
-pub fn spawn_enemy(commands: &mut Commands, asset_server: &AssetServer, start: Vec3, end: Vec3) {
+pub fn spawn_enemy(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    start: Vec3,
+    end: Vec3,
+) -> Entity {
     commands
         .spawn((
             SceneNode,
@@ -199,7 +204,8 @@ pub fn spawn_enemy(commands: &mut Commands, asset_server: &AssetServer, start: V
             Transform::from_translation(start),
             Visibility::default(),
         ))
-        .with_children(|c| crate::figure::spawn_character(c, asset_server, "ladro"));
+        .with_children(|c| crate::figure::spawn_character(c, asset_server, "ladro"))
+        .id()
 }
 
 /// Interagibile più vicino: (distanza, entità, componente, NPC, proprietà).

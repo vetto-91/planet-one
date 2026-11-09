@@ -89,7 +89,6 @@ impl Default for Stats {
 }
 
 impl Stats {
-    #[cfg_attr(not(test), allow(dead_code))] // usata dalla creazione del personaggio
     pub fn new(values: [u8; 7]) -> Self {
         Self(values.map(|v| v.clamp(STAT_MIN, STAT_MAX)))
     }
@@ -136,7 +135,6 @@ impl Stats {
 }
 
 /// Classi di partenza (si scelgono dalla «Nuova partita»).
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Class {
     Warrior,
@@ -146,7 +144,6 @@ pub enum Class {
     Custom,
 }
 
-#[allow(dead_code)]
 impl Class {
     pub const ALL: [Class; 5] = [
         Class::Warrior,
@@ -179,7 +176,6 @@ impl Class {
 }
 
 /// Punti da distribuire nella creazione personalizzata, a partire da 8 in tutto.
-#[allow(dead_code)]
 pub const CUSTOM_POINTS: u8 = 14;
 
 /// Il personaggio in gioco.

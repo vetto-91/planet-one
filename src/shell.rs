@@ -16,7 +16,7 @@ use bevy::prelude::*;
 use bevy_egui::{EguiContexts, egui};
 
 const HELP: &[&str] = &[
-    "aiuto · stato · pulisci",
+    "aiuto · stato · pulisci · reset (ricostruisce la scena)",
     "god [on|off] · noclip [on|off] · invisibile [on|off]",
     "tp <x> <y> <z> · tp <luogo o abitante> [n] (es. tp chiesa, tp porta nord, tp marta)",
     "passepartout [off] · chiavi · dai <oggetto> [quantità]",
@@ -97,6 +97,7 @@ pub enum Cmd {
     Help,
     Status,
     Clear,
+    Reset,
     God(Option<bool>),
     Noclip(Option<bool>),
     Invisible(Option<bool>),
@@ -140,6 +141,7 @@ pub fn parse(line: &str) -> Result<Cmd, String> {
         "aiuto" | "help" | "?" => Ok(Cmd::Help),
         "stato" | "status" => Ok(Cmd::Status),
         "pulisci" | "clear" => Ok(Cmd::Clear),
+        "reset" => Ok(Cmd::Reset),
         "god" | "godmode" => Ok(Cmd::God(switch(args.first())?)),
         "noclip" => Ok(Cmd::Noclip(switch(args.first())?)),
         "invisibile" | "invis" => Ok(Cmd::Invisible(switch(args.first())?)),
@@ -374,6 +376,8 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
             ));
         }
         Cmd::Clear => shell.log.clear(),
+        // Gestito in `shell_execute`, che può cambiare stato.
+        Cmd::Reset => {}
         Cmd::God(v) => {
             let on = apply_switch(&mut ctx.cheats.god, v);
             shell.say(format!("godmode {}", on_off(on)));
@@ -600,10 +604,15 @@ fn run_stt(cmd: SttCmd, shell: &mut Shell, ctx: &mut ShellCtx) {
 }
 
 /// Sistema: esegue i comandi in coda (dalla shell o da `PLANET_ONE_SHELL`).
-pub fn shell_execute(mut shell: ResMut<Shell>, mut ctx: ShellCtx) {
+pub fn shell_execute(
+    mut shell: ResMut<Shell>,
+    mut ctx: ShellCtx,
+    mut next: ResMut<NextState<AppState>>,
+) {
     for line in std::mem::take(&mut shell.pending) {
         shell.say(format!("> {line}"));
         match parse(&line) {
+            Ok(Cmd::Reset) => next.set(AppState::Resetting),
             Ok(cmd) => run(cmd, &mut shell, &mut ctx),
             Err(e) => shell.say(e),
         }

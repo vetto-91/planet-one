@@ -248,10 +248,6 @@ pub fn limit_frame_rate(settings: Res<AudioSettings>, mut deadline: Local<Option
     *deadline = Some(target);
 }
 
-/// La finestra delle impostazioni grafiche è aperta?
-#[derive(Resource, Default)]
-pub struct GfxPanelOpen(pub bool);
-
 /// Sistema: applica le opzioni quando cambiano, o quando un reset ha ricreato il sole.
 #[allow(clippy::type_complexity)]
 pub fn apply_graphics(
@@ -304,89 +300,79 @@ pub fn apply_graphics(
     info!("[GRAFICA] opzioni applicate: {gfx:?}");
 }
 
-/// Finestra del sotto-menu (chiamata dal menu Esc).
-pub fn graphics_window(ctx: &egui::Context, audio: &mut AudioSettings, open: &mut bool) {
-    let mut keep_open = *open;
-    egui::Window::new("Impostazioni grafiche")
-        .open(&mut keep_open)
-        .collapsible(false)
-        .resizable(false)
-        .anchor(egui::Align2::CENTER_CENTER, egui::vec2(260.0, 0.0))
-        .show(ctx, |ui| {
-            ui.label("Solo aspetto visivo: non cambiano il gioco.");
-            ui.separator();
-            let mut gfx = audio.gfx;
-            ui.horizontal(|ui| {
-                ui.label("Preset:");
-                for (name, preset) in [
-                    ("Alta", GfxOptions::HIGH),
-                    ("Media", GfxOptions::MEDIUM),
-                    ("Bassa", GfxOptions::LOW),
-                ] {
-                    if ui.selectable_label(gfx == preset, name).clicked() {
-                        gfx = preset;
-                    }
-                }
-            });
-            ui.separator();
-            ui.horizontal(|ui| {
-                ui.label("Ombre:");
-                for s in Shadows::ALL {
-                    if ui.selectable_label(gfx.shadows == s, s.name()).clicked() {
-                        gfx.shadows = s;
-                    }
-                }
-            });
-            ui.checkbox(&mut gfx.lamp_shadows, "Ombre dei lampioni");
-            ui.checkbox(&mut gfx.interior_lights, "Luci negli edifici");
-            ui.checkbox(&mut gfx.ssao, "Occlusione ambientale");
-            ui.checkbox(&mut gfx.bloom, "Bagliore delle luci");
-            ui.checkbox(&mut gfx.antialias, "Antialiasing");
-            ui.horizontal(|ui| {
-                ui.label("Particelle (pioggia, neve, foglie):");
-                for p in [100u8, 50, 0] {
-                    let label = if p == 0 {
-                        "Spente".to_string()
-                    } else {
-                        format!("{p}%")
-                    };
-                    if ui.selectable_label(gfx.particles == p, label).clicked() {
-                        gfx.particles = p;
-                    }
-                }
-            });
-            ui.checkbox(&mut gfx.far_anim_cull, "Ferma le animazioni lontane");
-            ui.separator();
-            let mut fps = audio.fps;
-            ui.checkbox(&mut fps.vsync, "VSync (FPS legati al monitor)");
-            ui.horizontal_wrapped(|ui| {
-                ui.label("Limite FPS:");
-                for limit in FPS_LIMITS {
-                    let label = if limit == 0 {
-                        "Illimitati".to_string()
-                    } else {
-                        limit.to_string()
-                    };
-                    if ui.selectable_label(fps.limit == limit, label).clicked() {
-                        fps.limit = limit;
-                    }
-                }
-            });
-            if fps != audio.fps {
-                audio.fps = fps;
-                audio.dirty = true;
+/// Scheda Video: solo aspetto visivo.
+pub fn graphics_ui(ui: &mut egui::Ui, audio: &mut AudioSettings) {
+    ui.label("Solo aspetto visivo: non cambiano il gioco.");
+    ui.separator();
+    let mut gfx = audio.gfx;
+    ui.horizontal(|ui| {
+        ui.label("Preset:");
+        for (name, preset) in [
+            ("Alta", GfxOptions::HIGH),
+            ("Media", GfxOptions::MEDIUM),
+            ("Bassa", GfxOptions::LOW),
+        ] {
+            if ui.selectable_label(gfx == preset, name).clicked() {
+                gfx = preset;
             }
-            if gfx != audio.gfx {
-                audio.gfx = gfx;
-                audio.dirty = true;
+        }
+    });
+    ui.separator();
+    ui.horizontal(|ui| {
+        ui.label("Ombre:");
+        for s in Shadows::ALL {
+            if ui.selectable_label(gfx.shadows == s, s.name()).clicked() {
+                gfx.shadows = s;
             }
-        });
-    *open = keep_open;
+        }
+    });
+    ui.checkbox(&mut gfx.lamp_shadows, "Ombre dei lampioni");
+    ui.checkbox(&mut gfx.interior_lights, "Luci negli edifici");
+    ui.checkbox(&mut gfx.ssao, "Occlusione ambientale");
+    ui.checkbox(&mut gfx.bloom, "Bagliore delle luci");
+    ui.checkbox(&mut gfx.antialias, "Antialiasing");
+    ui.horizontal(|ui| {
+        ui.label("Particelle (pioggia, neve, foglie):");
+        for p in [100u8, 50, 0] {
+            let label = if p == 0 {
+                "Spente".to_string()
+            } else {
+                format!("{p}%")
+            };
+            if ui.selectable_label(gfx.particles == p, label).clicked() {
+                gfx.particles = p;
+            }
+        }
+    });
+    ui.checkbox(&mut gfx.far_anim_cull, "Ferma le animazioni lontane");
+    ui.separator();
+    let mut fps = audio.fps;
+    ui.checkbox(&mut fps.vsync, "VSync (FPS legati al monitor)");
+    ui.horizontal_wrapped(|ui| {
+        ui.label("Limite FPS:");
+        for limit in FPS_LIMITS {
+            let label = if limit == 0 {
+                "Illimitati".to_string()
+            } else {
+                limit.to_string()
+            };
+            if ui.selectable_label(fps.limit == limit, label).clicked() {
+                fps.limit = limit;
+            }
+        }
+    });
+    if fps != audio.fps {
+        audio.fps = fps;
+        audio.dirty = true;
+    }
+    if gfx != audio.gfx {
+        audio.gfx = gfx;
+        audio.dirty = true;
+    }
 }
 
 pub fn plugin(app: &mut App) {
-    app.init_resource::<GfxPanelOpen>()
-        .add_systems(Update, (apply_graphics, apply_present_mode))
+    app.add_systems(Update, (apply_graphics, apply_present_mode))
         .add_systems(Last, limit_frame_rate);
 }
 

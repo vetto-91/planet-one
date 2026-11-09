@@ -417,6 +417,7 @@ pub fn sync_world_props(
                         let state = c
                             .spawn((
                                 crate::hut::PropKind::Door,
+                                crate::hut::PropId(format!("porta:{place_id}:{j}")),
                                 crate::hut::PropState { on: false },
                                 lock,
                                 crate::entities::Interactable {

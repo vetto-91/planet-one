@@ -515,7 +515,7 @@ fn avoid_list(
 
 // --------------------------------------------------------------------- file
 
-fn utc_now() -> String {
+pub fn utc_now() -> String {
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| d.as_secs()) as i64;

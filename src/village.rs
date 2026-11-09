@@ -794,6 +794,7 @@ pub fn sync_village(
                 SceneNode,
                 GateHandle,
                 PropKind::Gate,
+                crate::hut::PropId(format!("cancello:{}", gate.name)),
                 PropState { on: open_now },
                 Transform::from_xyz(g.x, gy + 1.6, g.y),
             ))
