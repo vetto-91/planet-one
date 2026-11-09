@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.34.0 — Contenitori e faro (2026-11-09)
 
 - **Contenitori** (ADR 0023): bauli, armadi, botti, casse e scaffali di case, botteghe, bancarelle, molo e casetta si aprono con E: si prendono e si posano oggetti, con capienza da 5 a 10 volte quanto porta il giocatore. Contengono poche cose a tema, sempre le stesse.
 - **Faro visitabile** (ADR 0023): alloggio arredato, ripostiglio, scala a chiocciola fino alla lanterna e balconata. Chiuso a chiave.
