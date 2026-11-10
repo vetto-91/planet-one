@@ -784,6 +784,12 @@ fn house(
     // Tetto ripido con il colmo lungo X (lato lungo): il sottotetto è abitabile.
     let rh = d * 0.8;
     b.gable((-hw, hw, -hd, hd), wh, rh, 0.4, true, roof, wall);
+    // La falda parte oltre il muro: fra il bordo del muro e la falda resta una fessura alta
+    // `rh · sporgenza / (mezza profondità + sporgenza)`; la si chiude con un listello di muro.
+    let gap = rh * 0.4 / (hd + 0.4) + 0.02;
+    for (z0, z1) in [(-hd, -hd + t), (hd - t, hd)] {
+        b.cuboid(Vec3::new(-hw, wh, z0), Vec3::new(hw, wh + gap, z1), wall);
+    }
     // Dentro: falde e timpani visti dal sottotetto.
     b.force = Some(Mat::Planks);
     let side = (hd + 0.4, rh * (hd + 0.4) / hd);
@@ -2127,5 +2133,102 @@ mod tests {
         assert_eq!(classify(WATER).0, Mat::Glass);
         // Nessun colore della tavolozza resta piatto.
         assert_ne!(classify([0.78, 0.18, 0.15, 1.0]).0, Mat::Plain);
+    }
+
+    /// Triangoli (mondo locale) di tutte le parti di un edificio.
+    fn triangles(b: &Building) -> Vec<[Vec3; 3]> {
+        use bevy::mesh::VertexAttributeValues;
+        let mut out = Vec::new();
+        for (_, mesh) in &b.parts {
+            let Some(VertexAttributeValues::Float32x3(pos)) =
+                mesh.attribute(Mesh::ATTRIBUTE_POSITION)
+            else {
+                continue;
+            };
+            let idx: Vec<u32> = match mesh.indices() {
+                Some(Indices::U32(i)) => i.clone(),
+                Some(Indices::U16(i)) => i.iter().map(|v| u32::from(*v)).collect(),
+                None => (0..pos.len() as u32).collect(),
+            };
+            let (chunks, _) = idx.as_chunks::<3>();
+            for t in chunks {
+                let p = |k: u32| Vec3::from_array(pos[k as usize]);
+                out.push([p(t[0]), p(t[1]), p(t[2])]);
+            }
+        }
+        out
+    }
+
+    /// Il raggio colpisce almeno un triangolo (da entrambi i lati)?
+    fn ray_hits(tris: &[[Vec3; 3]], o: Vec3, d: Vec3) -> bool {
+        tris.iter().any(|t| {
+            let (e1, e2) = (t[1] - t[0], t[2] - t[0]);
+            let h = d.cross(e2);
+            let a = e1.dot(h);
+            if a.abs() < 1e-7 {
+                return false;
+            }
+            let f = 1.0 / a;
+            let sv = o - t[0];
+            let u = f * sv.dot(h);
+            if !(0.0..=1.0).contains(&u) {
+                return false;
+            }
+            let q = sv.cross(e1);
+            let v = f * d.dot(q);
+            if v < 0.0 || u + v > 1.0 {
+                return false;
+            }
+            f * e2.dot(q) > 1e-3
+        })
+    }
+
+    #[test]
+    fn roofs_are_closed_seen_from_inside() {
+        for kind in [
+            "casa-piccola",
+            "casa-media",
+            "casa-grande",
+            "locanda",
+            "caserma",
+            "forno",
+            "arcere",
+        ] {
+            let b = model(kind, 7);
+            let tris = triangles(&b);
+            let inner = interior_half(kind).expect("edificio con interno");
+            let (hx, hz) = (inner.x * 0.7, inner.y * 0.7);
+            let mut leaks = Vec::new();
+            for y in [1.2f32, 3.6] {
+                for ix in -2..=2 {
+                    for iz in -2..=2 {
+                        let o = Vec3::new(hx * ix as f32 / 2.0, y, hz * iz as f32 / 2.0);
+                        for az in 0..12 {
+                            let a = az as f32 / 12.0 * std::f32::consts::TAU;
+                            // Verso l'alto, tra 25° e 90° sull'orizzonte.
+                            for el in [0.45f32, 0.8, 1.2, 1.5] {
+                                let d = Vec3::new(a.cos() * el.cos(), el.sin(), a.sin() * el.cos());
+                                // Dal piano terra verso la facciata c'è la porta, che è un'apertura vera.
+                                if y < 2.0 && d.z > 0.0 {
+                                    continue;
+                                }
+                                if !ray_hits(&tris, o, d) {
+                                    leaks.push(format!(
+                                        "({:.1},{:.1},{:.1}) dir {:.2},{:.2},{:.2}",
+                                        o.x, o.y, o.z, d.x, d.y, d.z
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            assert!(
+                leaks.is_empty(),
+                "{kind}: {} raggi escono, es. {:?}",
+                leaks.len(),
+                &leaks[..leaks.len().min(3)]
+            );
+        }
     }
 }

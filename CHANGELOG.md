@@ -2,6 +2,12 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Tetti delle case**: la falda parte oltre il muro e fra il bordo del muro e la falda restava una fessura (fino a mezzo metro) da cui si vedeva dentro; ora un listello di muro la chiude lungo i lati lunghi.
+- Nuova prova automatica: dall'interno di ogni casa, a due quote, raggi verso l'alto devono sempre colpire il tetto.
+- Restano da verificare a occhio le aperture delle mura presso le torri.
+
 ## v0.0.48.0 — Rifiniture (2026-11-10)
 
 - **Guardie in ronda** si fermano anche mentre si chiacchiera con la IA (prima proseguivano e ci si allontanava).
