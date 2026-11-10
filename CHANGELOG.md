@@ -2,6 +2,10 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## v0.0.50.1 — Avvio stabile (2026-11-10)
+
+- **Correzione**: all'avvio il gioco poteva chiudersi con «Failed to get point light visible entities» (panic nel renderer di Bevy 0.20.1: `extract_lights` toglie le liste delle ombre alle luci non cambiate nel fotogramma). Ora le luci con ombre vengono segnate come cambiate a ogni fotogramma (`graphics::keep_shadow_lights_extracted`). Prima capitava in circa metà degli avvii in modalità dev, 0 su 6 dopo la correzione.
+
 ## v0.0.50.0 — Mura (2026-11-10)
 
 - **Mura e torri d'angolo**: presso le torri restavano cunei vuoti a tutta altezza fra la testa del muro e la faccia della torre (visibili da fuori, p. es. a (-28,-8), (-20,27), (20,23), (30,3)). I tratti di muro, il parapetto e il cordolo ora si prolungano fino a entrare nella torre; verificato con il modello geometrico dell'anello (0 celle scoperte contro 109 prima).
