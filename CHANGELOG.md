@@ -2,13 +2,14 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.56.0 — Pilota automatico per il beta test (2026-11-10)
 
 - **Pilota automatico** (beta test, ADR 0031): `PLANET_ONE_SCRIPT=copione.txt` gioca da solo (`vai`, `guarda`, `premi`, `avanza`, `scegli`, `foto`, `dump` in JSON, `verifica`, `attendi`, `mai`, `esci`); `scripts/beta_check.sh` esegue i copioni di `prove/` e scrive un rapporto. `PLANET_ONE_SPEED` accelera il tempo, `PLANET_ONE_DATA_DIR` isola salvataggi e impostazioni.
 - **F12 «Segnala bug»**: schermo, stato, log e nota in una cartella.
 - Shell: `vai`, `corri`, `dove`, `guarda`, `foto`, `dump`, `copione`, `quest <fase>`, `uccidi`, `vicino`, `fps`, `entita`.
 - `PLANET_ONE_SIZE` (finestra fissa); `beta_check.sh` confronta le foto con `prove/riferimento/` (`--aggiorna` per rifarle).
 - Correzione: `tp <abitante>` usava la posizione locale degli NPC figli di un edificio (il Viandante).
+- Copioni in `prove/`: `quest-avvio`, `quest-completa`, `giro`, `f12` passano; `b1-frecce` e `b2-torre` falliscono di proposito e riproducono due bug da correggere (frecce che portano la vita sotto zero senza respawn; caduta sotto il terreno alla torre in rovina).
 - Documenti: variabili di debug complete nel README, corsa 1,55×, il ladro non è più «un cubo rosso», `CLAUDE.md` cita i test automatici.
 
 ## v0.0.55.0 — Scuri degli abitanti e gallerie (2026-11-10)
