@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.48.0 — Rifiniture (2026-11-10)
 
 - **Guardie in ronda** si fermano anche mentre si chiacchiera con la IA (prima proseguivano e ci si allontanava).
 - Le lance delle guardie sono impugnate più in basso e dritte, come un bastone d'arma.
