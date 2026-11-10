@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.43.0 — Scale e torri (2026-11-10)
 
 ### Scale e torri (ADR 0030)
 - **Le scale si salgono davvero**: sotto i gradini visibili c'è ora una rampa liscia su cui si cammina (prima gli spigoli fra gradini di scatole facevano incastrare il giocatore). Vale per case, soffitte, faro, campanile e torre in rovina.
