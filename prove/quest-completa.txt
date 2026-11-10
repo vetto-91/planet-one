@@ -1,0 +1,37 @@
+# Quest «Denaro Rubato» dal ladro alla consegna: uccidi il ladro, raccogli le monete, consegna.
+god on
+quest cerca
+verifica quest = SeekThief
+tp 29 6 -33
+aspetta 2
+dump ladro
+uccidi 15
+attendi quest = Collecting 10
+foto monete
+# Le monete cadono attorno al punto della morte: si cammina lì attorno per raccoglierle.
+vai 31 -35
+vai 33 -35
+vai 31 -33
+vai 29 -35
+vai 31 -37
+dump raccolta
+attendi quest = Returning 20
+verifica monete_quest = 12
+tp viandante
+attendi npc:viandante:modo = Ready 120
+vai viandante
+attendi npc:viandante:dist < 2.6 120
+guarda viandante
+premi e
+aspetta 1
+avanza
+aspetta 1
+# Dopo la ricompensa il Viandante offre il negozio: «Arrivederci» chiude il dialogo.
+verifica /dialogo/scelte contiene arrivederci
+scegli 3
+aspetta 1
+dump fine
+verifica dialogo = false
+verifica quest = Completed
+verifica monete >= 35
+esci

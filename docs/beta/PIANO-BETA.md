@@ -77,10 +77,15 @@ ma è lento e cieco: non sa dove sono gli NPC né cosa succede. Da qui la Fase 0
 
 ## Fase 0 — Strumenti per giocare e controllare il gioco senza mani (prima di tutto)
 
-**Stato al 10/11/2026: fatta in gran parte** (`src/autopilot.rs`, `src/bugreport.rs`, `scripts/beta_check.sh`, `prove/*.txt`, ADR 0031).
-- Fatti: 0.1 copione (`vai`, `corri`, `guarda`, `premi`, `avanza`, `scegli`, `foto`, `dump`, `verifica`, `attendi`, `mai`, `esci`), 0.2 `PLANET_ONE_SPEED` e `PLANET_ONE_DATA_DIR`, 0.3 in parte (`vai`, `dove`, `guarda`, `foto`, `dump`, `copione` nella shell), 0.4 F12, 0.5 `beta_check.sh` con rapporto.
-- Mancano: `PLANET_ONE_SIZE`, `vicino`/`fps`/`entita` come comandi a sé (le stesse informazioni sono già nel `dump`), il confronto degli screenshot con quelli di riferimento, `quest <fase>` e `uccidi`.
-- Copioni pronti: `quest-avvio` (passa), `giro` (passa), `f12` (passa), **`b1-frecce` e `b2-torre` (falliscono: riproducono B1 e B2)**.
+**Stato al 10/11/2026: fatta** (`src/autopilot.rs`, `src/bugreport.rs`, `scripts/beta_check.sh`, `prove/*.txt`, `prove/riferimento/`, ADR 0031).
+- Copione: `vai`, `corri`, `guarda`, `premi`, `avanza`, `scegli`, `foto`, `dump`, `verifica`, `attendi`, `mai`, `esci`.
+- Variabili: `PLANET_ONE_SPEED`, `PLANET_ONE_DATA_DIR`, `PLANET_ONE_SIZE`, `PLANET_ONE_OUT`.
+- Shell: `vai`, `corri`, `dove`, `guarda`, `foto`, `dump`, `copione`, `quest <fase>`, `uccidi`, `vicino`, `fps`, `entita`.
+- F12 «Segnala bug».
+- `beta_check.sh`: rapporto completo e confronto delle foto con i riferimenti. Fra due corse uguali la differenza misurata è 0,005–0,033; la soglia è 0,08.
+- Copioni:
+  - passano: `quest-avvio`, `quest-completa` (dal ladro alla consegna), `giro`, `f12`;
+  - **falliscono di proposito, riproducendo i bug: `b1-frecce` e `b2-torre`**.
 
 Scoperte fatte costruendo il pilota:
 - `tp <abitante>` e `dove` usavano la posizione **locale** degli NPC figli di un altro oggetto: `tp viandante` portava in un punto sbagliato. Corretto (posizione nel mondo).

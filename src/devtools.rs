@@ -9,6 +9,7 @@
 //! - `PLANET_ONE_SESSION=Nome`: partita attiva senza menu (salvataggi di prova; F5/F9).
 //! - `PLANET_ONE_MENU=1`: mostra il menu anche con le altre variabili; `PLANET_ONE_WINDOWED=1`: a finestra.
 //! - `PLANET_ONE_DELAY_SCALE=0.1`: moltiplica i ritardi con cui il Viandante chiude porta/finestre.
+//! - `PLANET_ONE_SIZE=1280x720`: dimensione della finestra (screenshot ripetibili).
 //! - `PLANET_ONE_ANIM=sprint|jog|walk`: forza l'animazione del giocatore (per gli screenshot).
 //! - `PLANET_ONE_LOOK=yaw,pitch[,distanza[,1]]`: orientamento della camera in gradi
 //!   (il quarto valore 1 attiva la prima persona).
@@ -18,6 +19,20 @@
 use crate::camera::OrbitCamera;
 use crate::player::Player;
 use bevy::prelude::*;
+
+/// Dimensione della finestra: `PLANET_ONE_SIZE=LxA` (es. `1280x720`), altrimenti 1280×720.
+pub fn window_size() -> (u32, u32) {
+    std::env::var("PLANET_ONE_SIZE")
+        .ok()
+        .and_then(|s| parse_size(&s))
+        .unwrap_or((1280, 720))
+}
+
+fn parse_size(text: &str) -> Option<(u32, u32)> {
+    let (w, h) = text.trim().split_once(['x', 'X', '*'])?;
+    let (w, h) = (w.trim().parse().ok()?, h.trim().parse().ok()?);
+    (w >= 320 && h >= 240).then_some((w, h))
+}
 
 /// Con le variabili di prova si entra subito in partita, a finestra, senza menu.
 /// `PLANET_ONE_MENU=1` mostra comunque il menu.
@@ -97,5 +112,18 @@ pub fn apply_debug_env(
         && let Ok(mut t) = players.single_mut()
     {
         t.translation = Vec3::new(p[0], p[1], p[2]);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn window_sizes_parse() {
+        assert_eq!(parse_size("1280x720"), Some((1280, 720)));
+        assert_eq!(parse_size(" 800 X 600 "), Some((800, 600)));
+        assert_eq!(parse_size("10x10"), None);
+        assert_eq!(parse_size("grande"), None);
     }
 }

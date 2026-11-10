@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # Esegue i copioni del pilota automatico (prove/*.txt) e scrive prove/out/RAPPORTO.md.
 #
-# Uso: scripts/beta_check.sh [copione ...]      (senza argomenti: tutti i copioni)
+# Uso: scripts/beta_check.sh [--aggiorna] [copione ...]   (senza copioni: tutti)
+# Le foto di ogni copione si confrontano con prove/riferimento/<copione>/<foto>.png
+# (ridotte a 480x270, ImageMagick `compare`, RMSE normalizzato; soglia SOGLIA=0.08). --aggiorna copia le foto
+# di questa corsa come nuovi riferimenti.
 # Ogni copione gira in una partita di prova isolata (PLANET_ONE_DATA_DIR in prove/out/dati),
 # a finestra, alle 11 con il sereno; le variabili PLANET_ONE_* già impostate valgono.
 # Uscita: 0 se tutti i copioni passano, 1 altrimenti.
@@ -10,6 +13,9 @@ cd "$(dirname "$0")/.."
 OUT=prove/out
 mkdir -p "$OUT"
 cargo build --release --offline >/dev/null 2>&1 || { echo "build fallita"; exit 2; }
+update=0
+if [ "${1:-}" = "--aggiorna" ]; then update=1; shift; fi
+SOGLIA="${SOGLIA:-0.08}"
 scripts=("$@")
 [ ${#scripts[@]} -eq 0 ] && scripts=(prove/*.txt)
 report="$OUT/RAPPORTO.md"
@@ -28,6 +34,7 @@ for s in "${scripts[@]}"; do
   rm -rf "$OUT/$name"
   PLANET_ONE_DATA_DIR="${PLANET_ONE_DATA_DIR:-$PWD/$OUT/dati}" \
   PLANET_ONE_SCRIPT="$s" \
+  PLANET_ONE_SIZE="${PLANET_ONE_SIZE:-1280x720}" \
   PLANET_ONE_HOUR="${PLANET_ONE_HOUR:-11}" \
   PLANET_ONE_WEATHER="${PLANET_ONE_WEATHER:-sereno}" \
     timeout "${TIMEOUT:-600}" cargo run --release --offline > "$log" 2>&1
@@ -62,5 +69,39 @@ done
       | cut -c21- | sed 's/[0-9]\+v[0-9]\+/N/g' | sort | uniq -c | sed "s/^/    [$name] /"
   done
 } >> "$report"
+# Foto: confronto con i riferimenti.
+{
+  echo
+  echo "## Foto rispetto ai riferimenti (soglia $SOGLIA)"
+  echo
+  echo "| Copione | Foto | Differenza | Esito |"
+  echo "|---|---|---|---|"
+} >> "$report"
+for s in "${scripts[@]}"; do
+  name=$(basename "$s" .txt)
+  ref="prove/riferimento/$name"
+  for shot in "$OUT/$name"/*.png; do
+    [ -f "$shot" ] || continue
+    base=$(basename "$shot")
+    if [ $update -eq 1 ]; then
+      mkdir -p "$ref"; convert "$shot" -resize 480x270! "$ref/$base"
+      echo "| \`$name\` | $base | — | riferimento aggiornato |" >> "$report"
+      continue
+    fi
+    if [ ! -f "$ref/$base" ]; then
+      echo "| \`$name\` | $base | — | nessun riferimento |" >> "$report"
+      continue
+    fi
+    small="$OUT/$name/small-$base"
+    convert "$shot" -resize 480x270! "$small"
+    diff=$(compare -metric RMSE "$small" "$ref/$base" "$OUT/$name/diff-$base" 2>&1 | sed -n 's/.*(\([0-9.e-]*\)).*/\1/p')
+    if awk -v d="${diff:-1}" -v s="$SOGLIA" 'BEGIN{exit !(d<=s)}'; then
+      esito="✅"
+    else
+      esito="❌ (diff-$base)"; failed=1
+    fi
+    echo "| \`$name\` | $base | ${diff:-?} | $esito |" >> "$report"
+  done
+done
 echo "Rapporto: $report"
 exit $failed

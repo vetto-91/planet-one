@@ -6,7 +6,8 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 - **Pilota automatico** (beta test, ADR 0031): `PLANET_ONE_SCRIPT=copione.txt` gioca da solo (`vai`, `guarda`, `premi`, `avanza`, `scegli`, `foto`, `dump` in JSON, `verifica`, `attendi`, `mai`, `esci`); `scripts/beta_check.sh` esegue i copioni di `prove/` e scrive un rapporto. `PLANET_ONE_SPEED` accelera il tempo, `PLANET_ONE_DATA_DIR` isola salvataggi e impostazioni.
 - **F12 «Segnala bug»**: schermo, stato, log e nota in una cartella.
-- Shell: `vai`, `corri`, `dove`, `guarda`, `foto`, `dump`, `copione`.
+- Shell: `vai`, `corri`, `dove`, `guarda`, `foto`, `dump`, `copione`, `quest <fase>`, `uccidi`, `vicino`, `fps`, `entita`.
+- `PLANET_ONE_SIZE` (finestra fissa); `beta_check.sh` confronta le foto con `prove/riferimento/` (`--aggiorna` per rifarle).
 - Correzione: `tp <abitante>` usava la posizione locale degli NPC figli di un edificio (il Viandante).
 - Documenti: variabili di debug complete nel README, corsa 1,55×, il ladro non è più «un cubo rosso», `CLAUDE.md` cita i test automatici.
 

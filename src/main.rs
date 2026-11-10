@@ -132,7 +132,8 @@ fn main() -> AppExit {
                 .set(WindowPlugin {
                     primary_window: Some(Window {
                         title: "Planet One".into(),
-                        resolution: (1280u32, 720u32).into(),
+                        // `PLANET_ONE_SIZE=1280x720`: finestra fissa per screenshot ripetibili.
+                        resolution: devtools::window_size().into(),
                         // Avvio a schermo intero di default; F11 torna a finestra.
                         mode: bevy::window::WindowMode::Fullscreen(
                             bevy::window::MonitorSelection::Current,

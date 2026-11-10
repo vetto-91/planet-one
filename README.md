@@ -99,6 +99,7 @@ Variabili d'ambiente per provare il gioco senza giocarlo (con una qualunque di `
 | `PLANET_ONE_SHELL="god on;ora 22"` | Comandi della shell all'avvio |
 | `PLANET_ONE_SCRIPT=prove/giro.txt` | **Pilota automatico**: esegue un copione (vedi sotto) |
 | `PLANET_ONE_SPEED=4` | Tempo di gioco accelerato |
+| `PLANET_ONE_SIZE=1280x720` | Dimensione della finestra (screenshot ripetibili) |
 | `PLANET_ONE_DATA_DIR=/tmp/prova` | Salvataggi e impostazioni in una cartella di prova |
 | `PLANET_ONE_OUT=cartella` | Dove il pilota scrive foto, stati e rapporto |
 | `PLANET_ONE_GIVE=1` | Tutte le armi, frecce e 200 monete |
@@ -139,12 +140,17 @@ esci
 | `attendi …` / `mai … [s]` | La condizione diventa vera entro `s` secondi / non lo diventa mai |
 | `esci` | Rapporto in `prove/out/<copione>/RAPPORTO.txt`; codice d'uscita 1 se qualcosa è fallito |
 
-`vai`, `dove`, `guarda`, `foto`, `dump` e `copione <file>` funzionano anche dalla shell (`\`).
+`vai`, `dove`, `guarda`, `foto`, `dump` e `copione <file>` funzionano anche dalla shell (`\`), insieme a
+`quest <inizio|cerca|raccogli|torna|completata>` (salta a una fase), `uccidi [raggio]`, `vicino [raggio]`, `fps` ed `entita`.
 
 ```bash
 scripts/beta_check.sh                      # tutti i copioni di prove/, rapporto in prove/out/RAPPORTO.md
 scripts/beta_check.sh prove/giro.txt       # uno solo
+scripts/beta_check.sh --aggiorna           # le foto di questa corsa diventano i riferimenti
 ```
+
+Le foto di ogni copione si confrontano con quelle di `prove/riferimento/` (ridotte a 480×270; differenza
+RMSE oltre `SOGLIA=0.08` = fallimento, con l'immagine delle differenze in `prove/out/<copione>/diff-*.png`).
 
 **F12 — Segnala bug**: salva in `~/.local/share/planet-one/segnalazioni/<data-ora>/` lo schermo, lo stato del
 gioco (`stato.json`), le ultime righe del log e una `nota.txt` da compilare. Basta mandare quella cartella.

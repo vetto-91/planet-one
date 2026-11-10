@@ -28,6 +28,7 @@ const HELP: &[&str] = &[
     "stat [<nome> <valore>] · effetto peso <kg> [secondi] · effetto via",
     "vai|corri <x> <z> · vai <luogo o abitante> · dove <nome> · guarda <yaw> <pitch>|<nome>",
     "foto [nome] · dump [nome] (stato in JSON) · copione <file> (pilota automatico)",
+    "quest <inizio|cerca|raccogli|torna|completata> · uccidi [raggio] · vicino [raggio] · fps · entita",
 ];
 
 /// Trucchi attivi: non salvati, tutti spenti a ogni avvio.
@@ -131,6 +132,14 @@ pub enum Cmd {
     Dump(String),
     /// Esegue un copione del pilota automatico.
     Script(String),
+    /// Porta la quest «Denaro Rubato» a una fase (per provare i rami).
+    Quest(crate::quests::denaro_rubato::QuestStage),
+    /// Uccide il nemico più vicino entro il raggio.
+    Kill(f32),
+    /// Elenca abitanti e nemici entro il raggio.
+    Near(f32),
+    Fps,
+    Entities,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -195,6 +204,25 @@ pub fn parse(line: &str) -> Result<Cmd, String> {
                 _ => Ok(Cmd::Look(LookTarget::Place(args.join(" ").to_lowercase()))),
             }
         }
+        "quest" => {
+            use crate::quests::denaro_rubato::QuestStage as Q;
+            match args.first().map(|a| a.to_lowercase()).as_deref() {
+                Some("idle" | "inizio" | "nessuna") => Ok(Cmd::Quest(Q::Idle)),
+                Some("seekthief" | "cerca" | "ladro") => Ok(Cmd::Quest(Q::SeekThief)),
+                Some("collecting" | "raccogli" | "monete") => Ok(Cmd::Quest(Q::Collecting)),
+                Some("returning" | "ritorna" | "torna") => Ok(Cmd::Quest(Q::Returning)),
+                Some("completed" | "completata" | "fine") => Ok(Cmd::Quest(Q::Completed)),
+                _ => Err("uso: quest <inizio|cerca|raccogli|torna|completata>".into()),
+            }
+        }
+        "uccidi" | "kill" => Ok(Cmd::Kill(
+            args.first().and_then(|a| a.parse().ok()).unwrap_or(30.0),
+        )),
+        "vicino" | "near" => Ok(Cmd::Near(
+            args.first().and_then(|a| a.parse().ok()).unwrap_or(15.0),
+        )),
+        "fps" => Ok(Cmd::Fps),
+        "entita" | "entità" | "entities" => Ok(Cmd::Entities),
         "foto" | "shot" => Ok(Cmd::Photo(args.first().unwrap_or(&"foto").to_string())),
         "dump" => Ok(Cmd::Dump(args.first().unwrap_or(&"stato").to_string())),
         "copione" | "script" => match args.first() {
@@ -331,6 +359,13 @@ fn parse_give(args: &[&str]) -> Result<Cmd, String> {
     Ok(Cmd::Give(name.to_lowercase(), qty))
 }
 
+/// Nemici visti dalla shell (`uccidi`, `vicino`).
+type EnemyData = (
+    &'static GlobalTransform,
+    &'static mut crate::combat::EnemyHealth,
+);
+type EnemyFilter = (With<crate::entities::Enemy>, Without<Player>);
+
 /// Tutto ciò che i comandi possono toccare.
 #[derive(SystemParam)]
 pub struct ShellCtx<'w, 's> {
@@ -348,6 +383,10 @@ pub struct ShellCtx<'w, 's> {
     gizmos: ResMut<'w, GizmoConfigStore>,
     homes: Res<'w, crate::world_props::Homes>,
     pilot: ResMut<'w, crate::autopilot::Autopilot>,
+    quest: ResMut<'w, crate::quests::denaro_rubato::QuestState>,
+    diagnostics: Res<'w, bevy::diagnostic::DiagnosticsStore>,
+    every: Query<'w, 's, Entity>,
+    enemies: Query<'w, 's, EnemyData, EnemyFilter>,
     orbit: ResMut<'w, crate::camera::OrbitCamera>,
     village: Res<'w, crate::village::VillageInfo>,
     field: Option<Res<'w, crate::terrain::TerrainField>>,
@@ -548,6 +587,75 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
             };
             ctx.pilot.dump = Some(Some(dir.join(format!("stato-{name}.json"))));
             shell.say(format!("stato in {}", dir.display()));
+        }
+        Cmd::Quest(stage) => {
+            use crate::quests::denaro_rubato::QuestStage as Q;
+            let q = &mut ctx.quest;
+            q.stage = stage;
+            q.accepted = stage != Q::Idle;
+            q.final_done = stage == Q::Completed;
+            q.coins_collected = match stage {
+                Q::Returning | Q::Completed => q.coins_total,
+                _ => 0,
+            };
+            shell.say(format!("quest «Denaro Rubato»: fase {stage:?}"));
+        }
+        Cmd::Kill(radius) => {
+            let here = ctx.player.single().map(|(t, _)| t.translation).ok();
+            let target = here.and_then(|p| {
+                ctx.enemies
+                    .iter_mut()
+                    .filter(|(_, hp)| hp.current > 0.0)
+                    .map(|(g, hp)| (g.translation().distance(p), hp))
+                    .filter(|(d, _)| *d <= radius)
+                    .min_by(|a, b| a.0.total_cmp(&b.0))
+            });
+            match target {
+                Some((dist, mut hp)) => {
+                    hp.current = 0.0;
+                    shell.say(format!("nemico a {dist:.1} m: ucciso"));
+                }
+                None => shell.say(format!("nessun nemico entro {radius:.0} m")),
+            }
+        }
+        Cmd::Near(radius) => {
+            let Ok((t, _)) = ctx.player.single() else {
+                return;
+            };
+            let p = t.translation;
+            let mut found: Vec<(f32, String)> = ctx
+                .npcs
+                .iter()
+                .map(|(npc, g, _)| {
+                    let d = g.translation().distance(p);
+                    (d, format!("{} ({:?})", npc.name, npc.mode))
+                })
+                .chain(ctx.enemies.iter().map(|(g, hp)| {
+                    let d = g.translation().distance(p);
+                    (d, format!("nemico, vita {:.0}", hp.current))
+                }))
+                .filter(|(d, _)| *d <= radius)
+                .collect();
+            found.sort_by(|a, b| a.0.total_cmp(&b.0));
+            if found.is_empty() {
+                shell.say(format!("nessuno entro {radius:.0} m"));
+            }
+            for (d, what) in found {
+                shell.say(format!("{d:5.1} m  {what}"));
+            }
+        }
+        Cmd::Fps => {
+            let fps = ctx
+                .diagnostics
+                .get(&bevy::diagnostic::FrameTimeDiagnosticsPlugin::FPS)
+                .and_then(|d| d.smoothed());
+            shell.say(match fps {
+                Some(f) => format!("FPS: {f:.0}"),
+                None => "FPS non disponibili".to_string(),
+            });
+        }
+        Cmd::Entities => {
+            shell.say(format!("entità: {}", ctx.every.iter().count()));
         }
         Cmd::Script(path) => match std::fs::read_to_string(&path) {
             Ok(text) => {
@@ -906,6 +1014,27 @@ mod tests {
             Ok(Cmd::Teleport(Target::Place("casa-media".into(), 1)))
         );
         assert!(parse("tp").is_err());
+        assert_eq!(
+            parse("quest torna"),
+            Ok(Cmd::Quest(
+                crate::quests::denaro_rubato::QuestStage::Returning
+            ))
+        );
+        assert!(parse("quest boh").is_err());
+        assert_eq!(parse("uccidi"), Ok(Cmd::Kill(30.0)));
+        assert_eq!(parse("vicino 8"), Ok(Cmd::Near(8.0)));
+        assert_eq!(
+            parse("vai 3 4"),
+            Ok(Cmd::Go(Target::Pos(Vec3::new(3.0, 0.0, 4.0)), false))
+        );
+        assert_eq!(
+            parse("corri chiesa"),
+            Ok(Cmd::Go(Target::Place("chiesa".into(), 0), true))
+        );
+        assert_eq!(
+            parse("guarda 90 10"),
+            Ok(Cmd::Look(LookTarget::Angles(90.0, 10.0)))
+        );
     }
 
     #[test]
