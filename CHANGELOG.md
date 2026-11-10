@@ -2,6 +2,13 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## v0.0.55.0 — Scuri degli abitanti e gallerie (2026-11-10)
+
+- **Scuri**: ora li aprono e chiudono gli abitanti. Al mattino, appena si alzano, vanno alla finestra della loro stanza, fanno il gesto (clip `Interact`, nuova `Anim::Interact`) e gli scuri si aprono a metà gesto; la sera, prima di coricarsi, li chiudono. Le case senza abitanti restano a orario. Nel log: `[VILLAGERS] … apre/chiude gli scuri`.
+- **Grotta**: dal fondo della camera si scende (rampa di 4 m) in gallerie sotto la collina: una sala del tesoro con falò, forziere, botte e cassa; un laghetto con stalagmiti; un cunicolo stretto (soffitto basso) che gira ad angolo e finisce in una nicchia con un secondo forziere e un falò. Il forziere ha un bottino migliore (monete, pozioni, a volte una spada lunga). La prova di camminata percorre tutte le gallerie.
+- I falò sotterranei non fanno fumo (non ha dove uscire).
+- Restano a orario i focolari delle case.
+
 ## v0.0.54.0 — Rifiniture di grotta, spada e salvataggio (2026-11-10)
 
 - **Grotta**: fuori dall'arco c'è una rampa di pietra (circa 19°, 6,4 m) con un terrapieno a gradoni sotto, al posto del pendio ripido verso il mare; la prova di camminata ora parte da fuori.
