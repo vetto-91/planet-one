@@ -73,6 +73,7 @@ Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, 
 - `src/voice.rs`: voci dei personaggi (`assets/audio/voci/`, mappa in `assets/quests/<quest>/voci.txt` generata da `scripts/export_voci.py`).
 - `src/localtime.rs`: ora locale della macchina per salvataggi, debug e log (`libc::localtime_r` su Unix).
 - `src/version.rs`: `GAME_VERSION` mostrata nel menu Esc; aggiornare a ogni rilascio.
+- `scripts/gen_voci_abitanti.py`: clip delle prime battute degli abitanti e dei congedi (Piper locale), `voice::greeting_clips`/`farewell_clip`.
 - `docs/voci/` + `scripts/export_voci.py`: battute per creare le voci; rigenerare dopo aver cambiato `dialoghi.txt`.
 - `src/ui_style.rs`: palette, targhette (`plate`) e tema egui condiviso (stesso stile dei dialoghi).
 - `src/ai/`: dialoghi con IA SOLO LOCALE (Ollama su loopback, niente TLS/cloud; ADR 0005): `ollama.rs` client, `persona.rs` prompt da `assets/ai/<nome>.txt`, `tts.rs` voce con Piper locale (ADR 0006), `stt.rs` microfono con whisper.cpp locale (ADR 0022), `ui.rs` chat; stato `AppState::Chat`.

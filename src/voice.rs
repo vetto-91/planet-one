@@ -22,6 +22,29 @@ pub enum VoiceKind {
     Bark,
 }
 
+/// Nome dei clip delle prime battute di un abitante: `abitanti/<nome>-<n>` (`scripts/gen_voci_abitanti.py`).
+pub fn greeting_clips(name: &str, count: usize) -> Vec<Vec<String>> {
+    let slug = name.to_lowercase().replace(' ', "-");
+    (1..=count)
+        .map(|n| vec![format!("abitanti/{slug}-{n}")])
+        .collect()
+}
+
+/// Un saluto di commiato, maschile o femminile secondo la voce Piper del personaggio.
+pub fn farewell_clip(voice: &str, salt: u32) -> String {
+    let female = ["paola", "serena", "lisa"]
+        .iter()
+        .any(|n| voice.contains(n));
+    format!(
+        "congedo/{}-{}",
+        if female { "f" } else { "m" },
+        salt % FAREWELLS + 1
+    )
+}
+
+/// Quanti congedi diversi ci sono per sesso.
+const FAREWELLS: u32 = 6;
+
 /// Coda delle clip da riprodurre.
 #[derive(Resource, Default)]
 pub struct VoiceQueue {
@@ -108,4 +131,36 @@ pub fn dialog_voice(
         queue.stop(VoiceKind::Dialog);
     }
     *last = (dialog.open, dialog.index);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn greeting_clips_follow_the_persona_file_names() {
+        assert_eq!(
+            greeting_clips("Don Anselmo", 2)[1],
+            vec!["abitanti/don-anselmo-2"]
+        );
+    }
+
+    #[test]
+    fn farewell_clip_matches_voice_and_wraps() {
+        assert_eq!(farewell_clip("it_IT-paola-medium", 0), "congedo/f-1");
+        assert_eq!(farewell_clip("it_IT-riccardo-x_low", 7), "congedo/m-2");
+    }
+
+    #[test]
+    fn every_clip_exists_on_disk() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/audio/voci");
+        for sex in ["m", "f"] {
+            for n in 1..=FAREWELLS {
+                assert!(
+                    root.join(format!("congedo/{sex}-{n}.ogg")).is_file(),
+                    "{sex}-{n}"
+                );
+            }
+        }
+    }
 }

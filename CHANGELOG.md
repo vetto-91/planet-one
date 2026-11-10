@@ -2,6 +2,13 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+### Voci
+- **Le prime battute degli abitanti hanno la voce** (50 clip, generate in locale con Piper dalle frasi dei file `assets/ai/*.txt`), con voci maschili e femminili come da persona.
+- **Arrivederci**: chiudendo il dialogo con «Arrivederci» o la chat con la IA, l'abitante saluta a voce, con uno di sei congedi maschili o femminili (12 clip in `assets/audio/voci/congedo/`).
+- Nuovo `scripts/gen_voci_abitanti.py` per rifare i clip dopo aver cambiato le battute (solo Piper e ffmpeg locali, nessun servizio esterno).
+
 ## v0.0.46.0 — Interfaccia (2026-11-10)
 
 ### Interfaccia

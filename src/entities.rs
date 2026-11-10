@@ -378,7 +378,11 @@ pub fn interact(
         };
         if lines.is_empty() {
             dialog.lines = npc.lines.iter().map(|s| s.to_string()).collect();
-            dialog.voices = vec![Vec::new(); dialog.lines.len()];
+            dialog.voices = if npc.name == "Viandante" {
+                vec![Vec::new(); dialog.lines.len()]
+            } else {
+                crate::voice::greeting_clips(npc.name, dialog.lines.len())
+            };
         } else {
             dialog.lines = lines;
             dialog.voices = voices;
@@ -401,6 +405,7 @@ pub fn interact(
 /// Se il dialogo ha delle scelte, dopo l'ultima riga si entra in modalità
 /// `choosing`: Su/Giù (o W/S) cambiano la scelta evidenziata, E/Invio la
 /// confermano. Esc chiude senza scelta (equivale a rifiutare).
+#[allow(clippy::too_many_arguments)]
 pub fn advance_dialog(
     keys: Res<ButtonInput<KeyCode>>,
     mut dialog: ResMut<DialogState>,
@@ -409,6 +414,8 @@ pub fn advance_dialog(
     mut chat: ResMut<crate::ai::AiChat>,
     mut shop: ResMut<crate::shop::ShopState>,
     mut next: ResMut<NextState<crate::AppState>>,
+    mut voice: ResMut<crate::voice::VoiceQueue>,
+    time: Res<Time>,
 ) {
     if !dialog.open {
         return;
@@ -440,6 +447,14 @@ pub fn advance_dialog(
                 let action = dialog.offer_actions.get(choice).copied();
                 let key = dialog.shop;
                 close_dialog(&mut dialog, None, true);
+                if action == Some(Offer::Bye) {
+                    let v = crate::ai::persona::load(&name).voice;
+                    let salt = (time.elapsed_secs() * 1000.0) as u32;
+                    voice.play(
+                        vec![crate::voice::farewell_clip(&v, salt)],
+                        crate::voice::VoiceKind::Bark,
+                    );
+                }
                 match (action, key) {
                     (Some(Offer::Shop), Some(k)) => {
                         shop.begin(&name, k);

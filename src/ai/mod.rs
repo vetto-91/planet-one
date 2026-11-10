@@ -389,12 +389,22 @@ pub fn ai_handle_action(
     ai: Res<AiState>,
     settings: Res<AudioSettings>,
     mut next: ResMut<NextState<AppState>>,
+    mut voice: ResMut<crate::voice::VoiceQueue>,
+    time: Res<Time>,
 ) {
     let Some(action) = chat.action.take() else {
         return;
     };
     match action {
-        ChatAction::Close => next.set(AppState::Playing),
+        ChatAction::Close => {
+            // Il congedo lo dice l'abitante, con una voce da uomo o da donna secondo la sua.
+            let salt = (time.elapsed_secs() * 1000.0) as u32;
+            voice.play(
+                vec![crate::voice::farewell_clip(&chat.voice, salt)],
+                crate::voice::VoiceKind::Bark,
+            );
+            next.set(AppState::Playing);
+        }
         ChatAction::Send(text) => {
             let text = text.trim().to_string();
             if text.is_empty() || chat.thinking {
