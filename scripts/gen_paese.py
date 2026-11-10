@@ -13,7 +13,7 @@ PL = ROOT / "debug/placements.txt"
 TAG = "gen_paese.py"
 ITEMS = [
     # Dentro le mura, lontano da porte e percorsi.
-    ("carretto", 13.0, 20.2, 80), ("carretto", 5.2, 29.0, 170),
+    ("carretto", 13.0, 20.2, 80), ("carretto", 7.5, 33.0, 120),
     ("botti", 23.0, 3.5, 0), ("botti", 12.5, -2.6, 0), ("botti", 3.6, 24.8, 0),
     ("casse", 9.4, 20.4, 90), ("casse", 7.5, -4.6, 20),
     ("panni", -13.0, 24.8, 0), ("panni", 20.0, 11.0, 90),

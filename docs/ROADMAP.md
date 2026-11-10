@@ -49,6 +49,7 @@ Strategia: **vertical slice prima**. Una demo giocabile (1 quest, 1 NPC, 1 nemic
 | 11.3 — Suoni e animali | Suoni d'ambiente sintetizzati, passi per superficie, animali, latifoglie CC0 | `v0.0.39.0` |
 | 11.4 — Paese vissuto | Fumo dai comignoli, torce sulle mura, carretti, botti, casse, panni e reti | `v0.0.40.0` |
 | 11.5 — Luoghi da scoprire | Campi, fattoria, mulino, torre, rovine, grotta, banditi, santuario, nomi sulla mappa | `v0.0.41.0` |
+| 12.1 — Correzioni R1 | Crash F4, ora locale, campana, piazza, collisioni degli animali, caduta | `v0.0.42.0` |
 | 5.y — Mondo vivo | Colonna sonora con volume, casetta-chiosco esplorabile (porta, interni, stufa con fumo), routine giorno/notte del Viandante, voci dei personaggi, versione nel menu | `v0.0.7.0` |
 | 5.z — Mondo vivo, rifiniture | Interazione col mirino, casetta con serranda/interruttore/finestre e luci con ombre, routine del Viandante v2, voci normalizzate con ducking della musica | `v0.0.8.0` |
 | 5.w — Mappa e strumenti | Mappa dall'alto (M) con bussola e zoom, modalità debug piazzamenti (F4) con file `debug/placements.txt`, vetri e scuri spessi, il Viandante chiude porta e finestre | `v0.0.9.0` |

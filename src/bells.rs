@@ -16,7 +16,8 @@ const HEARING_RANGE: f32 = 190.0;
 /// Secondi reali tra un rintocco e il successivo.
 const STRIKE_GAP: f32 = 3.0;
 /// Fra queste ore (incluse) la campana suona.
-const RING_HOURS: std::ops::RangeInclusive<i32> = 7..=21;
+/// Rintocchi pieni solo a mezzogiorno e a mezzanotte; un colpo solo all'alba e al tramonto.
+const FULL_HOURS: [i32; 2] = [0, 12];
 /// Posizione del campanile rispetto al centro della chiesa (locale: davanti = +Z).
 const BELFRY_LOCAL: Vec3 = Vec3::new(0.0, 9.3, 5.2);
 
@@ -78,9 +79,18 @@ pub struct RingState {
     timer: f32,
 }
 
-/// Numero di rintocchi per un'ora (1–12).
-pub fn strikes_for(hour: i32) -> u32 {
-    ((hour + 11) % 12 + 1) as u32
+/// Quanti rintocchi suonano in questo istante: a mezzogiorno e mezzanotte 12, poco prima
+/// dell'alba e del tramonto uno solo (all'ora piena che precede il sorgere o il calare del sole).
+pub fn strikes_at(hour: i32, sunrise: f32, sunset: f32) -> u32 {
+    if FULL_HOURS.contains(&hour) {
+        return 12;
+    }
+    let before = |t: f32| hour == t.floor() as i32 - 1 || (t < 1.0 && hour == 23);
+    if before(sunrise) || before(sunset) {
+        1
+    } else {
+        0
+    }
 }
 
 /// Sistema: avvia e scandisce i rintocchi alle ore piene.
@@ -97,8 +107,9 @@ pub fn ring_bells(
     };
     let hour = clock.hour.floor() as i32;
     if st.last_hour != Some(hour) {
-        if st.last_hour.is_some() && RING_HOURS.contains(&hour) {
-            st.remaining = strikes_for(hour);
+        let strikes = strikes_at(hour, clock.sunrise, clock.sunset);
+        if st.last_hour.is_some() && strikes > 0 {
+            st.remaining = strikes;
             st.timer = 0.0;
             info!("[CAMPANE] ore {hour}: {} rintocchi", st.remaining);
         }
@@ -165,11 +176,11 @@ mod tests {
 
     #[test]
     fn strikes_follow_the_clock() {
-        assert_eq!(strikes_for(7), 7);
-        assert_eq!(strikes_for(12), 12);
-        assert_eq!(strikes_for(13), 1);
-        assert_eq!(strikes_for(21), 9);
-        assert_eq!(strikes_for(0), 12);
+        assert_eq!(strikes_at(12, 6.5, 19.5), 12);
+        assert_eq!(strikes_at(0, 6.5, 19.5), 12);
+        assert_eq!(strikes_at(5, 6.5, 19.5), 1);
+        assert_eq!(strikes_at(18, 6.5, 19.5), 1);
+        assert_eq!(strikes_at(9, 6.5, 19.5), 0);
     }
 
     #[test]

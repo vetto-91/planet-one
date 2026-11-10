@@ -1189,31 +1189,44 @@ fn church(b: &mut B, r: &mut Rng, int: &mut Interior) {
     int.lights.push(Vec3::new(0.0, belfry + 2.0, tz));
 }
 
-fn sign_arm(b: &mut B, col: Col) {
-    b.cuboid_c(Vec3::new(1.9, 3.1, 3.0), Vec3::new(0.08, 0.08, 1.0), TIMBER);
-    b.cuboid_c(Vec3::new(1.9, 2.65, 3.45), Vec3::new(0.08, 0.7, 0.9), col);
+fn sign_arm(b: &mut B, col: Col, front: f32) {
+    // Targa appesa al muro accanto alla porta, a mezza altezza del piano terra.
     b.cuboid_c(
-        Vec3::new(1.9, 2.65, 3.5),
-        Vec3::new(0.1, 0.1, 0.55),
+        Vec3::new(1.9, 2.55, front + 0.05),
+        Vec3::new(1.1, 0.5, 0.08),
+        col,
+    );
+    b.cuboid_c(
+        Vec3::new(1.9, 2.55, front + 0.1),
+        Vec3::new(0.8, 0.2, 0.04),
         [0.95, 0.9, 0.7, 1.0],
     );
+    for dx in [-0.45, 0.45] {
+        b.cuboid_c(
+            Vec3::new(1.9 + dx, 2.9, front + 0.03),
+            Vec3::new(0.04, 0.3, 0.04),
+            TIMBER,
+        );
+    }
 }
 
 /// Ruota di legno nel piano YZ: cerchio a segmenti e raggi.
 fn wheel(b: &mut B, center: Vec3, radius: f32) {
     use std::f32::consts::TAU;
-    const SIDES: usize = 12;
+    const SIDES: usize = 16;
     let wood: Col = [0.34, 0.23, 0.13, 1.0];
     let rim = |k: usize| {
         let a = k as f32 / SIDES as f32 * TAU;
         center + Vec3::new(0.0, a.cos() * radius, a.sin() * radius)
     };
     for k in 0..SIDES {
-        b.beam(rim(k), rim(k + 1), 0.045, wood);
+        b.beam(rim(k), rim(k + 1), 0.05, wood);
     }
-    for k in (0..SIDES / 2).step_by(2) {
-        b.beam(rim(k), rim(k + SIDES / 2), 0.03, wood);
+    for k in 0..SIDES / 2 {
+        b.beam(rim(k), rim(k + SIDES / 2), 0.025, wood);
     }
+    // Mozzo.
+    b.cuboid_c(center, Vec3::new(0.14, 0.16, 0.16), TIMBER);
 }
 
 /// Carretto a due ruote con una cassa sul pianale.
@@ -1774,13 +1787,8 @@ pub fn model(kind: &str, seed: u32) -> Building {
         }
         "locanda" => {
             house(&mut b, &mut r, &mut int, kind, 10.0, 6.5, 3, true, 2, seed);
-            // Insegna a bandiera accanto alla porta.
-            b.cuboid_c(Vec3::new(1.6, 3.4, 3.4), Vec3::new(0.08, 0.08, 0.9), TIMBER);
-            b.cuboid_c(
-                Vec3::new(1.6, 3.0, 3.8),
-                Vec3::new(0.7, 0.55, 0.06),
-                [0.55, 0.3, 0.15, 1.0],
-            );
+            // Targa appesa al muro accanto alla porta.
+            sign_arm(&mut b, [0.55, 0.3, 0.15, 1.0], 3.25);
             (10.0, 6.5, Vec::new())
         }
         "caserma" => {
@@ -1798,7 +1806,7 @@ pub fn model(kind: &str, seed: u32) -> Building {
         }
         "fabbro" => {
             house(&mut b, &mut r, &mut int, kind, 6.5, 5.0, 2, false, 1, seed);
-            sign_arm(&mut b, [0.35, 0.36, 0.4, 1.0]);
+            sign_arm(&mut b, [0.35, 0.36, 0.4, 1.0], 2.5);
             b.cuboid(
                 Vec3::new(3.25, 0.0, -1.5),
                 Vec3::new(5.0, 2.3, 2.0),
@@ -1812,22 +1820,8 @@ pub fn model(kind: &str, seed: u32) -> Building {
         }
         "forno" => {
             house(&mut b, &mut r, &mut int, kind, 5.5, 4.5, 2, false, 1, seed);
-            // Insegna a bandiera: una pagnotta sulla tavola.
-            b.cuboid_c(
-                Vec3::new(1.7, 3.1, 2.75),
-                Vec3::new(0.08, 0.08, 1.0),
-                TIMBER,
-            );
-            b.cuboid_c(
-                Vec3::new(1.7, 2.65, 3.1),
-                Vec3::new(0.08, 0.7, 0.8),
-                [0.42, 0.28, 0.16, 1.0],
-            );
-            b.cuboid_c(
-                Vec3::new(1.7, 2.65, 3.1),
-                Vec3::new(0.12, 0.2, 0.5),
-                [0.8, 0.56, 0.24, 1.0],
-            );
+            // Targa appesa al muro accanto alla porta.
+            sign_arm(&mut b, [0.42, 0.28, 0.16, 1.0], 2.25);
             (5.5, 4.5, Vec::new())
         }
         "stalla" => {
@@ -1841,7 +1835,7 @@ pub fn model(kind: &str, seed: u32) -> Building {
         }
         "arcere" => {
             house(&mut b, &mut r, &mut int, kind, 6.2, 5.0, 2, true, 1, seed);
-            sign_arm(&mut b, [0.25, 0.5, 0.3, 1.0]);
+            sign_arm(&mut b, [0.25, 0.5, 0.3, 1.0], 2.5);
             (6.2, 5.0, Vec::new())
         }
         "bancarella-erbe" | "bancarella-frutta" | "bancarella-pesce" => {

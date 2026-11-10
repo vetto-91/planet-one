@@ -10,7 +10,7 @@ OUT = Path(__file__).resolve().parent.parent / "assets/textures/cartelli"
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"
 # chiave -> (testo grande, testo piccolo)
 SIGNS = {
-    "fontevivo": ("FONTEVIVO", "borgo murato"),
+    "fontevivo": ("FONTEVIVO", "borgo fortificato"),
     "porta-nord": ("PORTA NORD", "Fontevivo"),
     "porta-sud": ("PORTA SUD", "Fontevivo"),
     "piazza": ("Piazza", "Fontevivo"),

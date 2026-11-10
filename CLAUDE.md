@@ -70,6 +70,7 @@ Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, 
 - `src/devtools.rs`: variabili d'ambiente di debug (`PLANET_ONE_HOUR/POS/LOOK`) per provare il gioco e fare screenshot.
 - `src/props.rs`: `SnapToGround` (appoggio a terra con raycast).
 - `src/voice.rs`: voci dei personaggi (`assets/audio/voci/`, mappa in `assets/quests/<quest>/voci.txt` generata da `scripts/export_voci.py`).
+- `src/localtime.rs`: ora locale della macchina per salvataggi, debug e log (`libc::localtime_r` su Unix).
 - `src/version.rs`: `GAME_VERSION` mostrata nel menu Esc; aggiornare a ogni rilascio.
 - `docs/voci/` + `scripts/export_voci.py`: battute per creare le voci; rigenerare dopo aver cambiato `dialoghi.txt`.
 - `src/ui_style.rs`: palette, targhette (`plate`) e tema egui condiviso (stesso stile dei dialoghi).

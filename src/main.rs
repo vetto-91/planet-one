@@ -29,6 +29,7 @@ mod hut;
 mod interiors;
 mod inventory;
 mod inventory_ui;
+mod localtime;
 mod main_menu;
 mod map;
 mod menu;
@@ -112,21 +113,31 @@ pub enum AppState {
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins.set(WindowPlugin {
-                primary_window: Some(Window {
-                    title: "Planet One".into(),
-                    resolution: (1280u32, 720u32).into(),
-                    // Avvio a schermo intero di default; F11 torna a finestra.
-                    mode: bevy::window::WindowMode::Fullscreen(
-                        bevy::window::MonitorSelection::Current,
-                        bevy::window::VideoModeSelection::Current,
-                    ),
+            DefaultPlugins
+                .set(bevy::log::LogPlugin {
+                    fmt_layer: |_| {
+                        Some(Box::new(
+                            bevy::log::tracing_subscriber::fmt::layer()
+                                .with_timer(localtime::LogClock),
+                        ))
+                    },
+                    ..default()
+                })
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "Planet One".into(),
+                        resolution: (1280u32, 720u32).into(),
+                        // Avvio a schermo intero di default; F11 torna a finestra.
+                        mode: bevy::window::WindowMode::Fullscreen(
+                            bevy::window::MonitorSelection::Current,
+                            bevy::window::VideoModeSelection::Current,
+                        ),
+                        ..default()
+                    }),
+                    // In Bevy 0.20 Esc non chiude più la finestra di default:
+                    // lo lasciamo gestire solo al menu di gioco.
                     ..default()
                 }),
-                // In Bevy 0.20 Esc non chiude più la finestra di default:
-                // lo lasciamo gestire solo al menu di gioco.
-                ..default()
-            }),
             PhysicsPlugins::default(),
             // Debug fisica Avian (collider wireframe): disabilitato di
             // default, attivabile con F3. Utile per confrontare mesh e collider.
@@ -254,6 +265,7 @@ fn main() {
                 player::update_grounded,
                 player::movement,
                 player::run_move_and_slide,
+                player::apply_fall_damage,
                 player::facing,
             )
                 .chain()

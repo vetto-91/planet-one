@@ -2,6 +2,20 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+### Correzioni
+- Il gioco non va più in crash spostando con F4 gli oggetti vicino a una porta (cartello della chiesa): i comandi sul collider tollerano le entità già eliminate.
+- Con F4, dentro un edificio hanno la precedenza lampioni e cartelli sull'edificio stesso; lampioni e cartelli finiti dentro case e chiesa vengono portati fuori (`scripts/fix_posizioni.py`, solo se sono ancora dove erano).
+- Salvataggi, debug e log usano l'ora locale della macchina invece di UTC.
+- Il messaggio «Salvataggio automatico» sta su una riga.
+- Il cartello di Fontevivo dice «borgo fortificato»; le targhe di locanda e forno sono appese al muro accanto alla porta, non più bandiere che attraversano il soffitto.
+- La piazza della fontana è tutta lastricata.
+- La campana suona 12 rintocchi solo a mezzogiorno e a mezzanotte, e un colpo prima dell'alba e del tramonto.
+- Danno da caduta oltre i 3,5 m di dislivello.
+- Il carretto della porta sud sta fuori dalla torre e ha ruote più curate.
+- Mucche, pecore e galline hanno collisione (col giocatore e fra loro) e non attraversano muri e pozzo; i gabbiani salgono per scavalcare il faro e i tetti.
+
 ## v0.0.41.0 — Luoghi da scoprire (2026-11-09)
 
 - **Luoghi da scoprire** (ADR 0029): campo del ladro nel bosco, fattoria con Ida, mulino a vento di Gino con le pale che girano, torre in rovina sull'altura con scala fino in cima, rovine di un tempio, grotta nella scogliera, accampamento dei banditi con nemici che ricompaiono, santuario nella radura, cartelli e panchine sui sentieri.

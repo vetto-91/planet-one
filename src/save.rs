@@ -721,7 +721,7 @@ pub fn name_taken(root: &Path, name: &str) -> bool {
         })
 }
 
-/// Data e ora correnti (UTC), per il file e per l'elenco.
+/// Data e ora locali, per il file e per l'elenco.
 fn now_text() -> String {
     crate::debug_place::utc_now()
 }
@@ -1374,7 +1374,12 @@ pub fn draw_notice(
                 .corner_radius(bevy_egui::egui::CornerRadius::same(6))
                 .inner_margin(bevy_egui::egui::Margin::symmetric(14, 8))
                 .show(ui, |ui| {
-                    ui.label(bevy_egui::egui::RichText::new(&text).size(18.0));
+                    ui.add(
+                        bevy_egui::egui::Label::new(
+                            bevy_egui::egui::RichText::new(&text).size(18.0),
+                        )
+                        .wrap_mode(bevy_egui::egui::TextWrapMode::Extend),
+                    );
                 });
         });
     session.notice = (left > dt).then_some((text, left - dt));
@@ -1402,7 +1407,7 @@ mod tests {
         let mut d = SaveData::blank();
         d.kind = SaveKind::Quick;
         d.game_version = "v0.0.36.0".into();
-        d.saved_at = "2026-11-09 12:30 UTC".into();
+        d.saved_at = "2026-11-09 12:30".into();
         d.played_secs = 321.0;
         d.place = "Fontevivo".into();
         d.name = "Àlda Rossi".into();

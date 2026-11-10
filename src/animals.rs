@@ -15,6 +15,7 @@ use crate::village::VillageInfo;
 use crate::water::IslandSpec;
 use crate::weather::{Noise, WeatherState};
 use crate::world_props::hash01;
+use avian3d::prelude::*;
 use bevy::asset::RenderAssetUsages;
 use bevy::light::NotShadowCaster;
 use bevy::mesh::{Indices, PrimitiveTopology};
@@ -95,6 +96,8 @@ struct Gull {
     height: f32,
     speed: f32,
     phase: f32,
+    /// Quota in più per scavalcare faro e tetti.
+    lift: f32,
 }
 
 /// Uccellino a terra: si alza quando ci si avvicina e torna dopo un po'.
@@ -172,6 +175,30 @@ fn flee_spot(pos: Vec2, from: Vec2, ok: impl Fn(Vec2) -> bool) -> Option<Vec2> {
 fn turn_to(yaw: f32, want: f32, step: f32) -> f32 {
     let delta = (want - yaw + PI).rem_euclid(TAU) - PI;
     yaw + delta.clamp(-step, step)
+}
+
+/// Un ostacolo solido (muro, albero, altro animale, giocatore) sta davanti a `from` entro `dist`?
+fn blocked_ahead(
+    spatial: &SpatialQuery,
+    grounds: &Query<(), With<crate::scene::Ground>>,
+    me: Entity,
+    from: Vec3,
+    dir: Vec2,
+    dist: f32,
+) -> bool {
+    let Ok(d) = Dir3::new(Vec3::new(dir.x, 0.0, dir.y)) else {
+        return false;
+    };
+    spatial
+        .cast_ray_predicate(
+            from,
+            d,
+            dist,
+            true,
+            &SpatialQueryFilter::from_excluded_entities([me]),
+            &|e| !grounds.contains(e),
+        )
+        .is_some()
 }
 
 // --- Mesh e materiali --------------------------------------------------------------------------
@@ -401,8 +428,18 @@ fn populate(
                     },
                     Transform::from_xyz(pos.x, field.height_at(pos.x, pos.y), pos.y),
                     Visibility::default(),
+                    RigidBody::Kinematic,
                 ))
                 .with_children(|p| {
+                    let (w, l) = if herd.kind == 0 {
+                        (0.9, 1.9)
+                    } else {
+                        (0.75, 1.3)
+                    };
+                    p.spawn((
+                        Collider::cuboid(w, 1.1, l),
+                        Transform::from_xyz(0.0, 0.6, 0.0),
+                    ));
                     p.spawn((
                         WorldAssetRoot(kit.scenes[herd.kind].clone()),
                         Transform::from_scale(Vec3::splat(scale)),
@@ -430,8 +467,13 @@ fn populate(
                     },
                     Transform::from_xyz(pos.x, field.height_at(pos.x, pos.y), pos.y),
                     Visibility::Hidden,
+                    RigidBody::Kinematic,
                 ))
                 .with_children(|p| {
+                    p.spawn((
+                        Collider::cuboid(0.3, 0.5, 0.45),
+                        Transform::from_xyz(0.0, 0.28, 0.0),
+                    ));
                     for (mesh, color, at) in &kit.hen_parts {
                         let material = match color {
                             0 => feathers.clone(),
@@ -455,6 +497,7 @@ fn populate(
                         height: 7.0 + (k * 1.7) % 7.0,
                         speed: 5.5 + (k * 0.7) % 2.0,
                         phase: k * 1.9,
+                        lift: 0.0,
                     },
                     Flap {
                         amp: 0.35,
@@ -605,7 +648,9 @@ fn move_grazers(
     pasture: Option<Res<Pasture>>,
     kit: Option<Res<AnimalKit>>,
     player: Query<&Transform, (With<Player>, Without<Grazer>)>,
-    mut grazers: Query<(&mut Grazer, &mut Transform)>,
+    spatial: SpatialQuery,
+    grounds: Query<(), With<crate::scene::Ground>>,
+    mut grazers: Query<(Entity, &mut Grazer, &mut Transform)>,
     mut anim: Query<(&mut AnimationPlayer, &mut AnimationTransitions)>,
 ) {
     let (Some(field), Some(pasture), Some(kit), Ok(me)) = (field, pasture, kit, player.single())
@@ -615,7 +660,7 @@ fn move_grazers(
     let dt = time.delta_secs();
     let me = me.translation.xz();
     let awake = daylight(clock.hour, clock.sunrise, clock.sunset) > 0.3;
-    for (mut g, mut t) in &mut grazers {
+    for (entity, mut g, mut t) in &mut grazers {
         let (_, _, walk, run) = GRAZERS[g.kind];
         let ok = |p: Vec2| walkable(&field, &pasture.0, p);
         let scared = g.pos.distance(me) < SHY;
@@ -636,7 +681,9 @@ fn move_grazers(
             } else {
                 let step = to.normalize() * speed * dt;
                 let next = g.pos + step;
-                if ok(next) {
+                let from = Vec3::new(g.pos.x, t.translation.y + 0.7, g.pos.y);
+                let stuck = blocked_ahead(&spatial, &grounds, entity, from, step, 1.3);
+                if ok(next) && !stuck {
                     g.pos = next;
                     let yaw = g.yaw;
                     g.yaw = turn_to(yaw, to.x.atan2(to.y), dt * 2.2);
@@ -678,7 +725,9 @@ fn move_hens(
     clock: Res<GameClock>,
     field: Option<Res<TerrainField>>,
     player: Query<&Transform, (With<Player>, Without<Hen>)>,
-    mut hens: Query<(&mut Hen, &mut Transform, &mut Visibility)>,
+    spatial: SpatialQuery,
+    grounds: Query<(), With<crate::scene::Ground>>,
+    mut hens: Query<(Entity, &mut Hen, &mut Transform, &mut Visibility)>,
 ) {
     let (Some(field), Ok(me)) = (field, player.single()) else {
         return;
@@ -687,7 +736,7 @@ fn move_hens(
     let now = time.elapsed_secs();
     let me = me.translation.xz();
     let out = daylight(clock.hour, clock.sunrise, clock.sunset) > 0.25;
-    for (mut h, mut t, mut vis) in &mut hens {
+    for (entity, mut h, mut t, mut vis) in &mut hens {
         vis.set_if_neq(if out {
             Visibility::Inherited
         } else {
@@ -708,8 +757,14 @@ fn move_hens(
                 h.wait = 1.0 + uniform(&mut h.rng) * 5.0;
             } else {
                 let step = to.normalize() * 0.55 * dt;
-                h.pos += step;
-                h.yaw = turn_to(h.yaw, to.x.atan2(to.y), dt * 6.0);
+                let from = Vec3::new(h.pos.x, t.translation.y + 0.3, h.pos.y);
+                if blocked_ahead(&spatial, &grounds, entity, from, step, 0.55) {
+                    h.target = None;
+                    h.wait = 0.5;
+                } else {
+                    h.pos += step;
+                    h.yaw = turn_to(h.yaw, to.x.atan2(to.y), dt * 6.0);
+                }
             }
         } else {
             peck = ((now * 7.0 + h.home.x).sin().max(0.0)) * 0.55;
@@ -730,11 +785,13 @@ fn move_gulls(
     time: Res<Time>,
     clock: Res<GameClock>,
     weather: Res<WeatherState>,
-    mut gulls: Query<(&Gull, &mut Transform, &mut Visibility)>,
+    spatial: SpatialQuery,
+    grounds: Query<(), With<crate::scene::Ground>>,
+    mut gulls: Query<(&mut Gull, &mut Transform, &mut Visibility)>,
 ) {
     let now = time.elapsed_secs();
     let out = daylight(clock.hour, clock.sunrise, clock.sunset) > 0.2 && weather.rain < 0.6;
-    for (g, mut t, mut vis) in &mut gulls {
+    for (mut g, mut t, mut vis) in &mut gulls {
         vis.set_if_neq(if out {
             Visibility::Inherited
         } else {
@@ -742,11 +799,22 @@ fn move_gulls(
         });
         let a = now * g.speed / g.radius + g.phase;
         let r = g.radius * (1.0 + 0.25 * (a * 0.37).sin());
-        t.translation = Vec3::new(
-            g.center.x + r * a.cos(),
-            g.height + (a * 0.8).sin() * 1.3,
-            g.center.y + r * a.sin(),
-        );
+        let (x, z) = (g.center.x + r * a.cos(), g.center.y + r * a.sin());
+        // Ciò che sta sotto (faro, tetti, torri): il gabbiano sale per passarci sopra.
+        let ceiling = spatial
+            .cast_ray_predicate(
+                Vec3::new(x, 60.0, z),
+                Dir3::NEG_Y,
+                70.0,
+                true,
+                &SpatialQueryFilter::default(),
+                &|e| !grounds.contains(e),
+            )
+            .map_or(f32::MIN, |h| 60.0 - h.distance);
+        let want = (ceiling + 3.0 - g.height).max(0.0);
+        let k = 1.0 - (-time.delta_secs() * 1.2).exp();
+        g.lift += (want - g.lift) * k;
+        t.translation = Vec3::new(x, g.height + g.lift + (a * 0.8).sin() * 1.3, z);
         // Tangente all'orbita e ali inclinate nella virata.
         t.rotation = Quat::from_rotation_y(-a + PI) * Quat::from_rotation_z(0.28);
     }

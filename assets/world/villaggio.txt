@@ -12,7 +12,7 @@ cancello: Sud 0.2 40.0
 
 # --- strade (generate da scripts/gen_villaggio.py: rilanciare lo script le rigenera) ---
 strada: grande 4.2 | 0.21 -32.00, 0.21 -8.30, 0.10 -3.00, -0.50 2.00, -1.00 7.00, -1.20 10.00, -0.90 16.00, 0.00 22.00, 0.41 26.50, 0.41 48.00
-strada: piazza 11.0 | -1.20 10.00, -1.20 10.01
+strada: piazza 17.0 | -1.20 10.00, -1.20 10.01
 strada: piccola 2.4 | 3.00 10.00, 12.00 10.50, 22.00 10.80
 strada: piccola 2.4 | -0.60 0.80, -10.00 0.40, -22.00 0.40
 strada: piccola 2.4 | -1.00 17.50, -6.00 18.50, -14.50 19.40

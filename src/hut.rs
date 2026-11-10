@@ -1661,9 +1661,9 @@ pub fn update_los_blockers(
         };
         let active = st.on == b.active_when_on;
         if active && disabled {
-            commands.entity(e).remove::<ColliderDisabled>();
+            commands.entity(e).try_remove::<ColliderDisabled>();
         } else if !active && !disabled {
-            commands.entity(e).insert(ColliderDisabled);
+            commands.entity(e).try_insert(ColliderDisabled);
         }
     }
 }
@@ -1689,9 +1689,9 @@ pub fn animate_hinges(
             for child in children.iter() {
                 if colliders.contains(child) {
                     if blocking {
-                        commands.entity(child).remove::<ColliderDisabled>();
+                        commands.entity(child).try_remove::<ColliderDisabled>();
                     } else {
-                        commands.entity(child).insert(ColliderDisabled);
+                        commands.entity(child).try_insert(ColliderDisabled);
                     }
                 }
             }
@@ -2245,7 +2245,7 @@ pub fn keeper_routine(
                 k.steps = evening_steps(stove_on && !k.stove_manual, door_open, &windows_open);
                 k.phase = KeeperPhase::Evening;
                 npc.mode = NpcMode::Busy;
-                commands.entity(entity).insert(ColliderDisabled);
+                commands.entity(entity).try_insert(ColliderDisabled);
                 info!("[KEEPER] inizia la sera");
             }
             KeeperPhase::Day
@@ -2254,7 +2254,7 @@ pub fn keeper_routine(
                 k.steps = stove_trip(stove_wanted(hour, cold), true).into();
                 k.phase = KeeperPhase::Task;
                 npc.mode = NpcMode::Busy;
-                commands.entity(entity).insert(ColliderDisabled);
+                commands.entity(entity).try_insert(ColliderDisabled);
                 info!("[KEEPER] va alla stufa ({})", stove_wanted(hour, cold));
             }
             KeeperPhase::Day if !dialog.open && k.open_timers.iter().any(|(_, t)| *t <= 0.0) => {
@@ -2278,7 +2278,7 @@ pub fn keeper_routine(
                 k.steps = v.into();
                 k.phase = KeeperPhase::Task;
                 npc.mode = NpcMode::Busy;
-                commands.entity(entity).insert(ColliderDisabled);
+                commands.entity(entity).try_insert(ColliderDisabled);
                 info!("[KEEPER] va a chiudere (porta: {door}, finestre: {wins:?})");
             }
             KeeperPhase::Asleep if !night => {
@@ -2319,7 +2319,7 @@ pub fn keeper_routine(
                 _ => {
                     k.phase = KeeperPhase::Day;
                     npc.mode = NpcMode::Ready;
-                    commands.entity(entity).remove::<ColliderDisabled>();
+                    commands.entity(entity).try_remove::<ColliderDisabled>();
                     info!("[KEEPER] al banco");
                 }
             }

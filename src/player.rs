@@ -395,3 +395,60 @@ pub fn facing(
         transform.rotation = transform.rotation.slerp(target, alpha);
     }
 }
+
+/// Dislivello (m) che si regge senza farsi male e danno per ogni metro oltre.
+const SAFE_FALL: f32 = 3.5;
+const FALL_DAMAGE_PER_M: f32 = 9.0;
+
+/// Danno da caduta dal dislivello fra il punto più alto del volo e l'atterraggio.
+pub fn fall_damage(drop: f32) -> f32 {
+    ((drop - SAFE_FALL) * FALL_DAMAGE_PER_M).max(0.0)
+}
+
+/// Sistema: all'atterraggio toglie vita se si è caduti da troppo in alto.
+pub fn apply_fall_damage(
+    cheats: Res<crate::shell::Cheats>,
+    mut player: Query<(&GroundedState, &mut PlayerHealth, &mut Transform), With<Player>>,
+    mut peak: Local<Option<f32>>,
+) {
+    let Ok((state, mut hp, mut tf)) = player.single_mut() else {
+        return;
+    };
+    let y = tf.translation.y;
+    if cheats.noclip {
+        *peak = None;
+        return;
+    }
+    if state.grounded_now {
+        if let Some(top) = peak.take() {
+            let damage = fall_damage(top - y);
+            if damage > 0.0 && !cheats.god {
+                hp.current -= damage;
+                info!(
+                    "[CADUTA] {:.1} m, danno {damage:.0}, vita {:.0}",
+                    top - y,
+                    hp.current
+                );
+                if hp.current <= 0.0 {
+                    hp.current = hp.max;
+                    tf.translation = Vec3::new(0.0, 1.0, 0.0);
+                    info!("[CADUTA] player morto -> respawn allo spawn");
+                }
+            }
+        }
+    } else {
+        *peak = Some(peak.map_or(y, |p| p.max(y)));
+    }
+}
+
+#[cfg(test)]
+mod fall_tests {
+    use super::*;
+
+    #[test]
+    fn short_drops_are_free_and_long_ones_hurt() {
+        assert_eq!(fall_damage(2.0), 0.0);
+        assert_eq!(fall_damage(SAFE_FALL), 0.0);
+        assert!(fall_damage(8.0) > 30.0);
+    }
+}
