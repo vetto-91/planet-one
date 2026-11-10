@@ -2,6 +2,13 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## v0.0.52.0 — Focolari, scuri e scale (2026-11-10)
+
+- **Focolari**: ogni focolare delle case ha lo stato acceso/spento (E davanti al fuoco), un bagliore tremolante e il fumo dal camino sopra segue il suo stato. Si accendono da soli al mattino e alla sera (o col freddo) e si spengono di giorno; il cambio d'ora ripristina l'orario.
+- **Scuri**: gli abitanti li aprono al mattino (7:00) e li chiudono la sera (19:30) e col cielo molto coperto; il giocatore può comunque aprirli e chiuderli.
+- **Scale delle mura**: il primo gradino partiva dentro la base di una torre o di un torrione del cancello, per cui scendendo si finiva contro il muro; ora la scala parte oltre (0,1–1,1 m), liberando l'imbocco. Il log scrive `[VILLAGGIO] scala da … a …`.
+- **Tetti dei camminamenti**: non ho trovato buchi, sui camminamenti non ci sono tetti (solo sulle torri) e dalla diagnostica `PLANET_ONE_SCAN_WALLS=1` i soli «vuoti» sono i gradini bassi delle scale. Se ne vedi uno, servono le coordinate.
+
 ## v0.0.51.0 — Scuri e camini (2026-11-10)
 
 - **Scuri apribili**: le finestre delle case del paese hanno due imposte incernierate che si aprono e chiudono con E, da fuori e da dentro (stesso meccanismo delle finestre del Viandante; lo stato è salvato). Di giorno partono aperte.
