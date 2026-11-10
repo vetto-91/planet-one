@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.45.0 — Personaggi e combattimento (2026-11-10)
 
 ### Nemici e personaggi
 - **Nemici**: pattugliano a passo (non di corsa) e guardano dove vanno (il corpo non viene più ruotato due volte). Se vedono il giocatore, senza ostacoli in mezzo, entro 14 m smettono di pattugliare: da lontano tirano frecce, da vicino lo inseguono e colpiscono in mischia. Se si nasconde o è invisibile (shell) lo perdono.
