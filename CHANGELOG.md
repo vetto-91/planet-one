@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.44.0 — Suoni e acqua (2026-11-10)
 
 ### Suoni e acqua
 - **Passi**: l'erba è un fruscio morbido con un tonfo sordo, il legno ha un tocco secco e risonante ben diverso, dentro gli edifici si cammina sempre sul legno; nei campi di grano e negli orti gli steli frusciano contro le gambe (nuova superficie).
