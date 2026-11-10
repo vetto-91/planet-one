@@ -5,7 +5,6 @@
 //! da soli e tornano anche caricando un salvataggio fatto prima che esistessero.
 
 use crate::buildings::{B, Col, Interior, STONE, STONE_DARK, TIMBER};
-use crate::combat::EnemyRespawn;
 use crate::debug_place::DebugPlace;
 use crate::entities::{Enemy, PatrolState};
 use crate::interiors as rooms;
@@ -358,17 +357,43 @@ pub fn bandit_routes(c: Vec2) -> Vec<(Vec2, Vec2)> {
         .collect()
 }
 
-/// Sistema: se manca un bandito (nuova partita, reset, salvataggio vecchio) lo rimette al suo posto.
+/// Il percorso che parte da `first` appartiene a un campo di banditi?
+pub fn is_camp_patrol(dbg: &DebugPlace, first: Vec2) -> bool {
+    dbg.items
+        .iter()
+        .filter(|p| p.kind == "banditi")
+        .flat_map(|p| p.points.iter())
+        .any(|c| {
+            bandit_routes(*c)
+                .iter()
+                .any(|(a, _)| a.distance(first) < 1.5)
+        })
+}
+
+/// Notte di gioco di una data: cambia a mezzogiorno, così tutta la notte conta come una.
+pub fn night_index(clock: &crate::daynight::GameClock) -> i64 {
+    let day = i64::from(clock.date.year) * 400 + i64::from(clock.date.day_of_year());
+    if clock.hour < 12.0 { day - 1 } else { day }
+}
+
+/// Una data notte i banditi tornano? Casuale, ma uguale per tutti nella stessa notte.
+pub fn bandits_return(center: Vec2, night: i64) -> bool {
+    crate::world_props::hash01(center, night as f32 * 1.37 + 5.0) < 0.5
+}
+
+/// Sistema: i banditi uccisi non tornano subito: una notte a caso, con la stessa probabilità ogni
+/// notte, riappaiono dove mancano. All'avvio dell'app il campo è già popolato.
 #[allow(clippy::too_many_arguments)]
 fn keep_bandits(
     mut commands: Commands,
     server: Res<AssetServer>,
     time: Res<Time>,
+    clock: Res<crate::daynight::GameClock>,
     dbg: Res<DebugPlace>,
     field: Option<Res<TerrainField>>,
     enemies: Query<&PatrolState, With<Enemy>>,
-    waiting: Query<&EnemyRespawn>,
     mut timer: Local<f32>,
+    mut last_night: Local<Option<i64>>,
 ) {
     *timer -= time.delta_secs();
     if *timer > 0.0 {
@@ -378,26 +403,38 @@ fn keep_bandits(
     let Some(field) = field else {
         return;
     };
+    let night_hours = clock.hour >= 21.5 || clock.hour < 4.5;
+    let start = time.elapsed_secs() < 40.0;
+    let night = night_index(&clock);
+    if !start && (!night_hours || *last_night == Some(night)) {
+        return;
+    }
     let camps = dbg
         .items
         .iter()
         .filter(|p| p.kind == "banditi")
         .flat_map(|p| p.points.iter().copied());
+    let mut spawned = false;
     for center in camps {
+        if !start && !bandits_return(center, night) {
+            continue;
+        }
         for (a, b) in bandit_routes(center) {
             let known = |w: &[Vec3]| w.first().is_some_and(|p| p.xz().distance(a) < 1.0);
-            if enemies.iter().any(|e| known(&e.waypoints))
-                || waiting.iter().any(|r| known(&r.waypoints))
-            {
+            if enemies.iter().any(|e| known(&e.waypoints)) {
                 continue;
             }
             let at = |p: Vec2| Vec3::new(p.x, field.height_at(p.x, p.y) + 1.0, p.y);
             crate::entities::spawn_enemy(&mut commands, &server, at(a), at(b));
+            spawned = true;
             info!(
                 "[LUOGHI] bandito al campo ({:.0},{:.0})",
                 center.x, center.y
             );
         }
+    }
+    if spawned && !start {
+        *last_night = Some(night);
     }
 }
 

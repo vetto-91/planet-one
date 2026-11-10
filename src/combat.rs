@@ -318,6 +318,7 @@ type EnemiesQuery<'w, 's> = Query<
 /// Gestione morte nemici: despawn + marker di respawn con i waypoint.
 #[allow(clippy::too_many_arguments)]
 pub fn handle_enemy_death(
+    dbg: Res<crate::debug_place::DebugPlace>,
     mut commands: Commands,
     mut quest: ResMut<crate::quests::denaro_rubato::QuestState>,
     enemies: EnemiesQuery,
@@ -347,6 +348,10 @@ pub fn handle_enemy_death(
             if is_thief.is_some() {
                 quest.thief_killed_at = Some(transform.translation());
             }
+            let bandit = patrol
+                .waypoints
+                .first()
+                .is_some_and(|w| crate::places::is_camp_patrol(&dbg, w.xz()));
             if is_thief.is_none() {
                 // I nemici comuni lasciano qualche moneta.
                 crate::inventory::spawn_pickup(
@@ -357,15 +362,20 @@ pub fn handle_enemy_death(
                     character.stats.enemy_coins(),
                     transform.translation() + Vec3::Y * 0.2,
                 );
-                let wps = patrol.waypoints.clone();
-                commands.spawn((
-                    crate::scene::SceneNode,
-                    EnemyRespawn {
-                        timer: ENEMY_RESPAWN_TIME,
-                        waypoints: wps,
-                    },
-                ));
-                info!("nemico morto -> respawn in {:.0}s", ENEMY_RESPAWN_TIME);
+                if bandit {
+                    // I banditi tornano di notte (`places::keep_bandits`), non subito.
+                    info!("[NEMICI] bandito ucciso: tornerà una notte a caso");
+                } else {
+                    let wps = patrol.waypoints.clone();
+                    commands.spawn((
+                        crate::scene::SceneNode,
+                        EnemyRespawn {
+                            timer: ENEMY_RESPAWN_TIME,
+                            waypoints: wps,
+                        },
+                    ));
+                    info!("nemico morto -> respawn in {:.0}s", ENEMY_RESPAWN_TIME);
+                }
             } else {
                 info!("[QUEST] ladro ucciso definitivamente");
             }
@@ -392,5 +402,170 @@ pub fn enemy_respawn_tick(
     }
     for (start, end) in to_spawn {
         crate::entities::spawn_enemy(&mut commands, &asset_server, start, end);
+    }
+}
+
+// --- Nemici che attaccano -------------------------------------------------------------------
+
+/// Distanza (m) a cui un nemico nota il giocatore, e a cui lo perde se è già all'inseguimento.
+const NOTICE_RANGE: f32 = 14.0;
+const LOSE_RANGE: f32 = 22.0;
+/// Il nemico tira da lontano fra queste distanze.
+const SHOOT_MIN: f32 = 4.5;
+const SHOOT_MAX: f32 = 16.0;
+const ENEMY_ARROW_DAMAGE: f32 = 7.0;
+const ENEMY_ARROW_SPEED: f32 = 17.0;
+
+/// Freccia scagliata da un nemico.
+#[derive(Component)]
+pub struct EnemyArrow {
+    vel: Vec3,
+    life: f32,
+}
+
+/// Dista abbastanza e c'è visibilità fra `from` e `to`? `true` se nulla di solido sta in mezzo.
+pub fn clear_view(
+    spatial: &avian3d::prelude::SpatialQuery,
+    solids: &Query<(), ArrowSolids>,
+    from: Vec3,
+    to: Vec3,
+) -> bool {
+    let Ok(dir) = Dir3::new(to - from) else {
+        return true;
+    };
+    spatial
+        .cast_ray_predicate(
+            from,
+            dir,
+            (to - from).length(),
+            true,
+            &avian3d::prelude::SpatialQueryFilter::default(),
+            &|ent| solids.contains(ent),
+        )
+        .is_none()
+}
+
+/// Sistema: i nemici notano il giocatore (se lo vedono), smettono di pattugliare e attaccano:
+/// frecce da lontano, mischia da vicino (il contatto fa il resto).
+#[allow(clippy::too_many_arguments)]
+pub fn enemy_ai(
+    mut commands: Commands,
+    time: Res<Time>,
+    cheats: Res<crate::shell::Cheats>,
+    spatial: avian3d::prelude::SpatialQuery,
+    solids: Query<(), ArrowSolids>,
+    player: Query<&GlobalTransform, (With<Player>, Without<Enemy>)>,
+    mut enemies: Query<(&GlobalTransform, &mut crate::entities::EnemyMind), With<Enemy>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut assets: Local<Option<(Handle<Mesh>, Handle<StandardMaterial>)>>,
+) {
+    let Ok(me) = player.single() else {
+        return;
+    };
+    let dt = time.delta_secs();
+    let target = me.translation() + Vec3::Y * 0.9;
+    let (mesh, mat) = assets.get_or_insert_with(|| {
+        (
+            meshes.add(Cuboid::new(0.05, 0.05, 0.7)),
+            materials.add(StandardMaterial {
+                base_color: Color::srgb(0.55, 0.4, 0.22),
+                ..default()
+            }),
+        )
+    });
+    for (tf, mut mind) in &mut enemies {
+        mind.shot_cd = (mind.shot_cd - dt).max(0.0);
+        let eye = tf.translation() + Vec3::Y * 1.3;
+        let dist = (target - eye).length();
+        let range = if mind.chase { LOSE_RANGE } else { NOTICE_RANGE };
+        let sees = !cheats.invisible && dist < range && clear_view(&spatial, &solids, eye, target);
+        if sees != mind.chase {
+            mind.chase = sees;
+            info!(
+                "[NEMICI] {}",
+                if sees {
+                    "ha visto il giocatore"
+                } else {
+                    "lo ha perso"
+                }
+            );
+        }
+        if sees && mind.shot_cd <= 0.0 && (SHOOT_MIN..SHOOT_MAX).contains(&dist) {
+            mind.shot_cd = 2.6;
+            // Mira un po' avanti, con la caduta compensata.
+            let aim = (target - eye).normalize_or_zero() + Vec3::Y * (dist / 120.0);
+            commands.spawn((
+                crate::scene::SceneNode,
+                EnemyArrow {
+                    vel: aim.normalize_or_zero() * ENEMY_ARROW_SPEED,
+                    life: 2.5,
+                },
+                Mesh3d(mesh.clone()),
+                MeshMaterial3d(mat.clone()),
+                Transform::from_translation(eye).looking_to(aim, Vec3::Y),
+            ));
+        }
+    }
+}
+
+/// Sistema: muove le frecce dei nemici e fa male al giocatore.
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
+pub fn update_enemy_arrows(
+    mut commands: Commands,
+    time: Res<Time>,
+    cheats: Res<crate::shell::Cheats>,
+    equip: Res<crate::inventory::Equipment>,
+    spatial: avian3d::prelude::SpatialQuery,
+    solids: Query<(), ArrowSolids>,
+    mut arrows: Query<(Entity, &mut Transform, &mut EnemyArrow)>,
+    mut player: Query<
+        (&GlobalTransform, &mut PlayerHealth, &mut CombatState),
+        (With<Player>, Without<EnemyArrow>),
+    >,
+) {
+    let dt = time.delta_secs();
+    for (e, mut tf, mut a) in &mut arrows {
+        a.life -= dt;
+        if a.life <= 0.0 {
+            commands.entity(e).despawn();
+            continue;
+        }
+        a.vel.y -= 6.0 * dt;
+        let step = a.vel * dt;
+        let from = tf.translation;
+        if let Ok(dir) = Dir3::new(step)
+            && spatial
+                .cast_ray_predicate(
+                    from,
+                    dir,
+                    step.length(),
+                    true,
+                    &avian3d::prelude::SpatialQueryFilter::default(),
+                    &|ent| solids.contains(ent),
+                )
+                .is_some()
+        {
+            commands.entity(e).despawn();
+            continue;
+        }
+        tf.translation += step;
+        tf.look_to(a.vel, Vec3::Y);
+        let mid = from + step / 2.0;
+        if let Ok((pt, mut hp, mut combat)) = player.single_mut()
+            && pt.translation().distance(mid + Vec3::Y * -0.2) < 0.9
+        {
+            commands.entity(e).despawn();
+            if !cheats.god && combat.iframe <= 0.0 && hp.current > 0.0 {
+                let factor = if equip.shield {
+                    crate::inventory::SHIELD_FACTOR
+                } else {
+                    1.0
+                };
+                hp.current -= ENEMY_ARROW_DAMAGE * factor;
+                combat.iframe = PLAYER_IFRAME;
+                info!("[NEMICI] freccia: vita {:.0}", hp.current);
+            }
+        }
     }
 }

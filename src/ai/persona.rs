@@ -122,9 +122,14 @@ Regole:\n\
     if !context.is_empty() {
         s.push_str(&format!("\nSituazione attuale: {context}\n"));
     }
-    s.push_str(
-        "\nRispondi SOLO con un oggetto JSON: {\"risposta\": \"la tua battuta\", \"opzioni\": [\"…\", \"…\", \"…\"]}. \
-Le tre \"opzioni\" sono cose brevi (al massimo 8 parole) che il giocatore potrebbe rispondere, in prima persona, diverse tra loro.",
-    );
+    let tail = "\nChi parla con te è il GIOCATORE, un viaggiatore. Rispondi SOLO con un oggetto JSON: \
+{\"risposta\": \"la tua battuta\", \"opzioni\": [\"…\", \"…\", \"…\"]}.\n\
+- \"risposta\" è ciò che dici TU, {name}, al giocatore: rispondi a quello che ti ha detto, non fargli un interrogatorio.\n\
+- Le tre \"opzioni\" sono le tre frasi che il GIOCATORE può dire a te come prossima battuta, tutte in prima persona \
+del giocatore (\"Vorrei…\", \"Dove posso trovare…?\", \"Grazie, a presto\"), brevi (al massimo 8 parole), \
+diverse tra loro. Non sono domande che fai tu e non parlano a nome tuo.\n\
+- Se il giocatore saluta o ringrazia, una delle opzioni può essere un saluto di congedo."
+        .replace("{name}", &p.name);
+    s.push_str(&tail);
     s
 }

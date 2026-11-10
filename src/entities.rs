@@ -60,7 +60,24 @@ pub struct Npc {
 
 /// Nemico: patriglia tra waypoint.
 #[derive(Component)]
+#[require(EnemyMind)]
 pub struct Enemy;
+
+/// Stato di allerta: se vede il giocatore smette di pattugliare e lo attacca.
+#[derive(Component, Default)]
+pub struct EnemyMind {
+    /// Sta inseguendo il giocatore.
+    pub chase: bool,
+    /// Secondi prima della prossima freccia.
+    pub shot_cd: f32,
+}
+
+/// Velocità del pattugliamento (m/s): a passo, non di corsa.
+pub const PATROL_SPEED: f32 = 1.5;
+/// Velocità dell'inseguimento (m/s).
+pub const CHASE_SPEED: f32 = 4.3;
+/// Distanza (m) a cui si fermano per colpire in mischia.
+pub const MELEE_STOP: f32 = 1.3;
 
 /// Stato del patrol del nemico.
 #[derive(Component)]
@@ -192,7 +209,7 @@ pub fn spawn_enemy(
             PatrolState {
                 waypoints: vec![start, end],
                 current: 0,
-                speed: 2.5,
+                speed: PATROL_SPEED,
             },
             RigidBody::Kinematic,
             Collider::capsule(0.4, 0.8),
@@ -518,9 +535,11 @@ pub fn dialog_walk_away(
 
 /// Patrol del nemico: si muove verso il waypoint corrente con MoveAndSlide.
 /// Gira in FixedUpdate come il player.
+#[allow(clippy::type_complexity)]
 pub fn enemy_patrol(
     move_and_slide: MoveAndSlide,
     time: Res<Time>,
+    players: Query<&GlobalTransform, (With<Player>, Without<Enemy>)>,
     mut enemies: Query<
         (
             Entity,
@@ -528,17 +547,41 @@ pub fn enemy_patrol(
             &mut LinearVelocity,
             &Collider,
             &mut PatrolState,
+            &EnemyMind,
         ),
         With<Enemy>,
     >,
 ) {
-    for (entity, mut transform, mut velocity, collider, mut patrol) in &mut enemies {
-        let target = patrol.waypoints[patrol.current];
+    let me = players.single().ok().map(|p| p.translation());
+    for (entity, mut transform, mut velocity, collider, mut patrol, mind) in &mut enemies {
+        let (target, speed) = match (mind.chase, me) {
+            (true, Some(p)) => {
+                let flat = Vec3::new(
+                    p.x - transform.translation.x,
+                    0.0,
+                    p.z - transform.translation.z,
+                );
+                if flat.length() < MELEE_STOP {
+                    // Davanti al giocatore: resta fermo a colpire, guardandolo.
+                    velocity.x = 0.0;
+                    velocity.z = 0.0;
+                    if let Ok(d) = Dir3::new(flat) {
+                        transform.rotation = transform.rotation.slerp(
+                            Quat::from_rotation_y((-d.x).atan2(-d.z)),
+                            (10.0 * time.delta_secs()).clamp(0.0, 1.0),
+                        );
+                    }
+                    continue;
+                }
+                (Vec3::new(p.x, transform.translation.y, p.z), CHASE_SPEED)
+            }
+            _ => (patrol.waypoints[patrol.current], patrol.speed),
+        };
         let to_target = target - transform.translation;
         let horizontal = Vec3::new(to_target.x, 0.0, to_target.z);
 
         // Se siamo vicini al waypoint, passa al successivo.
-        if horizontal.length() < 0.5 {
+        if !mind.chase && horizontal.length() < 0.5 {
             patrol.current = (patrol.current + 1) % patrol.waypoints.len();
             velocity.0 = Vec3::ZERO;
             continue;
@@ -546,8 +589,8 @@ pub fn enemy_patrol(
 
         // Velocità verso il waypoint + gravità per restare sul terreno.
         let dir = horizontal.normalize();
-        velocity.x = dir.x * patrol.speed;
-        velocity.z = dir.z * patrol.speed;
+        velocity.x = dir.x * speed;
+        velocity.z = dir.z * speed;
         velocity.y -= 20.0 * time.delta_secs(); // stessa gravità del player
 
         let output = move_and_slide.move_and_slide(

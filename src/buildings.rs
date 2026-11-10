@@ -25,7 +25,10 @@ pub fn interior_half(kind: &str) -> Option<Vec2> {
         "mulino" => Vec2::new(2.7, 2.7),
         "torre-rovina" => Vec2::new(2.3, 2.3),
         "grotta" => Vec2::new(4.8, 5.8),
-        "santuario" => Vec2::new(2.4, 2.4),
+        "santuario" => Vec2::new(2.8, 2.8),
+        "campo-ladro" => Vec2::new(3.2, 3.2),
+        "banditi" => Vec2::new(6.5, 5.8),
+        "rovine" => Vec2::new(6.2, 5.2),
         _ => return None,
     })
 }

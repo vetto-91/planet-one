@@ -348,6 +348,8 @@ fn main() {
                 hut::update_los_blockers,
                 terrain::terrain_debug_gizmos,
                 combat::update_arrows.run_if(in_state(AppState::Playing)),
+                combat::enemy_ai.run_if(in_state(AppState::Playing)),
+                combat::update_enemy_arrows.run_if(in_state(AppState::Playing)),
                 equipment::update_held_items,
             ),
         )

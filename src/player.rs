@@ -77,9 +77,9 @@ impl Default for GroundedState {
 }
 
 /// Velocità di camminata (m/s).
-const WALK_SPEED: f32 = 6.0;
+const WALK_SPEED: f32 = 5.0;
 /// Moltiplicatore di velocità in corsa (Shift).
-const SPRINT_FACTOR: f32 = 1.7;
+const SPRINT_FACTOR: f32 = 1.55;
 /// Impulso verticale del salto (m/s).
 const JUMP_SPEED: f32 = 7.5;
 /// Accelerazione di gravità (m/s²), manuale perché il corpo è kinematico.

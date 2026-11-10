@@ -5,7 +5,7 @@
 
 use crate::combat::{EnemyHealth, SwingTimer};
 use crate::entities::DialogState;
-use crate::figure::{CLIPS, CharacterAnims, CharacterModel};
+use crate::figure::{CLIPS, CharacterAnims};
 use crate::inventory::{Equipment, ItemKind};
 use crate::player::{GroundedState, Player, PlayerHealth, PlayerVisual};
 use avian3d::prelude::LinearVelocity;
@@ -88,11 +88,11 @@ pub fn locomotion(speed: f32, armed: bool) -> (Anim, f32) {
     if speed < 0.25 {
         (if armed { Anim::SwordIdle } else { Anim::Idle }, 1.0)
     } else if speed < 2.6 {
-        (Anim::Walk, (speed / 1.35).clamp(0.6, 1.5))
-    } else if speed < 7.5 {
-        (Anim::Jog, (speed / 3.6).clamp(0.8, 1.8))
+        (Anim::Walk, (speed / 1.35).clamp(0.6, 1.3))
+    } else if speed < 6.5 {
+        (Anim::Jog, (speed / 4.8).clamp(0.7, 1.3))
     } else {
-        (Anim::Sprint, (speed / 6.2).clamp(0.9, 1.7))
+        (Anim::Sprint, (speed / 8.0).clamp(0.8, 1.3))
     }
 }
 
@@ -115,6 +115,7 @@ pub fn attack_for(weapon: Option<ItemKind>) -> Anim {
 #[derive(Component)]
 pub struct Animator {
     pub player: Entity,
+    #[allow(dead_code)]
     pub model: Entity,
     current: Anim,
     lock: f32,
@@ -174,7 +175,6 @@ pub fn drive_animations(
     enemies: Query<&EnemyHealth>,
     cameras: Query<&GlobalTransform, With<Camera3d>>,
     mut animation: Query<(&mut AnimationPlayer, &mut AnimationTransitions)>,
-    mut models: Query<&mut Transform, With<CharacterModel>>,
 ) {
     let Some(anims) = anims else {
         return;
@@ -215,6 +215,8 @@ pub fn drive_animations(
             continue;
         }
 
+        // Chi dorme (corpo sdraiato) resta immobile: niente passo a riposo da sdraiati.
+        let lying = global.up().y < 0.5;
         let is_player = visuals.contains(entity);
         let enemy = enemies.get(entity).ok();
         let mut want = locomotion(a.speed, is_player && equipment.weapon.is_some());
@@ -225,15 +227,7 @@ pub fn drive_animations(
                 one_shot = Some(Anim::Hit);
             }
             a.last_hp = e.current;
-            // I nemici guardano dove vanno, e colpiscono se il giocatore è a portata.
-            if flat.length() > 1e-3
-                && let Ok(mut model) = models.get_mut(a.model)
-            {
-                let yaw = flat.x.atan2(flat.y);
-                model.rotation = model
-                    .rotation
-                    .slerp(Quat::from_rotation_y(yaw), (dt * 10.0).min(1.0));
-            }
+            // Il corpo gira già verso dove va (`enemy_patrol`); qui si colpisce se il giocatore è a portata.
             if let Some((_, _, _, p)) = player_state
                 && p.translation().distance(pos) < ENEMY_REACH
                 && one_shot.is_none()
@@ -270,6 +264,10 @@ pub fn drive_animations(
 
         if dialog.open && dialog.speaker_entity == Some(entity) && a.speed < 0.25 {
             want = (Anim::Talk, 1.0);
+        }
+        if lying && enemy.is_none() && !is_player {
+            want = (Anim::Idle, 0.03);
+            one_shot = None;
         }
 
         // Le clip singole hanno precedenza finché non finiscono.

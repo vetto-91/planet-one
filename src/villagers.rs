@@ -613,7 +613,9 @@ pub fn villager_routine(
         let asleep = parents
             .iter_ancestors(entity)
             .any(|a| q.get(a).is_ok_and(|(.., v, _)| v.hidden));
-        let wanted = if asleep {
+        // Le lanterne si portano soltanto al buio: di giorno restano riposte.
+        let stowed = lanterns.contains(entity) && !dark;
+        let wanted = if asleep || stowed {
             Visibility::Hidden
         } else {
             Visibility::Inherited

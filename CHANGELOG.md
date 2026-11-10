@@ -2,6 +2,17 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+### Nemici e personaggi
+- **Nemici**: pattugliano a passo (non di corsa) e guardano dove vanno (il corpo non viene più ruotato due volte). Se vedono il giocatore, senza ostacoli in mezzo, entro 14 m smettono di pattugliare: da lontano tirano frecce, da vicino lo inseguono e colpiscono in mischia. Se si nasconde o è invisibile (shell) lo perdono.
+- **Banditi**: uccisi non tornano dopo pochi secondi ma in una notte a caso, tra le 21:30 e le 4:30.
+- Gli spiazzi del campo del ladro, dei banditi e delle rovine sono appianati: fuoco, casse e tende non restano sottoterra.
+- **Camminata**: velocità di camminata e corsa ridotte (5 e 7,75 m/s) e animazioni meno vivaci.
+- Chi dorme resta immobile nel letto, senza il passo a riposo.
+- Le guardie tengono le lanterne riposte di giorno: compaiono soltanto al buio.
+- **Dialoghi con la IA**: il prompt ora distingue chiaramente la battuta dell'abitante dalle tre opzioni, che sono sempre frasi del giocatore in prima persona.
+
 ## v0.0.44.0 — Suoni e acqua (2026-11-10)
 
 ### Suoni e acqua
