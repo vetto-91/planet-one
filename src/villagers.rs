@@ -179,6 +179,11 @@ pub struct VillagerSave {
 }
 
 impl Villager {
+    /// Fase della routine (per lo stato del pilota automatico).
+    pub fn phase_name(&self) -> String {
+        format!("{:?}", self.phase)
+    }
+
     /// Sta facendo il gesto alla finestra (animazione `Interact`).
     pub fn interacting(&self) -> bool {
         self.chore.as_ref().is_some_and(|c| c.timer > 0.0)

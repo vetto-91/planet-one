@@ -33,7 +33,9 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 
 ## Verifica
 
-Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, con questi controlli:
+- `cargo test`: test logici e geometrici, compresa la prova di camminata con fisica vera (`walk_test.rs`).
+- `scripts/beta_check.sh`: copioni del pilota automatico in `prove/*.txt` (rapporto in `prove/out/RAPPORTO.md`); un copione nuovo per ogni bug riprodotto.
+- Verifica manuale con `cargo run`:
 - nessun panic nei log;
 - log di riferimento: `[INPUT]`, `[EVENT]`, `[CURSOR]`, `[QUEST]`; `grep "\[QUEST\]" run.log`;
 - comportamento descritto nel README (controlli, quest "Denaro Rubato").
@@ -68,6 +70,7 @@ Il gioco non ha ancora test automatici. La verifica è manuale con `cargo run`, 
 - `src/hut.rs`: casetta-chiosco del Viandante (mesh con UV dalla foto `assets/textures/capanna.png`, fondamenta e scale di pietra, interni, oggetti con stato `PropState`: porta, finestre, stufa con fumo, luce, serranda) e routine giornaliera del negoziante (`Keeper`). Gli oggetti si usano col mirino (`Interactable.aim`, vedi `entities::interact`).
 - `src/map.rs`: mappa (M): camera ortografica dall'alto sulla scena reale + overlay egui (bussola, segnalino); `MapView` per lo zoom.
 - `src/debug_place.rs`: modalità debug piazzamenti (F4), file `debug/placements.txt` (riletto all'avvio).
+- `src/autopilot.rs`: pilota automatico (`PLANET_ONE_SCRIPT`, ADR 0031): copioni con `vai`, `guarda`, `premi`, `verifica`, stato JSON, foto; `src/bugreport.rs`: F12 «Segnala bug» e copia delle ultime righe del log.
 - `src/devtools.rs`: variabili d'ambiente di debug (`PLANET_ONE_HOUR/POS/LOOK`) per provare il gioco e fare screenshot.
 - `src/props.rs`: `SnapToGround` (appoggio a terra con raycast).
 - `src/voice.rs`: voci dei personaggi (`assets/audio/voci/`, mappa in `assets/quests/<quest>/voci.txt` generata da `scripts/export_voci.py`).

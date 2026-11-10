@@ -26,6 +26,8 @@ const HELP: &[&str] = &[
     "tts [on|off] · tts voci · tts voce <nome|auto>",
     "stt [on|off] · stt modelli · stt modello <nome>",
     "stat [<nome> <valore>] · effetto peso <kg> [secondi] · effetto via",
+    "vai|corri <x> <z> · vai <luogo o abitante> · dove <nome> · guarda <yaw> <pitch>|<nome>",
+    "foto [nome] · dump [nome] (stato in JSON) · copione <file> (pilota automatico)",
 ];
 
 /// Trucchi attivi: non salvati, tutti spenti a ogni avvio.
@@ -119,6 +121,22 @@ pub enum Cmd {
     /// Chili e secondi (`None` = senza scadenza).
     CarryEffect(f32, Option<f32>),
     ClearEffects,
+    /// Cammina davvero fino a una meta (`vai`, `corri`): il pilota tiene premuto W.
+    Go(Target, bool),
+    /// Coordinate di un luogo o abitante.
+    Where(String),
+    /// Orienta la camera: angoli in gradi oppure verso un luogo o abitante.
+    Look(LookTarget),
+    Photo(String),
+    Dump(String),
+    /// Esegue un copione del pilota automatico.
+    Script(String),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum LookTarget {
+    Angles(f32, f32),
+    Place(String),
 }
 
 fn switch(arg: Option<&&str>) -> Result<Option<bool>, String> {
@@ -142,6 +160,47 @@ pub fn parse(line: &str) -> Result<Cmd, String> {
         "stato" | "status" => Ok(Cmd::Status),
         "pulisci" | "clear" => Ok(Cmd::Clear),
         "reset" => Ok(Cmd::Reset),
+        "vai" | "go" | "corri" | "run" => {
+            let sprint = matches!(first.to_lowercase().as_str(), "corri" | "run");
+            let numbers: Vec<f32> = args
+                .iter()
+                .filter_map(|a| a.replace(',', ".").parse().ok())
+                .collect();
+            if numbers.len() == 2 && args.len() == 2 {
+                return Ok(Cmd::Go(
+                    Target::Pos(Vec3::new(numbers[0], 0.0, numbers[1])),
+                    sprint,
+                ));
+            }
+            match parse_teleport(args)? {
+                Cmd::Teleport(t) => Ok(Cmd::Go(t, sprint)),
+                _ => Err("uso: vai <x> <z> oppure vai <luogo o abitante> [n]".into()),
+            }
+        }
+        "dove" | "where" => {
+            if args.is_empty() {
+                Err("uso: dove <luogo o abitante>".into())
+            } else {
+                Ok(Cmd::Where(args.join(" ").to_lowercase()))
+            }
+        }
+        "guarda" | "look" => {
+            let numbers: Vec<f32> = args
+                .iter()
+                .filter_map(|a| a.replace(',', ".").parse().ok())
+                .collect();
+            match (numbers.as_slice(), args.len()) {
+                ([yaw, pitch], 2) => Ok(Cmd::Look(LookTarget::Angles(*yaw, *pitch))),
+                (_, 0) => Err("uso: guarda <yaw> <pitch> oppure guarda <luogo o abitante>".into()),
+                _ => Ok(Cmd::Look(LookTarget::Place(args.join(" ").to_lowercase()))),
+            }
+        }
+        "foto" | "shot" => Ok(Cmd::Photo(args.first().unwrap_or(&"foto").to_string())),
+        "dump" => Ok(Cmd::Dump(args.first().unwrap_or(&"stato").to_string())),
+        "copione" | "script" => match args.first() {
+            Some(path) => Ok(Cmd::Script((*path).to_string())),
+            None => Err("uso: copione <file>".into()),
+        },
         "god" | "godmode" => Ok(Cmd::God(switch(args.first())?)),
         "noclip" => Ok(Cmd::Noclip(switch(args.first())?)),
         "invisibile" | "invis" => Ok(Cmd::Invisible(switch(args.first())?)),
@@ -288,6 +347,8 @@ pub struct ShellCtx<'w, 's> {
     place: ResMut<'w, crate::debug_place::DebugPlace>,
     gizmos: ResMut<'w, GizmoConfigStore>,
     homes: Res<'w, crate::world_props::Homes>,
+    pilot: ResMut<'w, crate::autopilot::Autopilot>,
+    orbit: ResMut<'w, crate::camera::OrbitCamera>,
     village: Res<'w, crate::village::VillageInfo>,
     field: Option<Res<'w, crate::terrain::TerrainField>>,
     player: Query<'w, 's, (&'static mut Transform, &'static mut LinearVelocity), With<Player>>,
@@ -296,7 +357,7 @@ pub struct ShellCtx<'w, 's> {
         's,
         (
             &'static Npc,
-            &'static Transform,
+            &'static GlobalTransform,
             Option<&'static NpcInventory>,
         ),
         Without<Player>,
@@ -327,7 +388,8 @@ fn resolve_place(ctx: &ShellCtx, name: &str, n: usize) -> Option<Vec3> {
         .iter()
         .find(|(npc, ..)| npc.name.to_lowercase().contains(name))
     {
-        return Some(t.translation + Vec3::new(1.2, 0.4, 0.0));
+        // Posizione nel mondo: il Viandante è figlio della casetta.
+        return Some(t.translation() + Vec3::new(1.2, 0.4, 0.0));
     }
     if let Some(home) = ctx.homes.find(name, n) {
         return Some(ground(home.door));
@@ -412,6 +474,88 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
                 ));
             }
         }
+        Cmd::Go(target, sprint) => {
+            let is_npc = matches!(&target, Target::Place(name, _)
+                if ctx.npcs.iter().any(|(npc, ..)| npc.name.to_lowercase().contains(name.as_str())));
+            let dest = match target {
+                Target::Pos(p) => Some(p),
+                // Verso un abitante si punta a lui, non al punto di teletrasporto accanto.
+                Target::Place(name, n) => resolve_place(ctx, &name, n).map(|p| {
+                    if is_npc {
+                        p - Vec3::new(1.2, 0.4, 0.0)
+                    } else {
+                        p
+                    }
+                }),
+            };
+            match (dest, ctx.player.single()) {
+                (Some(dest), Ok((t, _))) => {
+                    let label = format!("({:.1}, {:.1})", dest.x, dest.z);
+                    shell.say(format!("in cammino verso {label}"));
+                    ctx.pilot.active = true;
+                    let mut goal =
+                        crate::autopilot::Goal::new(dest.xz(), label, t.translation.xz(), sprint);
+                    // Da un abitante ci si ferma a portata di voce, non addosso.
+                    if is_npc {
+                        goal.arrive = 2.2;
+                    }
+                    ctx.pilot.goal = Some(goal);
+                }
+                _ => shell.say("meta sconosciuta"),
+            }
+        }
+        Cmd::Where(name) => match resolve_place(ctx, &name, 0) {
+            Some(p) => shell.say(format!("{name}: {:.1} {:.1} {:.1}", p.x, p.y, p.z)),
+            None => shell.say(format!("luogo sconosciuto: {name}")),
+        },
+        Cmd::Look(target) => match target {
+            LookTarget::Angles(yaw, pitch) => {
+                ctx.orbit.yaw = yaw.to_radians();
+                ctx.orbit.pitch = pitch.to_radians();
+                shell.say(format!("camera: yaw {yaw:.0}°, pitch {pitch:.0}°"));
+            }
+            LookTarget::Place(name) => {
+                // Un abitante si mira al petto; un luogo nel punto di arrivo.
+                let npc = ctx
+                    .npcs
+                    .iter()
+                    .find(|(npc, ..)| npc.name.to_lowercase().contains(name.as_str()))
+                    .map(|(_, t, _)| t.translation() + Vec3::Y * 0.2);
+                match npc.or_else(|| resolve_place(ctx, &name, 0)) {
+                    Some(p) => {
+                        ctx.pilot.active = true;
+                        ctx.pilot.aim = Some((p, 0));
+                        shell.say(format!("mira a {:.1} {:.1} {:.1}", p.x, p.y, p.z));
+                    }
+                    None => shell.say("non trovo dove guardare"),
+                }
+            }
+        },
+        Cmd::Photo(name) => {
+            let dir = if ctx.pilot.out.as_os_str().is_empty() {
+                crate::ai::tts::data_dir().join("foto")
+            } else {
+                ctx.pilot.out.clone()
+            };
+            ctx.pilot.photo = Some(dir.join(format!("{name}.png")));
+            shell.say(format!("foto {name}"));
+        }
+        Cmd::Dump(name) => {
+            let dir = if ctx.pilot.out.as_os_str().is_empty() {
+                crate::ai::tts::data_dir().join("stato")
+            } else {
+                ctx.pilot.out.clone()
+            };
+            ctx.pilot.dump = Some(Some(dir.join(format!("stato-{name}.json"))));
+            shell.say(format!("stato in {}", dir.display()));
+        }
+        Cmd::Script(path) => match std::fs::read_to_string(&path) {
+            Ok(text) => {
+                ctx.pilot.load(&path, &text);
+                shell.say(format!("copione {path} avviato"));
+            }
+            Err(e) => shell.say(format!("copione {path}: {e}")),
+        },
         Cmd::Master(give) => {
             let have = ctx.inventory.qty(ItemKind::MasterKey);
             if give && have == 0 {

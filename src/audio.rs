@@ -204,6 +204,10 @@ pub struct MusicTrack {
 /// Cartella di configurazione dell'utente secondo la piattaforma:
 /// Windows `%APPDATA%`, macOS `~/Library/Application Support`, Linux `$XDG_CONFIG_HOME` o `~/.config`.
 fn config_base() -> Option<PathBuf> {
+    // Prove automatiche: impostazioni in una cartella a parte.
+    if let Some(dir) = std::env::var_os("PLANET_ONE_DATA_DIR") {
+        return Some(PathBuf::from(dir).join("config"));
+    }
     if cfg!(target_os = "windows") {
         std::env::var_os("APPDATA").map(PathBuf::from)
     } else if cfg!(target_os = "macos") {

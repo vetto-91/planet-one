@@ -1,0 +1,12 @@
+# B2: teletrasporto alla torre in rovina e caduta sotto il mondo.
+# Atteso: il giocatore resta sopra il terreno (rete di sicurezza).
+god on
+tp 58 12 -58
+aspetta 6
+dump torre
+foto torre
+verifica sopra_terreno > -1
+tp 58.5 20 -58.5
+aspetta 6
+verifica sopra_terreno > -1
+esci

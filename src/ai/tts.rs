@@ -134,6 +134,10 @@ impl TtsState {
 /// Cartella dati dell'utente per piattaforma (Linux `~/.local/share`, macOS `~/Library/Application
 /// Support`, Windows `%LOCALAPPDATA%`) + `planet-one`.
 pub fn data_dir() -> PathBuf {
+    // Prove automatiche: salvataggi e dati in una cartella a parte.
+    if let Some(dir) = std::env::var_os("PLANET_ONE_DATA_DIR") {
+        return PathBuf::from(dir).join("data");
+    }
     let base = if cfg!(target_os = "windows") {
         std::env::var_os("LOCALAPPDATA").map(PathBuf::from)
     } else if cfg!(target_os = "macos") {

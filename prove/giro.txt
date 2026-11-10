@@ -1,0 +1,31 @@
+# Giro dell'isola: luoghi principali, foto e stato; nessuno deve finire sotto il terreno.
+god on
+ora 11
+tp chiesa
+aspetta 3
+foto chiesa
+verifica sopra_terreno > -1
+tp porta nord
+aspetta 3
+foto porta-nord
+tp faro
+aspetta 3
+foto faro
+verifica sopra_terreno > -1
+tp mulino
+aspetta 3
+foto mulino
+tp -56 12 62
+aspetta 4
+foto rovine
+verifica sopra_terreno > -1
+tp -66 10 22
+aspetta 4
+foto santuario
+verifica sopra_terreno > -1
+tp 90.5 4 2
+aspetta 4
+foto grotta
+verifica sopra_terreno > -1
+dump fine
+esci

@@ -1,0 +1,6 @@
+# F12 «Segnala bug»: crea la cartella con schermo, stato, log e nota.
+premi f12
+aspetta 2
+dump dopo
+verifica app = Playing
+esci

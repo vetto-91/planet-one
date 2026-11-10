@@ -27,6 +27,7 @@ pub fn skip_menu() -> bool {
         "PLANET_ONE_HOUR",
         "PLANET_ONE_LOOK",
         "PLANET_ONE_SHELL",
+        "PLANET_ONE_SCRIPT",
     ]
     .iter()
     .any(|v| std::env::var_os(v).is_some());

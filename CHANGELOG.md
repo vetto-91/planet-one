@@ -2,6 +2,14 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Pilota automatico** (beta test, ADR 0031): `PLANET_ONE_SCRIPT=copione.txt` gioca da solo (`vai`, `guarda`, `premi`, `avanza`, `scegli`, `foto`, `dump` in JSON, `verifica`, `attendi`, `mai`, `esci`); `scripts/beta_check.sh` esegue i copioni di `prove/` e scrive un rapporto. `PLANET_ONE_SPEED` accelera il tempo, `PLANET_ONE_DATA_DIR` isola salvataggi e impostazioni.
+- **F12 «Segnala bug»**: schermo, stato, log e nota in una cartella.
+- Shell: `vai`, `corri`, `dove`, `guarda`, `foto`, `dump`, `copione`.
+- Correzione: `tp <abitante>` usava la posizione locale degli NPC figli di un edificio (il Viandante).
+- Documenti: variabili di debug complete nel README, corsa 1,55×, il ladro non è più «un cubo rosso», `CLAUDE.md` cita i test automatici.
+
 ## v0.0.55.0 — Scuri degli abitanti e gallerie (2026-11-10)
 
 - **Scuri**: ora li aprono e chiudono gli abitanti. Al mattino, appena si alzano, vanno alla finestra della loro stanza, fanno il gesto (clip `Interact`, nuova `Anim::Interact`) e gli scuri si aprono a metà gesto; la sera, prima di coricarsi, li chiudono. Le case senza abitanti restano a orario. Nel log: `[VILLAGERS] … apre/chiude gli scuri`.

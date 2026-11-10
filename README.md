@@ -87,8 +87,67 @@ Nella mappa: frecce/WASD o tasto centrale = sposta la vista, C = su di te.
 
 ## Debug
 
-Variabili d'ambiente per provare il gioco senza giocarlo: `PLANET_ONE_HOUR=21.5` (ora iniziale),
-`PLANET_ONE_POS=x,y,z` (teletrasporto del player), `PLANET_ONE_DELAY_SCALE=0.1` (ritardi del Viandante), `PLANET_ONE_LOOK=yaw,pitch[,distanza[,1]]` (camera; 1 = prima persona).
+Variabili d'ambiente per provare il gioco senza giocarlo (con una qualunque di `POS`, `HOUR`, `LOOK`, `SHELL`, `SCRIPT` si entra subito in partita, a finestra):
+
+| Variabile | Effetto |
+|---|---|
+| `PLANET_ONE_HOUR=21.5` | Ora iniziale |
+| `PLANET_ONE_DATE=0,12,21` | Data iniziale `anno,mese,giorno` |
+| `PLANET_ONE_WEATHER=neve` | Meteo forzato (`sereno`, `nuvoloso`, `pioggia`, `temporale`, `nebbia`, `neve`) |
+| `PLANET_ONE_POS=x,y,z` | Teletrasporto del giocatore |
+| `PLANET_ONE_LOOK=yaw,pitch[,distanza[,1]]` | Camera (1 = prima persona) |
+| `PLANET_ONE_SHELL="god on;ora 22"` | Comandi della shell all'avvio |
+| `PLANET_ONE_SCRIPT=prove/giro.txt` | **Pilota automatico**: esegue un copione (vedi sotto) |
+| `PLANET_ONE_SPEED=4` | Tempo di gioco accelerato |
+| `PLANET_ONE_DATA_DIR=/tmp/prova` | Salvataggi e impostazioni in una cartella di prova |
+| `PLANET_ONE_OUT=cartella` | Dove il pilota scrive foto, stati e rapporto |
+| `PLANET_ONE_GIVE=1` | Tutte le armi, frecce e 200 monete |
+| `PLANET_ONE_ANIM=sprint` | Animazione forzata del giocatore (`sprint`, `jog`, `walk`) |
+| `PLANET_ONE_SESSION=Nome` | Partita attiva senza menu (salvataggi F5/F9) |
+| `PLANET_ONE_MENU=1`, `PLANET_ONE_WINDOWED=1` | Menu comunque; a finestra |
+| `PLANET_ONE_DELAY_SCALE=0.1` | Ritardi del Viandante |
+| `PLANET_ONE_SCAN_WALLS=1` | Diagnostica delle mura (`[SCAN]` nel log) |
+| `PLANET_ONE_AI_MOCK`, `PLANET_ONE_TTS_MOCK`, `PLANET_ONE_PIPER`, `PLANET_ONE_STT_MIC` | Prove dell'IA locale |
+
+## Pilota automatico e segnalazioni (beta test)
+
+Il gioco si può giocare da un **copione** di testo, senza tastiera né mouse: utile per riprodurre un bug
+sempre allo stesso modo. Un comando per riga (`#` = commento); ogni riga che non è del pilota va alla shell.
+
+```text
+god on
+attendi npc:viandante:modo = Ready 90
+vai viandante
+guarda viandante
+premi e
+avanza
+scegli 1
+verifica quest = SeekThief
+foto dopo
+esci
+```
+
+| Comando | Effetto |
+|---|---|
+| `vai <x> <z>` / `vai <nome>` / `corri …` | Cammina davvero (fisica vera); se resta bloccato lo scrive |
+| `guarda <yaw> <pitch>` / `guarda <nome>` | Mette il mirino su un punto o un abitante |
+| `premi <tasto> [s]` | Tiene premuto un tasto (`w`, `spazio`, `shift`, `e`, `invio`, `f5`, `click`…) |
+| `avanza`, `scegli <n>` | Fa scorrere il dialogo; sceglie la risposta |
+| `aspetta <s>` | Attende |
+| `foto [nome]`, `dump [nome]` | Screenshot; stato del gioco in JSON (giocatore, quest, dialogo, inventario, dintorni) |
+| `verifica <campo> <op> <valore>` | Controllo (`=`, `!=`, `<`, `>`, `contiene`); campi: `vita`, `x/y/z`, `sopra_terreno`, `quest`, `monete`, `dialogo`, `parla`, `ora`, `fps`, `npc:<nome>:<campo>`, `/puntatore/json` |
+| `attendi …` / `mai … [s]` | La condizione diventa vera entro `s` secondi / non lo diventa mai |
+| `esci` | Rapporto in `prove/out/<copione>/RAPPORTO.txt`; codice d'uscita 1 se qualcosa è fallito |
+
+`vai`, `dove`, `guarda`, `foto`, `dump` e `copione <file>` funzionano anche dalla shell (`\`).
+
+```bash
+scripts/beta_check.sh                      # tutti i copioni di prove/, rapporto in prove/out/RAPPORTO.md
+scripts/beta_check.sh prove/giro.txt       # uno solo
+```
+
+**F12 — Segnala bug**: salva in `~/.local/share/planet-one/segnalazioni/<data-ora>/` lo schermo, lo stato del
+gioco (`stato.json`), le ultime righe del log e una `nota.txt` da compilare. Basta mandare quella cartella.
 
 ## Debug input
 
@@ -105,7 +164,7 @@ grep "\[EVENT\]" run.log    # eventi finestra/cursore
 | Tasto | Azione |
 |---|---|
 | W/A/S/D o frecce | Movimento |
-| Shift | Corsa (1.7×) |
+| Shift | Corsa (1,55×) |
 | Space | Salto |
 | Mouse | Orbita camera (sensibilità dal menu) |
 | Esc | Menu pausa (tasti, slider sensibilità, checkbox FPS, reset scena) |
@@ -113,6 +172,7 @@ grep "\[EVENT\]" run.log    # eventi finestra/cursore
 | C | Pannello del personaggio |
 | F5 / F9 | Salvataggio rapido / ricarica |
 | F3 | Wireframe dei collider: attivo solo dopo `debug on` nella shell |
+| F12 | Segnala bug: schermo, stato, log e nota in una cartella (vedi «Pilota automatico») |
 | F11 | Schermo intero on/off (in fullscreen il cursore è bloccato e nascosto) |
 | M | Mappa dall'alto (vista drone, nord in alto, bussola in alto a sinistra); rotella o +/- = zoom; frecce/WASD o tasto centrale = sposta, C = su di te; M/Esc = chiudi |
 | F4 | Modalità debug piazzamenti, attiva solo dopo `debug on` nella shell (vedi sotto): strumenti Piazza / Gomma / Sposta, clic sinistro (mappa e 3D) |
@@ -130,7 +190,7 @@ grep "\[EVENT\]" run.log    # eventi finestra/cursore
 
 Parla con il **Viandante**, il negoziante nel chiosco della casetta vicino allo spawn: alla fine del dialogo scegli
 "Sì, ti aiuto" per far partire la quest ("Ora non ho tempo" la rimanda).
-Trova il **ladro** (cubo rosso, lontano, oltre le colline; il segnalino rosso sulla bussola
+Trova il **ladro** (lontano, oltre le colline; il segnalino rosso sulla bussola
 in alto indica la sua direzione), uccidilo, raccogli le **12 monete d'oro** che lascia,
 torna dal Viandante → completata, con ricompensa di 5 monete.
 Tieni **TAB** per gli obiettivi: spunta verde = completato, sfera azzurra = in corso.

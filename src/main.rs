@@ -11,7 +11,9 @@ mod ambience;
 mod animals;
 mod animation;
 mod audio;
+mod autopilot;
 mod bells;
+mod bugreport;
 mod buildings;
 mod camera;
 mod character;
@@ -112,7 +114,7 @@ pub enum AppState {
     Resetting,
 }
 
-fn main() {
+fn main() -> AppExit {
     App::new()
         .add_plugins((
             DefaultPlugins
@@ -120,7 +122,9 @@ fn main() {
                     fmt_layer: |_| {
                         Some(Box::new(
                             bevy::log::tracing_subscriber::fmt::layer()
-                                .with_timer(localtime::LogClock),
+                                .with_timer(localtime::LogClock)
+                                // Copia delle ultime righe per F12 «Segnala bug».
+                                .with_writer(bugreport::tee),
                         ))
                     },
                     ..default()
@@ -180,6 +184,8 @@ fn main() {
         .add_plugins(village::plugin)
         .add_plugins(villagers::plugin)
         .add_plugins(shell::plugin)
+        .add_plugins(autopilot::plugin)
+        .add_systems(Update, bugreport::report_bug)
         .add_plugins(containers::plugin)
         .add_plugins(character::plugin)
         .add_plugins(water::plugin)
@@ -394,7 +400,8 @@ fn main() {
                 .run_if(in_state(AppState::Map)),
         )
         .add_systems(OnEnter(AppState::Resetting), scene::reset_scene)
-        .run();
+        // Il codice d'uscita conta per il pilota automatico (1 = verifiche fallite).
+        .run()
 }
 
 /// Disattiva di default il wireframe dei collider all'avvio.

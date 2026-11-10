@@ -1,0 +1,9 @@
+# B1: le frecce dei banditi portano la vita sotto zero senza morte né respawn.
+# Atteso: la vita non è mai negativa; quando finisce, il giocatore rinasce con la vita piena.
+# In mezzo al campo dei banditi: tirano con l'arco (prova del 10/11: vita a -5 in un minuto).
+tp 76 12 40
+guarda banditi
+dump inizio
+mai vita < 0 150
+dump dopo
+esci

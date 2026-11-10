@@ -56,3 +56,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0028 | Suoni d'ambiente e animali | accettato |
 | 0029 | Luoghi da scoprire | accettato |
 | 0030 | Rampe sotto le scale | accettato |
+| 0031 | Pilota automatico e segnalazioni per il beta test | accettato |

@@ -1,0 +1,28 @@
+# Quest «Denaro Rubato»: si va al banco del Viandante, si parla e si accetta.
+god on
+dump inizio
+verifica quest = Idle
+attendi npc:viandante:modo = Ready 90
+vai viandante
+# Il Viandante gira per la casetta: si aspetta che torni al banco, a portata di voce.
+attendi npc:viandante:dist < 2.6 120
+attendi npc:viandante:modo = Ready 120
+attendi npc:viandante:dist < 2.6 120
+guarda viandante
+aspetta 0.3
+foto davanti-al-viandante
+premi e
+aspetta 1
+verifica dialogo = true
+verifica parla contiene viandante
+avanza
+dump scelte
+foto scelte
+verifica /dialogo/scegliendo = true
+scegli 1
+avanza
+aspetta 1
+dump dopo
+verifica quest = SeekThief
+verifica dialogo = false
+esci
