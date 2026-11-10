@@ -2,6 +2,12 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## v0.0.50.0 — Mura (2026-11-10)
+
+- **Mura e torri d'angolo**: presso le torri restavano cunei vuoti a tutta altezza fra la testa del muro e la faccia della torre (visibili da fuori, p. es. a (-28,-8), (-20,27), (20,23), (30,3)). I tratti di muro, il parapetto e il cordolo ora si prolungano fino a entrare nella torre; verificato con il modello geometrico dell'anello (0 celle scoperte contro 109 prima).
+- Nuova diagnostica `PLANET_ONE_SCAN_WALLS=1`: tira raggi contro le mura e dall'alto sul camminamento e scrive `[SCAN]` nel log.
+- Non ancora fatti: scale delle mura rifatte a L e tetti dei camminamenti (da verificare con altri punti precisi).
+
 ## v0.0.49.0 — Tetti (2026-11-10)
 
 - **Tetti delle case**: la falda parte oltre il muro e fra il bordo del muro e la falda restava una fessura (fino a mezzo metro) da cui si vedeva dentro; ora un listello di muro la chiude lungo i lati lunghi.
