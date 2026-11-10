@@ -403,9 +403,28 @@ pub fn graphics_ui(ui: &mut egui::Ui, audio: &mut AudioSettings) {
     }
 }
 
+/// Aggira un difetto di Bevy 0.20.1: `extract_lights` considera solo le luci cambiate in questo
+/// fotogramma e toglie le liste di visibilità delle ombre a tutte le altre, mentre le viste delle
+/// facce esistono ancora e vanno in panic («Failed to get point light visible entities»).
+/// Segnare ogni luce con ombre come cambiata a ogni fotogramma evita il panic.
+fn keep_shadow_lights_extracted(mut lights: Query<&mut PointLight>) {
+    for mut light in &mut lights {
+        if light.shadow_maps_enabled {
+            light.set_changed();
+        }
+    }
+}
+
 pub fn plugin(app: &mut App) {
-    app.add_systems(Update, (apply_graphics, apply_present_mode))
-        .add_systems(Last, limit_frame_rate);
+    app.add_systems(
+        Update,
+        (
+            apply_graphics,
+            apply_present_mode,
+            keep_shadow_lights_extracted,
+        ),
+    )
+    .add_systems(Last, limit_frame_rate);
 }
 
 #[cfg(test)]
