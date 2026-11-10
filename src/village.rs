@@ -507,10 +507,47 @@ pub fn sync_village(
     }
 
     // --- Tratti di muro: corpo pieno, corsie, parapetto e cordolo ---
+    // Le estremità vicino alle torri si prolungano fino a entrare nella torre, così
+    // non restano cunei vuoti fra la testa del muro e la faccia della torre.
+    let tower_boxes: Vec<(Vec2, Vec2, Vec2, f32, f32)> = towers
+        .iter()
+        .map(|w| (w.center, w.t, w.n, w.half_t, w.half_n))
+        .collect();
+    let reach = |origin: Vec2, t: Vec2, out: Vec2, dir: f32, u: f32| -> f32 {
+        for k in 0..=60 {
+            let d = k as f32 * 0.05;
+            let q = origin + t * (dir * d) + out * u;
+            if tower_boxes.iter().any(|(c, tt, nn, ht, hn)| {
+                (q - *c).dot(*tt).abs() <= ht - 0.05 && (q - *c).dot(*nn).abs() <= hn - 0.05
+            }) {
+                return d;
+            }
+        }
+        0.0
+    };
     for (fa, fb) in &free {
         for (sa, sb) in lp.pieces(*fa, *fb) {
             let sm = (sa + sb) / 2.0;
             let (p, t, out) = lp.at(sm);
+            let first = (sa - fa).abs() < 1e-3;
+            let last = (sb - fb).abs() < 1e-3;
+            let p_a = p + t * (sa - sm);
+            let p_b = p + t * (sb - sm);
+            // Prolungamento (a monte, a valle) per una linea a distanza `u` dal muro.
+            let ext = |u: f32| -> (f32, f32) {
+                (
+                    if first {
+                        reach(p_a, t, out, -1.0, u)
+                    } else {
+                        0.0
+                    },
+                    if last {
+                        reach(p_b, t, out, 1.0, u)
+                    } else {
+                        0.0
+                    },
+                )
+            };
             let h = height_at(sm);
             let half = (sb - sa) / 2.0 + 0.02;
             let hs = [lp.at(sa).0, p, lp.at(sb - 0.01).0].map(|q| ground(q + out * WALL_CENTER_U));
@@ -524,27 +561,35 @@ pub fn sync_village(
             } else {
                 (WALL_CENTER_U, WALL_HALF)
             };
-            let body = p + out * body_u;
-            stone.obox(body, lo, h, half, body_half, t, tint(STONE, rnd()));
+            let (e0, e1) = {
+                let (a0, a1) = ext(body_u - body_half);
+                let (b0, b1) = ext(body_u + body_half);
+                (a0.max(b0), a1.max(b1))
+            };
+            let body_half_len = half + (e0 + e1) / 2.0;
+            let body = p + out * body_u + t * ((e1 - e0) / 2.0);
+            stone.obox(body, lo, h, body_half_len, body_half, t, tint(STONE, rnd()));
             walk_colliders.push((
                 Vec3::new(body.x, (lo + h) / 2.0, body.y),
-                Vec3::new(half * 2.0, h - lo, body_half * 2.0),
+                Vec3::new(body_half_len * 2.0, h - lo, body_half * 2.0),
                 yaw,
             ));
             // Parapetto esterno con merli.
-            let par = p + out * PARAPET_U;
+            let (pe0, pe1) = ext(PARAPET_U);
+            let par_half = half + (pe0 + pe1) / 2.0;
+            let par = p + out * PARAPET_U + t * ((pe1 - pe0) / 2.0);
             stone.obox(
                 par,
                 h - 0.05,
                 h + PARAPET_H,
-                half,
+                par_half,
                 PARAPET_HALF,
                 t,
                 tint(STONE, rnd()),
             );
             colliders.push((
                 Vec3::new(par.x, h + PARAPET_H / 2.0, par.y),
-                Vec3::new(half * 2.0, PARAPET_H, PARAPET_HALF * 2.0),
+                Vec3::new(par_half * 2.0, PARAPET_H, PARAPET_HALF * 2.0),
                 yaw,
             ));
             let merlon = p + t * (half * 0.5) + out * PARAPET_U;
@@ -559,19 +604,21 @@ pub fn sync_village(
             );
             // Cordolo verso il villaggio (non sopra le scale).
             if !on_stair {
-                let kerb = p + out * KERB_U;
+                let (ke0, ke1) = ext(KERB_U);
+                let kerb_half = half + (ke0 + ke1) / 2.0;
+                let kerb = p + out * KERB_U + t * ((ke1 - ke0) / 2.0);
                 stone.obox(
                     kerb,
                     h - 0.05,
                     h + KERB_H,
-                    half,
+                    kerb_half,
                     KERB_HALF,
                     t,
                     tint(STONE_DARK, rnd()),
                 );
                 colliders.push((
                     Vec3::new(kerb.x, h + KERB_H / 2.0, kerb.y),
-                    Vec3::new(half * 2.0, KERB_H, KERB_HALF * 2.0),
+                    Vec3::new(kerb_half * 2.0, KERB_H, KERB_HALF * 2.0),
                     yaw,
                 ));
             }
@@ -1266,10 +1313,132 @@ pub fn loop_length(path: &[Vec3]) -> f32 {
     (0..n).map(|i| path[i].distance(path[(i + 1) % n])).sum()
 }
 
+/// Diagnostica (`PLANET_ONE_SCAN_WALLS=1`): dopo qualche secondo tira raggi dalla campagna contro
+/// le mura, a più altezze, e scrive nel log i tratti dove passano senza colpire nulla (fuori dai cancelli).
+fn scan_walls(
+    time: Res<Time>,
+    info: Res<VillageInfo>,
+    field: Option<Res<crate::terrain::TerrainField>>,
+    spatial: avian3d::prelude::SpatialQuery,
+    mut done: Local<bool>,
+) {
+    let Some(field) = field else {
+        return;
+    };
+    if *done
+        || time.elapsed_secs() < 25.0
+        || info.poly.len() < 3
+        || std::env::var_os("PLANET_ONE_SCAN_WALLS").is_none()
+    {
+        return;
+    }
+    *done = true;
+    let mut holes = 0;
+    for i in 0..info.poly.len() {
+        let (a, b) = (info.poly[i], info.poly[(i + 1) % info.poly.len()]);
+        let len = a.distance(b);
+        let dir = (b - a) / len;
+        let mut out = Vec2::new(dir.y, -dir.x);
+        if in_polygon(&info.poly, (a + b) / 2.0 + out * 0.5) {
+            out = -out;
+        }
+        let steps = (len / 0.15) as usize;
+        for k in 0..=steps {
+            let p = a + dir * (k as f32 * 0.15);
+            if info.gates.iter().any(|g| g.pos.distance(p) < GATE_ZONE) {
+                continue;
+            }
+            for h in [0.3f32, 1.0, 2.0, 3.0, 3.8, 4.4] {
+                let from = p + out * 9.0;
+                let Ok(d) = Dir3::new(Vec3::new(-out.x, 0.0, -out.y)) else {
+                    continue;
+                };
+                // La quota è assoluta rispetto al terreno al piede del muro: si parte da y = h + 1.
+                let origin = Vec3::new(from.x, field.height_at(p.x, p.y) + h, from.y);
+                let hit = spatial.cast_ray(
+                    origin,
+                    d,
+                    13.0,
+                    true,
+                    &avian3d::prelude::SpatialQueryFilter::default(),
+                );
+                if hit.is_none() {
+                    holes += 1;
+                    info!(
+                        "[SCAN] buco al muro {i} in ({:.1},{:.1}) quota {:.1} (verso {:.0},{:.0})",
+                        p.x,
+                        p.y,
+                        h + 1.0,
+                        -out.x,
+                        -out.y
+                    );
+                }
+            }
+        }
+    }
+    // Dall'alto: lungo la fascia delle mura il piano di camminata deve essere continuo. Si cercano
+    // i vuoti corti fra due tratti pieni, alla stessa distanza dal bordo.
+    let mut top = 0;
+    for i in 0..info.poly.len() {
+        let (a, b) = (info.poly[i], info.poly[(i + 1) % info.poly.len()]);
+        let len = a.distance(b);
+        let dir = (b - a) / len;
+        let mut out = Vec2::new(dir.y, -dir.x);
+        if in_polygon(&info.poly, (a + b) / 2.0 + out * 0.5) {
+            out = -out;
+        }
+        let n = (len / 0.3) as usize + 1;
+        for u in [0.4f32, 1.0, 1.6, 2.2, 2.8] {
+            let deck: Vec<bool> = (0..n)
+                .map(|k| {
+                    let p = a + dir * (k as f32 * 0.3);
+                    let q = p + out * (u - 1.4);
+                    let origin = Vec3::new(q.x, field.height_at(p.x, p.y) + 12.0, q.y);
+                    spatial
+                        .cast_ray(
+                            origin,
+                            Dir3::NEG_Y,
+                            14.0,
+                            true,
+                            &avian3d::prelude::SpatialQueryFilter::default(),
+                        )
+                        .is_some_and(|h| origin.y - h.distance > field.height_at(q.x, q.y) + 2.5)
+                })
+                .collect();
+            let mut k = 1;
+            while k < n {
+                if deck[k - 1] && !deck[k] {
+                    let start = k;
+                    while k < n && !deck[k] {
+                        k += 1;
+                    }
+                    // Un vuoto corto fra due tratti pieni (non la fine del muro né i cancelli).
+                    if k < n && k - start <= 15 {
+                        let p = a + dir * (start as f32 * 0.3) + out * (u - 1.4);
+                        top += 1;
+                        info!(
+                            "[SCAN] vuoto di {:.1} m sulla fascia del muro {i} in ({:.1},{:.1}) lato {u:.1}",
+                            (k - start) as f32 * 0.3,
+                            p.x,
+                            p.y
+                        );
+                    }
+                }
+                k += 1;
+            }
+        }
+    }
+    info!("[SCAN] dall'alto: {top} vuoti");
+    info!("[SCAN] finito: {holes} raggi passati senza colpire");
+}
+
 pub fn plugin(app: &mut App) {
     app.init_resource::<VillageInfo>()
         .add_systems(Startup, init_village)
-        .add_systems(Update, (sync_village, gate_schedule, village_banner));
+        .add_systems(
+            Update,
+            (sync_village, gate_schedule, village_banner, scan_walls),
+        );
 }
 
 #[cfg(test)]
