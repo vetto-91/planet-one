@@ -56,6 +56,33 @@ pub struct HomeBed {
     pub path: Vec<Vec3>,
 }
 
+/// Finestra con scuri vista dall'interno: dove sta chi la apre, dove guarda, a che piano.
+pub struct HomeWindow {
+    /// Punto sul pavimento a 0,7 m dalla finestra (mondo).
+    pub stand: Vec3,
+    /// Direzione verso la finestra (orizzontale, mondo).
+    pub face: Vec2,
+    /// Maniglia degli scuri.
+    pub state: Option<Entity>,
+}
+
+impl HomeWindow {
+    /// La finestra più vicina al letto, sullo stesso piano (±1 m di quota).
+    pub fn pick(windows: &[HomeWindow], bed: &HomeBed) -> Option<usize> {
+        let floor = bed.pos.y - 0.53;
+        windows
+            .iter()
+            .enumerate()
+            .filter(|(_, w)| w.state.is_some() && (w.stand.y - floor).abs() < 1.0)
+            .min_by(|(_, a), (_, b)| {
+                a.stand
+                    .distance(bed.pos)
+                    .total_cmp(&b.stand.distance(bed.pos))
+            })
+            .map(|(i, _)| i)
+    }
+}
+
 /// Porta e posti letto di un edificio, in coordinate del mondo.
 pub struct HomeEntry {
     pub kind: String,
@@ -65,6 +92,7 @@ pub struct HomeEntry {
     /// Centro dell'anta, per aprirla al passaggio.
     pub door_point: Vec3,
     pub beds: Vec<HomeBed>,
+    pub windows: Vec<HomeWindow>,
     /// Maniglia della porta.
     pub state: Option<Entity>,
     /// Aperta da un abitante di passaggio: si richiude da sola.
@@ -282,12 +310,18 @@ pub fn sync_world_props(
                 let place_id = pl.id;
                 let mut home_index = None;
                 let mut lock = crate::hut::Lock::Private;
+                let mut lived = false;
                 if let Some(door) = interior.door {
                     let occurrence = *occurrences
                         .entry(kind.clone())
                         .and_modify(|n| *n += 1)
                         .or_insert(0);
                     lock = lock_for(&kind, occurrence, &defs);
+                    lived = defs.iter().any(|d| {
+                        d.home
+                            .as_ref()
+                            .is_some_and(|(k, n, _)| *k == kind && *n == occurrence)
+                    });
                     let y = crate::props::ground_under(&field, p, model_half) - 0.05;
                     let origin = Vec3::new(p.x, y, p.y);
                     let rot = Quat::from_rotation_y(yaw);
@@ -309,6 +343,15 @@ pub fn sync_world_props(
                                 path: std::iter::once(street)
                                     .chain(interior.route_to_bed(b).into_iter().map(world))
                                     .collect(),
+                            })
+                            .collect(),
+                        windows: interior
+                            .windows
+                            .iter()
+                            .map(|w| HomeWindow {
+                                stand: world(w.center - w.normal * 0.7 - Vec3::Y * 1.25),
+                                face: (rot * -w.normal).xz().normalize_or_zero(),
+                                state: None,
                             })
                             .collect(),
                         state: None,
@@ -416,6 +459,16 @@ pub fn sync_world_props(
                                 Transform::from_translation(win.center + n * 0.12),
                             ))
                             .id();
+                        if lived {
+                            c.commands()
+                                .entity(state)
+                                .insert(crate::village_life::ResidentShutter);
+                        }
+                        if let Some(h) = home_index
+                            && let Some(w) = homes.list[h].windows.get_mut(i)
+                        {
+                            w.state = Some(state);
+                        }
                         let shutter_mat = match shutter_mats.iter().find(|(k, _)| *k == win.shutter)
                         {
                             Some((_, m)) => m.clone(),
@@ -961,5 +1014,37 @@ pub fn update_lighthouse(
     for mut l in &mut points {
         let target = if dark { 200_000.0 } else { 0.0 };
         l.intensity += (target - l.intensity) * k;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn window(y: f32, x: f32, with_state: bool) -> HomeWindow {
+        HomeWindow {
+            stand: Vec3::new(x, y, 0.0),
+            face: Vec2::Y,
+            state: with_state.then_some(Entity::PLACEHOLDER),
+        }
+    }
+
+    #[test]
+    fn the_nearest_window_on_the_beds_floor_is_picked() {
+        let bed = HomeBed {
+            pos: Vec3::new(0.0, 3.45, 0.0),
+            head: Vec3::Z,
+            path: Vec::new(),
+        };
+        // Piano terra (0,42), primo piano (2,92 + 0,53 = quota del letto 3,45).
+        let windows = [
+            window(0.42, 0.1, true),
+            window(2.92, 4.0, true),
+            window(2.92, 1.5, true),
+            window(2.92, 0.5, false),
+        ];
+        assert_eq!(HomeWindow::pick(&windows, &bed), Some(2));
+        let ground_only = [window(0.42, 0.1, true)];
+        assert_eq!(HomeWindow::pick(&ground_only, &bed), None);
     }
 }

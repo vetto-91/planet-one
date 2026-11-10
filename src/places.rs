@@ -216,6 +216,112 @@ fn cave_rnd(i: u32) -> f32 {
     ((i.wrapping_mul(2_654_435_761) >> 8) & 0xffff) as f32 / 65535.0
 }
 
+/// Roccia piena (visibile e solida).
+fn rock(b: &mut B, int: &mut Interior, a: Vec3, c: Vec3) {
+    let (min, max) = (a.min(c), a.max(c));
+    b.cuboid(min, max, STONE_DARK);
+    int.walls.push(((min + max) / 2.0, max - min));
+}
+
+/// Pavimento di pietra su cui si cammina.
+fn cave_floor(b: &mut B, int: &mut Interior, a: Vec3, c: Vec3) {
+    let (min, max) = (a.min(c), a.max(c));
+    b.cuboid(min, max, STONE);
+    int.ground.push(((min + max) / 2.0, max - min));
+}
+
+/// Le gallerie sotto la collina, a sud della camera: una discesa, la sala del tesoro, un laghetto
+/// e un cunicolo stretto che gira ad angolo e finisce in una nicchia con un forziere.
+/// Quote locali: pavimento delle gallerie -1,2 (mondo ≈0,9, sopra il mare), soffitto 2,5 (0,95 nel cunicolo).
+fn cave_depths(b: &mut B, int: &mut Interior) {
+    const FL: f32 = -1.2; // pavimento delle gallerie
+    const LO: f32 = -1.6; // base delle pareti
+    const CEIL: f32 = 2.5;
+    const LOW: f32 = 0.95; // soffitto del cunicolo
+    let v = Vec3::new;
+    // Discesa: sul varco del fondo e poi una rampa di 4 m (≈17°) fino al pavimento delle gallerie.
+    cave_floor(b, int, v(-3.6, -0.2, -8.8), v(-1.4, 0.06, -8.0));
+    rooms::ramp(int, v(-2.5, 0.06, -8.0), v(-2.5, FL, -12.0), 2.2);
+    let slope = (0.06 - FL) / 4.0;
+    for i in 0..4 {
+        let z0 = -8.0 - i as f32;
+        let top = 0.06 - slope * (i as f32 + 0.5) - 0.04;
+        b.cuboid(
+            v(-3.6, LO, z0 - 1.0),
+            v(-1.4, top, z0),
+            if i % 2 == 0 { STONE } else { STONE_DARK },
+        );
+    }
+    cave_floor(b, int, v(-3.6, LO, -18.4), v(-1.4, FL, -12.0));
+    // Pareti e soffitto della discesa (la parete ovest ha l'apertura verso il laghetto).
+    for (min, max) in [
+        (v(-4.2, LO, -13.6), v(-3.6, CEIL, -8.8)),
+        (v(-4.2, LO, -18.4), v(-3.6, CEIL, -16.4)),
+        (v(-1.4, LO, -18.4), v(-0.8, CEIL, -8.8)),
+        (v(-4.2, CEIL, -18.4), v(-0.8, CEIL + 0.6, -8.8)),
+    ] {
+        rock(b, int, min, max);
+    }
+    // Laghetto: sala a ovest della discesa; l'acqua è bassa e si attraversa.
+    cave_floor(b, int, v(-8.4, LO, -17.6), v(-4.2, FL, -12.4));
+    for (min, max) in [
+        (v(-8.4, LO, -12.4), v(-3.6, CEIL, -13.6)),
+        (v(-8.4, LO, -17.6), v(-7.8, CEIL, -12.4)),
+        (v(-8.4, LO, -18.2), v(-3.6, CEIL, -17.0)),
+        (v(-8.4, CEIL, -18.2), v(-3.6, CEIL + 0.6, -12.4)),
+    ] {
+        rock(b, int, min, max);
+    }
+    b.force = Some(Mat::Plain);
+    b.cuboid_c(
+        v(-6.2, FL + 0.05, -15.2),
+        v(3.2, 0.1, 3.0),
+        [0.08, 0.22, 0.32, 1.0],
+    );
+    b.force = None;
+    for (x, z, h) in [
+        (-7.2, -13.4, 1.1),
+        (-5.6, -16.6, 0.8),
+        (-7.0, -16.2, 1.5),
+        (-4.9, -13.6, 0.6),
+    ] {
+        b.cuboid_c(v(x, FL + h / 2.0, z), v(0.3, h, 0.3), STONE_DARK);
+    }
+    // Sala del tesoro in fondo alla discesa.
+    cave_floor(b, int, v(-6.0, LO, -24.0), v(0.4, FL, -18.4));
+    for (min, max) in [
+        (v(-6.6, LO, -17.8), v(-3.6, CEIL, -18.4)),
+        (v(-1.4, LO, -17.8), v(1.0, CEIL, -18.4)),
+        (v(-6.6, LO, -24.6), v(-6.0, CEIL, -17.8)),
+        (v(-6.6, LO, -24.6), v(1.0, CEIL, -24.0)),
+        // Parete est con il varco del cunicolo (z da -21,2 a -19,7).
+        (v(0.4, LO, -19.7), v(1.0, CEIL, -17.8)),
+        (v(0.4, LO, -24.6), v(1.0, CEIL, -21.2)),
+        (v(-6.6, CEIL, -24.6), v(1.0, CEIL + 0.6, -17.8)),
+    ] {
+        rock(b, int, min, max);
+    }
+    campfire(b, int, v(-3.0, FL, -20.2));
+    rooms::chest(b, int, -4.8, -23.2, FL);
+    rooms::barrel(b, int, -0.9, -23.2, FL);
+    rooms::crate_box(b, int, -5.3, -19.2, FL, 0.7);
+    // Cunicolo stretto (soffitto basso): va a est e gira a sud fino a una nicchia.
+    cave_floor(b, int, v(0.4, LO, -21.2), v(6.0, FL, -19.7));
+    cave_floor(b, int, v(4.6, LO, -27.0), v(6.0, FL, -21.2));
+    for (min, max) in [
+        (v(0.4, LO, -19.1), v(6.6, LOW, -19.7)),
+        (v(0.4, LO, -21.8), v(4.6, LOW, -21.2)),
+        (v(6.0, LO, -27.6), v(6.6, LOW, -19.1)),
+        (v(4.0, LO, -27.6), v(4.6, LOW, -21.8)),
+        (v(4.0, LO, -27.6), v(6.6, LOW, -27.0)),
+        (v(0.4, LOW, -27.6), v(6.6, LOW + 0.6, -19.1)),
+    ] {
+        rock(b, int, min, max);
+    }
+    rooms::chest(b, int, 5.3, -26.2, FL);
+    campfire(b, int, v(5.3, FL, -23.2));
+}
+
 /// Grotta: ingresso ad arco, corridoio di 6 m e una camera ampia, tutto in un cumulo di massi
 /// irregolari; dentro è buio, rischiarato solo da un falò.
 fn cave(b: &mut B, int: &mut Interior) {
@@ -230,9 +336,18 @@ fn cave(b: &mut B, int: &mut Interior) {
     };
     for (min, max) in [
         // Fondo e fianchi della camera.
+        // Il fondo ha un varco (x da -3,6 a -1,4) verso le gallerie.
         (
             Vec3::new(-4.8, 0.0, Z_BACK),
+            Vec3::new(-3.6, H, Z_BACK + 0.8),
+        ),
+        (
+            Vec3::new(-1.4, 0.0, Z_BACK),
             Vec3::new(4.8, H, Z_BACK + 0.8),
+        ),
+        (
+            Vec3::new(-3.6, 2.5, Z_BACK),
+            Vec3::new(-1.4, H, Z_BACK + 0.8),
         ),
         (
             Vec3::new(-4.8, 0.0, Z_BACK + 0.8),
@@ -342,6 +457,7 @@ fn cave(b: &mut B, int: &mut Interior) {
         }
     }
     b.pyramid(Vec3::new(0.0, H + 2.2, -3.0), 5.4, 2.6, STONE_DARK);
+    cave_depths(b, int);
     campfire(b, int, Vec3::new(-1.6, 0.06, -3.0));
     bedroll(b, Vec3::new(-3.0, 0.06, -4.4));
     rooms::chest(b, int, 2.6, -5.0, 0.06);

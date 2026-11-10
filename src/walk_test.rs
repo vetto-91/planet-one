@@ -247,6 +247,43 @@ mod tests {
         if let Err(e) = can_walk(&int, &path) {
             panic!("grotta: {e}");
         }
+        // Le gallerie sotto la collina: discesa, laghetto, sala del tesoro, cunicolo e nicchia.
+        for (name, path) in [
+            (
+                "discesa e sala del tesoro",
+                vec![
+                    Vec3::new(-2.5, 0.06, -6.0),
+                    Vec3::new(-2.5, 0.06, -8.6),
+                    Vec3::new(-2.5, -1.2, -12.6),
+                    Vec3::new(-2.5, -1.2, -17.0),
+                    Vec3::new(-2.5, -1.2, -20.0),
+                    Vec3::new(-4.8, -1.2, -22.0),
+                ],
+            ),
+            (
+                "laghetto",
+                vec![
+                    Vec3::new(-2.5, -1.2, -12.6),
+                    Vec3::new(-2.5, -1.2, -15.0),
+                    Vec3::new(-6.0, -1.2, -15.0),
+                    Vec3::new(-7.0, -1.2, -16.2),
+                ],
+            ),
+            (
+                "cunicolo e nicchia",
+                vec![
+                    Vec3::new(-2.5, -1.2, -20.0),
+                    Vec3::new(-0.5, -1.2, -20.4),
+                    Vec3::new(3.0, -1.2, -20.4),
+                    Vec3::new(5.3, -1.2, -21.0),
+                    Vec3::new(5.3, -1.2, -25.4),
+                ],
+            ),
+        ] {
+            if let Err(e) = can_walk(&int, &path) {
+                panic!("grotta, {name}: {e}");
+            }
+        }
         // Da fuori: dal piede della rampa (a quota del terreno, 6,4 m dall'arco) fino alla camera.
         let outside = [
             Vec3::new(0.0, -2.1, 15.4),

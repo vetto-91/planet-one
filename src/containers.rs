@@ -228,6 +228,15 @@ pub fn starting_items(kind: ContainerKind, building: &str, key: &str) -> Vec<(It
                 out.push((Shield, 1));
             }
         }
+        (K::Chest, "grotta") => {
+            out.push((Coin, n(1, 25, 70)));
+            if chance(2, 0.6) {
+                out.push((HealthPotion, 2));
+            }
+            if chance(3, 0.3) {
+                out.push((LongSword, 1));
+            }
+        }
         (K::Chest, _) => {
             out.push((Coin, n(1, 3, 18)));
             if chance(2, 0.35) {

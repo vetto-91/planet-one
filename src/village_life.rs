@@ -67,7 +67,11 @@ fn hearth_schedule(
     }
 }
 
-/// Sistema: gli abitanti aprono gli scuri al mattino e li chiudono la sera (e col maltempo forte).
+/// Scuri di una casa con un abitante: li apre e chiude lui (`villagers`), non l'orario.
+#[derive(Component)]
+pub struct ResidentShutter;
+
+/// Sistema: gli scuri delle case senza abitanti e li chiudono la sera (e col maltempo forte).
 fn shutter_schedule(
     clock: Res<GameClock>,
     weather: Res<WeatherState>,
@@ -75,6 +79,7 @@ fn shutter_schedule(
         Ref<crate::hut::PropKind>,
         &crate::hut::PropId,
         &mut crate::hut::PropState,
+        Has<ResidentShutter>,
     )>,
     mut last: Local<Option<bool>>,
     mut last_hour: Local<Option<f32>>,
@@ -83,10 +88,10 @@ fn shutter_schedule(
     let jumped = clock_jumped(clock.hour, &mut last_hour);
     let changed = *last != Some(open) && !jumped;
     *last = Some(open);
-    for (k, id, mut st) in &mut windows {
+    for (k, id, mut st, resident) in &mut windows {
         if *k == crate::hut::PropKind::Window
             && id.0.starts_with("scuri:")
-            && (changed || k.is_added())
+            && (changed && !resident || k.is_added())
             && st.on != open
         {
             st.on = open;
@@ -361,14 +366,17 @@ pub fn spawn_campfire(
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
 ) {
-    parent.spawn((
-        TownChimney {
-            works: true,
-            always: true,
-            hearth: None,
-        },
-        Transform::from_translation(at + Vec3::Y * 0.6),
-    ));
+    // Sottoterra (gallerie della grotta) il fumo non ha dove uscire: niente sbuffi.
+    if at.y > -0.5 {
+        parent.spawn((
+            TownChimney {
+                works: true,
+                always: true,
+                hearth: None,
+            },
+            Transform::from_translation(at + Vec3::Y * 0.6),
+        ));
+    }
     parent.spawn((
         Campfire { seed: at.x * 3.1 },
         Mesh3d(meshes.add(Sphere::new(0.2).mesh().uv(8, 6))),

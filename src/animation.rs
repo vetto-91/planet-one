@@ -28,6 +28,8 @@ pub enum Anim {
     Hit,
     Talk,
     BowShot,
+    /// Gesto di un abitante alla finestra.
+    Interact,
 }
 
 impl Anim {
@@ -46,6 +48,7 @@ impl Anim {
             Anim::Hit => "Hit_Chest",
             Anim::Talk => "Idle_Talking_Loop",
             Anim::BowShot => "Spell_Simple_Shoot",
+            Anim::Interact => "Interact",
         }
     }
 
@@ -75,6 +78,7 @@ impl Anim {
             Anim::SwordAttack => (2.4, 0.62),
             Anim::Punch => (1.6, 0.5),
             Anim::BowShot => (1.6, 0.55),
+            Anim::Interact => (1.0, 1.1),
             Anim::Hit => (0.9, 0.34),
             Anim::JumpStart => (2.6, 0.3),
             Anim::JumpLand => (2.2, 0.25),
@@ -178,6 +182,7 @@ pub fn drive_animations(
         With<Player>,
     >,
     enemies: Query<&EnemyHealth>,
+    villagers: Query<&crate::villagers::Villager>,
     cameras: Query<&GlobalTransform, With<Camera3d>>,
     mut animation: Query<(&mut AnimationPlayer, &mut AnimationTransitions)>,
 ) {
@@ -267,6 +272,10 @@ pub fn drive_animations(
             }
         }
 
+        if !is_player && villagers.get(entity).is_ok_and(|v| v.interacting()) && one_shot.is_none()
+        {
+            one_shot = Some(Anim::Interact);
+        }
         if is_player && let Some(f) = forced_anim() {
             want = (f, 1.0);
         }

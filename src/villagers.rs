@@ -133,6 +133,19 @@ enum Phase {
     Rest,
 }
 
+/// Sosta a una finestra per aprire o chiudere gli scuri.
+struct Chore {
+    stand: Vec3,
+    face: Vec2,
+    state: Entity,
+    /// Scuri da aprire (mattina) o da chiudere (sera).
+    open: bool,
+    timer: f32,
+    /// Il gesto è a metà: `villager_chores` cambia lo stato degli scuri.
+    fire: bool,
+    done: bool,
+}
+
 /// Componente di un abitante (routine).
 #[derive(Component)]
 pub struct Villager {
@@ -150,6 +163,8 @@ pub struct Villager {
     entered: bool,
     /// Appena letto da un salvataggio: la routine riprende da dove era.
     resume: bool,
+    /// Sosta alla finestra in corso (apre o chiude gli scuri).
+    chore: Option<Chore>,
 }
 
 /// Stato di un abitante nel salvataggio.
@@ -164,6 +179,11 @@ pub struct VillagerSave {
 }
 
 impl Villager {
+    /// Sta facendo il gesto alla finestra (animazione `Interact`).
+    pub fn interacting(&self) -> bool {
+        self.chore.as_ref().is_some_and(|c| c.timer > 0.0)
+    }
+
     pub fn name(&self) -> &str {
         &self.def.name
     }
@@ -384,6 +404,7 @@ pub fn spawn_villagers(
                     indoor: VecDeque::new(),
                     entered: false,
                     resume: false,
+                    chore: None,
                 },
                 RigidBody::Kinematic,
                 Collider::capsule(0.35, 1.0),
@@ -545,6 +566,21 @@ fn ground_y(field: &TerrainField, items: &[crate::debug_place::Placement], x: f3
 struct HomeRef<'a> {
     door: Vec2,
     bed: &'a crate::world_props::HomeBed,
+    windows: &'a [crate::world_props::HomeWindow],
+}
+
+/// Sosta alla finestra più vicina al letto, se ce n'è una sullo stesso piano.
+fn window_chore(h: &HomeRef, open: bool) -> Option<Chore> {
+    let w = &h.windows[crate::world_props::HomeWindow::pick(h.windows, h.bed)?];
+    Some(Chore {
+        stand: w.stand,
+        face: w.face,
+        state: w.state?,
+        open,
+        timer: 0.0,
+        fire: false,
+        done: false,
+    })
 }
 
 fn home_of<'a>(
@@ -558,6 +594,7 @@ fn home_of<'a>(
     Some(HomeRef {
         door: home.door,
         bed: home.beds.get(*bed)?,
+        windows: &home.windows,
     })
 }
 
@@ -755,6 +792,11 @@ pub fn villager_routine(
                     if let Some(start) = steps.pop_front() {
                         tf.translation = start + Vec3::Y * CENTER_Y;
                     }
+                    // Prima di scendere apre gli scuri della sua stanza.
+                    v.chore = window_chore(h, true);
+                    if let Some(c) = &v.chore {
+                        steps.push_front(c.stand);
+                    }
                     v.indoor = steps;
                     info!("[VILLAGERS] {} si alza", v.def.name);
                 }
@@ -789,7 +831,22 @@ pub fn villager_routine(
             if !talking {
                 let to = next + Vec3::Y * CENTER_Y - tf.translation;
                 if to.length() < 0.1 {
-                    v.indoor.pop_front();
+                    if let Some(c) = v.chore.as_mut().filter(|c| c.stand.distance(next) < 0.01) {
+                        // Sosta alla finestra: si volta, fa il gesto, a metà cambia gli scuri.
+                        c.timer += dt;
+                        let want_rot = Quat::from_rotation_y(yaw_towards(c.face));
+                        tf.rotation = tf.rotation.slerp(want_rot, (8.0 * dt).clamp(0.0, 1.0));
+                        if c.timer > 0.6 && !c.done {
+                            c.done = true;
+                            c.fire = true;
+                        }
+                        if c.timer > 1.4 {
+                            v.chore = None;
+                            v.indoor.pop_front();
+                        }
+                    } else {
+                        v.indoor.pop_front();
+                    }
                 } else {
                     let step = (WALK_SPEED * dt).min(to.length());
                     tf.translation += to.normalize() * step;
@@ -824,7 +881,16 @@ pub fn villager_routine(
             if let Some(h) = &home {
                 if !v.entered {
                     v.entered = true;
-                    v.indoor = h.bed.path.iter().copied().collect();
+                    let mut path: VecDeque<Vec3> = h.bed.path.iter().copied().collect();
+                    // Prima di coricarsi chiude gli scuri della sua stanza.
+                    v.chore = window_chore(h, false);
+                    if let Some(c) = &v.chore
+                        && let Some(last) = path.pop_back()
+                    {
+                        path.push_back(c.stand);
+                        path.push_back(last);
+                    }
+                    v.indoor = path;
                     info!("[VILLAGERS] {} entra in casa", v.def.name);
                     continue;
                 }
@@ -851,6 +917,27 @@ pub fn villager_routine(
         }
         tf.translation.y =
             ground_y(&field, &dbg.items, tf.translation.x, tf.translation.z) + CENTER_Y;
+    }
+}
+
+/// Sistema: a metà del gesto alla finestra gli scuri si aprono o si chiudono.
+pub fn villager_chores(
+    mut villagers: Query<&mut Villager>,
+    mut shutters: Query<&mut crate::hut::PropState>,
+) {
+    for mut v in &mut villagers {
+        let name = v.def.name.clone();
+        let Some(c) = v.chore.as_mut().filter(|c| c.fire) else {
+            continue;
+        };
+        c.fire = false;
+        if let Ok(mut st) = shutters.get_mut(c.state) {
+            st.on = c.open;
+            info!(
+                "[VILLAGERS] {name} {} gli scuri",
+                if c.open { "apre" } else { "chiude" }
+            );
+        }
     }
 }
 
@@ -928,7 +1015,13 @@ pub fn plugin(app: &mut App) {
     app.add_systems(
         Update,
         (
-            (villager_routine, villager_doors, warn_blocked_doors).chain(),
+            (
+                villager_routine,
+                villager_chores,
+                villager_doors,
+                warn_blocked_doors,
+            )
+                .chain(),
             lantern_shadows,
         ),
     );
