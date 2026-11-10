@@ -2,6 +2,15 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+### Suoni e acqua
+- **Passi**: l'erba è un fruscio morbido con un tonfo sordo, il legno ha un tocco secco e risonante ben diverso, dentro gli edifici si cammina sempre sul legno; nei campi di grano e negli orti gli steli frusciano contro le gambe (nuova superficie).
+- **Brusio del paese** rifatto: mormorio di folla fatto di soffio e voci smorzate, non più un ronzio elettronico.
+- **Mare**: onde con salita, frangente e schiuma che si ritira, più brontolio grave; il mare si muove più in fretta e «respira». Nella mappa (M) è di nuovo blu pieno e senza nebbia.
+- **Acqua dolce**: più liscia, senza brillantini; si cammina più piano e, dove è profonda (più di 1,25 m), si nuota (Spazio per salire); schizzo quando ci si entra e pesci che guizzano vicino al laghetto.
+- **Mulino**: albero delle pale fuori dalla facciata, pale più alte della porta, tinta unita senza l'effetto a quadri da lontano.
+
 ## v0.0.43.0 — Scale e torri (2026-11-10)
 
 ### Scale e torri (ADR 0030)

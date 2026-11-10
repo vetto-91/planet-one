@@ -410,7 +410,7 @@ pub fn sync_world_props(
                     if kind == "mulino" {
                         c.spawn((
                             crate::village_life::MillSails,
-                            Transform::from_xyz(0.0, 5.6, 2.95),
+                            Transform::from_xyz(0.0, 6.0, 3.6),
                             Visibility::default(),
                         ))
                         .with_children(|s| {

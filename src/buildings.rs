@@ -1928,6 +1928,13 @@ pub fn model(kind: &str, seed: u32) -> Building {
         "pozzo" => (2.4, 2.4, well(&mut b)),
         "mulino" => {
             house(&mut b, &mut r, &mut int, kind, 5.4, 5.4, 2, false, 0, seed);
+            // Albero delle pale: esce dalla facciata, sopra il tetto della porta.
+            b.beam(
+                Vec3::new(0.0, 6.0, 2.4),
+                Vec3::new(0.0, 6.0, 3.7),
+                0.12,
+                TIMBER,
+            );
             (5.4, 5.4, Vec::new())
         }
         k if crate::places::is_place(k) => crate::places::build(k, &mut b, &mut int),

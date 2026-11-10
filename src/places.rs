@@ -287,7 +287,7 @@ fn shrine(b: &mut B, _int: &mut Interior) -> Vec<(Vec3, Vec3)> {
 /// Pale del mulino attorno all'origine, nel piano XY (girano attorno a Z).
 pub fn sails() -> Vec<(Mat, Mesh)> {
     use std::f32::consts::TAU;
-    const LEN: f32 = 3.3;
+    const LEN: f32 = 2.9;
     let mut b = B::default();
     let cloth: Col = [0.84, 0.8, 0.68, 1.0];
     for k in 0..4 {
@@ -304,7 +304,8 @@ pub fn sails() -> Vec<(Mat, Mesh)> {
             0.02,
             TIMBER,
         );
-        b.force = Some(Mat::Cloth);
+        // Tinta unita: con la trama del tessuto le pale da lontano fanno l'effetto a quadri.
+        b.force = Some(Mat::Plain);
         let z = Vec3::Z * 0.01;
         b.quad(
             dir * 0.75 + z,

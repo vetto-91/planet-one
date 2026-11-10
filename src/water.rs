@@ -527,12 +527,17 @@ pub fn animate_water(
     let t = time.elapsed_secs();
     for m in &sea {
         if let Some(mut mat) = materials.get_mut(&m.0) {
-            let offset = if on {
-                Vec2::new(t * 0.012, t * 0.008)
+            // Due moti sovrapposti: la corrente che scorre e un lento respiro della scala delle onde.
+            mat.uv_transform = if on {
+                let swell = 1.0 + 0.06 * (t * 0.35).sin();
+                Affine2::from_scale_angle_translation(
+                    Vec2::splat(swell),
+                    0.04 * (t * 0.1).sin(),
+                    Vec2::new(t * 0.035, t * 0.022),
+                )
             } else {
-                Vec2::ZERO
+                Affine2::IDENTITY
             };
-            mat.uv_transform = Affine2::from_translation(offset);
         }
     }
     for m in &stream {

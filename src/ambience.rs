@@ -67,28 +67,85 @@ pub struct AmbienceSounds {
     gulls: Vec<Handle<AudioSource>>,
     /// Tre varianti per ogni superficie, nell'ordine di [`Surface::ALL`].
     steps: Vec<Vec<Handle<AudioSource>>>,
+    splash: Handle<AudioSource>,
+    fish: Handle<AudioSource>,
     forests: Vec<Forest>,
 }
 
 // --- Sintesi -----------------------------------------------------------------------------------
 
-/// Onde: risacca lenta e schiuma sulle creste. Ciclo di 12 s.
+/// Onde: tre frangenti in 12 s, ognuno con salita, schianto e lunga schiuma che si ritira, su un
+/// brontolio grave continuo. Ciclo di 12 s.
 pub fn synth_waves() -> Vec<u8> {
     let n = RATE as usize * 12;
     let c = RATE as usize / 2;
     let mut rng = Noise(0x51A5_EA11);
-    let (mut lo, mut mid) = (0.0f32, 0.0f32);
+    let (mut lo, mut mid, mut hi) = (0.0f32, 0.0f32, 0.0f32);
     let mut buf = Vec::with_capacity(n + c);
+    // Istanti dei frangenti (s) e loro forza.
+    let waves = [(1.2f32, 1.0f32), (5.3, 0.75), (8.9, 0.9)];
     for i in 0..(n + c) {
         let t = i as f32 / RATE as f32;
         let w = rng.next();
-        lo += (w - lo) * 0.03;
-        mid += (w - mid) * 0.3;
-        let slow = 0.5 + 0.5 * (t * TAU / 6.0).sin();
-        let crest = (0.5 + 0.5 * (t * TAU / 4.0).sin()).powi(3);
-        buf.push(lo * 3.5 * (0.35 + 0.65 * slow) + (mid - lo) * (0.08 + 0.8 * crest));
+        lo += (w - lo) * 0.02;
+        mid += (w - mid) * 0.12;
+        hi += (w - hi) * 0.4;
+        let mut foam = 0.0f32;
+        for (t0, force) in waves {
+            // Il ciclo si richiude: l'ultima onda finisce dentro l'inizio.
+            for shift in [0.0f32, 12.0] {
+                let d = t - t0 + shift;
+                let env = if d < 0.0 {
+                    0.0
+                } else if d < 1.4 {
+                    (d / 1.4).powi(2)
+                } else {
+                    (-(d - 1.4) * 0.75).exp()
+                };
+                foam += env * force;
+            }
+        }
+        let rumble = lo * 3.0 * (0.45 + 0.25 * (t * TAU / 6.0).sin());
+        buf.push(rumble + (mid * 1.3 + (hi - mid) * 0.5) * foam * 0.9);
     }
-    to_wav(&make_loop(&buf, n), 0.6)
+    to_wav(&make_loop(&buf, n), 0.65)
+}
+
+/// Schizzo di chi entra in acqua: scroscio breve con bolle.
+pub fn synth_splash() -> Vec<u8> {
+    let n = (RATE as f32 * 0.75) as usize;
+    let mut rng = Noise(0x5B1A_5521);
+    let (mut a, mut b) = (0.0f32, 0.0f32);
+    let mut out = Vec::with_capacity(n);
+    for i in 0..n {
+        let t = i as f32 / RATE as f32;
+        let w = rng.next();
+        a += (w - a) * 0.35;
+        b += (w - b) * 0.06;
+        let env = (t * 90.0).min(1.0) * (-t * 5.5).exp();
+        let bubble = (TAU * (380.0 * t + 1400.0 * t * t)).sin() * (-t * 16.0).exp();
+        out.push((a - b) * env + bubble * 0.35);
+    }
+    to_wav(&out, 0.8)
+}
+
+/// Pesce che guizza fuori e rientra: due «plop» ravvicinati.
+pub fn synth_fish() -> Vec<u8> {
+    let n = (RATE as f32 * 0.5) as usize;
+    let mut rng = Noise(0xF15_C0DE);
+    let mut out = vec![0.0f32; n];
+    for (start, f0) in [(0.0f32, 520.0f32), (0.13, 330.0)] {
+        let s0 = (start * RATE as f32) as usize;
+        for k in 0..(RATE as f32 * 0.22) as usize {
+            if s0 + k >= n {
+                break;
+            }
+            let t = k as f32 / RATE as f32;
+            let tone = (TAU * (f0 * t + 1700.0 * t * t)).sin() * (-t * 26.0).exp();
+            out[s0 + k] += tone * 0.7 + rng.next() * (-t * 60.0).exp() * 0.25;
+        }
+    }
+    to_wav(&out, 0.7)
 }
 
 /// Ruscello: fruscio medio con bollicine che salgono di tono. Ciclo di 8 s.
@@ -144,14 +201,15 @@ pub fn synth_crickets() -> Vec<u8> {
     to_wav(&buf, 0.5)
 }
 
-/// Brusio: voci finte (sorgente a dente di sega in due risonanze) senza parole. Ciclo di 12 s.
+/// Brusio: voci finte senza parole, fatte di soffio e poca voce attraverso formanti larghe, così
+/// resta un mormorio di folla e non un ronzio. Ciclo di 12 s.
 pub fn synth_market() -> Vec<u8> {
     const VOWELS: [(f32, f32); 5] = [
-        (730.0, 1090.0),
-        (530.0, 1840.0),
-        (270.0, 2290.0),
-        (570.0, 840.0),
-        (300.0, 870.0),
+        (700.0, 1100.0),
+        (520.0, 1700.0),
+        (330.0, 2100.0),
+        (560.0, 900.0),
+        (380.0, 950.0),
     ];
     let n = RATE as usize * 12;
     let c = RATE as usize / 2;
@@ -160,43 +218,47 @@ pub fn synth_market() -> Vec<u8> {
     let dt = 1.0 / RATE as f32;
     let mut rng = Noise(0x7A1C_0DE5);
     let mut uniform = move || (rng.next() + 1.0) * 0.5;
-    for voice in 0..11 {
-        let pitch = 100.0 + uniform() * 130.0;
-        let gain = 0.5 + uniform() * 0.5;
+    let mut noise = Noise(0x0DD_BA11);
+    for voice in 0..9 {
+        let pitch = 105.0 + uniform() * 120.0;
+        let gain = 0.4 + uniform() * 0.5;
         let mut phase = 0.0f32;
         let (mut b1, mut l1, mut b2, mut l2) = (0.0f32, 0.0f32, 0.0f32, 0.0f32);
-        let mut at = (uniform() * RATE as f32 * voice as f32 * 0.2) as usize;
+        let mut at = (uniform() * RATE as f32 * voice as f32 * 0.25) as usize;
         while at < total {
-            // Una frase di qualche sillaba, poi una pausa.
-            let syllables = 3 + (uniform() * 9.0) as usize;
+            let syllables = 2 + (uniform() * 6.0) as usize;
             for _ in 0..syllables {
-                let len = (RATE as f32 * (0.11 + uniform() * 0.16)) as usize;
+                let len = (RATE as f32 * (0.12 + uniform() * 0.2)) as usize;
                 let (f1, f2) = VOWELS[(uniform() * 4.99) as usize];
                 let f0 = pitch * (0.9 + uniform() * 0.25);
                 let k1 = 2.0 * (PI * f1 * dt).sin();
                 let k2 = 2.0 * (PI * f2 * dt).sin();
                 for j in 0..len.min(total.saturating_sub(at)) {
                     phase = (phase + f0 * dt).fract();
-                    let src = 2.0 * phase - 1.0;
+                    // Poca voce (dente di sega smussato) e molto soffio.
+                    let voiced = (2.0 * phase - 1.0) * 0.25 + (TAU * phase).sin() * 0.3;
+                    let src = voiced + noise.next() * 0.55;
                     l1 += k1 * b1;
-                    b1 += k1 * (src - l1 - 0.14 * b1);
+                    b1 += k1 * (src - l1 - 0.7 * b1);
                     l2 += k2 * b2;
-                    b2 += k2 * (src - l2 - 0.2 * b2);
-                    let env = (j as f32 / len as f32 * PI).sin().powf(0.6);
-                    buf[at + j] += (b1 + 0.6 * b2) * env * gain;
+                    b2 += k2 * (src - l2 - 0.9 * b2);
+                    let x = j as f32 / len as f32;
+                    let env = (x * PI).sin().powf(0.8);
+                    buf[at + j] += (b1 + 0.5 * b2) * env * gain;
                 }
                 at += len;
             }
-            at += (RATE as f32 * (0.4 + uniform() * 1.3)) as usize;
+            at += (RATE as f32 * (0.5 + uniform() * 1.6)) as usize;
         }
     }
-    // Da lontano le frequenze alte si perdono.
-    let mut lp = 0.0f32;
+    // Da lontano le alte si perdono e il tutto si fa sordo.
+    let (mut lp, mut lp2) = (0.0f32, 0.0f32);
     for s in buf.iter_mut() {
-        lp += (*s - lp) * 0.4;
-        *s = lp;
+        lp += (*s - lp) * 0.22;
+        lp2 += (lp - lp2) * 0.3;
+        *s = lp2;
     }
-    to_wav(&make_loop(&buf, n), 0.6)
+    to_wav(&make_loop(&buf, n), 0.5)
 }
 
 /// Canto di un uccello: qualche nota che sale o scende, a volte trillata.
@@ -263,11 +325,12 @@ pub fn synth_step(surface: Surface, seed: u32) -> Vec<u8> {
     let mut rng = Noise(seed.wrapping_mul(2_654_435_761) | 1);
     let dur = match surface {
         Surface::Water => 0.34,
+        Surface::Crops => 0.42,
         Surface::Sand | Surface::Snow => 0.26,
         _ => 0.2,
     };
     let n = (RATE as f32 * dur) as usize;
-    let (mut lo, mut band) = (0.0f32, 0.0f32);
+    let (mut lo, mut band, mut mid) = (0.0f32, 0.0f32, 0.0f32);
     let mut grain = 1.0f32;
     let mut out = Vec::with_capacity(n);
     for i in 0..n {
@@ -275,6 +338,7 @@ pub fn synth_step(surface: Surface, seed: u32) -> Vec<u8> {
         let w = rng.next();
         lo += (w - lo) * 0.08;
         band += (w - band) * 0.45;
+        mid += (w - mid) * 0.17;
         let hi = band - lo;
         if i % 90 == 0 {
             grain = 0.25 + (rng.next() + 1.0) * 0.5;
@@ -282,7 +346,16 @@ pub fn synth_step(surface: Surface, seed: u32) -> Vec<u8> {
         let thud = |f: f32, d: f32| (TAU * f * t).sin() * (-t * d).exp();
         let attack = (t * 500.0).min(1.0);
         let s = match surface {
-            Surface::Grass => hi * (-t * 22.0).exp() * 0.7 + lo * (-t * 40.0).exp() * 0.8,
+            // Erba: un fruscio morbido e un tonfo sordo, niente spigoli.
+            Surface::Grass => {
+                let soft = (t * 55.0).min(1.0);
+                mid * 2.2 * soft * (-t * 12.0).exp() * 0.55 + thud(62.0, 28.0) * 0.22
+            }
+            // Steli di grano o ortaggi: fruscio lungo e secco che sfrega sulle gambe.
+            Surface::Crops => {
+                let swish = (t * 18.0).min(1.0) * (-t * 4.0).exp();
+                (hi * 1.2 + mid * 0.8) * swish * (0.55 + 0.45 * grain)
+            }
             Surface::Dirt => lo * 2.2 * (-t * 30.0).exp() + thud(95.0, 38.0) * 0.5,
             Surface::Sand => hi * grain * (-t * 14.0).exp() * 0.7 + lo * (-t * 26.0).exp(),
             Surface::Snow => hi * grain * grain * (-t * 11.0).exp() * 0.9,
@@ -290,7 +363,10 @@ pub fn synth_step(surface: Surface, seed: u32) -> Vec<u8> {
                 hi * (-t * 85.0).exp() * 0.9 + thud(150.0, 60.0) * 0.45 + thud(1250.0, 130.0) * 0.2
             }
             Surface::Wood => {
-                thud(185.0, 26.0) * 0.7 + thud(390.0, 42.0) * 0.4 + hi * (-t * 110.0).exp() * 0.4
+                thud(210.0, 20.0) * 0.8
+                    + thud(430.0, 34.0) * 0.5
+                    + thud(95.0, 16.0) * 0.4
+                    + hi * (-t * 140.0).exp() * 0.5
             }
             Surface::Water => {
                 let bubble = (TAU * (420.0 * t + 900.0 * t * t)).sin() * (-t * 14.0).exp();
@@ -404,10 +480,14 @@ fn setup(mut commands: Commands, mut sources: ResMut<Assets<AudioSource>>) {
             PlaybackSettings::LOOP.with_volume(Volume::Linear(0.0)),
         ));
     }
+    let splash = add(synth_splash());
+    let fish = add(synth_fish());
     commands.insert_resource(AmbienceSounds {
         birds,
         gulls,
         steps,
+        splash,
+        fish,
         forests: crate::water::load_spec().forests,
     });
 }
@@ -420,6 +500,7 @@ struct Scan {
     forest: f32,
     bird: f32,
     gull: f32,
+    fish: f32,
     logged: [f32; 5],
     rng: u32,
 }
@@ -542,6 +623,20 @@ fn update_ambience(
             ));
         }
     }
+    // Pesci che guizzano: vicino al laghetto e al ruscello, di giorno.
+    st.fish -= dt;
+    if st.fish <= 0.0 {
+        st.fish = 4.0 + st.uniform() * 8.0;
+        let near = falloff(st.water, 18.0) * light;
+        if near > 0.05 {
+            commands.spawn((
+                AudioPlayer::new(sounds.fish.clone()),
+                PlaybackSettings::DESPAWN
+                    .with_volume(Volume::Linear(master * near * 0.8))
+                    .with_speed(0.9 + st.uniform() * 0.25),
+            ));
+        }
+    }
     // Gabbiani: di giorno, vicino alla costa.
     st.gull -= dt;
     if st.gull <= 0.0 {
@@ -582,6 +677,8 @@ fn footsteps(
     field: Option<Res<TerrainField>>,
     village: Option<Res<VillageInfo>>,
     sounds: Option<Res<AmbienceSounds>>,
+    dbg: Res<crate::debug_place::DebugPlace>,
+    buildings: Query<(&GlobalTransform, &crate::world_props::BuildingFootprint)>,
     player: Query<(&Transform, &GroundedState), With<Player>>,
     mut st: Local<Steps>,
 ) {
@@ -630,7 +727,32 @@ fn footsteps(
     } else {
         surface
     };
+    // Dentro un edificio si cammina su assi di legno, anche se il pavimento sta al livello del suolo.
+    let inside = buildings.iter().any(|(g, f)| {
+        let l = g.affine().inverse().transform_point3(p);
+        l.x.abs() <= f.half.x && l.z.abs() <= f.half.y && (l.y - FEET_BELOW_CENTER) > -0.5
+    });
+    let surface = match surface {
+        Surface::Grass | Surface::Dirt | Surface::Sand | Surface::Snow if inside => Surface::Wood,
+        Surface::Grass | Surface::Dirt
+            if dbg
+                .items
+                .iter()
+                .filter(|i| matches!(i.kind.as_str(), "campo" | "orto"))
+                .any(|i| i.points.iter().any(|q| q.distance(p.xz()) < 0.9)) =>
+        {
+            Surface::Crops
+        }
+        s => s,
+    };
     if st.surface != Some(surface) {
+        if surface == Surface::Water {
+            commands.spawn((
+                AudioPlayer::new(sounds.splash.clone()),
+                PlaybackSettings::DESPAWN
+                    .with_volume(Volume::Linear(settings.ambient_volume * 0.9)),
+            ));
+        }
         st.surface = Some(surface);
         info!("[PASSI] superficie: {surface:?}");
     }

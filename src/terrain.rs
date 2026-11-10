@@ -68,10 +68,12 @@ pub enum Surface {
     Wood,
     Water,
     Snow,
+    /// Campo di grano o orto: gli steli sfregano contro le gambe.
+    Crops,
 }
 
 impl Surface {
-    pub const ALL: [Surface; 7] = [
+    pub const ALL: [Surface; 8] = [
         Surface::Grass,
         Surface::Dirt,
         Surface::Sand,
@@ -79,6 +81,7 @@ impl Surface {
         Surface::Wood,
         Surface::Water,
         Surface::Snow,
+        Surface::Crops,
     ];
 }
 
@@ -479,10 +482,11 @@ pub fn update_terrain(
         Mesh3d(meshes.add(crate::water::water_mesh(&water.0))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: Color::srgba(0.1, 0.3, 0.36, 0.78),
-            reflectance: 0.5,
+            // Liscia e opaca di luce: con superficie lucida e normali fitte il sole fa brillantini.
+            reflectance: 0.25,
             alpha_mode: AlphaMode::Blend,
             depth_bias: 3.0,
-            perceptual_roughness: 0.12,
+            perceptual_roughness: 0.5,
             normal_map_texture: Some(waves),
             ..Default::default()
         })),

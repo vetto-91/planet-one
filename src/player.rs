@@ -199,10 +199,19 @@ pub fn update_grounded(
 pub fn movement(
     keys: Res<ButtonInput<KeyCode>>,
     cameras: Query<&GlobalTransform, With<Camera3d>>,
-    mut players: Query<(&mut LinearVelocity, &mut GroundedState, &mut JumpBuffer), With<Player>>,
+    mut players: Query<
+        (
+            &mut LinearVelocity,
+            &mut GroundedState,
+            &mut JumpBuffer,
+            &Transform,
+        ),
+        With<Player>,
+    >,
     time: Res<Time>,
     cheats: Res<crate::shell::Cheats>,
     load: Res<crate::character::Load>,
+    field: Option<Res<crate::terrain::TerrainField>>,
 ) {
     let Ok(camera) = cameras.single() else {
         return;
@@ -265,9 +274,24 @@ pub fn movement(
     // JUMP_BUFFER_TIME secondi e viene consumato appena si puo' saltare.
     let jump_pressed = keys.just_pressed(KeyCode::Space);
 
-    for (mut velocity, mut state, mut buffer) in &mut players {
-        velocity.x = direction.x * speed;
-        velocity.z = direction.z * speed;
+    for (mut velocity, mut state, mut buffer, transform) in &mut players {
+        // In acqua si va più piano; dove è profonda si nuota (galleggia, Spazio per salire).
+        let (drag, swim_target) = field
+            .as_ref()
+            .and_then(|f| water_depth(f, transform.translation))
+            .map_or((1.0, None), |(depth, level)| swim_factors(depth, level));
+        velocity.x = direction.x * speed * drag;
+        velocity.z = direction.z * speed * drag;
+        if let Some(target) = swim_target {
+            let stroke = if keys.pressed(KeyCode::Space) {
+                0.5
+            } else {
+                0.0
+            };
+            velocity.y = ((target + stroke - transform.translation.y) * 4.0).clamp(-2.5, 2.5);
+            state.coyote_left = 0.0;
+            continue;
+        }
 
         // Snap al terreno solo se molto vicino (non in caduta libera).
         let snapped = state.grounded_now && state.ground_dist <= GROUND_SNAP_DISTANCE;
@@ -450,5 +474,49 @@ mod fall_tests {
         assert_eq!(fall_damage(2.0), 0.0);
         assert_eq!(fall_damage(SAFE_FALL), 0.0);
         assert!(fall_damage(8.0) > 30.0);
+    }
+}
+
+/// Profondità (m) e quota (m) dell'acqua sotto i piedi: mare, laghetto o ruscello. `None` all'asciutto.
+fn water_depth(field: &crate::terrain::TerrainField, pos: Vec3) -> Option<(f32, f32)> {
+    let ground = field.height_at(pos.x, pos.z);
+    let level = if let Some((c, r, lake_level)) = field.lake()
+        && c.distance(pos.xz()) < r
+    {
+        lake_level
+    } else if field.in_fresh_water(pos.x, pos.z) {
+        ground + 0.35
+    } else if ground < crate::terrain::SEA_LEVEL {
+        crate::terrain::SEA_LEVEL
+    } else {
+        return None;
+    };
+    let depth = level - ground;
+    (depth > 0.05).then_some((depth, level))
+}
+
+/// Resistenza dell'acqua sulla velocità e, se profonda, quota del centro del corpo mentre si nuota.
+fn swim_factors(depth: f32, level: f32) -> (f32, Option<f32>) {
+    // Il centro della capsula sta 0,85 m sopra i piedi: nuotando l'acqua arriva al petto.
+    const CHEST: f32 = 1.1;
+    let drag = match depth {
+        d if d < 0.3 => 0.85,
+        d if d < 0.8 => 0.65,
+        _ => 0.5,
+    };
+    let swim = (depth > 1.25).then_some(level - CHEST + 0.85);
+    (drag, swim)
+}
+
+#[cfg(test)]
+mod water_tests {
+    use super::*;
+
+    #[test]
+    fn deeper_water_slows_and_eventually_floats() {
+        assert!(swim_factors(0.2, 0.0).0 > swim_factors(0.6, 0.0).0);
+        assert_eq!(swim_factors(0.6, 0.0).1, None);
+        let (_, target) = swim_factors(2.0, 0.0);
+        assert!((target.unwrap() - (-0.25)).abs() < 1e-5);
     }
 }

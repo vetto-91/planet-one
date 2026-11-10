@@ -380,8 +380,9 @@ fn main() {
                 log_input_events,
             ),
         )
-        .add_systems(OnEnter(AppState::Map), map::enter_map)
-        .add_systems(OnExit(AppState::Map), map::exit_map)
+        .init_resource::<map::SavedSea>()
+        .add_systems(OnEnter(AppState::Map), (map::enter_map, map::sea_on_map))
+        .add_systems(OnExit(AppState::Map), (map::exit_map, map::sea_off_map))
         .add_systems(
             Update,
             (map::map_zoom, map::map_lighting.after(daynight::update_sky))
