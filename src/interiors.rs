@@ -105,6 +105,31 @@ fn step(b: &mut B, int: &mut Interior, xa: f32, xb: f32, za: f32, zb: f32, lower
     int.ground.push((c, s));
 }
 
+/// Gradino solo da vedere: si cammina sulla rampa che lo accompagna (`ramp`), perché gli spigoli
+/// fra gradini di scatole fanno incastrare il giocatore.
+#[allow(clippy::too_many_arguments)]
+fn step_visual(b: &mut B, xa: f32, xb: f32, za: f32, zb: f32, lower: f32, top: f32) {
+    let c = Vec3::new((xa + xb) / 2.0, (lower + top) / 2.0, (za + zb) / 2.0);
+    let s = Vec3::new(xb - xa + 0.005, top - lower, zb - za + 0.005);
+    b.cuboid_c(c, s, WOOD_DARK);
+}
+
+/// Rampa liscia lungo la scala, da `a` a `b` (punti sulla mezzeria della rampa), larga `width`.
+/// È ciò su cui si cammina: passa a metà altezza dei gradini.
+pub(crate) fn ramp(int: &mut Interior, a: Vec3, b: Vec3, width: f32) {
+    const THICK: f32 = 0.5;
+    let line = b - a;
+    let x = line.normalize();
+    // Normale «verso l'alto» sul piano verticale della rampa.
+    let side = x.cross(Vec3::Y).normalize_or(Vec3::X);
+    let n = side.cross(x).normalize();
+    let z = x.cross(n);
+    let rot = Quat::from_mat3(&Mat3::from_cols(x, n, z));
+    let center = (a + b) / 2.0 - n * (THICK / 2.0);
+    int.ramps
+        .push((center, rot, Vec3::new(line.length(), THICK, width)));
+}
+
 /// Solai e scale: `ys` sono le quote dei pavimenti dal basso verso l'alto, l'ultima è il sottotetto.
 /// Le rampe tra i piani stanno lungo la parete di fondo, alternando il verso; l'ultima corre lungo la
 /// parete destra e arriva nella zona alta del sottotetto (`knee` = semi-larghezza dove ci si sta in piedi).
@@ -141,8 +166,20 @@ pub(crate) fn floors_and_stairs(
                 }
                 let zb = start + (k + 1) as f32 * RUN;
                 let t = lower + (k + 1) as f32 * rise;
-                step(b, int, tx0, tx1, za, zb, lower, t);
+                if k == 0 && za == z0 {
+                    // Pianerottolo pieno fino al muro: serve davvero da pavimento.
+                    step(b, int, tx0, tx1, za, zb, lower, t);
+                } else {
+                    step_visual(b, tx0, tx1, za, zb, lower, t);
+                }
             }
+            let cx = (tx0 + tx1) / 2.0;
+            ramp(
+                int,
+                Vec3::new(cx, lower + rise / 2.0, start),
+                Vec3::new(cx, upper, start + len),
+                STAIR_WIDTH,
+            );
             layout.top_x0 = tx0;
             (tx0, tx1, start, top)
         } else {
@@ -155,9 +192,16 @@ pub(crate) fn floors_and_stairs(
                     origin + dir * (k + 1) as f32 * RUN,
                 );
                 let t = lower + (k + 1) as f32 * rise;
-                step(b, int, p.min(q), p.max(q), z0, z0 + STAIR_WIDTH, lower, t);
+                step_visual(b, p.min(q), p.max(q), z0, z0 + STAIR_WIDTH, lower, t);
             }
             let end = origin + dir * len;
+            let cz = z0 + STAIR_WIDTH / 2.0;
+            ramp(
+                int,
+                Vec3::new(origin, lower + rise / 2.0, cz),
+                Vec3::new(end, upper, cz),
+                STAIR_WIDTH,
+            );
             if i == 0 {
                 layout.back_x = end;
             }
@@ -180,8 +224,48 @@ pub(crate) fn floors_and_stairs(
     layout
 }
 
+/// Altezza libera (m) sopra i gradini: capsula del giocatore, solaio e un po' di margine.
+const HEADROOM: f32 = 2.8;
+
+/// Solaio con più fori rettangolari (vano della chiocciola).
+pub(crate) fn slab_with_holes(
+    b: &mut B,
+    int: &mut Interior,
+    (x0, x1, z0, z1): (f32, f32, f32, f32),
+    holes: &[(f32, f32, f32, f32)],
+    top: f32,
+) {
+    // Strisce sottili fra il foro e il muro non servono a nulla e fanno sbattere la testa.
+    let snap = |v: f32, edge: f32| if (v - edge).abs() < 0.06 { edge } else { v };
+    let holes: Vec<(f32, f32, f32, f32)> = holes
+        .iter()
+        .map(|h| (snap(h.0, x0), snap(h.1, x1), snap(h.2, z0), snap(h.3, z1)))
+        .collect();
+    let mut xs = vec![x0, x1];
+    let mut zs = vec![z0, z1];
+    for h in &holes {
+        xs.extend([h.0.clamp(x0, x1), h.1.clamp(x0, x1)]);
+        zs.extend([h.2.clamp(z0, z1), h.3.clamp(z0, z1)]);
+    }
+    xs.sort_by(f32::total_cmp);
+    xs.dedup_by(|a, b| (*a - *b).abs() < 1e-3);
+    zs.sort_by(f32::total_cmp);
+    zs.dedup_by(|a, b| (*a - *b).abs() < 1e-3);
+    for wx in xs.windows(2) {
+        for wz in zs.windows(2) {
+            let (cx, cz) = ((wx[0] + wx[1]) / 2.0, (wz[0] + wz[1]) / 2.0);
+            let inside = holes
+                .iter()
+                .any(|h| cx > h.0 && cx < h.1 && cz > h.2 && cz < h.3);
+            if !inside {
+                slab(b, int, wx[0], wx[1], wz[0], wz[1], top);
+            }
+        }
+    }
+}
+
 /// Scala a chiocciola quadrata lungo le pareti del rettangolo (campanile), da `y0` a `y1`.
-/// Parte dall'angolo fronte-destra, verso il fondo; restituisce il foro da lasciare nel solaio d'arrivo.
+/// Parte dall'angolo fronte-destra, verso il fondo; restituisce i fori da lasciare nel solaio d'arrivo.
 pub(crate) fn square_helix(
     b: &mut B,
     int: &mut Interior,
@@ -189,7 +273,7 @@ pub(crate) fn square_helix(
     y0: f32,
     y1: f32,
     lane: f32,
-) -> (f32, f32, f32, f32) {
+) -> Vec<(f32, f32, f32, f32)> {
     const THICK: f32 = 0.34;
     let n = ((y1 - y0) / MAX_RISE).ceil() as usize;
     let rise = (y1 - y0) / n as f32;
@@ -224,30 +308,32 @@ pub(crate) fn square_helix(
     straight(&mut lap, back.1, front.0, left, true);
     lap.push((left.0, left.1, front.0, front.1));
     straight(&mut lap, left.1, right.0, front, false);
-    let mut last = lap[0];
-    let mut hole = last;
+    let mut holes: Vec<(f32, f32, f32, f32)> = Vec::new();
+    let mut path_end = Vec3::ZERO;
     for k in 0..n {
         let cell = lap[k % lap.len()];
         let top = y0 + (k + 1) as f32 * rise;
         let lower = (top - THICK).max(y0);
-        step(b, int, cell.0, cell.1, cell.2, cell.3, lower, top);
-        last = cell;
-        if k + 2 >= n {
-            // Le ultime due celle restano scoperte nel solaio.
-            hole = if k + 2 == n {
-                cell
-            } else {
-                (
-                    hole.0.min(cell.0),
-                    hole.1.max(cell.1),
-                    hole.2.min(cell.2),
-                    hole.3.max(cell.3),
-                )
-            };
+        step_visual(b, cell.0, cell.1, cell.2, cell.3, lower, top);
+        let width = 0.5_f32.min((cell.1 - cell.0).max(cell.3 - cell.2));
+        let at = Vec3::new((cell.0 + cell.1) / 2.0, top, (cell.2 + cell.3) / 2.0);
+        if k == 0 {
+            // Entrata: dalla cella precedente del giro, a quota del pavimento, alla prima.
+            let before = lap[lap.len() - 1];
+            let from = Vec3::new((before.0 + before.1) / 2.0, y0, (before.2 + before.3) / 2.0);
+            ramp(int, from, at, width);
+        } else {
+            ramp(int, path_end, at, width);
+        }
+        path_end = at;
+        // Dove la testa arriverebbe nel solaio d'arrivo, il solaio ha il foro.
+        if top > y1 - HEADROOM {
+            // Un po' più largo del gradino, tranne gli ultimi: lì serve il pavimento accanto.
+            let m = if top < y1 - 0.6 { 0.25 } else { 0.0 };
+            holes.push((cell.0 - m, cell.1 + m, cell.2 - m, cell.3 + m));
         }
     }
-    let _ = last;
-    hole
+    holes
 }
 
 fn table(b: &mut B, int: &mut Interior, x: f32, z: f32, y: f32, lx: f32, lz: f32) {
@@ -524,7 +610,9 @@ pub(crate) fn furnish(
             for k in 0..3 {
                 stool(b, r.x(0.58) + k as f32 * 0.7, r.z(0.22) + 0.6, y);
             }
-            shelf(b, int, r.x(0.75), r.z0 + 0.2, y, 2.4, 1.0);
+            // Dietro il bancone solo botti: lo scaffale non è roba da locanda.
+            barrel(b, int, r.x(0.66), r.z0 + 0.45, y);
+            barrel(b, int, r.x(0.8), r.z0 + 0.45, y);
             barrel(b, int, r.x(0.95), r.z(0.5), y);
             for (a, c) in [(0.16, 0.4), (0.16, 0.82), (0.82, 0.78)] {
                 table(b, int, r.x(a), r.z(c), y, 1.1, 0.85);
@@ -667,8 +755,18 @@ pub(crate) fn lighthouse_interior(b: &mut B, int: &mut Interior, y0: f32, y1: f3
             start + k as f32 * RUN
         };
         let zb = start + (k + 1) as f32 * RUN;
-        step(b, int, tx0, tx1, za, zb, y0, y0 + (k + 1) as f32 * rise);
+        if k == 0 {
+            step(b, int, tx0, tx1, za, zb, y0, y0 + rise);
+        } else {
+            step_visual(b, tx0, tx1, za, zb, y0, y0 + (k + 1) as f32 * rise);
+        }
     }
+    ramp(
+        int,
+        Vec3::new((tx0 + tx1) / 2.0, y0 + rise / 2.0, start),
+        Vec3::new((tx0 + tx1) / 2.0, y1, start + n as f32 * RUN),
+        tx1 - tx0,
+    );
     slab_with_hole(b, int, rect, (tx0, tx1, start, start + n as f32 * RUN), y1);
 
     // Alloggio: i mobili lasciano libero il passaggio dalla porta alla rampa.
@@ -693,9 +791,9 @@ pub(crate) fn lighthouse_interior(b: &mut B, int: &mut Interior, y0: f32, y1: f3
     barrel(b, int, -1.2, -1.2, y1);
 
     // Chiocciola nel pozzo centrale, fino alla stanza della lanterna.
-    let shaft = (-0.95, 0.95, -0.95, 0.95);
-    let hole = square_helix(b, int, shaft, y1, top, 0.7);
-    slab_with_hole(b, int, (-0.97, 0.97, -0.97, 0.97), hole, top);
+    let shaft = (-1.13, 1.13, -1.13, 1.13);
+    let holes = square_helix(b, int, shaft, y1, top, 0.8);
+    slab_with_holes(b, int, (-1.15, 1.15, -1.15, 1.15), &holes, top);
 }
 
 /// Navata della chiesa: panche e altare.
@@ -755,13 +853,13 @@ mod tests {
         let ys = [0.42, 2.92, 5.42, 7.94];
         floors_and_stairs(&mut b, &mut int, (-3.28, 3.28, -2.78, 2.78), &ys, 1.84);
         assert!((top_of(&int) - 7.94).abs() < 1e-3);
-        let steps: Vec<f32> = int
-            .ground
-            .iter()
-            .filter(|(_, s)| s.y > SLAB + 0.01 || s.y < SLAB - 0.01)
-            .map(|(_, s)| s.y)
-            .collect();
-        assert!(!steps.is_empty());
+        // Ogni rampa sale di poco più dell'alzata di un gradino ogni pedata.
+        assert_eq!(int.ramps.len(), 3);
+        for (_, rot, size) in &int.ramps {
+            let slope = (*rot * Vec3::X).y.abs();
+            assert!(slope < 0.8, "pendenza {slope}");
+            assert!(size.z >= STAIR_WIDTH - 0.01);
+        }
     }
 
     #[test]
@@ -804,6 +902,20 @@ mod tests {
         let mut b = B::default();
         let mut int = Interior::default();
         let _ = square_helix(&mut b, &mut int, (-1.45, 1.45, 3.65, 6.75), 0.42, 8.0, 0.8);
-        assert!((top_of(&int) - 8.0).abs() < 1e-3);
+        assert!((top_of(&int).max(ramp_top(&int)) - 8.0).abs() < 1e-3);
+    }
+
+    /// Quota più alta raggiunta dalle rampe.
+    fn ramp_top(int: &Interior) -> f32 {
+        int.ramps
+            .iter()
+            .map(|(c, rot, s)| {
+                let x = *rot * Vec3::X;
+                let n = *rot * Vec3::Y;
+                (*c + n * (s.y / 2.0) + x * (s.x / 2.0))
+                    .y
+                    .max((*c + n * (s.y / 2.0) - x * (s.x / 2.0)).y)
+            })
+            .fold(f32::MIN, f32::max)
     }
 }

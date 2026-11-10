@@ -54,6 +54,8 @@ mod village;
 mod village_life;
 mod villagers;
 mod voice;
+#[cfg(test)]
+mod walk_test;
 mod water;
 mod weather;
 mod world_props;

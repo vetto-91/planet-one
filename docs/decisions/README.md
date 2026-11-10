@@ -55,3 +55,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0027 | Vegetazione dell'isola | accettato |
 | 0028 | Suoni d'ambiente e animali | accettato |
 | 0029 | Luoghi da scoprire | accettato |
+| 0030 | Rampe sotto le scale | accettato |

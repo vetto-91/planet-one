@@ -368,7 +368,7 @@ pub(crate) fn blocked_map(dbg: &DebugPlace, village: &VillageInfo, island: &Isla
             "campo" | "orto" => 1.6,
             "albero" => 2.2,
             "fiori" | "panchina" | "lampione" | "cartello" => 1.5,
-            kind => crate::buildings::interior_half(kind).map_or(4.5, |h| h.length() + 2.5),
+            kind => crate::buildings::interior_half(kind).map_or(4.5, |h| h.length() + 4.5),
         };
         for p in &pl.points {
             b.stamp(*p, radius);

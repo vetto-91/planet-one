@@ -112,6 +112,8 @@ pub struct Interior {
     pub furniture: Vec<(Vec3, Vec3)>,
     /// Pavimenti e gradini: `Ground` per il controllo di appoggio.
     pub ground: Vec<(Vec3, Vec3)>,
+    /// Rampe delle scale: (centro, rotazione, dimensioni lunghezza/spessore/larghezza), `Ground`.
+    pub ramps: Vec<(Vec3, Quat, Vec3)>,
     pub beds: Vec<Bed>,
     /// Luci interne, una per piano.
     pub lights: Vec<Vec3>,
@@ -1112,15 +1114,34 @@ fn church(b: &mut B, r: &mut Rng, int: &mut Interior) {
     // Scala a chiocciola e cella campanaria.
     let inner = (-thw + tt, thw - tt, t_back + tt, t_front - tt);
     let belfry = 8.0;
-    let hole = rooms::square_helix(b, int, inner, y0, belfry, 0.8);
-    rooms::slab_with_hole(b, int, inner, hole, belfry);
+    let holes = rooms::square_helix(b, int, inner, y0, belfry, 0.8);
+    rooms::slab_with_holes(b, int, inner, &holes, belfry);
     // Campana appesa al soffitto della cella.
     let bronze = [0.55, 0.42, 0.2, 1.0];
-    for (y, half) in [(9.05f32, 0.42f32), (9.35, 0.34), (9.65, 0.26), (9.9, 0.16)] {
+    // Una vera campana: tronco di cono a coste, con il bordo allargato, appesa alla trave.
+    {
+        use std::f32::consts::TAU;
+        const SIDES: usize = 14;
+        let ring = |y: f32, r: f32, k: usize| {
+            let a = k as f32 / SIDES as f32 * TAU;
+            Vec3::new(a.cos() * r, y, tz + a.sin() * r)
+        };
+        for k in 0..SIDES {
+            b.beam(ring(8.9, 0.46, k), ring(9.45, 0.3, k), 0.05, bronze);
+            b.beam(ring(9.45, 0.3, k), ring(9.95, 0.12, k), 0.05, bronze);
+            b.beam(ring(8.9, 0.46, k), ring(8.9, 0.46, k + 1), 0.06, bronze);
+        }
+        b.cuboid_c(Vec3::new(0.0, 9.0, tz), Vec3::new(0.14, 0.3, 0.14), TIMBER);
+        // Lanterna appesa: da qui viene la luce della cella.
         b.cuboid_c(
-            Vec3::new(0.0, y, tz),
-            Vec3::new(half * 2.0, 0.3, half * 2.0),
-            bronze,
+            Vec3::new(1.0, 9.4, tz - 1.0),
+            Vec3::new(0.22, 0.3, 0.22),
+            [1.0, 0.85, 0.5, 1.0],
+        );
+        b.cuboid_c(
+            Vec3::new(1.0, 9.78, tz - 1.0),
+            Vec3::new(0.04, 0.5, 0.04),
+            TIMBER,
         );
     }
     b.cuboid_c(
@@ -1186,7 +1207,7 @@ fn church(b: &mut B, r: &mut Rng, int: &mut Interior) {
     int.lights.push(Vec3::new(0.0, 4.6, -4.0));
     int.lights.push(Vec3::new(0.0, 4.6, 0.8));
     int.lights.push(Vec3::new(0.0, 2.6, tz));
-    int.lights.push(Vec3::new(0.0, belfry + 2.0, tz));
+    int.lights.push(Vec3::new(1.0, belfry + 1.4, tz - 1.0));
 }
 
 fn sign_arm(b: &mut B, col: Col, front: f32) {
@@ -1490,7 +1511,7 @@ fn lighthouse(b: &mut B, int: &mut Interior) {
         let inner = match i {
             // La seconda ha pareti sottili: la testa di chi sale la rampa passa sotto il suo bordo.
             0 | 1 => 1.7,
-            _ => 0.97,
+            _ => 1.15,
         };
         let col = if i % 2 == 0 { white } else { red };
         let gap = if i == 0 { door } else { None };
@@ -1508,7 +1529,7 @@ fn lighthouse(b: &mut B, int: &mut Interior) {
             Vec3::new(0.08, 0.6, 0.4),
             GLASS,
         );
-        let inner = [1.7, 1.7, 0.97, 0.97][i];
+        let inner = [1.7, 1.7, 1.15, 1.15][i];
         inner_window(b, Vec3::new(n.x * (inner - 0.01), *h, 0.0), -n, (0.4, 0.6));
     }
     // Interni, fino al pavimento della lanterna.
@@ -1517,10 +1538,10 @@ fn lighthouse(b: &mut B, int: &mut Interior) {
     rooms::lighthouse_interior(b, int, y0, floor1, top);
     // Balconata percorribile attorno alla lanterna, con ringhiera solida.
     for (min, max) in [
-        (Vec3::new(-2.3, y, -2.3), Vec3::new(2.3, top, -0.97)),
-        (Vec3::new(-2.3, y, 0.97), Vec3::new(2.3, top, 2.3)),
-        (Vec3::new(-2.3, y, -0.97), Vec3::new(-0.97, top, 0.97)),
-        (Vec3::new(0.97, y, -0.97), Vec3::new(2.3, top, 0.97)),
+        (Vec3::new(-2.3, y, -2.3), Vec3::new(2.3, top, -1.15)),
+        (Vec3::new(-2.3, y, 1.15), Vec3::new(2.3, top, 2.3)),
+        (Vec3::new(-2.3, y, -1.15), Vec3::new(-1.15, top, 1.15)),
+        (Vec3::new(1.15, y, -1.15), Vec3::new(2.3, top, 1.15)),
     ] {
         b.cuboid(min, max, STONE_DARK);
         int.ground.push(((min + max) / 2.0, max - min));
@@ -1558,21 +1579,21 @@ fn lighthouse(b: &mut B, int: &mut Interior) {
     };
     pane(
         b,
-        Vec3::new(-0.95, top, -0.95),
-        Vec3::new(0.95, head, -0.89),
+        Vec3::new(-1.12, top, -1.12),
+        Vec3::new(1.12, head, -1.06),
     );
     pane(
         b,
-        Vec3::new(-0.95, top, -0.89),
-        Vec3::new(-0.89, head, 0.95),
+        Vec3::new(-1.12, top, -1.06),
+        Vec3::new(-1.06, head, 1.12),
     );
-    pane(b, Vec3::new(0.89, top, -0.89), Vec3::new(0.95, head, 0.95));
-    pane(b, Vec3::new(-0.89, top, 0.89), Vec3::new(-0.6, head, 0.95));
-    pane(b, Vec3::new(0.6, top, 0.89), Vec3::new(0.89, head, 0.95));
+    pane(b, Vec3::new(1.06, top, -1.06), Vec3::new(1.12, head, 1.12));
+    pane(b, Vec3::new(-1.06, top, 1.06), Vec3::new(-0.75, head, 1.12));
+    pane(b, Vec3::new(0.75, top, 1.06), Vec3::new(1.06, head, 1.12));
     // La lampada al centro.
     let lamp = (Vec3::new(-0.2, top, -0.2), Vec3::new(0.2, top + 1.1, 0.2));
     pane(b, lamp.0, lamp.1);
-    for (x, z) in [(-0.95, -0.95), (0.95, -0.95), (-0.95, 0.95), (0.95, 0.95)] {
+    for (x, z) in [(-1.12, -1.12), (1.12, -1.12), (-1.12, 1.12), (1.12, 1.12)] {
         b.cuboid_c(
             Vec3::new(x, y + 1.15, z),
             Vec3::new(0.12, 1.8, 0.12),

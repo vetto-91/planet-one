@@ -191,8 +191,8 @@ fn ruined_tower(b: &mut B, int: &mut Interior) -> f32 {
     crate::buildings::tower_shell(b, int, HW, INNER, 0.0, TOP, STONE_DARK, door);
     let rect = (-INNER, INNER, -INNER, INNER);
     rooms::slab(b, int, rect.0, rect.1, rect.2, rect.3, FLOOR);
-    let hole = rooms::square_helix(b, int, rect, FLOOR, TOP, 0.85);
-    rooms::slab_with_hole(b, int, (-HW, HW, -HW, HW), hole, TOP);
+    let holes = rooms::square_helix(b, int, rect, FLOOR, TOP, 0.85);
+    rooms::slab_with_holes(b, int, (-HW, HW, -HW, HW), &holes, TOP);
     // Merli a tratti: il crollo ha portato via un lato.
     for (x0, z0, x1, z1, h) in [
         (-HW, -HW, HW, -HW + 0.4, 1.1),

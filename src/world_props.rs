@@ -373,6 +373,13 @@ pub fn sync_world_props(
                             crate::camera::BlocksCamera,
                         ));
                     }
+                    for (center, rot, size) in interior.ramps {
+                        c.spawn((
+                            Collider::cuboid(size.x, size.y, size.z),
+                            Transform::from_translation(center).with_rotation(rot),
+                            crate::scene::Ground,
+                        ));
+                    }
                     for (center, size) in interior.furniture {
                         c.spawn((
                             Collider::cuboid(size.x, size.y, size.z),
@@ -773,8 +780,8 @@ pub fn update_interior_lights(
     for (tf, footprint, children) in &buildings {
         let local = tf.affine().inverse().transform_point3(p);
         let inside = settings.gfx.interior_lights
-            && local.x.abs() <= footprint.half.x + 0.5
-            && local.z.abs() <= footprint.half.y + 0.5
+            && local.x.abs() <= footprint.half.x + 2.5
+            && local.z.abs() <= footprint.half.y + 2.5
             && local.y > -2.0;
         let wanted = if inside {
             Visibility::Inherited

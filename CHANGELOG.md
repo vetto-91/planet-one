@@ -2,6 +2,20 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+### Scale e torri (ADR 0030)
+- **Le scale si salgono davvero**: sotto i gradini visibili c'è ora una rampa liscia su cui si cammina (prima gli spigoli fra gradini di scatole facevano incastrare il giocatore). Vale per case, soffitte, faro, campanile e torre in rovina.
+- **Fori nei solai** dove la testa arriverebbe nel solaio sopra le chiocciole (campanile, faro, torre in rovina), senza strisce sottili che fanno sbattere la testa.
+- **Faro più largo** (pozzo da 2,3 m, corsia da 0,8 m) e lanterna in cima ingrandita per non occupare la scala.
+- Nuova prova automatica (`walk_test.rs`): un giocatore vero, con la stessa fisica del gioco, sale i percorsi di tutte le case e le tre chiocciole; se resta incastrato il test lo dice e indica dove.
+
+### Altre correzioni
+- La campana del campanile è una vera campana a coste, appesa alla trave, e la luce della cella viene da una lanterna appesa.
+- Nella locanda dietro il bancone ci sono botti al posto dello scaffale.
+- Le luci interne si accendono già avvicinandosi alla porta (fino a 2,5 m) e non solo oltre la soglia.
+- Gli alberi stanno più lontani dagli edifici (rami dentro la caserma).
+
 ## v0.0.42.0 — Correzioni dopo la prova (2026-11-10)
 
 ### Correzioni
