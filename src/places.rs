@@ -208,42 +208,121 @@ fn ruined_tower(b: &mut B, int: &mut Interior) -> f32 {
     TOP
 }
 
-/// Grotta: un cumulo di roccia con corridoio e camera; dentro è buio, rischiarato solo da un falò.
+/// Semicampo locale della grotta (larghezza, profondità): ingresso a +Z, fondo a -Z.
+pub const CAVE_HALF: Vec2 = Vec2::new(5.0, 8.8);
+
+/// Numero pseudocasuale stabile in 0..1.
+fn cave_rnd(i: u32) -> f32 {
+    ((i.wrapping_mul(2_654_435_761) >> 8) & 0xffff) as f32 / 65535.0
+}
+
+/// Grotta: ingresso ad arco, corridoio di 6 m e una camera ampia, tutto in un cumulo di massi
+/// irregolari; dentro è buio, rischiarato solo da un falò.
 fn cave(b: &mut B, int: &mut Interior) {
-    const H: f32 = 3.0;
+    const H: f32 = 3.0; // soffitto della camera
+    const CH: f32 = 2.5; // soffitto del corridoio
+    const Z_IN: f32 = 8.8; // facciata d'ingresso
+    const Z_BACK: f32 = -8.8; // fondo
+    const Z_MID: f32 = 2.0; // dove il corridoio entra nella camera
     let mut wall = |b: &mut B, min: Vec3, max: Vec3| {
         b.cuboid(min, max, STONE_DARK);
         int.walls.push(((min + max) / 2.0, max - min));
     };
     for (min, max) in [
-        (Vec3::new(-4.8, 0.0, -5.8), Vec3::new(4.8, H, -5.0)),
-        (Vec3::new(-4.8, 0.0, -5.0), Vec3::new(-4.0, H, 1.0)),
-        (Vec3::new(4.0, 0.0, -5.0), Vec3::new(4.8, H, 1.0)),
-        (Vec3::new(-4.8, 0.0, 1.0), Vec3::new(-1.2, H, 1.8)),
-        (Vec3::new(1.2, 0.0, 1.0), Vec3::new(4.8, H, 1.8)),
-        (Vec3::new(-2.0, 0.0, 1.8), Vec3::new(-1.2, 2.5, 5.2)),
-        (Vec3::new(1.2, 0.0, 1.8), Vec3::new(2.0, 2.5, 5.2)),
-        (Vec3::new(-4.8, H, -5.8), Vec3::new(4.8, H + 0.8, 1.8)),
-        (Vec3::new(-2.0, 2.5, 1.8), Vec3::new(2.0, 3.2, 5.2)),
+        // Fondo e fianchi della camera.
+        (
+            Vec3::new(-4.8, 0.0, Z_BACK),
+            Vec3::new(4.8, H, Z_BACK + 0.8),
+        ),
+        (
+            Vec3::new(-4.8, 0.0, Z_BACK + 0.8),
+            Vec3::new(-4.0, H, Z_MID),
+        ),
+        (Vec3::new(4.0, 0.0, Z_BACK + 0.8), Vec3::new(4.8, H, Z_MID)),
+        // Parete fra camera e corridoio, con il varco.
+        (Vec3::new(-4.8, 0.0, Z_MID), Vec3::new(-1.2, H, Z_MID + 0.8)),
+        (Vec3::new(1.2, 0.0, Z_MID), Vec3::new(4.8, H, Z_MID + 0.8)),
+        // Fianchi del corridoio.
+        (Vec3::new(-2.0, 0.0, Z_MID + 0.8), Vec3::new(-1.2, CH, Z_IN)),
+        (Vec3::new(1.2, 0.0, Z_MID + 0.8), Vec3::new(2.0, CH, Z_IN)),
+        // Soffitti.
+        (
+            Vec3::new(-4.8, H, Z_BACK),
+            Vec3::new(4.8, H + 0.8, Z_MID + 0.8),
+        ),
+        (
+            Vec3::new(-2.0, CH, Z_MID + 0.8),
+            Vec3::new(2.0, CH + 0.7, Z_IN),
+        ),
+        (Vec3::new(-1.2, CH, Z_MID), Vec3::new(1.2, H, Z_MID + 0.8)),
     ] {
         wall(b, min, max);
     }
     for (min, max) in [
-        (Vec3::new(-4.0, -0.2, -5.0), Vec3::new(4.0, 0.06, 1.0)),
-        (Vec3::new(-1.2, -0.2, 1.0), Vec3::new(1.2, 0.06, 5.2)),
+        (
+            Vec3::new(-4.0, -0.2, Z_BACK + 0.8),
+            Vec3::new(4.0, 0.06, Z_MID),
+        ),
+        (
+            Vec3::new(-1.2, -0.2, Z_MID),
+            Vec3::new(1.2, 0.06, Z_IN + 0.4),
+        ),
     ] {
         b.cuboid(min, max, STONE);
         int.ground.push(((min + max) / 2.0, max - min));
     }
-    // Il cumulo visto da fuori.
-    b.pyramid(Vec3::new(0.0, H + 0.8, -2.0), 6.6, 3.4, STONE_DARK);
-    b.pyramid(Vec3::new(3.0, H + 0.2, 2.0), 3.4, 1.9, STONE_DARK);
-    b.pyramid(Vec3::new(-3.2, H + 0.1, 2.0), 3.1, 1.7, STONE_DARK);
-    campfire(b, int, Vec3::new(-1.6, 0.06, -2.6));
-    bedroll(b, Vec3::new(-3.0, 0.06, -3.6));
-    rooms::chest(b, int, 2.6, -4.2, 0.06);
-    rooms::barrel(b, int, 3.4, -2.6, 0.06);
-    rooms::crate_box(b, int, 1.4, -4.3, 0.06, 0.7);
+    // Ingresso ad arco a gradoni: stipiti e due ordini di conci sopra il vano.
+    for s in [-1.0f32, 1.0] {
+        let (a, c) = (1.2 * s, 2.35 * s);
+        b.cuboid(
+            Vec3::new(a.min(c), 0.0, Z_IN - 0.2),
+            Vec3::new(a.max(c), CH + 0.2, Z_IN + 0.5),
+            STONE_DARK,
+        );
+        b.cuboid(
+            Vec3::new(s * 1.0 - 0.45, CH, Z_IN - 0.2),
+            Vec3::new(s * 1.0 + 0.45, CH + 0.5, Z_IN + 0.6),
+            STONE,
+        );
+    }
+    b.cuboid(
+        Vec3::new(-0.8, CH + 0.4, Z_IN - 0.2),
+        Vec3::new(0.8, CH + 0.95, Z_IN + 0.7),
+        STONE,
+    );
+    // Il cumulo di massi sopra e attorno: blocchi di misura e quota variabili.
+    let mut k = 0u32;
+    for ix in -2..=2i32 {
+        for iz in -4..=4i32 {
+            k += 1;
+            let (fx, fz) = (ix as f32, iz as f32);
+            let x = fx * 2.1 + (cave_rnd(k) - 0.5) * 0.9;
+            let z = fz * 2.0 + (cave_rnd(k + 91) - 0.5) * 0.9;
+            // Più alto al centro, più basso ai bordi e verso l'ingresso.
+            let dome = 1.0 - (x.abs() / 6.2).powi(2) - ((z + 1.0).abs() / 11.0).powi(2);
+            if dome <= 0.05 {
+                continue;
+            }
+            let base = if z > Z_MID + 0.8 { CH + 0.7 } else { H + 0.8 };
+            let hgt = 0.5 + dome * 2.4 * (0.6 + 0.8 * cave_rnd(k + 17));
+            let half = Vec3::new(
+                1.0 + cave_rnd(k + 3) * 0.7,
+                hgt / 2.0,
+                1.0 + cave_rnd(k + 5) * 0.7,
+            );
+            b.cuboid_c(
+                Vec3::new(x, base - 0.1 + half.y, z),
+                half * 2.0,
+                if k % 3 == 0 { STONE } else { STONE_DARK },
+            );
+        }
+    }
+    b.pyramid(Vec3::new(0.0, H + 2.2, -3.0), 5.4, 2.6, STONE_DARK);
+    campfire(b, int, Vec3::new(-1.6, 0.06, -3.0));
+    bedroll(b, Vec3::new(-3.0, 0.06, -4.4));
+    rooms::chest(b, int, 2.6, -5.0, 0.06);
+    rooms::barrel(b, int, 3.4, -3.0, 0.06);
+    rooms::crate_box(b, int, 1.4, -6.0, 0.06, 0.7);
 }
 
 /// Santuario: basamento, altare, quattro colonne e un tetto a piramide.
@@ -340,7 +419,7 @@ pub fn build(kind: &str, b: &mut B, int: &mut Interior) -> (f32, f32, Vec<(Vec3,
         }
         "grotta" => {
             cave(b, int);
-            (9.6, 11.0, Vec::new())
+            (CAVE_HALF.x * 2.0, CAVE_HALF.y * 2.0, Vec::new())
         }
         _ => (4.8, 4.8, shrine(b, int)),
     }

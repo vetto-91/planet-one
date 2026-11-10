@@ -229,4 +229,23 @@ mod tests {
         }
         assert!(bad.is_empty(), "{}", bad.join("\n"));
     }
+
+    #[test]
+    fn the_cave_can_be_walked_from_the_entrance_to_the_back() {
+        let mut b = crate::buildings::B::default();
+        let mut int = Interior::default();
+        crate::places::build("grotta", &mut b, &mut int);
+        // Dall'ingresso lungo il corridoio, poi nella camera fino al fondo e al falò.
+        let path = [
+            Vec3::new(0.0, 0.5, 8.2),
+            Vec3::new(0.0, 0.5, 5.0),
+            Vec3::new(0.0, 0.5, 1.0),
+            Vec3::new(0.0, 0.5, -2.0),
+            Vec3::new(-2.5, 0.5, -6.5),
+            Vec3::new(2.0, 0.5, -7.0),
+        ];
+        if let Err(e) = can_walk(&int, &path) {
+            panic!("grotta: {e}");
+        }
+    }
 }

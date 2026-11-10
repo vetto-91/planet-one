@@ -130,6 +130,11 @@ pub struct Animator {
 }
 
 impl Animator {
+    /// Sta correndo (trotto o scatto): con le braccia così l'arma in mano finisce nella testa.
+    pub fn running(&self) -> bool {
+        matches!(self.current, Anim::Jog | Anim::Sprint)
+    }
+
     pub fn new(player: Entity, model: Entity) -> Self {
         Self {
             player,

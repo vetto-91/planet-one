@@ -24,7 +24,7 @@ pub fn interior_half(kind: &str) -> Option<Vec2> {
         "faro" => Vec2::new(2.6, 2.6),
         "mulino" => Vec2::new(2.7, 2.7),
         "torre-rovina" => Vec2::new(2.3, 2.3),
-        "grotta" => Vec2::new(4.8, 5.8),
+        "grotta" => crate::places::CAVE_HALF,
         "santuario" => Vec2::new(2.8, 2.8),
         "campo-ladro" => Vec2::new(3.2, 3.2),
         "banditi" => Vec2::new(6.5, 5.8),

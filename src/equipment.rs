@@ -17,6 +17,25 @@ const REST_TILT: f32 = std::f32::consts::FRAC_PI_2;
 /// Posizione dell'impugnatura nel palmo (riferimento dell'osso `hand_r`).
 const GRIP: Vec3 = Vec3::new(-0.02, 0.09, 0.0);
 
+/// Sistema: in corsa le braccia portano la mano vicino alla testa e l'arma ci finirebbe dentro,
+/// quindi viene riposta (invisibile) finché dura la corsa.
+pub fn stow_weapon_while_running(
+    animators: Query<&crate::animation::Animator, With<PlayerVisual>>,
+    mut weapons: Query<&mut Visibility, With<HeldWeapon>>,
+) {
+    let running = animators.iter().any(|a| a.running());
+    let wanted = if running {
+        Visibility::Hidden
+    } else {
+        Visibility::Inherited
+    };
+    for mut v in &mut weapons {
+        if *v != wanted {
+            *v = wanted;
+        }
+    }
+}
+
 /// Arma, scudo e zaino dell'ultimo aggiornamento.
 type WornItems = (Option<ItemKind>, bool, Option<ItemKind>);
 

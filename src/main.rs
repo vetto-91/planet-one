@@ -353,6 +353,7 @@ fn main() {
                 inventory::face_pickup_icons,
                 combat::update_enemy_arrows.run_if(in_state(AppState::Playing)),
                 equipment::update_held_items,
+                equipment::stow_weapon_while_running,
             ),
         )
         .add_systems(
