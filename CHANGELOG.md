@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.49.0 — Tetti (2026-11-10)
 
 - **Tetti delle case**: la falda parte oltre il muro e fra il bordo del muro e la falda restava una fessura (fino a mezzo metro) da cui si vedeva dentro; ora un listello di muro la chiude lungo i lati lunghi.
 - Nuova prova automatica: dall'interno di ogni casa, a due quote, raggi verso l'alto devono sempre colpire il tetto.
