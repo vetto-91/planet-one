@@ -76,13 +76,14 @@ const FIRST_PERSON_EYE: f32 = 0.72;
 /// Nasconde/mostra il mesh visivo del player: in prima persona non si deve vedere.
 #[allow(clippy::type_complexity)]
 pub fn player_visibility(
-    state: Res<OrbitCamera>,
+    _state: Res<OrbitCamera>,
     // Nascondi sia il corpo fisico (Player) sia il gruppo mesh (PlayerVisual):
     // il corpo ha Visibility perche' e' parent dei mesh figli.
     mut bodies: Query<&mut Visibility, Or<(With<Player>, With<crate::player::PlayerVisual>)>>,
     cheats: Res<crate::shell::Cheats>,
 ) {
-    let target = if state.mode == CameraMode::FirstPerson || cheats.invisible {
+    // In prima persona il corpo resta: guardando in basso ci si vede, con ciò che si impugna.
+    let target = if cheats.invisible {
         Visibility::Hidden
     } else {
         Visibility::Visible
@@ -239,7 +240,9 @@ pub fn follow(
             // La mira resta coerente con la crosshair della 3a persona.
             let rot = Quat::from_rotation_y(state.yaw) * Quat::from_rotation_x(-state.pitch);
             // Occhi a ~1,57 m da terra (il centro della capsula è a 0,85 m).
-            camera.translation = player.translation() + Vec3::Y * FIRST_PERSON_EYE;
+            // Un po' avanti agli occhi: la testa resta dietro la camera e non copre la vista.
+            camera.translation =
+                player.translation() + Vec3::Y * FIRST_PERSON_EYE + rot * Vec3::NEG_Z * 0.14;
             camera.rotation = rot;
         }
     }

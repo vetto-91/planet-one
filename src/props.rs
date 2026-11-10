@@ -15,10 +15,12 @@ pub struct SnapToGround {
 /// Quota più bassa del terreno tra centro e angoli dell'area: è la base degli edifici.
 pub fn ground_under(field: &TerrainField, p: Vec2, half: Vec2) -> f32 {
     let (hx, hz) = (half.x, half.y);
-    [(0.0, 0.0), (hx, hz), (-hx, hz), (hx, -hz), (-hx, -hz)]
-        .iter()
-        .map(|(dx, dz)| field.height_at(p.x + dx, p.y + dz))
-        .fold(f32::MAX, f32::min)
+    let heights = [(0.0, 0.0), (hx, hz), (-hx, hz), (hx, -hz), (-hx, -hz)]
+        .map(|(dx, dz)| field.height_at(p.x + dx, p.y + dz));
+    let low = heights.iter().copied().fold(f32::MAX, f32::min);
+    let high = heights.iter().copied().fold(f32::MIN, f32::max);
+    // Sul pendio la casa non resta mai sepolta di più di 35 cm dal lato alto.
+    low.max(high - 0.35)
 }
 
 /// Sistema: porta a terra le entità con [`SnapToGround`] usando il campo di altezze del

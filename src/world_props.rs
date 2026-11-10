@@ -426,7 +426,7 @@ pub fn sync_world_props(
                                 color: Color::srgb(1.0, 0.78, 0.5),
                                 intensity: INTERIOR_LUMENS,
                                 range: 12.0,
-                                shadow_maps_enabled: false,
+                                shadow_maps_enabled: true,
                                 ..default()
                             },
                             Transform::from_translation(at),

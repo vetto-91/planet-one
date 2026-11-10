@@ -2,6 +2,15 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Guardie in ronda** si fermano anche mentre si chiacchiera con la IA (prima proseguivano e ci si allontanava).
+- Le lance delle guardie sono impugnate più in basso e dritte, come un bastone d'arma.
+- **Luce che attraversava i muri**: le luci interne degli edifici e le lanterne delle guardie vicine (entro 22 m) ora fanno ombra.
+- **Case sepolte**: sul pendio un edificio non resta sepolto per più di 35 cm dal lato alto.
+- Il camino sul fianco del tetto è spostato un metro verso l'interno.
+- **Prima persona**: il corpo resta visibile (guardando in basso ci si vede) e la camera sta poco avanti agli occhi.
+
 ## v0.0.47.0 — Voci (2026-11-10)
 
 ### Voci

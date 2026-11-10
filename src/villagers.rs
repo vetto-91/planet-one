@@ -398,7 +398,8 @@ pub fn spawn_villagers(
                     c.spawn((
                         GuardGear,
                         crate::figure::AttachToHand { right: true },
-                        Transform::from_xyz(-0.02, -0.40, 0.0)
+                        // Impugnata a un terzo dell'asta, dritta e con la punta in alto: un bastone d'arma.
+                        Transform::from_xyz(-0.02, -0.15, 0.04)
                             .with_rotation(Quat::from_rotation_x(std::f32::consts::PI)),
                         Visibility::default(),
                     ))
@@ -567,6 +568,22 @@ fn lie_in_bed(tf: &mut Transform, pos: Vec3, head: Vec3) {
         * Quat::from_rotation_x(std::f32::consts::FRAC_PI_2);
 }
 
+/// Sistema: le lanterne delle guardie vicine al giocatore fanno ombra, così la luce non attraversa i muri.
+pub fn lantern_shadows(
+    players: Query<&GlobalTransform, With<crate::player::Player>>,
+    mut lanterns: Query<(&mut PointLight, &GlobalTransform), With<GuardLantern>>,
+) {
+    let Ok(me) = players.single() else {
+        return;
+    };
+    for (mut l, g) in &mut lanterns {
+        let near = me.translation().distance(g.translation()) < 22.0;
+        if l.shadow_maps_enabled != near {
+            l.shadow_maps_enabled = near;
+        }
+    }
+}
+
 /// Sistema: routine degli abitanti (posto di giorno, piazza la sera, a letto di notte) e lanterne delle guardie.
 #[allow(clippy::too_many_arguments)]
 pub fn villager_routine(
@@ -578,6 +595,8 @@ pub fn villager_routine(
     dbg: Res<crate::debug_place::DebugPlace>,
     info: Res<VillageInfo>,
     dialog: Res<DialogState>,
+    chat: Res<crate::ai::AiChat>,
+    app_state: Res<State<crate::AppState>>,
     homes: Res<crate::world_props::Homes>,
     parents: Query<&ChildOf>,
     mut graph: Local<Option<RoadGraph>>,
@@ -639,7 +658,9 @@ pub fn villager_routine(
                 v.patrol = patrol_start(&wall) * length;
                 *vis = Visibility::Inherited;
             }
-            let talking = dialog.open && dialog.speaker_entity == Some(entity);
+            // Si ferma anche mentre si chiacchiera con la IA (stato Chat), non solo nel dialogo scritto.
+            let chatting = *app_state.get() == crate::AppState::Chat && chat.npc_name == v.def.name;
+            let talking = (dialog.open && dialog.speaker_entity == Some(entity)) || chatting;
             if !talking {
                 v.patrol = (v.patrol + PATROL_SPEED * dt).rem_euclid(length);
             }
@@ -906,7 +927,10 @@ pub fn warn_blocked_doors(homes: Res<crate::world_props::Homes>, mut done: Local
 pub fn plugin(app: &mut App) {
     app.add_systems(
         Update,
-        (villager_routine, villager_doors, warn_blocked_doors).chain(),
+        (
+            (villager_routine, villager_doors, warn_blocked_doors).chain(),
+            lantern_shadows,
+        ),
     );
 }
 

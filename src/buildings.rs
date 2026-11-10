@@ -895,7 +895,7 @@ fn house(
     int.lights.push(Vec3::new(0.0, attic_y + 1.6, 0.0));
     // Camini: uno addossato alla testata sinistra, l'altro passante nel sottotetto.
     for i in 0..chimneys {
-        let x = if i == 0 { -hw + 0.35 } else { hw * 0.1 };
+        let x = if i == 0 { -hw + 1.0 } else { hw * 0.1 };
         chimney(b, x, 0.0, wh, wh + rh + 0.9);
         int.chimneys.push(Vec3::new(x, wh + rh + 1.0, 0.0));
         int.walls
