@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.46.0 — Interfaccia (2026-11-10)
 
 ### Interfaccia
 - **Oggetti a terra**: quelli gettati dal giocatore mostrano la loro icona sopra, come nella barra rapida, sempre rivolta verso la camera.
