@@ -105,6 +105,13 @@ pub struct Bed {
     pub stand: Vec3,
 }
 
+/// Finestra sul muro: centro, normale verso fuori e colore degli scuri.
+pub struct WindowSpot {
+    pub center: Vec3,
+    pub normal: Vec3,
+    pub shutter: Col,
+}
+
 /// Parti interne di un edificio visitabile.
 #[derive(Default)]
 pub struct Interior {
@@ -122,6 +129,10 @@ pub struct Interior {
     pub lights: Vec<Vec3>,
     /// Mobili che contengono oggetti.
     pub containers: Vec<crate::containers::ContainerSpot>,
+    /// Finestre con scuri apribili.
+    pub windows: Vec<WindowSpot>,
+    /// Focolari: (x, quota della cappa, z); il camino sale da qui.
+    pub hearths: Vec<Vec3>,
     /// Bocche dei camini, da dove esce il fumo.
     pub chimneys: Vec<Vec3>,
     /// Falò sempre accesi.
@@ -621,8 +632,8 @@ fn classify(col: Col) -> (Mat, Col) {
     )
 }
 
-/// Finestra sul fronte (`z_face`, normale `n` = ±Z o ±X) con imposte.
-fn window(b: &mut B, c: Vec3, n: Vec3, shutter: Col) {
+/// Finestra sul fronte (normale `n` = ±Z o ±X); le imposte sono entità apribili (`Interior.windows`).
+fn window(b: &mut B, int: &mut Interior, c: Vec3, n: Vec3, shutter: Col) {
     let t = Vec3::Y.cross(n).normalize(); // verso destra guardando la finestra
     let (w, h) = (0.62, 0.86);
     let o = n * 0.03;
@@ -641,15 +652,11 @@ fn window(b: &mut B, c: Vec3, n: Vec3, shutter: Col) {
         t.abs() * (w + 0.3) + n.abs() * 0.16 + Vec3::Y * 0.08,
         STONE,
     );
-    // Imposte ai lati.
-    for s in [-1.0, 1.0] {
-        let sc = c + t * (s * (w / 2.0 + 0.18)) + n * 0.05;
-        b.cuboid_c(
-            sc,
-            t.abs() * 0.3 + n.abs() * 0.05 + Vec3::Y * (h + 0.04),
-            shutter,
-        );
-    }
+    int.windows.push(WindowSpot {
+        center: c,
+        normal: n,
+        shutter,
+    });
 }
 
 /// Quota del pavimento del piano terra, sopra lo zoccolo.
@@ -822,10 +829,10 @@ fn house(
             if f == 0 && (x - door_x).abs() < 1.1 {
                 continue;
             }
-            window(b, Vec3::new(x, y, hd), Vec3::Z, shutter);
+            window(b, int, Vec3::new(x, y, hd), Vec3::Z, shutter);
             inner_window(b, Vec3::new(x, y, hd - t - 0.01), Vec3::NEG_Z, (0.62, 0.86));
         }
-        window(b, Vec3::new(0.0, y, -hd), Vec3::NEG_Z, shutter);
+        window(b, int, Vec3::new(0.0, y, -hd), Vec3::NEG_Z, shutter);
         inner_window(b, Vec3::new(0.0, y, -hd + t + 0.01), Vec3::Z, (0.62, 0.86));
     }
     // Piani, scale e arredi.
@@ -899,13 +906,37 @@ fn house(
         rooms::furnish_attic(b, int, &attic_room);
     }
     int.lights.push(Vec3::new(0.0, attic_y + 1.6, 0.0));
-    // Camini: uno addossato alla testata sinistra, l'altro passante nel sottotetto.
-    for i in 0..chimneys {
-        let x = if i == 0 { -hw + 1.0 } else { hw * 0.1 };
-        chimney(b, x, 0.0, wh, wh + rh + 0.9);
-        int.chimneys.push(Vec3::new(x, wh + rh + 1.0, 0.0));
-        int.walls
-            .push((Vec3::new(x, wh + 1.1, 0.0), Vec3::new(0.7, 2.2, 0.7)));
+    // Camini: se la casa ha un focolare il camino sale da lì fino sopra il tetto; altrimenti
+    // (forni, officine) resta il vecchio camino nel sottotetto.
+    if int.hearths.is_empty() {
+        for i in 0..chimneys {
+            let x = if i == 0 { -hw + 1.0 } else { hw * 0.1 };
+            chimney(b, x, 0.0, wh, wh + rh + 0.9);
+            int.chimneys.push(Vec3::new(x, wh + rh + 1.0, 0.0));
+            int.walls
+                .push((Vec3::new(x, wh + 1.1, 0.0), Vec3::new(0.7, 2.2, 0.7)));
+        }
+    } else if chimneys > 0 {
+        let h = int.hearths[0];
+        // Quota del tetto sul lato del colmo del camino, più un metro sopra.
+        let top = wh + rh * (1.0 - (h.z.abs() - 0.3) / hd) + 0.9;
+        // Canna incassata nel muro di fondo: nelle stanze dei piani superiori sporge di 15 cm.
+        let wall_z = h.z - 0.28 - 0.1;
+        b.cuboid(
+            Vec3::new(h.x - 0.35, h.y, wall_z - 0.25),
+            Vec3::new(h.x + 0.35, top, wall_z + 0.25),
+            STONE_DARK,
+        );
+        b.cuboid(
+            Vec3::new(h.x - 0.45, top, wall_z - 0.35),
+            Vec3::new(h.x + 0.45, top + 0.12, wall_z + 0.35),
+            STONE,
+        );
+        int.chimneys.push(Vec3::new(h.x, top + 0.2, wall_z));
+        int.walls.push((
+            Vec3::new(h.x, (h.y + top) / 2.0, wall_z),
+            Vec3::new(0.7, top - h.y, 0.5),
+        ));
     }
     wh
 }
@@ -2181,6 +2212,58 @@ mod tests {
             }
             f * e2.dot(q) > 1e-3
         })
+    }
+
+    #[test]
+    fn windows_are_clear_and_chimneys_sit_on_hearths() {
+        for kind in [
+            "casa-piccola",
+            "casa-media",
+            "casa-grande",
+            "locanda",
+            "caserma",
+            "forno",
+            "arcere",
+        ] {
+            for seed in [1u32, 7, 33] {
+                let int = model(kind, seed).interior;
+                assert!(
+                    !int.windows.is_empty() || kind == "forno",
+                    "{kind}: senza finestre"
+                );
+                // Nessun mobile entro 0,5 m davanti a una finestra, a quota di scuri e vetro.
+                for w in &int.windows {
+                    let inward = -w.normal;
+                    let probe = w.center + inward * 0.5;
+                    for (c, size) in int.furniture.iter().chain(&int.walls) {
+                        let (lo, hi) = (*c - *size / 2.0, *c + *size / 2.0);
+                        let blocks_y = lo.y < w.center.y + 0.5 && hi.y > w.center.y - 0.5;
+                        let blocks_xz = lo.x - 0.15 <= probe.x
+                            && probe.x <= hi.x + 0.15
+                            && lo.z - 0.15 <= probe.z
+                            && probe.z <= hi.z + 0.15;
+                        // Le pareti con la finestra stessa non contano: sono più lontane di 0,4 m.
+                        assert!(
+                            !(blocks_y && blocks_xz),
+                            "{kind}/{seed}: ostacolo davanti alla finestra in {:?}: {:?} {:?}",
+                            w.center,
+                            c,
+                            size
+                        );
+                    }
+                }
+                // Ogni camino con focolare parte dalla quota della cappa e sta sopra il focolare.
+                for (i, mouth) in int.chimneys.iter().enumerate() {
+                    if let Some(h) = int.hearths.get(i) {
+                        assert!(
+                            (mouth.x - h.x).abs() < 1e-3,
+                            "{kind}: camino fuori dal focolare"
+                        );
+                        assert!(mouth.y > h.y + 1.0);
+                    }
+                }
+            }
+        }
     }
 
     #[test]

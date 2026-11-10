@@ -515,6 +515,16 @@ fn bed(b: &mut B, int: &mut Interior, r: &Room, x: f32, z: f32, head: Vec3, tint
     });
 }
 
+/// Vero se vicino a `x` sulla parete a `z` (a quota del piano `y`) non c'è nessuna finestra entro `half`.
+fn window_free(int: &Interior, x: f32, z: f32, y: f32, half: f32) -> bool {
+    !int.windows.iter().any(|w| {
+        (w.center.x - x).abs() < half
+            && (w.center.z - z).abs() < 0.6
+            && w.center.y > y
+            && w.center.y < y + 2.4
+    })
+}
+
 /// Focolare contro la parete di fondo, nella parte libera a destra della scala.
 fn hearth_back(b: &mut B, int: &mut Interior, r: &Room) {
     let width = (r.x1 - r.back_x - 0.05).min(1.5);
@@ -530,6 +540,7 @@ fn hearth_back(b: &mut B, int: &mut Interior, r: &Room) {
         Vec3::new(width, 1.8, 0.55),
         STONE_FIRE,
     );
+    int.hearths.push(Vec3::new(x, y + 1.8, z));
     b.cuboid_c(
         Vec3::new(x, y + 0.5, z + 0.28),
         Vec3::new(width - 0.5, 0.7, 0.04),
@@ -557,8 +568,13 @@ fn home_floor(b: &mut B, int: &mut Interior, r: &Room, floor: usize, seed: u32) 
     } else {
         bed(b, int, r, r.x0 + 0.5, r.z1 - 1.0, Vec3::Z, tint);
         bed(b, int, r, r.x0 + 2.05, r.z1 - 0.5, Vec3::NEG_X, tint + 1);
-        if r.x1 - (r.x0 + 3.05) >= 1.1 {
-            wardrobe(b, int, r.x0 + 3.6, r.z1 - 0.28, y, -1.0);
+        // L'armadio sta contro la parete di fronte, ma non davanti a una finestra.
+        let mut x = r.x0 + 3.6;
+        while x + 0.6 <= r.x1 && !window_free(int, x, r.z1, y, 0.5 + 0.45) {
+            x += 0.25;
+        }
+        if x + 0.6 <= r.x1 && r.x1 - (r.x0 + 3.05) >= 1.1 {
+            wardrobe(b, int, x, r.z1 - 0.28, y, -1.0);
         }
         if r.z1 - r.z0 >= 2.2 {
             chest(b, int, r.x0 + 2.0, r.z1 - 1.3, y);

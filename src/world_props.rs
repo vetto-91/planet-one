@@ -225,6 +225,8 @@ pub fn sync_world_props(
     let snow_mat = crate::seasons::snow_material(&mut materials);
     let (mut spawned, mut skipped) = (0usize, 0usize);
     let door_mesh_cache: &mut Vec<(f32, f32, Handle<Mesh>)> = &mut Vec::new();
+    let shutter_mats: &mut Vec<([f32; 4], Handle<StandardMaterial>)> = &mut Vec::new();
+    let shutter_mesh = meshes.add(Cuboid::new(0.33, 0.9, 0.04));
     homes.list.clear();
     let defs = crate::villagers::load_defs();
     let mut occurrences: std::collections::HashMap<String, usize> = Default::default();
@@ -393,6 +395,62 @@ pub fn sync_world_props(
                             format!("{place_id}:{j}:{i}"),
                             &kind,
                         ));
+                    }
+                    for (i, win) in interior.windows.iter().enumerate() {
+                        let n = win.normal;
+                        // Sistema locale della finestra: x = sinistra vista da fuori, z = verso dentro.
+                        let left = -Vec3::Y.cross(n).normalize();
+                        let frame = Quat::from_mat3(&Mat3::from_cols(left, Vec3::Y, -n));
+                        let state = c
+                            .spawn((
+                                crate::hut::PropKind::Window,
+                                crate::hut::PropId(format!("scuri:{place_id}:{j}:{i}")),
+                                // Di giorno gli scuri stanno aperti.
+                                crate::hut::PropState { on: true },
+                                crate::entities::Interactable {
+                                    prompt: "[E] Chiudi scuri".to_string(),
+                                    range: 3.0,
+                                    aim: Some(0.45),
+                                    use_from: None,
+                                },
+                                Transform::from_translation(win.center + n * 0.12),
+                            ))
+                            .id();
+                        let shutter_mat = match shutter_mats.iter().find(|(k, _)| *k == win.shutter)
+                        {
+                            Some((_, m)) => m.clone(),
+                            None => {
+                                let m = mat(
+                                    &mut materials,
+                                    Color::srgb(win.shutter[0], win.shutter[1], win.shutter[2]),
+                                );
+                                shutter_mats.push((win.shutter, m.clone()));
+                                m
+                            }
+                        };
+                        for sign in [1.0f32, -1.0] {
+                            let leaf_mat = shutter_mat.clone();
+                            c.spawn((
+                                crate::hut::Hinge {
+                                    state,
+                                    open_angle: -sign * 1.75,
+                                    angle: 0.0,
+                                    base: frame,
+                                },
+                                Transform::from_translation(
+                                    win.center + left * (sign * 0.32) + n * 0.05,
+                                )
+                                .with_rotation(frame),
+                                Visibility::default(),
+                            ))
+                            .with_children(|l| {
+                                l.spawn((
+                                    Mesh3d(shutter_mesh.clone()),
+                                    MeshMaterial3d(leaf_mat),
+                                    Transform::from_xyz(-sign * 0.165, 0.0, 0.0),
+                                ));
+                            });
+                        }
                     }
                     let works = matches!(kind.as_str(), "forno" | "fabbro" | "locanda");
                     for at in interior.chimneys {
