@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.47.0 — Voci (2026-11-10)
 
 ### Voci
 - **Le prime battute degli abitanti hanno la voce** (50 clip, generate in locale con Piper dalle frasi dei file `assets/ai/*.txt`), con voci maschili e femminili come da persona.
