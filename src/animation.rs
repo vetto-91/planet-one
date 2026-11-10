@@ -267,6 +267,9 @@ pub fn drive_animations(
             }
         }
 
+        if is_player && let Some(f) = forced_anim() {
+            want = (f, 1.0);
+        }
         if dialog.open && dialog.speaker_entity == Some(entity) && a.speed < 0.25 {
             want = (Anim::Talk, 1.0);
         }
@@ -305,6 +308,17 @@ pub fn drive_animations(
             active.set_speed(clip_speed);
         }
     }
+}
+
+/// Animazione forzata al giocatore (`PLANET_ONE_ANIM=sprint|jog|walk`), per gli screenshot.
+fn forced_anim() -> Option<Anim> {
+    static FORCED: std::sync::OnceLock<Option<Anim>> = std::sync::OnceLock::new();
+    *FORCED.get_or_init(|| match std::env::var("PLANET_ONE_ANIM").ok()?.as_str() {
+        "sprint" => Some(Anim::Sprint),
+        "jog" => Some(Anim::Jog),
+        "walk" => Some(Anim::Walk),
+        _ => None,
+    })
 }
 
 pub fn plugin(app: &mut App) {

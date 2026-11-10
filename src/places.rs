@@ -271,6 +271,26 @@ fn cave(b: &mut B, int: &mut Interior) {
         b.cuboid(min, max, STONE);
         int.ground.push(((min + max) / 2.0, max - min));
     }
+    // Rampa di pietra fuori dall'arco: il terreno davanti scende ripido verso il mare. La rampa
+    // (≈19°) è ciò su cui si cammina; sotto, un terrapieno a gradoni la sostiene.
+    let (ramp_top, ramp_end, ramp_drop) = (Z_IN + 0.4, Z_IN + 6.8, 2.16);
+    rooms::ramp(
+        int,
+        Vec3::new(0.0, 0.06, ramp_top),
+        Vec3::new(0.0, 0.06 - ramp_drop, ramp_end),
+        2.8,
+    );
+    let slope = ramp_drop / (ramp_end - ramp_top);
+    for i in 0..6 {
+        let z0 = ramp_top + i as f32 * (ramp_end - ramp_top) / 6.0;
+        let z1 = z0 + (ramp_end - ramp_top) / 6.0;
+        let top = 0.06 - slope * (z0 - ramp_top + 0.2) - 0.25;
+        b.cuboid(
+            Vec3::new(-1.5, -3.0, z0),
+            Vec3::new(1.5, top, z1),
+            if i % 2 == 0 { STONE } else { STONE_DARK },
+        );
+    }
     // Ingresso ad arco a gradoni: stipiti e due ordini di conci sopra il vano.
     for s in [-1.0f32, 1.0] {
         let (a, c) = (1.2 * s, 2.35 * s);

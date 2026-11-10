@@ -73,6 +73,8 @@ pub struct PendingModel;
 pub struct HandBones {
     pub right: Entity,
     pub left: Entity,
+    /// Osso della schiena (`spine_03`), dove si porta l'arma in corsa.
+    pub back: Option<Entity>,
 }
 
 /// Oggetto da agganciare a una mano del corpo a cui è figlio, appena le ossa sono pronte.
@@ -127,12 +129,13 @@ fn on_character_ready(
     let root = ready.entity;
     let body = parents.get(root).ok().map(|p| p.parent());
     let dying = body.is_some_and(|b| corpses.contains(b));
-    let (mut right, mut left) = (None, None);
+    let (mut right, mut left, mut back) = (None, None, None);
     for e in children.iter_descendants(root) {
         if let Ok(name) = names.get(e) {
             match name.as_str() {
                 "hand_r" => right = Some(e),
                 "hand_l" => left = Some(e),
+                "spine_03" => back = Some(e),
                 _ => {}
             }
         }
@@ -160,7 +163,7 @@ fn on_character_ready(
     if let (Some(right), Some(left), Ok(body)) = (right, left, parents.get(root)) {
         commands
             .entity(body.parent())
-            .insert(HandBones { right, left });
+            .insert(HandBones { right, left, back });
     } else {
         warn!("[FIGURE] modello senza ossa delle mani");
     }

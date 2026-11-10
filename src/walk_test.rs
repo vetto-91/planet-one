@@ -247,5 +247,16 @@ mod tests {
         if let Err(e) = can_walk(&int, &path) {
             panic!("grotta: {e}");
         }
+        // Da fuori: dal piede della rampa (a quota del terreno, 6,4 m dall'arco) fino alla camera.
+        let outside = [
+            Vec3::new(0.0, -2.1, 15.4),
+            Vec3::new(0.0, -1.0, 12.0),
+            Vec3::new(0.0, 0.1, 8.6),
+            Vec3::new(0.0, 0.1, 5.0),
+            Vec3::new(0.0, 0.1, -2.0),
+        ];
+        if let Err(e) = can_walk(&int, &outside) {
+            panic!("grotta da fuori: {e}");
+        }
     }
 }

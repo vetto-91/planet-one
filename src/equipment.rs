@@ -17,21 +17,37 @@ const REST_TILT: f32 = std::f32::consts::FRAC_PI_2;
 /// Posizione dell'impugnatura nel palmo (riferimento dell'osso `hand_r`).
 const GRIP: Vec3 = Vec3::new(-0.02, 0.09, 0.0);
 
+/// Posizione e rotazione dell'arma sulla schiena (riferimento dell'osso `spine_03`).
+const BACK_POS: Vec3 = Vec3::new(0.0, 0.05, 0.16);
+const BACK_TILT: Vec3 = Vec3::new(0.0, 0.0, 2.2);
+
 /// Sistema: in corsa le braccia portano la mano vicino alla testa e l'arma ci finirebbe dentro,
-/// quindi viene riposta (invisibile) finché dura la corsa.
+/// quindi si porta sulla schiena finché dura la corsa e torna nella mano appena ci si ferma.
+#[allow(clippy::type_complexity)]
 pub fn stow_weapon_while_running(
-    animators: Query<&crate::animation::Animator, With<PlayerVisual>>,
-    mut weapons: Query<&mut Visibility, With<HeldWeapon>>,
+    mut commands: Commands,
+    animators: Query<(&crate::animation::Animator, &crate::figure::HandBones), With<PlayerVisual>>,
+    mut weapons: Query<
+        (Entity, &mut Transform, &ChildOf),
+        (With<HeldWeapon>, Without<crate::figure::AttachToHand>),
+    >,
 ) {
-    let running = animators.iter().any(|a| a.running());
-    let wanted = if running {
-        Visibility::Hidden
-    } else {
-        Visibility::Inherited
+    let Ok((animator, bones)) = animators.single() else {
+        return;
     };
-    for mut v in &mut weapons {
-        if *v != wanted {
-            *v = wanted;
+    let (parent, pos, rot) = match (animator.running(), bones.back) {
+        (true, Some(back)) => (
+            back,
+            BACK_POS,
+            Quat::from_euler(EulerRot::XYZ, BACK_TILT.x, BACK_TILT.y, BACK_TILT.z),
+        ),
+        _ => (bones.right, GRIP, Quat::from_rotation_x(REST_TILT)),
+    };
+    for (e, mut tf, child_of) in &mut weapons {
+        if child_of.parent() != parent {
+            commands.entity(e).try_insert(ChildOf(parent));
+            tf.translation = pos;
+            tf.rotation = rot;
         }
     }
 }

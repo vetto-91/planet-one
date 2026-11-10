@@ -39,6 +39,14 @@ pub struct HearthLight {
     pub seed: f32,
 }
 
+/// L'orologio è saltato (caricamento di un salvataggio, teletrasporto nel tempo)? In quel caso
+/// gli stati salvati di focolari e scuri valgono più dell'orario.
+fn clock_jumped(hour: f32, last: &mut Option<f32>) -> bool {
+    let jumped = last.is_some_and(|l| (hour - l).rem_euclid(24.0) > 0.5);
+    *last = Some(hour);
+    jumped
+}
+
 /// Sistema: di giorno e di sera i focolari si accendono da soli ai cambi d'ora; il giocatore può
 /// spegnerli o accenderli fino al prossimo cambio.
 fn hearth_schedule(
@@ -46,9 +54,11 @@ fn hearth_schedule(
     weather: Res<WeatherState>,
     mut hearths: Query<(Ref<crate::hut::PropKind>, &mut crate::hut::PropState)>,
     mut last: Local<Option<bool>>,
+    mut last_hour: Local<Option<f32>>,
 ) {
     let want = fire_lit(false, clock.hour, weather.temp);
-    let changed = *last != Some(want);
+    let jumped = clock_jumped(clock.hour, &mut last_hour);
+    let changed = *last != Some(want) && !jumped;
     *last = Some(want);
     for (k, mut st) in &mut hearths {
         if *k == crate::hut::PropKind::Hearth && (changed || k.is_added()) && st.on != want {
@@ -67,9 +77,11 @@ fn shutter_schedule(
         &mut crate::hut::PropState,
     )>,
     mut last: Local<Option<bool>>,
+    mut last_hour: Local<Option<f32>>,
 ) {
     let open = (7.0..19.5).contains(&clock.hour) && weather.cloud < 0.95;
-    let changed = *last != Some(open);
+    let jumped = clock_jumped(clock.hour, &mut last_hour);
+    let changed = *last != Some(open) && !jumped;
     *last = Some(open);
     for (k, id, mut st) in &mut windows {
         if *k == crate::hut::PropKind::Window
@@ -418,6 +430,20 @@ pub fn plugin(app: &mut App) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn clock_jumps_are_told_from_normal_time() {
+        let mut last = None;
+        assert!(!clock_jumped(8.0, &mut last));
+        assert!(!clock_jumped(8.01, &mut last));
+        assert!(clock_jumped(19.0, &mut last));
+        assert!(clock_jumped(3.0, &mut last));
+        assert!(clock_jumped(23.99, &mut last));
+        assert!(
+            !clock_jumped(0.01, &mut last),
+            "la mezzanotte non è un salto"
+        );
+    }
 
     #[test]
     fn houses_light_the_fire_morning_and_evening_or_when_cold() {
