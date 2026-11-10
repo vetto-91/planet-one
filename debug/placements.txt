@@ -304,18 +304,18 @@ rotazioni: 0
 
 [P-0220] tipo: lampione | modalità: singolo
 quando: generato da gen_villaggio.py
-punto: x -6.80, z 13.50
+punto: x -3.80, z 15.00
 quantità: 1   seed: 1
 nota: villaggio
-punti: (-6.80,13.50)
+punti: (-3.80,15.00)
 rotazioni: 0
 
 [P-0221] tipo: lampione | modalità: singolo
 quando: generato da gen_villaggio.py
-punto: x 4.60, z 13.50
+punto: x 3.30, z 17.20
 quantità: 1   seed: 1
 nota: villaggio
-punti: (4.60,13.50)
+punti: (3.30,17.20)
 rotazioni: 0
 
 [P-0222] tipo: lampione | modalità: singolo
@@ -387,16 +387,16 @@ quando: generato da gen_villaggio.py
 punto: x -4.20, z 8.20
 quantità: 1   seed: 1
 nota: chiesa
-punti: (-4.82,9.35)
+punti: (-4.58,10.38)
 rotazioni: 90
 
 [P-0231] tipo: cartello | modalità: singolo
 quando: generato da gen_villaggio.py
-punto: x 4.80, z 12.50
+punto: x 14.50, z 8.60
 quantità: 1   seed: 1
 nota: locanda
-punti: (4.80,12.50)
-rotazioni: 90
+punti: (14.50,8.60)
+rotazioni: 180
 
 [P-0232] tipo: cartello | modalità: singolo
 quando: generato da gen_villaggio.py
@@ -581,10 +581,10 @@ rotazioni: 0
 
 [P-0410] tipo: lampione | modalità: singolo
 quando: generato da gen_porto.py
-punto: x 2.60, z 91.50
+punto: x 5.60, z 93.60
 quantità: 1   seed: 1
 nota: porto
-punti: (2.60,91.50)
+punti: (5.60,93.60)
 rotazioni: 0
 
 [P-0411] tipo: lampione | modalità: singolo
@@ -643,7 +643,7 @@ nota: guardie
 punti: (7.50,-16.50)
 rotazioni: 270
 
-[P-0600] tipo: carretto | modalità: singolo
+[P-0719] tipo: carretto | modalità: singolo
 quando: generato da gen_paese.py
 punto: x 13.00, z 20.20
 quantità: 1   seed: 1
@@ -651,15 +651,15 @@ nota: paese
 punti: (13.00,20.20)
 rotazioni: 80
 
-[P-0601] tipo: carretto | modalità: singolo
+[P-0720] tipo: carretto | modalità: singolo
 quando: generato da gen_paese.py
-punto: x 5.20, z 29.00
+punto: x 7.50, z 33.00
 quantità: 1   seed: 1
 nota: paese
-punti: (5.20,29.00)
-rotazioni: 170
+punti: (7.50,33.00)
+rotazioni: 120
 
-[P-0602] tipo: botti | modalità: singolo
+[P-0721] tipo: botti | modalità: singolo
 quando: generato da gen_paese.py
 punto: x 23.00, z 3.50
 quantità: 1   seed: 1
@@ -667,7 +667,7 @@ nota: paese
 punti: (23.00,3.50)
 rotazioni: 0
 
-[P-0603] tipo: botti | modalità: singolo
+[P-0722] tipo: botti | modalità: singolo
 quando: generato da gen_paese.py
 punto: x 12.50, z -2.60
 quantità: 1   seed: 1
@@ -675,7 +675,7 @@ nota: paese
 punti: (12.50,-2.60)
 rotazioni: 0
 
-[P-0604] tipo: botti | modalità: singolo
+[P-0723] tipo: botti | modalità: singolo
 quando: generato da gen_paese.py
 punto: x 3.60, z 24.80
 quantità: 1   seed: 1
@@ -683,7 +683,7 @@ nota: paese
 punti: (3.60,24.80)
 rotazioni: 0
 
-[P-0605] tipo: casse | modalità: singolo
+[P-0724] tipo: casse | modalità: singolo
 quando: generato da gen_paese.py
 punto: x 9.40, z 20.40
 quantità: 1   seed: 1
@@ -691,7 +691,7 @@ nota: paese
 punti: (9.40,20.40)
 rotazioni: 90
 
-[P-0606] tipo: casse | modalità: singolo
+[P-0725] tipo: casse | modalità: singolo
 quando: generato da gen_paese.py
 punto: x 7.50, z -4.60
 quantità: 1   seed: 1
@@ -699,7 +699,7 @@ nota: paese
 punti: (7.50,-4.60)
 rotazioni: 20
 
-[P-0607] tipo: panni | modalità: singolo
+[P-0726] tipo: panni | modalità: singolo
 quando: generato da gen_paese.py
 punto: x -13.00, z 24.80
 quantità: 1   seed: 1
@@ -707,7 +707,7 @@ nota: paese
 punti: (-13.00,24.80)
 rotazioni: 0
 
-[P-0608] tipo: panni | modalità: singolo
+[P-0727] tipo: panni | modalità: singolo
 quando: generato da gen_paese.py
 punto: x 20.00, z 11.00
 quantità: 1   seed: 1
@@ -715,7 +715,7 @@ nota: paese
 punti: (20.00,11.00)
 rotazioni: 90
 
-[P-0609] tipo: reti | modalità: singolo
+[P-0728] tipo: reti | modalità: singolo
 quando: generato da gen_paese.py
 punto: x 14.50, z 91.80
 quantità: 1   seed: 1
@@ -723,7 +723,7 @@ nota: paese
 punti: (14.50,91.80)
 rotazioni: 90
 
-[P-0610] tipo: reti | modalità: singolo
+[P-0729] tipo: reti | modalità: singolo
 quando: generato da gen_paese.py
 punto: x -4.50, z 90.50
 quantità: 1   seed: 1
@@ -731,7 +731,7 @@ nota: paese
 punti: (-4.50,90.50)
 rotazioni: 0
 
-[P-0611] tipo: botti | modalità: singolo
+[P-0730] tipo: botti | modalità: singolo
 quando: generato da gen_paese.py
 punto: x 4.60, z 89.30
 quantità: 1   seed: 1
@@ -739,7 +739,7 @@ nota: paese
 punti: (4.60,89.30)
 rotazioni: 0
 
-[P-0612] tipo: casse | modalità: singolo
+[P-0731] tipo: casse | modalità: singolo
 quando: generato da gen_paese.py
 punto: x 12.00, z 90.00
 quantità: 1   seed: 1
@@ -747,7 +747,7 @@ nota: paese
 punti: (12.00,90.00)
 rotazioni: 40
 
-[P-0613] tipo: casse | modalità: singolo
+[P-0732] tipo: casse | modalità: singolo
 quando: generato da gen_paese.py
 punto: x -8.00, z 91.00
 quantità: 1   seed: 1
@@ -755,7 +755,7 @@ nota: paese
 punti: (-8.00,91.00)
 rotazioni: 0
 
-[P-0700] tipo: campo-ladro | modalità: singolo
+[P-0733] tipo: campo-ladro | modalità: singolo
 quando: generato da gen_luoghi.py
 punto: x 29.00, z -31.00
 quantità: 1   seed: 1
@@ -763,7 +763,7 @@ nota: luoghi
 punti: (29.00,-31.00)
 rotazioni: 0
 
-[P-0701] tipo: casa-grande | modalità: singolo
+[P-0734] tipo: casa-grande | modalità: singolo
 quando: generato da gen_luoghi.py
 punto: x -42.00, z -30.00
 quantità: 1   seed: 1
@@ -771,7 +771,7 @@ nota: luoghi
 punti: (-42.00,-30.00)
 rotazioni: 90
 
-[P-0702] tipo: stalla | modalità: singolo
+[P-0735] tipo: stalla | modalità: singolo
 quando: generato da gen_luoghi.py
 punto: x -42.00, z -42.00
 quantità: 1   seed: 1
@@ -779,7 +779,7 @@ nota: luoghi
 punti: (-42.00,-42.00)
 rotazioni: 90
 
-[P-0703] tipo: pagliaio | modalità: singolo
+[P-0736] tipo: pagliaio | modalità: singolo
 quando: generato da gen_luoghi.py
 punto: x -35.00, z -44.50
 quantità: 1   seed: 1
@@ -787,7 +787,7 @@ nota: luoghi
 punti: (-35.00,-44.50)
 rotazioni: 0
 
-[P-0704] tipo: pagliaio | modalità: singolo
+[P-0737] tipo: pagliaio | modalità: singolo
 quando: generato da gen_luoghi.py
 punto: x -48.50, z -36.00
 quantità: 1   seed: 1
@@ -795,7 +795,7 @@ nota: luoghi
 punti: (-48.50,-36.00)
 rotazioni: 0
 
-[P-0705] tipo: mulino | modalità: singolo
+[P-0738] tipo: mulino | modalità: singolo
 quando: generato da gen_luoghi.py
 punto: x 0.50, z -66.00
 quantità: 1   seed: 1
@@ -803,7 +803,7 @@ nota: luoghi
 punti: (0.50,-66.00)
 rotazioni: 0
 
-[P-0706] tipo: torre-rovina | modalità: singolo
+[P-0739] tipo: torre-rovina | modalità: singolo
 quando: generato da gen_luoghi.py
 punto: x 58.50, z -58.50
 quantità: 1   seed: 1
@@ -811,7 +811,7 @@ nota: luoghi
 punti: (58.50,-58.50)
 rotazioni: 315
 
-[P-0707] tipo: rovine | modalità: singolo
+[P-0740] tipo: rovine | modalità: singolo
 quando: generato da gen_luoghi.py
 punto: x -56.00, z 62.00
 quantità: 1   seed: 1
@@ -819,7 +819,7 @@ nota: luoghi
 punti: (-56.00,62.00)
 rotazioni: 30
 
-[P-0708] tipo: grotta | modalità: singolo
+[P-0741] tipo: grotta | modalità: singolo
 quando: generato da gen_luoghi.py
 punto: x 90.50, z 18.00
 quantità: 1   seed: 1
@@ -827,7 +827,7 @@ nota: luoghi
 punti: (90.50,18.00)
 rotazioni: 180
 
-[P-0709] tipo: banditi | modalità: singolo
+[P-0742] tipo: banditi | modalità: singolo
 quando: generato da gen_luoghi.py
 punto: x 76.00, z 40.00
 quantità: 1   seed: 1
@@ -835,7 +835,7 @@ nota: luoghi
 punti: (76.00,40.00)
 rotazioni: 40
 
-[P-0710] tipo: santuario | modalità: singolo
+[P-0743] tipo: santuario | modalità: singolo
 quando: generato da gen_luoghi.py
 punto: x -66.00, z 22.00
 quantità: 1   seed: 1
@@ -843,7 +843,7 @@ nota: luoghi
 punti: (-66.00,22.00)
 rotazioni: 90
 
-[P-0711] tipo: cartello | modalità: singolo
+[P-0744] tipo: cartello | modalità: singolo
 quando: generato da gen_luoghi.py
 punto: x 3.00, z -50.00
 quantità: 1   seed: 1
@@ -851,7 +851,7 @@ nota: mulino
 punti: (3.00,-50.00)
 rotazioni: 0
 
-[P-0712] tipo: cartello | modalità: singolo
+[P-0745] tipo: cartello | modalità: singolo
 quando: generato da gen_luoghi.py
 punto: x -34.50, z -33.00
 quantità: 1   seed: 1
@@ -859,7 +859,7 @@ nota: fattoria
 punti: (-34.50,-33.00)
 rotazioni: 90
 
-[P-0713] tipo: cartello | modalità: singolo
+[P-0746] tipo: cartello | modalità: singolo
 quando: generato da gen_luoghi.py
 punto: x 44.00, z -51.00
 quantità: 1   seed: 1
@@ -867,7 +867,7 @@ nota: torre
 punti: (44.00,-51.00)
 rotazioni: 0
 
-[P-0714] tipo: cartello | modalità: singolo
+[P-0747] tipo: cartello | modalità: singolo
 quando: generato da gen_luoghi.py
 punto: x -46.00, z 54.00
 quantità: 1   seed: 1
@@ -875,7 +875,7 @@ nota: rovine
 punti: (-46.00,54.00)
 rotazioni: 0
 
-[P-0715] tipo: cartello | modalità: singolo
+[P-0748] tipo: cartello | modalità: singolo
 quando: generato da gen_luoghi.py
 punto: x 82.00, z 8.50
 quantità: 1   seed: 1
@@ -883,7 +883,7 @@ nota: grotta
 punti: (82.00,8.50)
 rotazioni: 270
 
-[P-0716] tipo: cartello | modalità: singolo
+[P-0749] tipo: cartello | modalità: singolo
 quando: generato da gen_luoghi.py
 punto: x -70.00, z 16.00
 quantità: 1   seed: 1
@@ -891,7 +891,7 @@ nota: santuario
 punti: (-70.00,16.00)
 rotazioni: 90
 
-[P-0717] tipo: panchina | modalità: singolo
+[P-0750] tipo: panchina | modalità: singolo
 quando: generato da gen_luoghi.py
 punto: x 53.50, z -51.00
 quantità: 1   seed: 1
@@ -899,7 +899,7 @@ nota: luoghi
 punti: (53.50,-51.00)
 rotazioni: 200
 
-[P-0718] tipo: panchina | modalità: singolo
+[P-0751] tipo: panchina | modalità: singolo
 quando: generato da gen_luoghi.py
 punto: x -61.50, z 19.00
 quantità: 1   seed: 1

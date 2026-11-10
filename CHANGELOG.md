@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.42.0 — Correzioni dopo la prova (2026-11-10)
 
 ### Correzioni
 - Il gioco non va più in crash spostando con F4 gli oggetti vicino a una porta (cartello della chiesa): i comandi sul collider tollerano le entità già eliminate.
