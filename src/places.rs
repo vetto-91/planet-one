@@ -313,7 +313,11 @@ fn cave(b: &mut B, int: &mut Interior) {
             b.cuboid_c(
                 Vec3::new(x, base - 0.1 + half.y, z),
                 half * 2.0,
-                if k % 3 == 0 { STONE } else { STONE_DARK },
+                if k.is_multiple_of(3) {
+                    STONE
+                } else {
+                    STONE_DARK
+                },
             );
         }
     }

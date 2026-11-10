@@ -2,6 +2,12 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## v0.0.53.0 — Grotta e spada (2026-11-10)
+
+- **Grotta**: ora ha un ingresso ad arco a gradoni, un corridoio di 6 m e una camera di 10 m sotto un cumulo di massi irregolari (prima era una stanzetta con tetto piramidale). La prova di camminata la percorre dall'ingresso al fondo.
+- **Spada in corsa**: durante il trotto e lo scatto le braccia portano la mano vicino alla testa e l'arma ci finiva dentro; ora viene riposta (invisibile) finché si corre e riappare appena ci si ferma.
+- Resta: la grotta non è davvero sottoterra (la mappa di altezza non ha cavità) e l'ingresso dà su un pendio ripido verso il mare. L'arma riposta non è disegnata sulla schiena.
+
 ## v0.0.52.0 — Focolari, scuri e scale (2026-11-10)
 
 - **Focolari**: ogni focolare delle case ha lo stato acceso/spento (E davanti al fuoco), un bagliore tremolante e il fumo dal camino sopra segue il suo stato. Si accendono da soli al mattino e alla sera (o col freddo) e si spengono di giorno; il cambio d'ora ripristina l'orario.
