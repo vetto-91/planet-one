@@ -453,13 +453,52 @@ pub fn sync_world_props(
                         }
                     }
                     let works = matches!(kind.as_str(), "forno" | "fabbro" | "locanda");
-                    for at in interior.chimneys {
+                    // Focolari: stato acceso/spento, bagliore e fumo dal camino sopra.
+                    let mut hearth_ids: Vec<Entity> = Vec::new();
+                    for (i, h) in interior.hearths.iter().enumerate() {
+                        let front = Vec3::new(h.x, h.y - 1.2, h.z + 0.5);
+                        let state = c
+                            .spawn((
+                                crate::hut::PropKind::Hearth,
+                                crate::hut::PropId(format!("focolare:{place_id}:{j}:{i}")),
+                                crate::hut::PropState { on: false },
+                                crate::entities::Interactable {
+                                    prompt: "[E] Accendi il fuoco".to_string(),
+                                    range: 2.5,
+                                    aim: Some(0.6),
+                                    use_from: None,
+                                },
+                                Transform::from_translation(front),
+                            ))
+                            .id();
+                        c.spawn((
+                            crate::village_life::HearthLight {
+                                state,
+                                seed: i as f32 * 1.7 + j as f32,
+                            },
+                            PointLight {
+                                color: Color::srgb(1.0, 0.55, 0.22),
+                                intensity: 0.0,
+                                range: 6.0,
+                                shadow_maps_enabled: false,
+                                ..default()
+                            },
+                            Transform::from_translation(front + Vec3::Y * 0.1),
+                        ));
+                        hearth_ids.push(state);
+                    }
+                    for (i, at) in interior.chimneys.iter().enumerate() {
                         c.spawn((
                             crate::village_life::TownChimney {
                                 works,
                                 always: false,
+                                hearth: if interior.hearths.is_empty() {
+                                    None
+                                } else {
+                                    hearth_ids.get(i).copied()
+                                },
                             },
-                            Transform::from_translation(at),
+                            Transform::from_translation(*at),
                         ));
                     }
                     for at in interior.fires {

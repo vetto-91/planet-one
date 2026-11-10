@@ -474,7 +474,22 @@ pub fn sync_village(
 
     // Scale nella corsia interna (dentro lo spessore del muro).
     for start in &stair_starts {
-        let a = start + 0.1;
+        // Il primo gradino non deve cadere dentro la base di una torre: si parte oltre.
+        let mut a = start + 0.1;
+        let in_tower = |s: f32| {
+            [-0.45f32, 0.3, 1.05].iter().any(|u| {
+                let q = lp.at(s).0 + lp.at(s).2 * *u;
+                towers.iter().any(|w| {
+                    (q - w.center).dot(w.t).abs() <= w.half_t + 0.3
+                        && (q - w.center).dot(w.n).abs() <= w.half_n + 0.3
+                })
+            })
+        };
+        let mut guard = 0;
+        while in_tower(a) && guard < 40 {
+            a += 0.1;
+            guard += 1;
+        }
         let inner = |s: f32| {
             let (p, t, out) = lp.at(s);
             (p + out * INNER_LANE_U, t)
@@ -503,6 +518,14 @@ pub fn sync_village(
                 (-t.y).atan2(t.x),
             ));
         }
+        info!(
+            "[VILLAGGIO] scala da ({:.1},{:.1}) a ({:.1},{:.1}), {steps} gradini, sale a {:.1}",
+            inner(a).0.x,
+            inner(a).0.y,
+            inner(a + len).0.x,
+            inner(a + len).0.y,
+            g0 + steps as f32 * rise
+        );
         stair_zones.push((a, a + len));
     }
 

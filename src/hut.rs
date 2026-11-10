@@ -67,6 +67,8 @@ pub enum PropKind {
     Door,
     Window,
     Stove,
+    /// Focolare di una casa del paese.
+    Hearth,
     /// Interruttore della luce di casa.
     Light,
     /// Serranda del negozio.
@@ -1614,6 +1616,8 @@ pub fn update_prop_prompts(
             (PropKind::Window, false) => "[E] Apri scuri",
             (PropKind::Stove, true) => "[E] Spegni stufa",
             (PropKind::Stove, false) => "[E] Accendi stufa",
+            (PropKind::Hearth, true) => "[E] Spegni il fuoco",
+            (PropKind::Hearth, false) => "[E] Accendi il fuoco",
             (PropKind::Light, true) => "[E] Spegni luce",
             (PropKind::Light, false) => "[E] Accendi luce",
             (PropKind::Shutter, true) => "[E] Abbassa serranda",

@@ -28,6 +28,76 @@ pub struct TownChimney {
     pub works: bool,
     /// Falò all'aperto: fuma sempre.
     pub always: bool,
+    /// Focolare sotto il camino: se c'è, il fumo segue il suo stato.
+    pub hearth: Option<Entity>,
+}
+
+/// Luce del focolare di una casa: segue lo stato del focolare.
+#[derive(Component)]
+pub struct HearthLight {
+    pub state: Entity,
+    pub seed: f32,
+}
+
+/// Sistema: di giorno e di sera i focolari si accendono da soli ai cambi d'ora; il giocatore può
+/// spegnerli o accenderli fino al prossimo cambio.
+fn hearth_schedule(
+    clock: Res<GameClock>,
+    weather: Res<WeatherState>,
+    mut hearths: Query<(Ref<crate::hut::PropKind>, &mut crate::hut::PropState)>,
+    mut last: Local<Option<bool>>,
+) {
+    let want = fire_lit(false, clock.hour, weather.temp);
+    let changed = *last != Some(want);
+    *last = Some(want);
+    for (k, mut st) in &mut hearths {
+        if *k == crate::hut::PropKind::Hearth && (changed || k.is_added()) && st.on != want {
+            st.on = want;
+        }
+    }
+}
+
+/// Sistema: gli abitanti aprono gli scuri al mattino e li chiudono la sera (e col maltempo forte).
+fn shutter_schedule(
+    clock: Res<GameClock>,
+    weather: Res<WeatherState>,
+    mut windows: Query<(
+        Ref<crate::hut::PropKind>,
+        &crate::hut::PropId,
+        &mut crate::hut::PropState,
+    )>,
+    mut last: Local<Option<bool>>,
+) {
+    let open = (7.0..19.5).contains(&clock.hour) && weather.cloud < 0.95;
+    let changed = *last != Some(open);
+    *last = Some(open);
+    for (k, id, mut st) in &mut windows {
+        if *k == crate::hut::PropKind::Window
+            && id.0.starts_with("scuri:")
+            && (changed || k.is_added())
+            && st.on != open
+        {
+            st.on = open;
+        }
+    }
+}
+
+/// Sistema: bagliore tremolante del focolare acceso.
+fn hearth_glow(
+    time: Res<Time>,
+    states: Query<&crate::hut::PropState>,
+    mut lights: Query<(&HearthLight, &mut PointLight)>,
+) {
+    let t = time.elapsed_secs();
+    for (h, mut l) in &mut lights {
+        let on = states.get(h.state).is_ok_and(|s| s.on);
+        let target = if on {
+            70_000.0 * (0.85 + 0.15 * (t * 9.0 + h.seed).sin() * (t * 3.7 + h.seed).cos())
+        } else {
+            0.0
+        };
+        l.intensity += (target - l.intensity) * (time.delta_secs() * 4.0).min(1.0);
+    }
 }
 
 /// Pale del mulino.
@@ -90,6 +160,7 @@ fn town_smoke(
     weather: Res<WeatherState>,
     player: Query<&Transform, With<Player>>,
     chimneys: Query<(&TownChimney, &GlobalTransform)>,
+    hearth_states: Query<&crate::hut::PropState>,
     puffs: Query<(), With<TownPuff>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -107,7 +178,10 @@ fn town_smoke(
     let me = me.translation;
     let mut lit: Vec<(f32, Vec3, bool)> = chimneys
         .iter()
-        .filter(|(c, _)| c.always || fire_lit(c.works, clock.hour, weather.temp))
+        .filter(|(c, _)| match c.hearth {
+            Some(h) => hearth_states.get(h).is_ok_and(|s| s.on),
+            None => c.always || fire_lit(c.works, clock.hour, weather.temp),
+        })
         .map(|(c, g)| {
             (
                 g.translation().distance_squared(me),
@@ -279,6 +353,7 @@ pub fn spawn_campfire(
         TownChimney {
             works: true,
             always: true,
+            hearth: None,
         },
         Transform::from_translation(at + Vec3::Y * 0.6),
     ));
@@ -333,6 +408,9 @@ pub fn plugin(app: &mut App) {
             light_torches,
             flicker_fires,
             turn_sails,
+            hearth_schedule,
+            shutter_schedule,
+            hearth_glow,
         ),
     );
 }
