@@ -2,6 +2,12 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## v0.0.54.0 — Rifiniture di grotta, spada e salvataggio (2026-11-10)
+
+- **Grotta**: fuori dall'arco c'è una rampa di pietra (circa 19°, 6,4 m) con un terrapieno a gradoni sotto, al posto del pendio ripido verso il mare; la prova di camminata ora parte da fuori.
+- **Spada in corsa**: invece di sparire si porta sulla schiena (osso `spine_03`) mentre si trotta o si scatta e torna in mano appena ci si ferma. Provato a schermo con la nuova variabile `PLANET_ONE_ANIM=sprint|jog|walk`, che forza l'animazione del giocatore.
+- **Salvataggio**: caricando una partita i focolari e gli scuri restano come salvati; l'orario li riscrive solo quando l'orologio avanza normalmente, non quando salta per il caricamento.
+
 ## v0.0.53.0 — Grotta e spada (2026-11-10)
 
 - **Grotta**: ora ha un ingresso ad arco a gradoni, un corridoio di 6 m e una camera di 10 m sotto un cumulo di massi irregolari (prima era una stanzetta con tetto piramidale). La prova di camminata la percorre dall'ingresso al fondo.

@@ -9,6 +9,7 @@
 //! - `PLANET_ONE_SESSION=Nome`: partita attiva senza menu (salvataggi di prova; F5/F9).
 //! - `PLANET_ONE_MENU=1`: mostra il menu anche con le altre variabili; `PLANET_ONE_WINDOWED=1`: a finestra.
 //! - `PLANET_ONE_DELAY_SCALE=0.1`: moltiplica i ritardi con cui il Viandante chiude porta/finestre.
+//! - `PLANET_ONE_ANIM=sprint|jog|walk`: forza l'animazione del giocatore (per gli screenshot).
 //! - `PLANET_ONE_LOOK=yaw,pitch[,distanza[,1]]`: orientamento della camera in gradi
 //!   (il quarto valore 1 attiva la prima persona).
 //!

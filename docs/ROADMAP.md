@@ -61,6 +61,7 @@ Strategia: **vertical slice prima**. Una demo giocabile (1 quest, 1 NPC, 1 nemic
 | 12.10 — Scuri e camini | Scuri apribili nelle case, camino sopra il focolare | `v0.0.51.0` |
 | 12.11 — Focolari e scale | Focolare acceso/spento con fumo, scuri a orario, scale delle mura fuori dalle torri | `v0.0.52.0` |
 | 12.12 — Grotta e spada | Grotta con corridoio e camera, arma riposta in corsa | `v0.0.53.0` |
+| 12.13 — Rifiniture | Rampa della grotta, spada sulla schiena in corsa, stati salvati di focolari e scuri | `v0.0.54.0` |
 | 5.y — Mondo vivo | Colonna sonora con volume, casetta-chiosco esplorabile (porta, interni, stufa con fumo), routine giorno/notte del Viandante, voci dei personaggi, versione nel menu | `v0.0.7.0` |
 | 5.z — Mondo vivo, rifiniture | Interazione col mirino, casetta con serranda/interruttore/finestre e luci con ombre, routine del Viandante v2, voci normalizzate con ducking della musica | `v0.0.8.0` |
 | 5.w — Mappa e strumenti | Mappa dall'alto (M) con bussola e zoom, modalità debug piazzamenti (F4) con file `debug/placements.txt`, vetri e scuri spessi, il Viandante chiude porta e finestre | `v0.0.9.0` |
