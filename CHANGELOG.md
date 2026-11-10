@@ -2,6 +2,14 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## v0.0.51.0 — Scuri e camini (2026-11-10)
+
+- **Scuri apribili**: le finestre delle case del paese hanno due imposte incernierate che si aprono e chiudono con E, da fuori e da dentro (stesso meccanismo delle finestre del Viandante; lo stato è salvato). Di giorno partono aperte.
+- **Camini**: nelle case con focolare il camino ora sale proprio dal focolare, incassato nel muro di fondo, fino sopra il tetto (prima era un moncone nel sottotetto, senza niente sotto); il fumo esce da lì.
+- **Arredi**: l'armadio dei piani alti non si mette più davanti a una finestra.
+- Nuova prova automatica: nessun ostacolo davanti alle finestre e camino sopra ogni focolare.
+- Non ancora fatti: focolare acceso/spento con il fumo legato al suo stato e finestre aperte dagli abitanti.
+
 ## v0.0.50.1 — Avvio stabile (2026-11-10)
 
 - **Correzione**: all'avvio il gioco poteva chiudersi con «Failed to get point light visible entities» (panic nel renderer di Bevy 0.20.1: `extract_lights` toglie le liste delle ombre alle luci non cambiate nel fotogramma). Ora le luci con ombre vengono segnate come cambiate a ogni fotogramma (`graphics::keep_shadow_lights_extracted`). Prima capitava in circa metà degli avvii in modalità dev, 0 su 6 dopo la correzione.
