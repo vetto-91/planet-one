@@ -349,6 +349,8 @@ fn main() {
                 terrain::terrain_debug_gizmos,
                 combat::update_arrows.run_if(in_state(AppState::Playing)),
                 combat::enemy_ai.run_if(in_state(AppState::Playing)),
+                inventory::attach_pickup_icons,
+                inventory::face_pickup_icons,
                 combat::update_enemy_arrows.run_if(in_state(AppState::Playing)),
                 equipment::update_held_items,
             ),

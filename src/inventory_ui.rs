@@ -147,6 +147,81 @@ fn key_label(slot: usize) -> String {
     }
 }
 
+/// Cosa si sta trascinando: un oggetto dall'elenco o dal tasto `n` della barra.
+#[derive(Clone, Copy)]
+enum Drag {
+    Item(ItemKind),
+}
+
+/// Barra rapida (tasti 1–0) dentro l'inventario: si riordina trascinando e con il doppio clic.
+fn hotbar_strip(
+    ui: &mut egui::Ui,
+    inventory: &Inventory,
+    icons: Option<&ItemIcons>,
+    assign: &mut Option<(ItemKind, Option<usize>)>,
+) {
+    ui.label(
+        egui::RichText::new("Barra rapida — trascina qui gli oggetti, doppio clic per toglierli")
+            .small()
+            .color(egui::Color32::from_rgb(170, 178, 196)),
+    );
+    ui.horizontal(|ui| {
+        for slot in 0..10 {
+            let kind = inventory.hotbar[slot];
+            let (rect, resp) =
+                ui.allocate_exact_size(egui::vec2(46.0, 46.0), egui::Sense::click_and_drag());
+            let hovered_drop =
+                egui::DragAndDrop::has_payload_of_type::<Drag>(ui.ctx()) && resp.contains_pointer();
+            let stroke = if hovered_drop {
+                egui::Stroke::new(2.0, GOLD)
+            } else {
+                egui::Stroke::new(1.0, egui::Color32::from_rgb(120, 128, 150))
+            };
+            ui.painter().rect(
+                rect,
+                egui::CornerRadius::same(5),
+                egui::Color32::from_rgb(28, 32, 46),
+                stroke,
+                egui::StrokeKind::Inside,
+            );
+            if let Some(k) = kind {
+                paint_icon(ui, icons, k, rect.shrink(5.0));
+                if let Some(stack) = inventory.hotbar_slot(slot)
+                    && stack.qty > 1
+                {
+                    ui.painter().text(
+                        rect.right_bottom() - egui::vec2(3.0, 2.0),
+                        egui::Align2::RIGHT_BOTTOM,
+                        stack.qty.to_string(),
+                        egui::FontId::proportional(13.0),
+                        egui::Color32::WHITE,
+                    );
+                }
+            }
+            ui.painter().text(
+                rect.left_top() + egui::vec2(4.0, 2.0),
+                egui::Align2::LEFT_TOP,
+                key_label(slot),
+                egui::FontId::proportional(12.0),
+                egui::Color32::from_rgb(200, 206, 220),
+            );
+            if let Some(k) = kind {
+                resp.clone().on_hover_text(k.name());
+                if resp.double_clicked() {
+                    *assign = Some((k, None));
+                }
+                if resp.drag_started() {
+                    egui::DragAndDrop::set_payload(ui.ctx(), Drag::Item(k));
+                }
+            }
+            if let Some(payload) = resp.dnd_release_payload::<Drag>() {
+                let Drag::Item(k) = *payload;
+                *assign = Some((k, Some(slot)));
+            }
+        }
+    });
+}
+
 /// Finestra dell'inventario (stato `Inventory`).
 #[allow(clippy::too_many_arguments)]
 pub fn inventory_window(
@@ -196,6 +271,8 @@ pub fn inventory_window(
                         }
                     });
                 });
+                ui.separator();
+                hotbar_strip(ui, &inventory, icons.as_deref(), &mut assign);
                 ui.separator();
                 let f = &mut state.filter;
                 ui.horizontal_wrapped(|ui| {
@@ -253,9 +330,26 @@ pub fn inventory_window(
                             ui.horizontal(|ui| {
                                 let (rect, resp) = ui.allocate_exact_size(
                                     egui::vec2(38.0, 38.0),
-                                    egui::Sense::hover(),
+                                    egui::Sense::click_and_drag(),
                                 );
                                 paint_icon(ui, icons.as_deref(), kind, rect);
+                                if kind.can_go_in_hotbar() {
+                                    if resp.drag_started() {
+                                        egui::DragAndDrop::set_payload(ui.ctx(), Drag::Item(kind));
+                                    }
+                                    // Doppio clic: dall'inventario alla barra (primo tasto libero) e viceversa.
+                                    if resp.double_clicked() {
+                                        assign = if inventory.hotbar_position(kind).is_some() {
+                                            Some((kind, None))
+                                        } else {
+                                            inventory
+                                                .hotbar
+                                                .iter()
+                                                .position(Option::is_none)
+                                                .map(|free| (kind, Some(free)))
+                                        };
+                                    }
+                                }
                                 if !kind.description().is_empty() {
                                     resp.on_hover_text(kind.description());
                                 }

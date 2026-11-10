@@ -2,6 +2,13 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+### Interfaccia
+- **Oggetti a terra**: quelli gettati dal giocatore mostrano la loro icona sopra, come nella barra rapida, sempre rivolta verso la camera.
+- **Inventario (I)**: in alto c'è la barra rapida con i tasti 1–0. Si riordina trascinando un oggetto dall'elenco o da un tasto a un altro (scambia con quello occupato); il doppio clic su un oggetto lo mette nel primo tasto libero o, se è già nella barra, lo toglie; il doppio clic su un tasto lo svuota.
+- **Contenitori**: **R** prende tutto, **Tab** chiude (oltre a E ed Esc).
+
 ## v0.0.45.0 — Personaggi e combattimento (2026-11-10)
 
 ### Nemici e personaggi

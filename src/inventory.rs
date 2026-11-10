@@ -779,3 +779,73 @@ mod tests {
         }
     }
 }
+
+// --- Icona sopra gli oggetti gettati ---------------------------------------------------------
+
+/// Segnalino: l'oggetto a terra ha già la sua icona.
+#[derive(Component)]
+pub struct HasIcon;
+
+/// Icona che guarda sempre verso la camera.
+#[derive(Component)]
+pub struct PickupIcon;
+
+/// Sistema: sopra ogni oggetto gettato dal giocatore compare l'icona, come nella barra rapida.
+#[allow(clippy::type_complexity)]
+pub fn attach_pickup_icons(
+    mut commands: Commands,
+    server: Res<AssetServer>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    items: Query<(Entity, &Pickup), (Changed<Pickup>, Without<HasIcon>)>,
+    mut quad: Local<Option<Handle<Mesh>>>,
+) {
+    for (entity, pickup) in &items {
+        if !pickup.dropped {
+            continue;
+        }
+        let mesh = quad
+            .get_or_insert_with(|| meshes.add(Rectangle::new(0.55, 0.55)))
+            .clone();
+        let material = materials.add(StandardMaterial {
+            base_color_texture: Some(
+                server.load(format!("textures/icone/{}.png", pickup.kind.icon())),
+            ),
+            unlit: true,
+            alpha_mode: AlphaMode::Mask(0.35),
+            double_sided: true,
+            cull_mode: None,
+            ..default()
+        });
+        commands.entity(entity).insert(HasIcon).with_children(|c| {
+            c.spawn((
+                PickupIcon,
+                Mesh3d(mesh),
+                MeshMaterial3d(material),
+                Transform::from_xyz(0.0, 0.55, 0.0),
+                bevy::light::NotShadowCaster,
+            ));
+        });
+    }
+}
+
+/// Sistema: le icone si girano verso la camera e ondeggiano appena.
+pub fn face_pickup_icons(
+    time: Res<Time>,
+    cameras: Query<&GlobalTransform, With<Camera3d>>,
+    mut icons: Query<(&GlobalTransform, &ChildOf, &mut Transform), With<PickupIcon>>,
+    parents: Query<&GlobalTransform, Without<PickupIcon>>,
+) {
+    let Ok(cam) = cameras.single() else {
+        return;
+    };
+    for (global, parent, mut tf) in &mut icons {
+        let Ok(parent_t) = parents.get(parent.parent()) else {
+            continue;
+        };
+        let to = cam.translation() - global.translation();
+        let yaw = to.x.atan2(to.z);
+        tf.rotation = parent_t.rotation().inverse() * Quat::from_rotation_y(yaw);
+        tf.translation.y = 0.55 + 0.04 * (time.elapsed_secs() * 2.0).sin();
+    }
+}

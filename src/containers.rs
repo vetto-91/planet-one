@@ -378,7 +378,10 @@ pub fn container_window(
         .inner_margin(egui::Margin::symmetric(20, 14))
         .corner_radius(egui::CornerRadius::same(10));
     let mut action = None;
-    let mut close = ctx.input(|i| i.key_pressed(egui::Key::E));
+    let mut close = ctx.input(|i| i.key_pressed(egui::Key::E) || i.key_pressed(egui::Key::Tab));
+    if ctx.input(|i| i.key_pressed(egui::Key::R)) && !store.items.is_empty() {
+        action = Some(Action::TakeAll);
+    }
     let list_height = (size.y - 240.0).max(120.0);
     egui::Area::new(egui::Id::new("container_panel"))
         .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
@@ -438,7 +441,10 @@ pub fn container_window(
                 ui.separator();
                 ui.horizontal(|ui| {
                     if ui
-                        .add_enabled(!store.items.is_empty(), egui::Button::new("Prendi tutto"))
+                        .add_enabled(
+                            !store.items.is_empty(),
+                            egui::Button::new("Prendi tutto (R)"),
+                        )
                         .clicked()
                     {
                         action = Some(Action::TakeAll);
@@ -446,7 +452,7 @@ pub fn container_window(
                     if ui.button("Chiudi").clicked() {
                         close = true;
                     }
-                    ui.label("E o Esc = chiudi");
+                    ui.label("R = prendi tutto   •   E, Tab o Esc = chiudi");
                 });
             });
         });
