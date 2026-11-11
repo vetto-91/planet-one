@@ -137,6 +137,9 @@ pub struct Interior {
     pub chimneys: Vec<Vec3>,
     /// Falò sempre accesi.
     pub fires: Vec<Vec3>,
+    /// Falde dei tetti come lastre inclinate (centro, rotazione, dimensioni), gronde comprese:
+    /// fermano la camera, che altrimenti entrava nelle gronde sporgenti.
+    pub roofs: Vec<(Vec3, Quat, Vec3)>,
     /// Scritte delle targhe: centro della tabella (sul muro davanti) e chiave della texture
     /// in `assets/textures/cartelli/<chiave>.png`.
     pub signs: Vec<(Vec3, &'static str)>,
@@ -202,6 +205,25 @@ impl Rng {
     }
 }
 
+/// Spessore delle lastre dei tetti per la camera (sotto la superficie della falda).
+const SLAB_THICK: f32 = 0.2;
+
+/// Lastra sotto una falda: dalla gronda `eave` al colmo `ridge` (punti a metà lunghezza),
+/// larga `width` lungo `along` (l'asse del colmo). La faccia di sopra coincide con la falda.
+fn roof_slab(eave: Vec3, ridge: Vec3, along: Vec3, width: f32) -> (Vec3, Quat, Vec3) {
+    let slope = ridge - eave;
+    let t = slope.normalize();
+    let mut n = along.cross(t);
+    if n.y < 0.0 {
+        n = -n;
+    }
+    // Base destrorsa: X lungo il colmo, Y la normale (in su), Z lungo la falda.
+    let z = along.cross(n);
+    let rot = Quat::from_mat3(&Mat3::from_cols(along, n, z));
+    let center = (eave + ridge) / 2.0 - n * (SLAB_THICK / 2.0);
+    (center, rot, Vec3::new(width, SLAB_THICK, slope.length()))
+}
+
 /// Costruttore di mesh con colori di vertice.
 #[derive(Default)]
 pub(crate) struct B {
@@ -216,6 +238,8 @@ pub(crate) struct B {
     pub(crate) force: Option<Mat>,
     /// Triangoli del manto di neve (sopra le falde dei tetti).
     snow: Vec<[Vec3; 3]>,
+    /// Falde dei tetti per la camera: (centro, rotazione, dimensioni), vedi `Interior::roofs`.
+    slabs: Vec<(Vec3, Quat, Vec3)>,
 }
 
 impl B {
@@ -408,6 +432,12 @@ impl B {
             );
             self.snow_tri(p(a0, y0, vs), p(a1, y0, vs), p(a1, yr, vc));
             self.snow_tri(p(a0, y0, vs), p(a1, yr, vc), p(a0, yr, vc));
+            self.slabs.push(roof_slab(
+                p((a0 + a1) / 2.0, y0, vs),
+                p((a0 + a1) / 2.0, yr, vc),
+                if ridge_x { Vec3::X } else { Vec3::Z },
+                a1 - a0,
+            ));
         }
         let end = |s: f32| {
             if ridge_x {
@@ -2004,6 +2034,7 @@ pub fn model(kind: &str, seed: u32) -> Building {
             (6.2, 5.0, Vec::new())
         }
     };
+    int.roofs = std::mem::take(&mut b.slabs);
     Building {
         snow: b.snow_mesh(),
         parts: b.finish_parts(),
@@ -2267,6 +2298,29 @@ mod tests {
                     }
                 }
             }
+        }
+    }
+
+    #[test]
+    fn roof_slabs_follow_the_slopes_out_to_the_eaves() {
+        let m = model("casa-piccola", 7);
+        assert_eq!(m.interior.roofs.len(), 2);
+        for (c, rot, size) in &m.interior.roofs {
+            // La faccia di sopra della lastra passa per la gronda e per il colmo.
+            let up = *rot * Vec3::Y;
+            let along_slope = *rot * Vec3::Z;
+            assert!(up.y > 0.3, "normale in su: {up:?}");
+            let top = *c + up * size.y / 2.0;
+            for end in [-0.5f32, 0.5] {
+                let p = top + along_slope * size.z * end;
+                // Un estremo è la gronda (fuori dal muro di 0,4 m), l'altro il colmo (z = 0).
+                assert!(
+                    p.z.abs() < 0.05 || (p.z.abs() - (2.0 + 0.4)).abs() < 0.05,
+                    "{p:?}"
+                );
+            }
+            // Gronde comprese: più larga della casa (5 m) di due sporgenze.
+            assert!((size.x - 5.8).abs() < 0.01, "{size:?}");
         }
     }
 

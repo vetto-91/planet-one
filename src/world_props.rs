@@ -403,6 +403,13 @@ pub fn sync_world_props(
                             col.insert(crate::scene::Ground);
                         }
                     }
+                    for (center, rot, size) in &interior.roofs {
+                        c.spawn((
+                            Collider::cuboid(size.x, size.y, size.z),
+                            Transform::from_translation(*center).with_rotation(*rot),
+                            crate::camera::BlocksCamera,
+                        ));
+                    }
                     for (center, size) in interior.walls {
                         c.spawn((
                             Collider::cuboid(size.x, size.y, size.z),

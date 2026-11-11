@@ -257,7 +257,7 @@ Trovati guardando le foto (da decidere):
 - **Negozio e mobili**: a 1440p il 1% peggiore è sceso a 10 FPS (un intoppo all'apertura di un pannello o del negozio): da guardare nella fase delle prestazioni.
 - **Memoria video**: un altro modello di Ollama (`ornith-1.5:35b-256k`, 9,4 GB) occupava la scheda e il gioco andava in «Out of Memory» anche a 720p. Scaricato con il permesso dell'utente; succederà di nuovo ogni volta che quel modello è in memoria.
 - **Insegne vuote** (corretto): le targhe accanto alle porte di arciere, fabbro, forno e locanda avevano solo un rettangolo chiaro al posto della scritta. Ora hanno la tabella con il nome (stesse texture dei cartelli, `scripts/make_cartelli.py`; nuova `arcere.png`, «Arciere — archi e frecce»).
-- **Camera**: girando attorno al giocatore sotto le tettoie del mercato, la camera entra nelle travi (una foto di `giro-camera` è coperta da una trave).
+- **Camera nelle gronde** (corretto): girando attorno al giocatore la camera entrava nelle gronde dei tetti (una foto di `giro-camera` era coperta da una tavola). I tetti erano coperti per la camera solo da blocchi dritti dentro i muri; ora ogni falda (case, chiesa, pozzo: tutto ciò che usa `gable`) ha una lastra inclinata con le misure vere, gronde comprese, che ferma la camera come un muro.
 - **Voce**: il saluto di Marta arriva a 0,0 dBFS (0,1% dei campioni al limite): va abbassata di qualche dB.
 
 Da tenere per la fase delle prestazioni:
