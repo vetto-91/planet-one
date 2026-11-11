@@ -3,62 +3,62 @@ god on
 ora 11
 tp chiesa
 aspetta 3
-guarda chiesa
-aspetta 1
+guarda chiesa 14
+aspetta 1.5
 foto chiesa
 tp locanda
 aspetta 3
-guarda locanda
-aspetta 1
+guarda locanda 14
+aspetta 1.5
 foto locanda
 tp forno
 aspetta 3
-guarda forno
-aspetta 1
+guarda forno 14
+aspetta 1.5
 foto forno
 tp fabbro
 aspetta 3
-guarda fabbro
-aspetta 1
+guarda fabbro 14
+aspetta 1.5
 foto fabbro
 tp caserma
 aspetta 3
-guarda caserma
-aspetta 1
+guarda caserma 14
+aspetta 1.5
 foto caserma
 tp casa-grande
 aspetta 3
-guarda casa-grande
-aspetta 1
+guarda casa-grande 14
+aspetta 1.5
 foto casa-grande
 tp casa-media
 aspetta 3
-guarda casa-media
-aspetta 1
+guarda casa-media 14
+aspetta 1.5
 foto casa-media
 tp casa-piccola
 aspetta 3
-guarda casa-piccola
-aspetta 1
+guarda casa-piccola 14
+aspetta 1.5
 foto casa-piccola
 tp arcere
 aspetta 3
-guarda arcere
-aspetta 1
+guarda arcere 14
+aspetta 1.5
 foto arcere
 tp stalla
 aspetta 3
-guarda stalla
-aspetta 1
+guarda stalla 14
+aspetta 1.5
 foto stalla
 tp faro
 aspetta 3
-guarda faro
-aspetta 1
+guarda faro 14
+aspetta 1.5
 foto faro
 tp mulino
 aspetta 3
-guarda mulino
-aspetta 1
+guarda mulino 14
+aspetta 1.5
 foto mulino
 esci

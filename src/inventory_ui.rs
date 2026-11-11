@@ -453,9 +453,16 @@ pub fn inventory_window(
                         }
                     });
                 ui.separator();
-                let items: u32 = inventory.slots.iter().map(|s| s.qty).sum();
+                // Le monete si contano a parte: prima «Oggetti: 34» con 30 monete e 4 oggetti.
+                let items: u32 = inventory
+                    .slots
+                    .iter()
+                    .filter(|s| s.kind != ItemKind::Coin)
+                    .map(|s| s.qty)
+                    .sum();
+                let coins = inventory.qty(ItemKind::Coin);
                 ui.horizontal(|ui| {
-                    ui.label(format!("Oggetti: {items}"));
+                    ui.label(format!("Oggetti: {items}   Monete: {coins}"));
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.label(
                             egui::RichText::new(format!(

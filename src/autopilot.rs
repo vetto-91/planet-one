@@ -19,6 +19,8 @@
 //! - `compra <n o nome>`, `prendi` (tutto dal mobile aperto), `chiudi` (torna al gioco): i pannelli
 //!   egui non ricevono i tasti simulati, quindi il pilota passa dalla logica del gioco;
 //! - `di <testo>`: nella chat con l'IA locale manda una frase;
+//! - `registra <nome>` / `ferma`: registra in `<uscita>/<nome>.wav` ciò che esce dagli altoparlanti
+//!   (solo Linux, `parec`); `scripts/ascolta.py` lo analizza (volume, picchi, silenzi, spettrogramma, parlato);
 //! - `esci`: scrive il rapporto e chiude il gioco (codice d'uscita 1 se qualcosa è fallito).
 //!
 //! Ogni altra riga va alla shell dei trucchi (`tp`, `ora`, `meteo`, `dai`, `god`, `vai`, `guarda`…):
@@ -109,6 +111,8 @@ pub struct Autopilot {
     /// `avanza`: righe del dialogo ancora da far scorrere (fino alle scelte o alla chiusura).
     advance: u32,
     pub failures: Vec<String>,
+    /// Registrazione dell'audio del sistema in corso (`registra`), con il file di uscita.
+    recorder: Option<(std::process::Child, PathBuf)>,
     pub passed: u32,
     script: String,
 }
@@ -164,6 +168,49 @@ impl Autopilot {
         }
         s
     }
+}
+
+/// Avvia la registrazione di ciò che esce dagli altoparlanti (monitor della scheda audio
+/// predefinita, PulseAudio o PipeWire) in un file WAV. Solo Linux: `parec` e `pactl`.
+fn start_recording(path: &std::path::Path) -> Result<std::process::Child, String> {
+    let sink = std::process::Command::new("pactl")
+        .arg("get-default-sink")
+        .output()
+        .map_err(|e| format!("pactl: {e}"))?;
+    let sink = String::from_utf8_lossy(&sink.stdout).trim().to_string();
+    if sink.is_empty() {
+        return Err("nessuna scheda audio predefinita".into());
+    }
+    if let Some(dir) = path.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    std::process::Command::new("parec")
+        .args([
+            "-d",
+            &format!("{sink}.monitor"),
+            "--file-format=wav",
+            "--rate=44100",
+            "--channels=2",
+        ])
+        .arg(path)
+        .spawn()
+        .map_err(|e| format!("parec: {e}"))
+}
+
+/// Ferma la registrazione: SIGINT perché `parec` chiuda bene l'intestazione del WAV.
+fn stop_recording(rec: Option<(std::process::Child, PathBuf)>) {
+    let Some((mut child, path)) = rec else {
+        return;
+    };
+    #[cfg(unix)]
+    // SAFETY: si manda un segnale al processo figlio di cui si conosce il pid.
+    unsafe {
+        libc::kill(child.id() as libc::pid_t, libc::SIGINT);
+    }
+    #[cfg(not(unix))]
+    let _ = child.kill();
+    let _ = child.wait();
+    info!("[PILOTA] registrazione salvata in {}", path.display());
 }
 
 /// Nome di un tasto del copione.
@@ -644,7 +691,21 @@ pub fn run_autopilot(
             pilot.dump = Some(None);
             pilot.check = Some((n, words[1..].join(" ")));
         }
+        "registra" | "record" => {
+            stop_recording(pilot.recorder.take());
+            let name = words.get(1).copied().unwrap_or("audio");
+            let path = pilot.out.join(format!("{name}.wav"));
+            match start_recording(&path) {
+                Ok(child) => {
+                    info!("[PILOTA] registro l'audio in {}", path.display());
+                    pilot.recorder = Some((child, path));
+                }
+                Err(e) => pilot.fail(n, format!("registra: {e}")),
+            }
+        }
+        "ferma" | "stop" => stop_recording(pilot.recorder.take()),
         "esci" | "quit" => {
+            stop_recording(pilot.recorder.take());
             let report = pilot.report();
             let _ = std::fs::write(pilot.out.join("RAPPORTO.txt"), &report);
             for l in report.lines() {

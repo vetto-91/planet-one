@@ -185,10 +185,10 @@ Gli FPS non dipendono molto dal luogo e le entità sono sempre le stesse: il cos
 | F2-10 | Interni | **Bug**: nei sottotetti la rampa finiva contro il muretto, quindi in soffitta non si saliva (né il giocatore né un abitante). Trovato dalla prova di camminata con le nuove brande | corretto: la rampa finisce 0,6 m prima (dove c'è spazio) e c'è il percorso fino al sottotetto |
 | F2-11 | Negozio e mobili | Comprare, monete insufficienti (pulsante spento, messaggio), forziere della grotta (54 monete e 2 pozioni), «prendi tutto» | ok (copione `negozi-mobili`) |
 | F2-12 | Interfaccia | Menu Esc, diario, mappa, inventario, personaggio, «Aspetta», obiettivi (TAB) si aprono e chiudono | ok (copione `interfaccia`) |
-| F2-13 | Interfaccia | L'inventario dice «Oggetti: 34» contando anche le 30 monete; le targhette dei nomi degli abitanti si sovrappongono quando sono vicini | da decidere |
+| F2-13 | Interfaccia | L'inventario dice «Oggetti: 34» contando anche le 30 monete; le targhette dei nomi degli abitanti si sovrappongono quando sono vicini | corretto nel codice: monete contate a parte («Oggetti: 4   Monete: 30»), targhette sovrapposte spostate in alto (test `overlapping_plates_are_stacked`); **non ancora visto a schermo** |
 | F2-14 | IA locale | **Bug**: la prima risposta, col gioco che occupa la scheda video, superava i 40 s e la chat diceva «la IA non risponde»; il messaggio d'errore nominava sempre il Viandante, con chiunque si parlasse | corretto: attesa fino a 150 s, nome giusto. Con Marta e `gemma4:e4b` la chat risponde (copione `ia-locale`) |
-| F2-15 | Grafica | Le foto degli edifici del copione `edifici` vengono dall'alto: `guarda <edificio>` mira alla porta, che è sotto i piedi. Va aggiunta la distanza della camera | da fare |
-| F2-16 | Suoni | Non si possono controllare dai log né dalle foto | da provare a orecchio (tu) |
+| F2-15 | Grafica | Le foto degli edifici del copione `edifici` vengono dall'alto: `guarda <edificio>` mira alla porta, che è sotto i piedi. Va aggiunta la distanza della camera | `guarda <edificio> <distanza>` mira a metà facciata e allontana la camera; **non ancora visto a schermo** |
+| F2-16 | Suoni | Non si possono controllare dai log né dalle foto | strumenti pronti: `registra`/`ferma` nel pilota (WAV da `parec`) e `scripts/ascolta.py` (volume, picchi, saturazione, silenzi, eventi, regolarità dei passi, bande, spettrogramma, parlato con whisper.cpp locale). Provato su una voce del Viandante; l'ascolto del gioco è da fare |
 
 
 
@@ -214,6 +214,8 @@ Per ogni voce: un copione in `prove/`, cosa ci si aspetta, come si verifica (sta
 | **Piattaforme** | Build Windows e macOS dalla CI | Si avviano e trovano gli asset |
 
 ---
+
+**Limite scoperto l'11/11**: il pilota ha bisogno che la sessione di `dev` sia quella attiva. Se è attiva l'altra sessione del PC (un altro utente su un altro terminale virtuale), il gioco va in panic alla creazione della finestra (Vulkan «Invalid surface»). Con lo schermo solo bloccato, o il monitor spento, funziona. Il rendering software (Xvfb + llvmpipe) è troppo lento: in 5 minuti non finisce l'avvio. Rimedio possibile: una modalità senza finestra, con la camera che disegna in un'immagine sulla GPU.
 
 ## Fase 3 — Documenti e pulizia
 

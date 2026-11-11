@@ -26,7 +26,7 @@ const HELP: &[&str] = &[
     "tts [on|off] · tts voci · tts voce <nome|auto>",
     "stt [on|off] · stt modelli · stt modello <nome>",
     "stat [<nome> <valore>] · effetto peso <kg> [secondi] · effetto via",
-    "vai|corri <x> <z> · vai <luogo o abitante> · dove <nome> · guarda <yaw> <pitch>|<nome>",
+    "vai|corri <x> <z> · vai <luogo o abitante> · dove <nome> · guarda <yaw> <pitch>|<nome> [distanza]",
     "foto [nome] · dump [nome] (stato in JSON) · copione <file> (pilota automatico)",
     "quest <inizio|cerca|raccogli|torna|completata> · uccidi [raggio] · vicino [raggio] · fps · entita",
 ];
@@ -553,17 +553,39 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
                 ctx.orbit.pitch = pitch.to_radians();
                 shell.say(format!("camera: yaw {yaw:.0}°, pitch {pitch:.0}°"));
             }
-            LookTarget::Place(name) => {
-                // Un abitante si mira al petto; un luogo nel punto di arrivo.
+            LookTarget::Place(text) => {
+                // Un numero in fondo è la distanza della camera (foto da lontano).
+                let (name, distance) = match text.rsplit_once(' ') {
+                    Some((n, d)) if d.parse::<f32>().is_ok() => {
+                        (n.to_string(), d.parse::<f32>().ok())
+                    }
+                    _ => (text.clone(), None),
+                };
+                // Un abitante si mira al petto; un edificio a metà facciata (non alla porta,
+                // che è sotto i piedi di chi ci si è appena teletrasportato); un luogo nel punto di arrivo.
                 let npc = ctx
                     .npcs
                     .iter()
                     .find(|(npc, ..)| npc.name.to_lowercase().contains(name.as_str()))
                     .map(|(_, t, _)| t.translation() + Vec3::Y * 0.2);
-                match npc.or_else(|| resolve_place(ctx, &name, 0)) {
+                let building = ctx
+                    .place
+                    .items
+                    .iter()
+                    .filter(|p| p.kind == name)
+                    .flat_map(|p| p.points.iter())
+                    .next()
+                    .map(|p| {
+                        let y = ctx.field.as_ref().map_or(0.0, |f| f.height_at(p.x, p.y));
+                        Vec3::new(p.x, y + 3.0, p.y)
+                    });
+                match npc.or(building).or_else(|| resolve_place(ctx, &name, 0)) {
                     Some(p) => {
                         ctx.pilot.active = true;
                         ctx.pilot.aim = Some((p, 0));
+                        if let Some(d) = distance {
+                            ctx.orbit.distance = d.clamp(1.5, 30.0);
+                        }
                         shell.say(format!("mira a {:.1} {:.1} {:.1}", p.x, p.y, p.z));
                     }
                     None => shell.say("non trovo dove guardare"),

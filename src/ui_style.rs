@@ -12,6 +12,48 @@ pub const GOLD_EDGE: Color32 = Color32::from_rgb(230, 190, 90);
 /// Testo principale.
 pub const TEXT: Color32 = Color32::from_rgb(245, 248, 255);
 
+/// Rettangolo occupato da una targhetta (stesse misure di [`plate`]).
+pub fn plate_rect(
+    painter: &egui::Painter,
+    center_bottom: egui::Pos2,
+    text: &str,
+    size: f32,
+) -> egui::Rect {
+    let galley = painter.layout_no_wrap(
+        text.to_string(),
+        egui::FontId::proportional(size),
+        Color32::WHITE,
+    );
+    let pad = egui::vec2(12.0, 5.0);
+    egui::Rect::from_min_size(
+        egui::pos2(
+            center_bottom.x - galley.size().x / 2.0 - pad.x,
+            center_bottom.y - galley.size().y - pad.y * 2.0,
+        ),
+        galley.size() + pad * 2.0,
+    )
+}
+
+/// Spostamenti verso l'alto perché le targhette non si coprano: si sistemano in ordine (la prima
+/// è la più vicina alla camera e resta ferma), ognuna sale finché non tocca le precedenti.
+pub fn stack_offsets(rects: &[egui::Rect]) -> Vec<f32> {
+    let mut placed: Vec<egui::Rect> = Vec::new();
+    let mut out = Vec::with_capacity(rects.len());
+    for r in rects {
+        let mut dy = 0.0;
+        for _ in 0..6 {
+            let moved = r.translate(egui::vec2(0.0, -dy));
+            match placed.iter().find(|p| p.intersects(moved)) {
+                Some(p) => dy += moved.bottom() - p.top() + 3.0,
+                None => break,
+            }
+        }
+        placed.push(r.translate(egui::vec2(0.0, -dy)));
+        out.push(dy);
+    }
+    out
+}
+
 /// Targhetta: testo con riquadro scuro e bordo oro, con il bordo inferiore
 /// centrato su `center_bottom`.
 pub fn plate(
@@ -81,4 +123,21 @@ pub fn apply_style(ctx: &egui::Context) {
         v.selection.bg_fill = Color32::from_rgb(110, 88, 34);
         v.selection.stroke = egui::Stroke::new(1.0, GOLD);
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn overlapping_plates_are_stacked() {
+        let a = egui::Rect::from_min_size(egui::pos2(100.0, 100.0), egui::vec2(80.0, 30.0));
+        let b = a.translate(egui::vec2(20.0, 5.0));
+        let far = a.translate(egui::vec2(300.0, 0.0));
+        let off = stack_offsets(&[a, b, far]);
+        assert_eq!(off[0], 0.0);
+        assert!(off[1] > 0.0);
+        assert!(!a.intersects(b.translate(egui::vec2(0.0, -off[1]))));
+        assert_eq!(off[2], 0.0);
+    }
 }

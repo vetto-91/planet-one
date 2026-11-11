@@ -131,7 +131,7 @@ esci
 | Comando | Effetto |
 |---|---|
 | `vai <x> <z>` / `vai <nome>` / `corri …` | Cammina davvero (fisica vera); se resta bloccato lo scrive |
-| `guarda <yaw> <pitch>` / `guarda <nome>` | Mette il mirino su un punto o un abitante |
+| `guarda <yaw> <pitch>` / `guarda <nome> [distanza]` | Mette il mirino su un punto, un abitante o un edificio (a metà facciata); la distanza allontana la camera |
 | `premi <tasto> [s]` | Tiene premuto un tasto (`w`, `spazio`, `shift`, `e`, `invio`, `f5`, `click`…) |
 | `avanza`, `scegli <n o testo>` | Fa scorrere il dialogo; sceglie la risposta (numero da 1 o parte del testo) |
 | `aspetta <s>` | Attende |
@@ -139,6 +139,7 @@ esci
 | `verifica <campo> <op> <valore>` | Controllo (`=`, `!=`, `<`, `>`, `contiene`); campi: `vita`, `x/y/z`, `sopra_terreno`, `quest`, `monete`, `dialogo`, `parla`, `ora`, `fps`, `npc:<nome>:<campo>`, `prop:<id>:<campo>`, `/puntatore/json` |
 | `attendi …` / `mai … [s]` | La condizione diventa vera entro `s` secondi / non lo diventa mai |
 | `compra <n o nome>`, `prendi`, `chiudi` | Negozio e mobili (i pannelli non ricevono i tasti simulati) |
+| `registra <nome>`, `ferma` | Registra l'audio degli altoparlanti (Linux); `scripts/ascolta.py file.wav [--trascrivi]` lo descrive |
 | `mira <oggetto>`, `di <frase>` | Mirino sull'oggetto più vicino (porta, scuri, mobile…); frase nella chat con l'IA locale |
 | `esci` | Rapporto in `prove/out/<copione>/RAPPORTO.txt`; codice d'uscita 1 se qualcosa è fallito |
 

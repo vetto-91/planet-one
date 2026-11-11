@@ -7,7 +7,9 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 - **Sottotetti**: la rampa finiva contro il muretto e in soffitta non si saliva; ora finisce prima e c'è il percorso fino in cima.
 - **Caserma**: due brande nel sottotetto per Livio e Mario, le ronde della notte.
 - **IA locale**: la prima risposta può richiedere fino a 150 s (prima 40 s, e la chat si arrendeva); il messaggio d'errore nomina l'abitante giusto invece del Viandante.
-- Pilota: `compra`, `prendi`, `chiudi`, `mira <oggetto>`, `di <frase>`; il `dump` mostra negozio, mobile aperto e chat. Nuovi copioni `negozi-mobili`, `interfaccia`, `ia-locale`, `edifici`.
+- **Inventario**: le monete si contano a parte («Oggetti: 4   Monete: 30»).
+- **Targhette degli abitanti**: quando due si sovrapporrebbero, quella più lontana sale sopra l'altra.
+- Pilota: `registra <nome>`/`ferma` (audio degli altoparlanti in WAV, Linux) e `scripts/ascolta.py` (volume, saturazione, silenzi, eventi, spettrogramma, parlato con whisper.cpp locale); `guarda <nome> <distanza>` mira a metà facciata degli edifici; `compra`, `prendi`, `chiudi`, `mira <oggetto>`, `di <frase>`; il `dump` mostra negozio, mobile aperto e chat. Nuovi copioni `negozi-mobili`, `interfaccia`, `ia-locale`, `edifici`.
 
 ## v0.0.58.0 — Beta test: ronde, nuoto, banditi (2026-11-11)
 

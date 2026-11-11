@@ -304,6 +304,8 @@ pub fn draw_npc_labels(
     };
     let viewport = ctx.viewport_rect();
     let painter = ctx.layer_painter(egui::LayerId::background());
+    // Raccolte prima, dalla più vicina alla camera: se si coprono, quelle dietro salgono.
+    let mut labels: Vec<(f32, egui::Pos2, &str)> = Vec::new();
     for (entity, t, npc, vis) in npcs.iter() {
         // Di notte gli abitanti sono in casa (nascosti): niente targhetta.
         if *vis == Visibility::Hidden || occluded.0.contains(&entity) {
@@ -318,10 +320,20 @@ pub fn draw_npc_labels(
         if !viewport.contains(egui::pos2(screen.x, screen.y)) {
             continue;
         }
+        let depth = t.translation().distance(cam_t.translation());
+        labels.push((depth, egui::pos2(screen.x, screen.y), npc.name));
+    }
+    labels.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let rects: Vec<egui::Rect> = labels
+        .iter()
+        .map(|(_, p, name)| crate::ui_style::plate_rect(&painter, *p, name, 20.0))
+        .collect();
+    let offsets = crate::ui_style::stack_offsets(&rects);
+    for ((_, p, name), dy) in labels.iter().zip(offsets) {
         crate::ui_style::plate(
             &painter,
-            egui::pos2(screen.x, screen.y),
-            npc.name,
+            egui::pos2(p.x, p.y - dy),
+            name,
             20.0,
             crate::ui_style::GOLD,
         );
