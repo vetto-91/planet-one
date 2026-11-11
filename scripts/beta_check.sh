@@ -7,6 +7,7 @@
 # di questa corsa come nuovi riferimenti.
 # Ogni copione gira in una partita di prova isolata (PLANET_ONE_DATA_DIR in prove/out/dati),
 # a finestra, alle 11 con il sereno; le variabili PLANET_ONE_* già impostate valgono.
+# Un copione può chiedere variabili sue con righe «# env: CHIAVE=valore».
 # Uscita: 0 se tutti i copioni passano, 1 altrimenti.
 set -u
 cd "$(dirname "$0")/.."
@@ -32,6 +33,9 @@ for s in "${scripts[@]}"; do
   name=$(basename "$s" .txt)
   log="$OUT/$name.log"
   rm -rf "$OUT/$name"
+  # Variabili proprie del copione: righe «# env: CHIAVE=valore» (es. PLANET_ONE_SPEED=6).
+  extra=$(sed -n 's/^# env: //p' "$s" | tr '\n' ' ')
+  env $extra \
   PLANET_ONE_DATA_DIR="${PLANET_ONE_DATA_DIR:-$PWD/$OUT/dati}" \
   PLANET_ONE_SCRIPT="$s" \
   PLANET_ONE_SIZE="${PLANET_ONE_SIZE:-1280x720}" \

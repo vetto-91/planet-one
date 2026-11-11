@@ -1,5 +1,5 @@
 # Vita del paese: 24 ore di gioco, una fotografia ogni mezz'ora (per trovare chi resta bloccato).
-# Da eseguire con PLANET_ONE_SPEED=6.
+# env: PLANET_ONE_SPEED=6
 god on
 invisibile on
 tp -1.2 3 14

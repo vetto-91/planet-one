@@ -149,6 +149,8 @@ scripts/beta_check.sh prove/giro.txt       # uno solo
 scripts/beta_check.sh --aggiorna           # le foto di questa corsa diventano i riferimenti
 ```
 
+Un copione può chiedere variabili proprie con righe `# env: CHIAVE=valore` (es. `# env: PLANET_ONE_SPEED=6`).
+
 Le foto di ogni copione si confrontano con quelle di `prove/riferimento/` (ridotte a 480×270; differenza
 RMSE oltre `SOGLIA=0.12` = fallimento, con l'immagine delle differenze in `prove/out/<copione>/diff-*.png`).
 

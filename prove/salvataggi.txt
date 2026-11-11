@@ -1,4 +1,5 @@
 # Salvataggi: F5 e F9 riportano posizione, ora, inventario, quest, porte e scuri.
+# env: PLANET_ONE_SESSION=Prova
 god on
 dai mela 7
 quest cerca

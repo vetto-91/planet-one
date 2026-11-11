@@ -8,7 +8,7 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 - Shell: `dai` accetta singolare e plurale (`dai freccia`).
 - **Ronde sulle mura con i turni**: Gino (6-14), Ivo (14-22), Livio e Mario (22-6). A fine turno entrano nella torre più vicina e vanno a riposare; ce n'è sempre almeno una di pattuglia. **Ettore** lavora di notte al faro (17→7) e dorme di giorno. Gli orari possono superare la mezzanotte (`orari: 17 31 31`).
 - **Nuoto**: fermi si sta a galla dritti, nuotando il corpo si distende sull'acqua invece di restare in piedi.
-- Pilota: `tieni <tasto> <s>` (non blocca il copione); il `dump` elenca tutti gli abitanti (fase, nascosto, percorso); nuovi copioni `movimento`, `combattimento`, `salvataggi`, `meteo`, `vita-paese`.
+- Pilota: `tieni <tasto> <s>` (non blocca il copione); i copioni possono chiedere variabili con `# env: CHIAVE=valore`; il `dump` elenca tutti gli abitanti (fase, nascosto, percorso); nuovi copioni `movimento`, `combattimento`, `salvataggi`, `meteo`, `vita-paese`.
 
 ## v0.0.57.0 — Beta test: bug bloccanti (2026-11-11)
 
