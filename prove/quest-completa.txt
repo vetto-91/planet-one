@@ -17,7 +17,7 @@ vai 31 -37
 dump raccolta
 attendi quest = Returning 20
 verifica monete_quest = 12
-tp viandante
+tp 2.5 2 -0.2
 attendi npc:viandante:modo = Ready 120
 vai viandante
 attendi npc:viandante:dist < 2.6 120
@@ -28,7 +28,7 @@ avanza
 aspetta 1
 # Dopo la ricompensa il Viandante offre il negozio: «Arrivederci» chiude il dialogo.
 verifica /dialogo/scelte contiene arrivederci
-scegli 3
+scegli arrivederci
 aspetta 1
 dump fine
 verifica dialogo = false

@@ -1,0 +1,41 @@
+# Misura delle prestazioni: FPS ed entità in sei luoghi, di giorno e di notte (vedi stato-*.json).
+god on
+ora 12
+tp 0 3 0
+aspetta 6
+dump giorno-spawn
+tp -1.2 3 14
+aspetta 6
+dump giorno-piazza
+tp faro
+aspetta 6
+dump giorno-faro
+tp mulino
+aspetta 6
+dump giorno-mulino
+tp -56 12 62
+aspetta 6
+dump giorno-rovine
+tp 93 3.5 22
+aspetta 6
+dump giorno-grotta
+ora 23
+tp 0 3 0
+aspetta 6
+dump notte-spawn
+tp -1.2 3 14
+aspetta 6
+dump notte-piazza
+tp faro
+aspetta 6
+dump notte-faro
+tp mulino
+aspetta 6
+dump notte-mulino
+tp -56 12 62
+aspetta 6
+dump notte-rovine
+tp 93 3.5 22
+aspetta 6
+dump notte-grotta
+esci

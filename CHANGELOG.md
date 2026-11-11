@@ -2,6 +2,15 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Morte unica**: qualunque causa porti la vita a zero (contatto, frecce, caduta) il giocatore rinasce allo spawn con la vita piena, 2 s di invulnerabilità e la scritta «Sei svenuto…»; inventario e monete restano. Prima le frecce potevano portare la vita sotto zero senza morte, e da lì il giocatore non moriva più.
+- **Rete sotto il mondo**: chi finisce sotto il terreno senza un pavimento sotto i piedi viene riportato in superficie (log `[RETE]`). Le gallerie della grotta non sono toccate.
+- **Grotta**: l'imbocco delle gallerie era **impraticabile**: il terreno attraversava la discesa e dalla camera non si passava (la prova di camminata non aveva il terreno). Ora il terreno ha un buco all'imbocco. Chiuso anche un varco nel pavimento verso il laghetto.
+- **Viandante**: se ti avvicini interrompe il giro e torna al banco; al mattino apre gli scuri della casetta, che restano aperti fino a sera.
+- Le frecce rispettano il trucco `invisibile`. Tolto l'avviso Bevy B0004 (la stufa della casetta).
+- Prove: le partite automatiche nascono a finestra, quindi `PLANET_ONE_SIZE` ora vale davvero; avviso se `PLANET_ONE_DATE` non è valida; `scegli` accetta anche il testo; campo `prop:<id>:<campo>`; nuovi copioni `grotta`, `scuri-casetta`, `fps`.
+
 ## v0.0.56.0 — Pilota automatico per il beta test (2026-11-10)
 
 - **Pilota automatico** (beta test, ADR 0031): `PLANET_ONE_SCRIPT=copione.txt` gioca da solo (`vai`, `guarda`, `premi`, `avanza`, `scegli`, `foto`, `dump` in JSON, `verifica`, `attendi`, `mai`, `esci`); `scripts/beta_check.sh` esegue i copioni di `prove/` e scrive un rapporto. `PLANET_ONE_SPEED` accelera il tempo, `PLANET_ONE_DATA_DIR` isola salvataggi e impostazioni.

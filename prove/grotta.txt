@@ -1,0 +1,26 @@
+# Gallerie della grotta: sono sotto il terreno ma hanno un pavimento, la rete non deve scattare.
+god on
+tp 93 3.5 22
+aspetta 3
+foto camera
+vai 93 34
+aspetta 1
+dump discesa
+foto discesa
+# Quota del centro del corpo: pavimento a 0,86 più 0,83.
+verifica y < 2
+verifica sopra_terreno < -2
+tp 93.5 2.0 39
+aspetta 4
+foto sala-tesoro
+verifica y < 2
+verifica sopra_terreno < -2
+tp 96.5 2.0 33.2
+aspetta 4
+foto laghetto
+verifica sopra_terreno < -2
+tp 87 1.5 38.4
+aspetta 4
+foto cunicolo
+verifica y < 2
+esci

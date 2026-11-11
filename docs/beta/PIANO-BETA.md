@@ -82,7 +82,7 @@ ma è lento e cieco: non sa dove sono gli NPC né cosa succede. Da qui la Fase 0
 - Variabili: `PLANET_ONE_SPEED`, `PLANET_ONE_DATA_DIR`, `PLANET_ONE_SIZE`, `PLANET_ONE_OUT`.
 - Shell: `vai`, `corri`, `dove`, `guarda`, `foto`, `dump`, `copione`, `quest <fase>`, `uccidi`, `vicino`, `fps`, `entita`.
 - F12 «Segnala bug».
-- `beta_check.sh`: rapporto completo e confronto delle foto con i riferimenti. Fra due corse uguali la differenza misurata è 0,005–0,033; la soglia è 0,08.
+- `beta_check.sh`: rapporto completo e confronto delle foto con i riferimenti. Fra due corse uguali la differenza misurata è 0,005–0,08 (il mulino, per le pale che girano); la soglia è 0,12.
 - Copioni:
   - passano: `quest-avvio`, `quest-completa` (dal ladro alla consegna), `giro`, `f12`;
   - **falliscono di proposito, riproducendo i bug: `b1-frecce` e `b2-torre`**.
@@ -131,6 +131,27 @@ Mi mandi la cartella e riproduco il bug esattamente. Da usare insieme alla **sch
 ---
 
 ## Fase 1 — Bug bloccanti
+
+**Stato all'11/11/2026: fatta**, tutti i copioni verdi.
+- B1 morte unica (`combat::player_death`), B5 frecce e `invisibile`, B4 avviso B0004 (era la stufa della casetta), B7 avviso sulla data: corretti.
+- B2: la causa era un `tp` sotto la superficie del terreno, non un buco; aggiunta la rete di sicurezza (`player::needs_rescue`).
+- B6: il Viandante ora apre gli scuri al mattino e torna al banco se ti avvicini.
+- B9: non è un bug, `tp porta` porta di proposito 6 m dentro il cancello.
+- **Trovato in più**: l'imbocco delle gallerie della grotta (v0.0.55) era impraticabile perché il terreno attraversava la discesa. Corretto con `terrain::TerrainHole`.
+
+B3, misura (FPS a finestra 1280×720, RTX 3080 Ti, entità ≈ 19.900 ovunque):
+
+| Luogo | Giorno | Notte |
+|---|---|---|
+| Spawn | 35 | 37 |
+| Piazza | 42 | 31 |
+| Faro | 38 | 49 |
+| Mulino | 30 | 35 |
+| Rovine | 45 | 50 |
+| Grotta | 40 | 32 |
+
+Gli FPS non dipendono molto dal luogo e le entità sono sempre le stesse: il costo sembra globale, non locale. Le correzioni si decidono insieme.
+
 
 1. **B1 Morte unica**: un solo sistema `player_death` che scatta su `hp <= 0` qualunque sia la causa (contatto, frecce, caduta, futuro annegamento). Fa vita piena, posizione di rinascita, reset della camera, messaggio a schermo «Sei svenuto…» e un piccolo tempo di invulnerabilità; facoltativo perdere qualche moneta. Test: ogni fonte di danno porta a respawn; la vita non è mai negativa.
 2. **B2 Rete di sicurezza**: se il giocatore (o un NPC, un animale, un oggetto) scende 3 m sotto il terreno nel punto in cui si trova, va riportato sopra, con log `[RETE]` della posizione. Poi va trovata la causa alla torre in rovina: teletrasporto dentro un collider, oppure un buco o uno spiazzo mal raccordato nel terreno. Test: `tp` in 50 punti a caso con `verifica y > terreno - 0,5`.

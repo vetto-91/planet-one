@@ -155,7 +155,13 @@ impl Default for GameClock {
             .unwrap_or(10.0);
         let date = std::env::var("PLANET_ONE_DATE")
             .ok()
-            .and_then(|v| GameDate::parse(&v))
+            .and_then(|v| {
+                let parsed = GameDate::parse(&v);
+                if parsed.is_none() {
+                    warn!("[DEVTOOLS] PLANET_ONE_DATE={v} non valida: serve anno,mese,giorno");
+                }
+                parsed
+            })
             .unwrap_or(GameDate::START);
         Self::new(date, hour)
     }

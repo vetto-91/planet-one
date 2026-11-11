@@ -149,10 +149,12 @@ pub fn update_grounded(
     grounds: Query<Entity, With<Ground>>,
     mut players: Query<(Entity, &GlobalTransform, &mut GroundedState), With<Player>>,
     time: Res<Time>,
+    field: Option<Res<crate::terrain::TerrainField>>,
+    terrains: Query<Entity, With<crate::terrain::TerrainMesh>>,
 ) {
     for (entity, transform, mut state) in &mut players {
-        let filter = SpatialQueryFilter::default().with_excluded_entities([entity]);
         let center = transform.translation();
+        let filter = solid_filter(entity, center, field.as_deref(), &terrains);
 
         // Raccoglie il hit più vicino tra centro e 4 offset laterali.
         let mut best: Option<RayHitData> = None;
@@ -322,6 +324,22 @@ pub fn movement(
     }
 }
 
+/// Filtro delle collisioni del giocatore: esclude lui stesso e, dentro un buco del terreno
+/// (imbocco delle gallerie), anche il terreno.
+fn solid_filter(
+    player: Entity,
+    at: Vec3,
+    field: Option<&crate::terrain::TerrainField>,
+    terrains: &Query<Entity, With<crate::terrain::TerrainMesh>>,
+) -> SpatialQueryFilter {
+    let filter = SpatialQueryFilter::from_excluded_entities([player]);
+    if field.is_some_and(|f| f.in_hole(at.x, at.z)) {
+        filter.with_excluded_entities(terrains.iter().chain([player]))
+    } else {
+        filter
+    }
+}
+
 /// Esegue `MoveAndSlide` in FixedUpdate e registra gli hit col terreno.
 ///
 /// Se durante lo sweep c'è un contatto con normale verso l'alto (>= 0.5),
@@ -331,6 +349,8 @@ pub fn run_move_and_slide(
     move_and_slide: MoveAndSlide,
     time: Res<Time>,
     cheats: Res<crate::shell::Cheats>,
+    field: Option<Res<crate::terrain::TerrainField>>,
+    terrains: Query<Entity, With<crate::terrain::TerrainMesh>>,
     mut players: Query<
         (
             Entity,
@@ -356,7 +376,7 @@ pub fn run_move_and_slide(
             velocity.0,
             time.delta(),
             &MoveAndSlideConfig::default(),
-            &SpatialQueryFilter::from_excluded_entities([entity]),
+            &solid_filter(entity, transform.translation, field.as_deref(), &terrains),
             |hit| {
                 if hit.intersects() && hit.normal.y >= MIN_GROUND_NORMAL_Y {
                     hit_ground = true;
@@ -429,19 +449,69 @@ pub fn fall_damage(drop: f32) -> f32 {
     ((drop - SAFE_FALL) * FALL_DAMAGE_PER_M).max(0.0)
 }
 
-/// Sistema: all'atterraggio toglie vita se si è caduti da troppo in alto.
+/// Sotto questa quota si è comunque caduti dal mondo.
+const WORLD_FLOOR: f32 = -30.0;
+/// Quanto sotto il terreno (m) si può stare senza un pavimento sotto i piedi.
+const BELOW_TERRAIN: f32 = 3.0;
+/// Fin dove si cerca un pavimento sotto i piedi (m).
+const FLOOR_SEARCH: f32 = 30.0;
+
+/// Va riportato sopra il terreno? Le gallerie della grotta sono sotto la superficie ma hanno
+/// un pavimento: si interviene solo se sotto i piedi non c'è nulla.
+pub fn needs_rescue(y: f32, terrain: f32, floor_below: bool, noclip: bool) -> bool {
+    !noclip && (y < WORLD_FLOOR || (y < terrain - BELOW_TERRAIN && !floor_below))
+}
+
+/// Sistema: danno da caduta all'atterraggio e rete di sicurezza sotto il mondo.
+#[allow(clippy::type_complexity)]
 pub fn apply_fall_damage(
     cheats: Res<crate::shell::Cheats>,
-    mut player: Query<(&GroundedState, &mut PlayerHealth, &mut Transform), With<Player>>,
+    field: Option<Res<crate::terrain::TerrainField>>,
+    spatial: SpatialQuery,
+    mut player: Query<
+        (
+            Entity,
+            &GroundedState,
+            &mut PlayerHealth,
+            &mut Transform,
+            &mut LinearVelocity,
+        ),
+        With<Player>,
+    >,
     mut peak: Local<Option<f32>>,
 ) {
-    let Ok((state, mut hp, mut tf)) = player.single_mut() else {
+    let Ok((entity, state, mut hp, mut tf, mut velocity)) = player.single_mut() else {
         return;
     };
     let y = tf.translation.y;
     if cheats.noclip {
         *peak = None;
         return;
+    }
+    if let Some(field) = field {
+        let terrain = field.height_at(tf.translation.x, tf.translation.z);
+        // Il raggio serve solo quando si è già sotto il terreno.
+        let floor_below = y >= terrain - BELOW_TERRAIN
+            || spatial
+                .cast_ray(
+                    tf.translation,
+                    Dir3::NEG_Y,
+                    FLOOR_SEARCH,
+                    true,
+                    &SpatialQueryFilter::from_excluded_entities([entity]),
+                )
+                .is_some();
+        if needs_rescue(y, terrain, floor_below, cheats.noclip) {
+            let top = terrain.max(crate::terrain::SEA_LEVEL) + 1.2;
+            warn!(
+                "[RETE] giocatore sotto il mondo in {:.1} {y:.1} {:.1}: riportato a quota {top:.1}",
+                tf.translation.x, tf.translation.z
+            );
+            tf.translation.y = top;
+            velocity.0 = Vec3::ZERO;
+            *peak = None;
+            return;
+        }
     }
     if state.grounded_now {
         if let Some(top) = peak.take() {
@@ -453,11 +523,6 @@ pub fn apply_fall_damage(
                     top - y,
                     hp.current
                 );
-                if hp.current <= 0.0 {
-                    hp.current = hp.max;
-                    tf.translation = Vec3::new(0.0, 1.0, 0.0);
-                    info!("[CADUTA] player morto -> respawn allo spawn");
-                }
             }
         }
     } else {
@@ -468,6 +533,20 @@ pub fn apply_fall_damage(
 #[cfg(test)]
 mod fall_tests {
     use super::*;
+
+    #[test]
+    fn the_net_spares_the_cave_but_catches_falls() {
+        // Sopra il terreno: niente.
+        assert!(!needs_rescue(10.0, 8.0, false, false));
+        // In galleria: sotto il terreno, ma con il pavimento sotto i piedi.
+        assert!(!needs_rescue(0.9, 8.0, true, false));
+        // Sotto il terreno senza pavimento: va riportato sopra.
+        assert!(needs_rescue(0.9, 8.0, false, false));
+        // Sotto il fondo del mondo: sempre.
+        assert!(needs_rescue(-40.0, 8.0, true, false));
+        // In noclip si vola dove si vuole.
+        assert!(!needs_rescue(-40.0, 8.0, false, true));
+    }
 
     #[test]
     fn short_drops_are_free_and_long_ones_hurt() {

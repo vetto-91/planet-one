@@ -211,6 +211,10 @@ fn ruined_tower(b: &mut B, int: &mut Interior) -> f32 {
 /// Semicampo locale della grotta (larghezza, profondità): ingresso a +Z, fondo a -Z.
 pub const CAVE_HALF: Vec2 = Vec2::new(5.0, 8.8);
 
+/// Imbocco delle gallerie (minimo e massimo locali x, z): dove il terreno passerebbe in mezzo
+/// alla discesa non c'è (`terrain::TerrainHole`); più in là la collina è sopra il soffitto.
+pub const CAVE_HOLE: (Vec2, Vec2) = (Vec2::new(-3.9, -13.0), Vec2::new(-1.1, -8.0));
+
 /// Numero pseudocasuale stabile in 0..1.
 fn cave_rnd(i: u32) -> f32 {
     ((i.wrapping_mul(2_654_435_761) >> 8) & 0xffff) as f32 / 65535.0
@@ -263,7 +267,8 @@ fn cave_depths(b: &mut B, int: &mut Interior) {
         rock(b, int, min, max);
     }
     // Laghetto: sala a ovest della discesa; l'acqua è bassa e si attraversa.
-    cave_floor(b, int, v(-8.4, LO, -17.6), v(-4.2, FL, -12.4));
+    // Il pavimento passa anche sotto il varco nella parete (x da -4,2 a -3,6).
+    cave_floor(b, int, v(-8.4, LO, -17.6), v(-3.6, FL, -12.4));
     for (min, max) in [
         (v(-8.4, LO, -12.4), v(-3.6, CEIL, -13.6)),
         (v(-8.4, LO, -17.6), v(-7.8, CEIL, -12.4)),

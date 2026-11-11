@@ -7,7 +7,7 @@
 //! - `premi <tasto> [s]`: tiene premuto un tasto (`w a s d spazio shift ctrl e invio esc tab su giu
 //!   sinistra destra 0-9 i j m t c v f5 f9 click clickdx`) per `s` secondi (predefinito 0,1);
 //! - `avanza`: fa scorrere il dialogo (Invio) finché compaiono le scelte o si chiude;
-//! - `scegli <n>`: nel dialogo sceglie la risposta `n` (da 1) e conferma;
+//! - `scegli <n o testo>`: nel dialogo sceglie la risposta (numero da 1 o parte del testo) e conferma;
 //! - `foto <nome>`: screenshot del gioco in `<uscita>/<nome>.png`;
 //! - `dump [nome]`: stato del gioco in JSON in `<uscita>/stato-<nome>.json`;
 //! - `verifica <campo> <op> <valore>`: confronto sullo stato (`=`, `!=`, `<`, `<=`, `>`, `>=`,
@@ -98,8 +98,8 @@ pub struct Autopilot {
     /// `attendi`: condizione da aspettare, tempo rimasto, prossima prova.
     /// `mai` (ultimo campo `true`): la condizione non deve diventare vera nel tempo dato.
     until: Option<(usize, String, f32, f32, bool)>,
-    /// Scelta del dialogo da impostare prima della conferma.
-    choice: Option<usize>,
+    /// Scelta del dialogo da impostare prima della conferma: numero (da 1) o parte del testo.
+    choice: Option<String>,
     /// `avanza`: righe del dialogo ancora da far scorrere (fino alle scelte o alla chiusura).
     advance: u32,
     pub failures: Vec<String>,
@@ -210,6 +210,18 @@ pub fn parse_key(name: &str) -> Option<PilotKey> {
     Some(PilotKey::Key(k))
 }
 
+/// Indice della scelta: numero da 1 oppure parte del testo (le scelte possono cambiare, per esempio
+/// «Parliamo d'altro» c'è solo con l'IA locale attiva).
+pub fn pick_choice(choices: &[String], wanted: &str) -> Option<usize> {
+    if let Ok(n) = wanted.parse::<usize>() {
+        return (n >= 1 && n <= choices.len()).then(|| n - 1);
+    }
+    let wanted = wanted.to_lowercase();
+    choices
+        .iter()
+        .position(|c| c.to_lowercase().contains(&wanted))
+}
+
 /// Campo dello stato JSON per `verifica`: nome breve oppure puntatore JSON (`/giocatore/vita`).
 pub fn field<'a>(state: &'a Value, name: &str) -> Option<&'a Value> {
     let pointer = match name {
@@ -232,6 +244,20 @@ pub fn field<'a>(state: &'a Value, name: &str) -> Option<&'a Value> {
         "arma" => "/arma",
         p if p.starts_with('/') => p,
         // `npc:<nome>:<campo>`: il primo abitante vicino il cui nome contiene `<nome>`.
+        // `prop:<id>:<campo>`: l'oggetto con stato vicino il cui id contiene `<id>`.
+        p if p.starts_with("prop:") => {
+            let (who, what) = p[5..].rsplit_once(':')?;
+            return state
+                .pointer("/vicini")?
+                .as_array()?
+                .iter()
+                .find(|v| {
+                    v.get("id")
+                        .and_then(Value::as_str)
+                        .is_some_and(|n| n.contains(who))
+                })?
+                .get(what);
+        }
         p if p.starts_with("npc:") => {
             let mut parts = p[4..].splitn(2, ':');
             let who = parts.next()?.to_lowercase();
@@ -459,14 +485,15 @@ pub fn run_autopilot(
         }
     }
     // Scelta del dialogo: si imposta e si conferma con Invio.
-    if let Some(n) = pilot.choice.take() {
-        if dialog.open && dialog.choosing && n < dialog.choices.len() {
-            dialog.selected = n;
-            keys.press(KeyCode::Enter);
-            pilot.held.push((PilotKey::Key(KeyCode::Enter), 0.05));
-        } else {
-            let line = 0;
-            pilot.fail(line, format!("scegli {}: nessuna scelta aperta", n + 1));
+    if let Some(wanted) = pilot.choice.take() {
+        let index = pick_choice(&dialog.choices, &wanted);
+        match index.filter(|_| dialog.open && dialog.choosing) {
+            Some(n) => {
+                dialog.selected = n;
+                keys.press(KeyCode::Enter);
+                pilot.held.push((PilotKey::Key(KeyCode::Enter), 0.05));
+            }
+            None => pilot.fail(0, format!("scegli {wanted}: nessuna scelta così")),
         }
     }
     if pilot.wait > 0.0 {
@@ -506,14 +533,19 @@ pub fn run_autopilot(
             }
             None => pilot.fail(n, format!("tasto sconosciuto in «{line}»")),
         },
-        "scegli" | "choose" => match num(1) {
-            Some(v) if v >= 1.0 => pilot.choice = Some(v as usize - 1),
-            _ => pilot.fail(n, format!("uso: scegli <n> («{line}»)")),
-        },
+        "scegli" | "choose" => {
+            if words.len() > 1 {
+                pilot.choice = Some(words[1..].join(" "));
+            } else {
+                pilot.fail(n, format!("uso: scegli <n o testo> («{line}»)"));
+            }
+        }
         "avanza" | "next" => pilot.advance = 30,
         "foto" | "shot" => {
             let name = words.get(1).copied().unwrap_or("foto");
             pilot.photo = Some(pilot.out.join(format!("{name}.png")));
+            // Il salvataggio è asincrono: si lascia il tempo di finire prima di `esci`.
+            pilot.wait = 0.5;
         }
         "dump" => {
             let name = words.get(1).copied().unwrap_or("stato");
@@ -752,7 +784,14 @@ pub fn plugin(app: &mut App) {
     app.init_resource::<Autopilot>()
         .add_systems(Startup, start_autopilot)
         .add_systems(PreUpdate, run_autopilot.after(bevy::input::InputSystems))
-        .add_systems(Update, (take_photos, dump_state));
+        .add_systems(
+            Update,
+            (
+                take_photos,
+                // Dopo la morte: lo stato non mostra mai una vita negativa di passaggio.
+                dump_state.after(crate::combat::player_death),
+            ),
+        );
 }
 
 #[cfg(test)]
@@ -784,6 +823,17 @@ mod tests {
         let s = json!({"vicini": [{"nome": "Viandante", "modo": "Ready", "dist": 2.0}]});
         assert!(evaluate(&s, "npc:viandante:modo = ready").is_ok());
         assert!(evaluate(&s, "npc:viandante < 3").is_ok());
+        let s = json!({"vicini": [{"id": "casetta:scuri:0", "attivo": true}]});
+        assert!(evaluate(&s, "prop:casetta:scuri:0:attivo = true").is_ok());
+    }
+
+    #[test]
+    fn choices_by_number_or_text() {
+        let c = vec!["Vorrei comprare".to_string(), "Arrivederci".to_string()];
+        assert_eq!(pick_choice(&c, "2"), Some(1));
+        assert_eq!(pick_choice(&c, "3"), None);
+        assert_eq!(pick_choice(&c, "arrived"), Some(1));
+        assert_eq!(pick_choice(&c, "boh"), None);
     }
 
     #[test]

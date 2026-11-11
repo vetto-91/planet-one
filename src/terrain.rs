@@ -100,9 +100,36 @@ pub struct TerrainField {
     wet_points: Vec<Vec2>,
     /// Laghetto: centro, raggio e quota dell'acqua.
     lake: Option<(Vec2, f32, f32)>,
+    /// Buchi nel terreno (imbocchi sotterranei), vedi [`TerrainHole`].
+    holes: Vec<TerrainHole>,
+}
+
+/// Rettangolo in cui il terreno non c'è: niente mesh e il giocatore ne ignora il collider
+/// (un heightfield non può avere cavità). Serve all'imbocco delle gallerie della grotta.
+#[derive(Clone, Debug)]
+pub struct TerrainHole {
+    center: Vec2,
+    yaw: f32,
+    min: Vec2,
+    max: Vec2,
+}
+
+impl TerrainHole {
+    /// Il punto (x, z) del mondo cade nel buco?
+    pub fn contains(&self, p: Vec2) -> bool {
+        let (sin, cos) = self.yaw.sin_cos();
+        let d = p - self.center;
+        let l = Vec2::new(d.x * cos - d.y * sin, d.x * sin + d.y * cos);
+        l.x >= self.min.x && l.x <= self.max.x && l.y >= self.min.y && l.y <= self.max.y
+    }
 }
 
 impl TerrainField {
+    /// Il punto è in un buco del terreno (imbocco sotterraneo)?
+    pub fn in_hole(&self, x: f32, z: f32) -> bool {
+        self.holes.iter().any(|h| h.contains(Vec2::new(x, z)))
+    }
+
     /// Quota (m) del terreno in (x, z), interpolazione bilineare tra i vertici.
     pub fn height_at(&self, x: f32, z: f32) -> f32 {
         let max = (self.n - 1) as f32;
@@ -280,7 +307,25 @@ pub fn update_terrain(
         .unwrap_or_default();
     let island = crate::water::load_spec();
     let (field, water) = build_field(image, &vil, &pads, &island);
-    let mesh = build_terrain_mesh(&field);
+    let holes: Vec<TerrainHole> = dbg
+        .as_ref()
+        .map(|d| {
+            d.items
+                .iter()
+                .filter(|p| p.kind == "grotta")
+                .flat_map(|p| {
+                    p.points.iter().enumerate().map(move |(j, q)| TerrainHole {
+                        center: *q,
+                        yaw: p.yaw(j),
+                        min: crate::places::CAVE_HOLE.0,
+                        max: crate::places::CAVE_HOLE.1,
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let mut mesh = build_terrain_mesh(&field);
+    cut_holes(&mut mesh, &holes);
     let collider = build_terrain_collider(&field);
     let n = field.n;
 
@@ -354,6 +399,7 @@ pub fn update_terrain(
         })
         .collect();
     commands.insert_resource(TerrainField {
+        holes,
         n,
         h: field.h.clone(),
         shore,
@@ -1042,6 +1088,32 @@ fn add_ground_detail(mesh: &mut Mesh, field: &Field) {
     mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
 }
 
+/// Toglie dalla mesh i triangoli che toccano un buco.
+fn cut_holes(mesh: &mut Mesh, holes: &[TerrainHole]) {
+    if holes.is_empty() {
+        return;
+    }
+    let Some(VertexAttributeValues::Float32x3(pos)) = mesh.attribute(Mesh::ATTRIBUTE_POSITION)
+    else {
+        return;
+    };
+    let inside: Vec<bool> = pos
+        .iter()
+        .map(|p| holes.iter().any(|h| h.contains(Vec2::new(p[0], p[2]))))
+        .collect();
+    if let Some(Indices::U32(idx)) = mesh.indices() {
+        let keep: Vec<u32> = idx
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .filter(|t| !t.iter().any(|v| inside[*v as usize]))
+            .flatten()
+            .copied()
+            .collect();
+        mesh.insert_indices(Indices::U32(keep));
+    }
+}
+
 /// Collider heightfield Avian dalla stessa griglia: heights[x][z] (riga = X, colonna = Z).
 fn build_terrain_collider(field: &Field) -> Collider {
     let n = field.n;
@@ -1307,6 +1379,19 @@ mod tests {
     use bevy::mesh::{Mesh, Meshable, VertexAttributeValues};
 
     /// Le tangenti analitiche devono avere lo stesso segno di quelle generate da mikktspace.
+    #[test]
+    fn holes_follow_the_placement_rotation() {
+        let h = TerrainHole {
+            center: Vec2::new(10.0, 20.0),
+            yaw: std::f32::consts::PI,
+            min: Vec2::new(-3.6, -13.0),
+            max: Vec2::new(-1.4, -8.0),
+        };
+        // Girata di 180°: locale (-2,5, -10) è a (+2,5, +10) dal centro.
+        assert!(h.contains(Vec2::new(12.5, 30.0)));
+        assert!(!h.contains(Vec2::new(7.5, 10.0)));
+    }
+
     #[test]
     fn analytic_tangent_sign_matches_mikktspace() {
         let mut m = Plane3d {

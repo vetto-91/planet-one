@@ -135,10 +135,15 @@ fn main() -> AppExit {
                         // `PLANET_ONE_SIZE=1280x720`: finestra fissa per screenshot ripetibili.
                         resolution: devtools::window_size().into(),
                         // Avvio a schermo intero di default; F11 torna a finestra.
-                        mode: bevy::window::WindowMode::Fullscreen(
-                            bevy::window::MonitorSelection::Current,
-                            bevy::window::VideoModeSelection::Current,
-                        ),
+                        // Le prove automatiche nascono già a finestra (e con la dimensione chiesta).
+                        mode: if devtools::skip_menu() {
+                            bevy::window::WindowMode::Windowed
+                        } else {
+                            bevy::window::WindowMode::Fullscreen(
+                                bevy::window::MonitorSelection::Current,
+                                bevy::window::VideoModeSelection::Current,
+                            )
+                        },
                         ..default()
                     }),
                     // In Bevy 0.20 Esc non chiude più la finestra di default:
@@ -321,6 +326,7 @@ fn main() -> AppExit {
                 inventory::drop_requested_items,
                 combat::player_attack,
                 combat::contact_damage,
+                combat::player_death.after(combat::contact_damage),
                 combat::handle_enemy_death,
                 combat::enemy_respawn_tick,
             )
@@ -358,7 +364,9 @@ fn main() -> AppExit {
                 combat::enemy_ai.run_if(in_state(AppState::Playing)),
                 inventory::attach_pickup_icons,
                 inventory::face_pickup_icons,
-                combat::update_enemy_arrows.run_if(in_state(AppState::Playing)),
+                combat::update_enemy_arrows
+                    .before(combat::player_death)
+                    .run_if(in_state(AppState::Playing)),
                 equipment::update_held_items,
                 equipment::stow_weapon_while_running,
             ),

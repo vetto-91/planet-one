@@ -243,25 +243,16 @@ pub fn update_arrows(
     }
 }
 
-/// Danno da contatto player↔nemico + morte/respawn del player.
+/// Danno da contatto player↔nemico (la morte è in [`player_death`]).
 pub fn contact_damage(
-    mut player: Query<
-        (
-            &GlobalTransform,
-            &mut PlayerHealth,
-            &mut CombatState,
-            &mut Transform,
-        ),
-        With<Player>,
-    >,
+    mut player: Query<(&GlobalTransform, &mut PlayerHealth, &mut CombatState), With<Player>>,
     enemies: Query<&GlobalTransform, (With<Enemy>, Without<Player>)>,
     mut cd: ResMut<ContactDamageCd>,
     time: Res<Time>,
-    mut orbit: ResMut<crate::camera::OrbitCamera>,
     equip: Res<crate::inventory::Equipment>,
     cheats: Res<crate::shell::Cheats>,
 ) {
-    let Ok((pt, mut hp, mut combat, mut transform)) = player.single_mut() else {
+    let Ok((pt, mut hp, mut combat)) = player.single_mut() else {
         return;
     };
     combat.iframe = (combat.iframe - time.delta_secs()).max(0.0);
@@ -288,17 +279,50 @@ pub fn contact_damage(
             combat.iframe = PLAYER_IFRAME;
             cd.left = CONTACT_DAMAGE_COOLDOWN;
             info!("colpito: player vita {:.0}", hp.current);
-
-            if hp.current <= 0.0 {
-                // Respawn locale: vita piena, posizione allo spawn, camera resettata.
-                hp.current = hp.max;
-                transform.translation = Vec3::new(0.0, 1.0, 0.0);
-                *orbit = crate::camera::OrbitCamera::default();
-                info!("player morto -> respawn allo spawn");
-            }
             break;
         }
     }
+}
+
+/// Invulnerabilità (s) dopo essere rinati.
+const RESPAWN_IFRAME: f32 = 2.0;
+
+/// Il giocatore è morto?
+pub fn is_dead(hp: &PlayerHealth) -> bool {
+    hp.current <= 0.0
+}
+
+/// Sistema: unico punto di morte del giocatore, qualunque sia la causa (contatto, frecce, caduta).
+/// Rinasce allo spawn con la vita piena; inventario e monete restano.
+pub fn player_death(
+    mut player: Query<
+        (
+            &mut PlayerHealth,
+            &mut CombatState,
+            &mut Transform,
+            &mut avian3d::prelude::LinearVelocity,
+        ),
+        With<Player>,
+    >,
+    mut orbit: ResMut<crate::camera::OrbitCamera>,
+    mut session: ResMut<crate::save::Session>,
+) {
+    let Ok((mut hp, mut combat, mut transform, mut velocity)) = player.single_mut() else {
+        return;
+    };
+    if !is_dead(&hp) {
+        return;
+    }
+    info!(
+        "[MORTE] vita {:.0} in {:.1} {:.1} {:.1}: rinascita allo spawn",
+        hp.current, transform.translation.x, transform.translation.y, transform.translation.z
+    );
+    hp.current = hp.max;
+    combat.iframe = RESPAWN_IFRAME;
+    transform.translation = Vec3::new(0.0, 1.0, 0.0);
+    velocity.0 = Vec3::ZERO;
+    *orbit = crate::camera::OrbitCamera::default();
+    session.notify("Sei svenuto… ti risvegli al villaggio");
 }
 
 /// Query dei nemici con i dati necessari alla gestione della morte.
@@ -556,7 +580,7 @@ pub fn update_enemy_arrows(
             && pt.translation().distance(mid + Vec3::Y * -0.2) < 0.9
         {
             commands.entity(e).despawn();
-            if !cheats.god && combat.iframe <= 0.0 && hp.current > 0.0 {
+            if !cheats.god && !cheats.invisible && combat.iframe <= 0.0 && hp.current > 0.0 {
                 let factor = if equip.shield {
                     crate::inventory::SHIELD_FACTOR
                 } else {

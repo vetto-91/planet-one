@@ -133,10 +133,10 @@ esci
 | `vai <x> <z>` / `vai <nome>` / `corri …` | Cammina davvero (fisica vera); se resta bloccato lo scrive |
 | `guarda <yaw> <pitch>` / `guarda <nome>` | Mette il mirino su un punto o un abitante |
 | `premi <tasto> [s]` | Tiene premuto un tasto (`w`, `spazio`, `shift`, `e`, `invio`, `f5`, `click`…) |
-| `avanza`, `scegli <n>` | Fa scorrere il dialogo; sceglie la risposta |
+| `avanza`, `scegli <n o testo>` | Fa scorrere il dialogo; sceglie la risposta (numero da 1 o parte del testo) |
 | `aspetta <s>` | Attende |
 | `foto [nome]`, `dump [nome]` | Screenshot; stato del gioco in JSON (giocatore, quest, dialogo, inventario, dintorni) |
-| `verifica <campo> <op> <valore>` | Controllo (`=`, `!=`, `<`, `>`, `contiene`); campi: `vita`, `x/y/z`, `sopra_terreno`, `quest`, `monete`, `dialogo`, `parla`, `ora`, `fps`, `npc:<nome>:<campo>`, `/puntatore/json` |
+| `verifica <campo> <op> <valore>` | Controllo (`=`, `!=`, `<`, `>`, `contiene`); campi: `vita`, `x/y/z`, `sopra_terreno`, `quest`, `monete`, `dialogo`, `parla`, `ora`, `fps`, `npc:<nome>:<campo>`, `prop:<id>:<campo>`, `/puntatore/json` |
 | `attendi …` / `mai … [s]` | La condizione diventa vera entro `s` secondi / non lo diventa mai |
 | `esci` | Rapporto in `prove/out/<copione>/RAPPORTO.txt`; codice d'uscita 1 se qualcosa è fallito |
 
@@ -150,7 +150,7 @@ scripts/beta_check.sh --aggiorna           # le foto di questa corsa diventano i
 ```
 
 Le foto di ogni copione si confrontano con quelle di `prove/riferimento/` (ridotte a 480×270; differenza
-RMSE oltre `SOGLIA=0.08` = fallimento, con l'immagine delle differenze in `prove/out/<copione>/diff-*.png`).
+RMSE oltre `SOGLIA=0.12` = fallimento, con l'immagine delle differenze in `prove/out/<copione>/diff-*.png`).
 
 **F12 — Segnala bug**: salva in `~/.local/share/planet-one/segnalazioni/<data-ora>/` lo schermo, lo stato del
 gioco (`stato.json`), le ultime righe del log e una `nota.txt` da compilare. Basta mandare quella cartella.

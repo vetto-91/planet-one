@@ -1,0 +1,11 @@
+# Gli scuri della casetta: aperti di giorno, chiusi la notte, riaperti dal Viandante al mattino.
+god on
+tp 3 2 -0.2
+aspetta 2
+verifica prop:casetta:scuri:0:attivo = true
+ora 23
+attendi prop:casetta:scuri:0:attivo = false 120
+ora 8
+attendi prop:casetta:scuri:0:attivo = true 180
+foto mattina
+esci

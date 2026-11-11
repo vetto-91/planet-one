@@ -1157,6 +1157,8 @@ pub fn spawn_hut(
                     use_from: None,
                 },
                 Transform::from_xyz(CHIMNEY_XZ.x - 0.35, Y0 + 0.6, CHIMNEY_XZ.y),
+                // Ha una luce come figlia: senza visibilità propria Bevy avvisa (B0004).
+                Visibility::default(),
             ))
             .with_children(|s| {
                 s.spawn((
@@ -1864,6 +1866,8 @@ pub fn update_smoke(
 
 /// Velocità di camminata (m/s) e altezza del centro del corpo in piedi.
 const KEEPER_SPEED: f32 = 1.5;
+/// Entro questa distanza (m) il giocatore è un cliente: il Viandante torna al banco.
+const CUSTOMER_NEAR: f32 = 5.0;
 const STAND_Y: f32 = Y0 + 0.85;
 /// Punti (x, z locali) della routine.
 const SHOP_XZ: Vec2 = Vec2::new(KEEPER_SHOP.x, KEEPER_SHOP.z);
@@ -1927,6 +1931,8 @@ enum Step {
     CloseDoor,
     /// Chiude la finestra `i` (indice in `WINDOWS`).
     CloseWindow(usize),
+    /// Apre gli scuri della finestra `i`.
+    OpenWindow(usize),
     /// Si sdraia sul letto.
     Lie,
     /// Si alza e si mette in piedi accanto al letto.
@@ -1945,6 +1951,10 @@ pub struct Keeper {
     open_timers: Vec<(Entity, f32)>,
     /// Conto alla rovescia (s) per la ronda notturna, se qualcosa è aperto.
     night_timer: Option<f32>,
+    /// Sta tornando al banco perché è arrivato un cliente.
+    returning: bool,
+    /// Prima esecuzione della routine fatta (scuri aperti se la partita inizia di giorno).
+    started: bool,
     rng: u64,
     /// Moltiplicatore dei ritardi (solo debug: `PLANET_ONE_DELAY_SCALE`).
     delay_scale: f32,
@@ -1988,6 +1998,8 @@ impl Keeper {
             steps: Default::default(),
             wait: 0.0,
             stove_manual: false,
+            returning: false,
+            started: false,
             open_timers: Vec::new(),
             night_timer: None,
             rng: seed,
@@ -2106,8 +2118,27 @@ fn evening_steps(stove_to_off: bool, door_open: bool, windows_open: &[usize]) ->
     v.into()
 }
 
-/// Mattina: si alza → luce accesa → porta e finestre controllate/chiuse → stufa accesa → serranda su → banco.
-fn morning_steps(door_open: bool, windows_open: &[usize]) -> Steps {
+/// Passi per aprire gli scuri delle prime `count` finestre, partendo dall'incrocio.
+fn open_trip(count: usize) -> Vec<Step> {
+    use Step::*;
+    let mut v = Vec::new();
+    for i in 0..count {
+        let (path, stand, look) = window_approach(i);
+        v.push(Walk(HUB));
+        v.extend(path.into_iter().map(Walk));
+        v.extend([
+            Walk(stand),
+            Face(yaw_towards(look)),
+            Wait(0.3),
+            OpenWindow(i),
+            Wait(0.6),
+        ]);
+    }
+    v
+}
+
+/// Mattina: si alza → luce accesa → porta chiusa → scuri aperti → stufa accesa → serranda su → banco.
+fn morning_steps(door_open: bool, windows: usize) -> Steps {
     use Step::*;
     let mut v: Vec<Step> = vec![
         Rise,
@@ -2119,7 +2150,8 @@ fn morning_steps(door_open: bool, windows_open: &[usize]) -> Steps {
         Light(true),
         Wait(0.5),
     ];
-    v.extend(close_trip(door_open, windows_open));
+    v.extend(close_trip(door_open, &[]));
+    v.extend(open_trip(windows));
     v.extend(stove_trip(true, false));
     v.extend([
         Walk(HUB),
@@ -2169,8 +2201,10 @@ pub fn keeper_routine(
         Entity,
         &mut Keeper,
         &mut Transform,
+        &GlobalTransform,
         &mut crate::entities::Npc,
     )>,
+    players: Query<&GlobalTransform, With<crate::player::Player>>,
     mut states: Query<&mut PropState>,
 ) {
     use crate::entities::NpcMode;
@@ -2183,7 +2217,26 @@ pub fn keeper_routine(
     let cold = weather.temp < 8.0;
     // Stato corrente degli oggetti.
     let is_on = |states: &Query<&mut PropState>, e: Entity| states.get(e).is_ok_and(|s| s.on);
-    for (entity, mut k, mut tf, mut npc) in &mut keepers {
+    let player = players.single().ok().map(|p| p.translation());
+    for (entity, mut k, mut tf, global, mut npc) in &mut keepers {
+        // Se la partita inizia di giorno gli scuri sono già aperti.
+        if !k.started {
+            k.started = true;
+            if !night {
+                for w in &parts.windows {
+                    if let Ok(mut s) = states.get_mut(*w) {
+                        s.on = true;
+                    }
+                }
+            }
+        }
+        // Un cliente vicino: interrompe il giro e torna al banco, e non ne inizia altri.
+        let customer = player.is_some_and(|p| p.distance(global.translation()) < CUSTOMER_NEAR);
+        if customer && k.phase == KeeperPhase::Task && !k.returning {
+            k.returning = true;
+            k.steps = [Step::Walk(HUB), Step::Walk(SHOP_XZ), Step::Face(0.0)].into();
+            info!("[KEEPER] torna al banco: c'è un cliente");
+        }
         let stove_on = is_on(&states, parts.stove);
         let door_open = is_on(&states, parts.door);
         // Finestra "aperta" = scuri aperti oppure vetro alzato.
@@ -2195,15 +2248,8 @@ pub fn keeper_routine(
             .collect();
 
         // Conti alla rovescia per porta e finestre aperte (si azzerano alla chiusura).
-        let watched: Vec<(Entity, bool)> = std::iter::once((parts.door, door_open))
-            .chain(
-                parts
-                    .windows
-                    .iter()
-                    .enumerate()
-                    .map(|(i, w)| (*w, windows_open.contains(&i))),
-            )
-            .collect();
+        // Di giorno gli scuri restano aperti: si controlla solo la porta.
+        let watched = [(parts.door, door_open)];
         for (e, open) in &watched {
             let has = k.open_timers.iter().any(|(t, _)| t == e);
             if *open && !has {
@@ -2253,7 +2299,10 @@ pub fn keeper_routine(
                 info!("[KEEPER] inizia la sera");
             }
             KeeperPhase::Day
-                if !dialog.open && !k.stove_manual && stove_on != stove_wanted(hour, cold) =>
+                if !dialog.open
+                    && !customer
+                    && !k.stove_manual
+                    && stove_on != stove_wanted(hour, cold) =>
             {
                 k.steps = stove_trip(stove_wanted(hour, cold), true).into();
                 k.phase = KeeperPhase::Task;
@@ -2261,33 +2310,21 @@ pub fn keeper_routine(
                 commands.entity(entity).try_insert(ColliderDisabled);
                 info!("[KEEPER] va alla stufa ({})", stove_wanted(hour, cold));
             }
-            KeeperPhase::Day if !dialog.open && k.open_timers.iter().any(|(_, t)| *t <= 0.0) => {
-                // Chiude ciò che è rimasto aperto da troppo tempo.
-                let expired: Vec<Entity> = k
-                    .open_timers
-                    .iter()
-                    .filter(|(_, t)| *t <= 0.0)
-                    .map(|(e, _)| *e)
-                    .collect();
-                let door = expired.contains(&parts.door);
-                let wins: Vec<usize> = parts
-                    .windows
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, w)| expired.contains(w))
-                    .map(|(i, _)| i)
-                    .collect();
-                let mut v = close_trip(door, &wins);
+            KeeperPhase::Day
+                if !dialog.open && !customer && k.open_timers.iter().any(|(_, t)| *t <= 0.0) =>
+            {
+                // Chiude la porta rimasta aperta da troppo tempo.
+                let mut v = close_trip(true, &[]);
                 v.extend([Step::Walk(HUB), Step::Walk(SHOP_XZ), Step::Face(0.0)]);
                 k.steps = v.into();
                 k.phase = KeeperPhase::Task;
                 npc.mode = NpcMode::Busy;
                 commands.entity(entity).try_insert(ColliderDisabled);
-                info!("[KEEPER] va a chiudere (porta: {door}, finestre: {wins:?})");
+                info!("[KEEPER] va a chiudere la porta");
             }
             KeeperPhase::Asleep if !night => {
                 k.stove_manual = false;
-                k.steps = morning_steps(door_open, &windows_open);
+                k.steps = morning_steps(door_open, parts.windows.len());
                 k.phase = KeeperPhase::Morning;
                 npc.mode = NpcMode::Busy;
                 info!("[KEEPER] si sveglia");
@@ -2322,6 +2359,7 @@ pub fn keeper_routine(
                 }
                 _ => {
                     k.phase = KeeperPhase::Day;
+                    k.returning = false;
                     npc.mode = NpcMode::Ready;
                     commands.entity(entity).try_remove::<ColliderDisabled>();
                     info!("[KEEPER] al banco");
@@ -2392,6 +2430,12 @@ pub fn keeper_routine(
                     if let Ok(mut s) = states.get_mut(*e) {
                         s.on = false;
                     }
+                }
+                k.steps.pop_front();
+            }
+            Step::OpenWindow(i) => {
+                if let Some(mut s) = parts.windows.get(i).and_then(|e| states.get_mut(*e).ok()) {
+                    s.on = true;
                 }
                 k.steps.pop_front();
             }
