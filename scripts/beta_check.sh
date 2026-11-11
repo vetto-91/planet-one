@@ -12,8 +12,8 @@
 #
 # Risoluzioni standard, come un giocatore vero: 720p (1280x720), 1080p (1920x1080),
 # 1440p (2560x1440), 4k (3840x2160). --risoluzioni sceglie:
-#   giro  (predefinito) ogni copione a una risoluzione diversa, a rotazione: in una corsa si
-#         provano tutte e quattro senza moltiplicare i tempi;
+#   giro  (predefinito) ogni copione a una risoluzione diversa, a rotazione (sempre la stessa per
+#         lo stesso copione): in una corsa si provano tutte e quattro senza moltiplicare i tempi;
 #   tutte ogni copione a tutte e quattro (corsa lunga: quattro volte);
 #   720p | 1080p | 1440p | 4k | LxA   tutti i copioni a una sola risoluzione.
 # Un copione con «# env: PLANET_ONE_SIZE=...» usa sempre quella.
@@ -75,10 +75,21 @@ scripts=("$@")
 [ ${#scripts[@]} -eq 0 ] && scripts=(prove/*.txt)
 
 # Corse da fare: «copione|risoluzione|chiave» (la chiave nomina log e cartella d'uscita).
+# Nel giro la risoluzione dipende dal posto fisso del copione fra tutti quelli di prove/
+# (non da quali si lanciano), così ogni copione gira sempre alla stessa e le foto si
+# confrontano con riferimenti presi alla stessa risoluzione (l'HUD non scala).
+all_scripts=(prove/*.txt)
+slot_of() {
+  local k
+  for k in "${!all_scripts[@]}"; do
+    [ "$(basename "${all_scripts[$k]}")" = "$(basename "$1")" ] && { echo "$k"; return; }
+  done
+  echo 0
+}
 runs=()
-i=0
 for s in "${scripts[@]}"; do
   name=$(basename "$s" .txt)
+  i=$(slot_of "$s")
   fixed=$(sed -n 's/^# env: PLANET_ONE_SIZE=//p' "$s" | head -1)
   if [ -n "$fixed" ]; then
     runs+=("$s|$fixed|$name")
@@ -89,7 +100,6 @@ for s in "${scripts[@]}"; do
   else
     runs+=("$s|$(size_of "$mode")|$name")
   fi
-  i=$((i + 1))
 done
 
 report="$OUT/RAPPORTO.md"

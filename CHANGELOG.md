@@ -4,6 +4,7 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **Meteo, ombre**: col cielo coperto (pioggia, temporale, nebbia, neve) il sole non proietta più ombre nette: la luce diretta quasi sparisce e quella del cielo diventa diffusa. Col nuvoloso le ombre sono tenui. Il sereno non cambia.
 - **Sottotetti**: la rampa finiva contro il muretto e in soffitta non si saliva; ora finisce prima e c'è il percorso fino in cima.
 - **Caserma**: due brande nel sottotetto per Livio e Mario, le ronde della notte.
 - **IA locale, prima risposta lenta**: il modello si carica con lo stesso contesto piccolo della chat (3072 token). Prima poteva caricarsi col contesto predefinito di Ollama (enorme se configurato a 256k): 9,2 GB invece di 3,3, quasi tutti sul processore, e la chat non rispondeva in 150 s. Il caricamento anticipato avviene solo sotto il pilota automatico; nel gioco normale il modello si carica alla prima richiesta e, dopo la prima risposta (o il primo errore), il log dice quanta parte sta sulla scheda video e avvisa se una parte va sul processore. Il modello resta in memoria 10 minuti dopo l'ultima richiesta (prima 2).

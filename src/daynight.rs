@@ -317,6 +317,18 @@ pub fn spawn_sky_discs(
     }
 }
 
+/// Quanto il cielo è coperto (0 sereno, 1 coperto), da nuvole e nebbia. Con il cielo coperto
+/// il sole non arriva diretto: niente ombre nette, la luce viene tutta dal cielo.
+/// Il nuvoloso (0,55) resta a metà: il sole passa ancora fra le nuvole.
+pub fn overcast(cloud: f32, fog: f32) -> f32 {
+    smoothstep(0.2, 0.9, cloud.max(fog))
+}
+
+/// Luce diretta del sole rispetto al sereno (0..1).
+pub fn direct_sun(cloud: f32, fog: f32) -> f32 {
+    (1.0 - 0.78 * cloud) * (1.0 - 0.92 * overcast(cloud, fog))
+}
+
 /// Sistema: posiziona luci e dischi e regola luce ambiente e cielo in base all'ora.
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn update_sky(
@@ -343,13 +355,15 @@ pub fn update_sky(
 ) {
     let dir = sun_dir(clock.day_fraction().floor(), clock.hour);
     let elev = dir.y;
+    let cover = overcast(weather.cloud, weather.fog);
     let day = smoothstep(-0.1, 0.25, elev);
     let night_moon = smoothstep(-0.1, 0.25, -elev);
     let warm = 1.0 - smoothstep(0.0, 0.45, elev);
 
     if let Ok((mut t, mut light)) = sun.single_mut() {
         *t = Transform::from_translation(dir * 20.0).looking_at(Vec3::ZERO, Vec3::Y);
-        light.illuminance = 9000.0 * day * (1.0 - 0.78 * weather.cloud) + weather.flash * 9000.0;
+        light.illuminance =
+            9000.0 * day * direct_sun(weather.cloud, weather.fog) + weather.flash * 9000.0;
         let c = Vec3::new(1.0, 0.95, 0.85).lerp(Vec3::new(1.0, 0.55, 0.3), warm)
             * Vec3::from(season.0.sun);
         let c = c.lerp(Vec3::new(0.8, 0.85, 0.9), 0.6 * weather.cloud);
@@ -363,7 +377,8 @@ pub fn update_sky(
     let amb = Vec3::new(0.35, 0.42, 0.7).lerp(Vec3::new(0.9, 0.92, 0.98), day);
     ambient.color = Color::srgb(amb.x, amb.y, amb.z);
     ambient.brightness =
-        (8.0 + (40.0 - 8.0) * day) * season.0.ambient * (1.0 - 0.15 * weather.cloud)
+        // Col cielo coperto la luce diffusa cresce un po': prende il posto del sole.
+        (8.0 + (40.0 - 8.0) * day) * season.0.ambient * (1.0 + 0.8 * cover)
             + weather.flash * 700.0;
 
     let sky = smoothstep(-0.15, 0.3, elev);
@@ -374,7 +389,7 @@ pub fn update_sky(
         if let Some(mut env) = env {
             // Bevy crea `EnvironmentMapLight` una sola volta dalla versione "generata": l'intensità si regola qui.
             // Di notte il cielo non deve illuminare quasi nulla.
-            env.intensity = (6.0 + 1000.0 * sky) * (1.0 - 0.6 * weather.cloud.max(weather.fog))
+            env.intensity = (6.0 + 1000.0 * sky) * (1.0 - 0.35 * weather.cloud.max(weather.fog))
                 + weather.flash * 900.0;
         }
     }
@@ -394,6 +409,19 @@ pub fn update_sky(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn overcast_sky_removes_direct_sun() {
+        // Sereno: il sole pieno (quasi).
+        assert!(direct_sun(0.05, 0.0) > 0.9);
+        // Nuvoloso: il sole passa a tratti, ombre tenui.
+        let cloudy = direct_sun(0.55, 0.0);
+        assert!(cloudy > 0.2 && cloudy < 0.5, "{cloudy}");
+        // Pioggia, temporale, nebbia, neve: quasi niente sole diretto, niente ombre nette.
+        for (c, f) in [(0.85, 0.25), (1.0, 0.3), (0.5, 1.0), (0.8, 0.35)] {
+            assert!(direct_sun(c, f) < 0.08, "{c} {f}: {}", direct_sun(c, f));
+        }
+    }
 
     #[test]
     fn start_date_is_march_21_year_0() {
