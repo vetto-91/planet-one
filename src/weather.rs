@@ -408,8 +408,17 @@ pub fn update_fog(
 // ---------------------------------------------------------------------------------------------
 
 const RAIN_POOL: usize = 900;
-const SNOW_POOL: usize = 600;
+/// La neve scende lenta e i fiocchi sono piccoli: ne servono molti, in un cerchio più stretto
+/// e in uno strato più basso della pioggia, perché la nevicata si veda fitta.
+const SNOW_POOL: usize = 2000;
 const PRECIP_RADIUS: f32 = 15.0;
+const SNOW_RADIUS: f32 = 11.0;
+/// Altezza sopra la camera da cui partono gocce e fiocchi (m).
+const RAIN_TOP: f32 = 8.0;
+const SNOW_TOP: f32 = 4.0;
+/// Il cerchio delle particelle è spostato in avanti, dove guarda la camera, di questa
+/// frazione del raggio: dietro la camera le particelle non si vedrebbero.
+const AHEAD: f32 = 0.6;
 /// Le particelle più vicine di così alla camera non si disegnano: a pochi centimetri
 /// dall'obiettivo una goccia o un fiocco riempirebbero mezzo schermo.
 const PRECIP_NEAR: f32 = 2.5;
@@ -441,7 +450,7 @@ pub fn spawn_precip(
 ) {
     let drop = meshes.add(Cuboid::new(0.016, 0.6, 0.016));
     // Fiocco tondo (un cubo da vicino sembrava un quadratino bianco).
-    let flake = meshes.add(Sphere::new(0.018).mesh().ico(1).expect("ico"));
+    let flake = meshes.add(Sphere::new(0.025).mesh().ico(1).expect("ico"));
     let drop_mat = materials.add(StandardMaterial {
         base_color: Color::srgba(0.75, 0.82, 0.95, 0.55),
         alpha_mode: AlphaMode::Blend,
@@ -497,10 +506,14 @@ pub fn update_precip(
     cameras: Query<&GlobalTransform, With<Camera3d>>,
     mut parts: Query<(&mut Precip, &mut Transform, &mut Visibility), Without<Camera3d>>,
 ) {
-    let (Ok(cam), Some(field)) = (cameras.single(), field) else {
+    let (Ok(cam_t), Some(field)) = (cameras.single(), field) else {
         return;
     };
-    let cam = cam.translation();
+    let cam = cam_t.translation();
+    let ahead = {
+        let f = cam_t.forward();
+        Vec2::new(f.x, f.z).normalize_or_zero()
+    };
     let dt = time.delta_secs().min(0.1);
     let t = time.elapsed_secs();
     let open = (1.0 - 0.9 * state.sheltered) * settings.gfx.particle_scale();
@@ -520,15 +533,23 @@ pub fn update_precip(
             Visibility::Inherited
         };
         let ground = field.height_at(pos.x, pos.z);
-        let out = Vec2::new(pos.x - cam.x, pos.z - cam.z).length() > PRECIP_RADIUS;
+        let (radius, above) = if p.snow {
+            (SNOW_RADIUS, SNOW_TOP)
+        } else {
+            (PRECIP_RADIUS, RAIN_TOP)
+        };
+        let center = Vec2::new(cam.x, cam.z) + ahead * radius * AHEAD;
+        let out = Vec2::new(pos.x, pos.z).distance(center) > radius;
         if p.fresh || out || pos.y < ground + 0.02 {
             p.counter += 1;
             let ang = rnd(p.seed, p.counter * 3) * std::f32::consts::TAU;
-            let r = PRECIP_RADIUS * rnd(p.seed, p.counter * 3 + 1).sqrt();
-            let (x, z) = (cam.x + ang.cos() * r, cam.z + ang.sin() * r);
+            let r = radius * rnd(p.seed, p.counter * 3 + 1).sqrt();
+            let (x, z) = (center.x + ang.cos() * r, center.y + ang.sin() * r);
             let g = field.height_at(x, z);
-            let top = cam.y.max(g) + 8.0;
-            let y = if p.fresh {
+            let top = cam.y.max(g) + above;
+            // Nuove o rimaste fuori dal cerchio (la camera si è girata): a un'altezza
+            // qualsiasi, così la vista non resta vuota mentre ricadono dall'alto.
+            let y = if p.fresh || out {
                 g + rnd(p.seed, p.counter * 3 + 2) * (top - g)
             } else {
                 top + rnd(p.seed, p.counter * 3 + 2) * 2.0
