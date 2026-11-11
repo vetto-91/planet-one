@@ -231,6 +231,23 @@ Per ogni voce: un copione in `prove/`, cosa ci si aspetta, come si verifica (sta
 
 **Limite scoperto l'11/11**: il pilota ha bisogno che la sessione di `dev` sia quella attiva. Se è attiva l'altra sessione del PC (un altro utente su un altro terminale virtuale), il gioco va in panic alla creazione della finestra (Vulkan «Invalid surface»). Con lo schermo solo bloccato, o il monitor spento, funziona. Il rendering software (Xvfb + llvmpipe) è troppo lento: in 5 minuti non finisce l'avvio. Rimedio: `PLANET_ONE_HEADLESS=1` (o `beta_check.sh --senza-schermo`), la camera disegna in un'immagine sulla GPU senza finestra; le foto non hanno HUD né pannelli. Parte sulla scheda giusta. Il primo tentativo è finito con la **memoria video esaurita**, perché Ollama teneva caricato un altro modello (circa 9 GB) e la scheda ha 12 GB.
 
+**Risoluzioni (11/11)**: `beta_check.sh` prova le risoluzioni standard 720p, 1080p, 1440p e 4K, come un giocatore vero (`--risoluzioni giro|tutte|…`). I monitor di questo PC arrivano a 2560×1440, ma il gestore delle finestre riduce una finestra 1440p o 4K a 2490×1376. Per questo le risoluzioni che non stanno sullo schermo girano senza finestra, alla misura esatta, e il rapporto mostra la risoluzione vera. Copione `fps` (nove luoghi, giorno e notte, grafica alta, RTX 3080 Ti):
+
+| Risoluzione | FPS medio | 1% peggiore |
+|---|---|---|
+| 1280×720 | 41 | 24 |
+| 1920×1080 | 42 | 23 |
+| 2560×1440 | 42 | 27 |
+| 3840×2160 | 41 | 27 |
+
+Gli FPS non cambiano con la risoluzione: oggi il collo di bottiglia è il **processore** (sistemi del gioco, numero di entità, preparazione del disegno), non la scheda video. È il primo punto da guardare nella fase delle prestazioni. Il faro e il mulino sono i luoghi più lenti (24–38 FPS).
+
+Suite completa a rotazione (21 copioni, cinque o sei per risoluzione): tutti passati, nessun `ERROR` né panic, nessuna foto diversa dai riferimenti. Il copione più lento è `edifici` (23 FPS medi, 14 nel 1% peggiore, a 720p), perché inquadra il paese intero da vicino. Note:
+- senza finestra Bevy avvisava che mancava l'origine del dettaglio delle ombre (`ShadowLodOrigin`): ora è la camera, così le ombre e gli FPS misurati sono come a finestra;
+- `b2-torre`: il `tp` dentro la torre mette il giocatore sotto il pavimento prima che i collider siano pronti, e la rete di sicurezza lo riporta su (`[RETE]`). Il giocatore non ci arriva così; la prova passa;
+- una finestra 1080p può aprirsi sul secondo monitor (1920×1080) e venire ridotta a 1850×1043: il rapporto lo segnala nella colonna Risoluzione;
+- i copioni nuovi (`edifici`, `giro-camera`, `interfaccia`, `meteo` e altri) non hanno ancora foto di riferimento: si creano con `--aggiorna` quando le foto attuali vanno bene.
+
 Da tenere per la fase delle prestazioni:
 - le prove usano la grafica «alta» predefinita, mentre le impostazioni dell'utente sono basse (niente ombre, SSAO, bloom): gli FPS misurati sono quelli del caso peggiore;
 - ogni luce puntiforme con ombre alloca una cubemap; con le luci interne con ombre accese la memoria video cresce molto (è l'oggetto dell'errore «Out of Memory»).

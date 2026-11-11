@@ -64,7 +64,11 @@ pub fn spawn_camera(
     // Senza finestra la camera disegna in un'immagine (vedi `devtools::headless`).
     if crate::devtools::headless() {
         let target = crate::devtools::headless_target(&mut images);
-        camera.insert(bevy::camera::RenderTarget::Image(target.clone().into()));
+        // Senza finestra Bevy non sa da dove scegliere il dettaglio delle ombre: è la camera.
+        camera.insert((
+            bevy::camera::RenderTarget::Image(target.clone().into()),
+            bevy::camera::ShadowLodOrigin,
+        ));
         commands.insert_resource(crate::devtools::HeadlessTarget(target));
     }
 }

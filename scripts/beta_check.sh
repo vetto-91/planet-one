@@ -1,10 +1,20 @@
 #!/usr/bin/env bash
 # Esegue i copioni del pilota automatico (prove/*.txt) e scrive prove/out/RAPPORTO.md.
 #
-# Uso: scripts/beta_check.sh [--aggiorna] [--senza-schermo] [copione ...]   (senza copioni: tutti)
+# Uso: scripts/beta_check.sh [--aggiorna] [--senza-schermo] [--risoluzioni R] [copione ...]
+#      (senza copioni: tutti)
+#
+# Risoluzioni standard, come un giocatore vero: 720p (1280x720), 1080p (1920x1080),
+# 1440p (2560x1440), 4k (3840x2160). --risoluzioni sceglie:
+#   giro  (predefinito) ogni copione a una risoluzione diversa, a rotazione: in una corsa si
+#         provano tutte e quattro senza moltiplicare i tempi;
+#   tutte ogni copione a tutte e quattro (corsa lunga: quattro volte);
+#   720p | 1080p | 1440p | 4k | LxA   tutti i copioni a una sola risoluzione.
+# Un copione con «# env: PLANET_ONE_SIZE=...» usa sempre quella.
+#
 # Le foto di ogni copione si confrontano con prove/riferimento/<copione>/<foto>.png
-# (ridotte a 480x270, ImageMagick `compare`, RMSE normalizzato; soglia SOGLIA=0.12). --aggiorna copia le foto
-# di questa corsa come nuovi riferimenti.
+# (ridotte a 480x270, ImageMagick `compare`, RMSE normalizzato; soglia SOGLIA=0.12). --aggiorna copia
+# le foto di questa corsa come nuovi riferimenti.
 # Ogni copione gira in una partita di prova isolata (PLANET_ONE_DATA_DIR in prove/out/dati),
 # a finestra, alle 11 con il sereno; le variabili PLANET_ONE_* già impostate valgono.
 # Un copione può chiedere variabili sue con righe «# env: CHIAVE=valore».
@@ -15,38 +25,81 @@ OUT=prove/out
 mkdir -p "$OUT"
 cargo build --release --offline >/dev/null 2>&1 || { echo "build fallita"; exit 2; }
 update=0
+mode=giro
 while [ $# -gt 0 ]; do
   case "$1" in
     --aggiorna) update=1; shift ;;
     # Senza finestra: la camera disegna in un'immagine (serve quando lo schermo non c'è,
     # per esempio se è attiva un'altra sessione del PC). Foto senza HUD né pannelli.
     --senza-schermo) export PLANET_ONE_HEADLESS=1; shift ;;
+    --risoluzioni) mode="${2:-giro}"; shift 2 ;;
     *) break ;;
   esac
 done
+STANDARD=(1280x720 1920x1080 2560x1440 3840x2160)
+size_of() {
+  case "$1" in
+    720p) echo 1280x720 ;;
+    1080p) echo 1920x1080 ;;
+    1440p) echo 2560x1440 ;;
+    4k|4K|2160p) echo 3840x2160 ;;
+    *) echo "$1" ;;
+  esac
+}
 SOGLIA="${SOGLIA:-0.12}"
+# Schermo più grande collegato (xrandr): una finestra che non ci sta verrebbe ridotta dal
+# gestore delle finestre, quindi quelle corse girano senza finestra, alla misura esatta.
+screen_area=$(xrandr 2>/dev/null | sed -n 's/.* connected.* \([0-9]\+\)x\([0-9]\+\)+.*/\1 \2/p' \
+  | awk '{a=$1*$2; if (a>m) m=a} END{print m+0}')
 scripts=("$@")
 [ ${#scripts[@]} -eq 0 ] && scripts=(prove/*.txt)
+
+# Corse da fare: «copione|risoluzione|chiave» (la chiave nomina log e cartella d'uscita).
+runs=()
+i=0
+for s in "${scripts[@]}"; do
+  name=$(basename "$s" .txt)
+  fixed=$(sed -n 's/^# env: PLANET_ONE_SIZE=//p' "$s" | head -1)
+  if [ -n "$fixed" ]; then
+    runs+=("$s|$fixed|$name")
+  elif [ "$mode" = tutte ]; then
+    for r in "${STANDARD[@]}"; do runs+=("$s|$r|$name@$r"); done
+  elif [ "$mode" = giro ]; then
+    runs+=("$s|${STANDARD[$((i % 4))]}|$name")
+  else
+    runs+=("$s|$(size_of "$mode")|$name")
+  fi
+  i=$((i + 1))
+done
+
 report="$OUT/RAPPORTO.md"
 {
   echo "# Rapporto del pilota automatico"
   echo
-  echo "Data: $(date '+%Y-%m-%d %H:%M') · versione: $(grep -o 'v[0-9][0-9.]*' src/version.rs | head -1)"
+  echo "Data: $(date '+%Y-%m-%d %H:%M') · versione: $(grep -o 'v[0-9][0-9.]*' src/version.rs | head -1)" \
+    "· risoluzioni: $mode${PLANET_ONE_HEADLESS:+ · senza finestra}"
   echo
-  echo "| Copione | Esito | Verifiche ok | Fallimenti | WARN | ERROR | panic |"
-  echo "|---|---|---|---|---|---|---|"
+  echo "| Copione | Risoluzione | Esito | Verifiche ok | Fallimenti | FPS medio | 1% peggiore | WARN | ERROR | panic |"
+  echo "|---|---|---|---|---|---|---|---|---|---|"
 } > "$report"
 failed=0
-for s in "${scripts[@]}"; do
-  name=$(basename "$s" .txt)
-  log="$OUT/$name.log"
-  rm -rf "$OUT/$name"
+for run in "${runs[@]}"; do
+  IFS='|' read -r s res key <<< "$run"
+  log="$OUT/$key.log"
+  rm -rf "${OUT:?}/$key"
   # Variabili proprie del copione: righe «# env: CHIAVE=valore» (es. PLANET_ONE_SPEED=6).
-  extra=$(sed -n 's/^# env: //p' "$s" | tr '\n' ' ')
+  extra=$(sed -n 's/^# env: //p' "$s" | grep -v '^PLANET_ONE_SIZE=' | tr '\n' ' ')
+  w=${res%x*}; h=${res#*x}
+  if [ -z "${PLANET_ONE_HEADLESS:-}" ] && [ "$screen_area" -gt 0 ] && [ $((w * h)) -ge "$screen_area" ]; then
+    extra="$extra PLANET_ONE_HEADLESS=1"; shown="$res (senza finestra)"
+  else
+    shown="$res"
+  fi
   env $extra \
   PLANET_ONE_DATA_DIR="${PLANET_ONE_DATA_DIR:-$PWD/$OUT/dati}" \
   PLANET_ONE_SCRIPT="$s" \
-  PLANET_ONE_SIZE="${PLANET_ONE_SIZE:-1280x720}" \
+  PLANET_ONE_OUT="$PWD/$OUT/$key" \
+  PLANET_ONE_SIZE="$res" \
   PLANET_ONE_HOUR="${PLANET_ONE_HOUR:-11}" \
   PLANET_ONE_WEATHER="${PLANET_ONE_WEATHER:-sereno}" \
     timeout "${TIMEOUT:-600}" cargo run --release --offline > "$log" 2>&1
@@ -57,31 +110,36 @@ for s in "${scripts[@]}"; do
   warn=$(grep -c " WARN " <<< "$clean")
   err=$(grep -c " ERROR " <<< "$clean")
   pan=$(grep -c "panicked" <<< "$clean")
+  fps_line=$(grep -h "^FPS:" "$OUT/$key/RAPPORTO.txt" 2>/dev/null)
+  avg=$(sed -n 's/^FPS: medio \([0-9]*\).*/\1/p' <<< "$fps_line")
+  low=$(sed -n 's/.*1% peggiore \([0-9]*\).*/\1/p' <<< "$fps_line")
   case $code in
     0) esito="✅ passato" ;;
     124) esito="⏱️ tempo scaduto"; failed=1 ;;
     *) esito="❌ fallito ($code)"; failed=1 ;;
   esac
-  echo "| \`$name\` | $esito | $ok | $ko | $warn | $err | $pan |" >> "$report"
-  echo "$name: $esito (ok $ok, fallimenti $ko, panic $pan)"
+  real=$(sed -n 's/^Risoluzione: //p' "$OUT/$key/RAPPORTO.txt" 2>/dev/null)
+  [ -n "$real" ] && [ "${real%% *}" != "$res" ] && shown="$shown, vera $real"
+  echo "| \`$key\` | $shown | $esito | $ok | $ko | ${avg:-—} | ${low:-—} | $warn | $err | $pan |" >> "$report"
+  echo "$key ($shown): $esito (ok $ok, fallimenti $ko, FPS ${avg:-?}/${low:-?}, panic $pan)"
 done
 {
   echo
   echo "## Fallimenti"
-  for s in "${scripts[@]}"; do
-    name=$(basename "$s" .txt)
-    f="$OUT/$name/RAPPORTO.txt"
-    [ -f "$f" ] && grep -q "^- " "$f" && { echo; echo "### $name"; grep "^- " "$f"; }
+  for run in "${runs[@]}"; do
+    IFS='|' read -r s res key <<< "$run"
+    f="$OUT/$key/RAPPORTO.txt"
+    [ -f "$f" ] && grep -q "^- " "$f" && { echo; echo "### $key ($res)"; grep "^- " "$f"; }
   done
   echo
   echo "## Avvisi ed errori (righe distinte)"
-  for s in "${scripts[@]}"; do
-    name=$(basename "$s" .txt)
-    sed 's/\x1b\[[0-9;]*m//g' "$OUT/$name.log" | grep -E " WARN | ERROR |panicked" \
-      | cut -c21- | sed 's/[0-9]\+v[0-9]\+/N/g' | sort | uniq -c | sed "s/^/    [$name] /"
+  for run in "${runs[@]}"; do
+    IFS='|' read -r s res key <<< "$run"
+    sed 's/\x1b\[[0-9;]*m//g' "$OUT/$key.log" | grep -E " WARN | ERROR |panicked" \
+      | cut -c21- | sed 's/[0-9]\+v[0-9]\+/N/g' | sort | uniq -c | sed "s/^/    [$key] /"
   done
 } >> "$report"
-# Foto: confronto con i riferimenti.
+# Foto: confronto con i riferimenti (uno per copione, qualunque risoluzione: si confrontano ridotte).
 {
   echo
   echo "## Foto rispetto ai riferimenti (soglia $SOGLIA)"
@@ -89,30 +147,32 @@ done
   echo "| Copione | Foto | Differenza | Esito |"
   echo "|---|---|---|---|"
 } >> "$report"
-for s in "${scripts[@]}"; do
+for run in "${runs[@]}"; do
+  IFS='|' read -r s res key <<< "$run"
   name=$(basename "$s" .txt)
   ref="prove/riferimento/$name"
-  for shot in "$OUT/$name"/*.png; do
+  for shot in "$OUT/$key"/*.png; do
     [ -f "$shot" ] || continue
     base=$(basename "$shot")
+    case "$base" in small-*|diff-*|*-spettro.png|*-volume.png) continue ;; esac
     if [ $update -eq 1 ]; then
       mkdir -p "$ref"; convert "$shot" -resize 480x270! "$ref/$base"
-      echo "| \`$name\` | $base | — | riferimento aggiornato |" >> "$report"
+      echo "| \`$key\` | $base | — | riferimento aggiornato |" >> "$report"
       continue
     fi
     if [ ! -f "$ref/$base" ]; then
-      echo "| \`$name\` | $base | — | nessun riferimento |" >> "$report"
+      echo "| \`$key\` | $base | — | nessun riferimento |" >> "$report"
       continue
     fi
-    small="$OUT/$name/small-$base"
+    small="$OUT/$key/small-$base"
     convert "$shot" -resize 480x270! "$small"
-    diff=$(compare -metric RMSE "$small" "$ref/$base" "$OUT/$name/diff-$base" 2>&1 | sed -n 's/.*(\([0-9.e-]*\)).*/\1/p')
+    diff=$(compare -metric RMSE "$small" "$ref/$base" "$OUT/$key/diff-$base" 2>&1 | sed -n 's/.*(\([0-9.e-]*\)).*/\1/p')
     if awk -v d="${diff:-1}" -v s="$SOGLIA" 'BEGIN{exit !(d<=s)}'; then
       esito="✅"
     else
       esito="❌ (diff-$base)"; failed=1
     fi
-    echo "| \`$name\` | $base | ${diff:-?} | $esito |" >> "$report"
+    echo "| \`$key\` | $base | ${diff:-?} | $esito |" >> "$report"
   done
 done
 echo "Rapporto: $report"

@@ -200,6 +200,13 @@ pub fn preload(host: &str, model: &str) -> Result<(f32, f32, f32), String> {
         )
         .map_err(|e| format!("caricamento fallito: {e}"))?;
     let secs = start.elapsed().as_secs_f32();
+    let (size, vram) = placement(host, model)?;
+    Ok((size, vram, secs))
+}
+
+/// Quanto occupa il modello in memoria e quanta parte sta sulla scheda video (GB).
+pub fn placement(host: &str, model: &str) -> Result<(f32, f32), String> {
+    let base = local_base(host).ok_or("host non locale")?;
     let text = agent(5)
         .get(&format!("{base}/api/ps"))
         .call()
@@ -215,9 +222,9 @@ pub fn preload(host: &str, model: &str) -> Result<(f32, f32, f32), String> {
                 n == model || n.strip_suffix(":latest") == Some(model)
             })
         })
-        .ok_or("modello non in memoria dopo il caricamento")?;
+        .ok_or("modello non in memoria")?;
     let gb = |k: &str| entry[k].as_f64().unwrap_or(0.0) as f32 / 1e9;
-    Ok((gb("size"), gb("size_vram"), secs))
+    Ok((gb("size"), gb("size_vram")))
 }
 
 /// Contesto della chat (token): basta per la persona e qualche scambio.

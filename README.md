@@ -155,6 +155,8 @@ scripts/beta_check.sh                      # tutti i copioni di prove/, rapporto
 scripts/beta_check.sh prove/giro.txt       # uno solo
 scripts/beta_check.sh --aggiorna           # le foto di questa corsa diventano i riferimenti
 scripts/beta_check.sh --senza-schermo      # senza finestra (schermo non disponibile)
+scripts/beta_check.sh --risoluzioni tutte  # ogni copione a 720p, 1080p, 1440p e 4K (di base: a rotazione)
+scripts/beta_check.sh --risoluzioni 4k     # tutti a una sola risoluzione (720p, 1080p, 1440p, 4k o LxA)
 ```
 
 Un copione può chiedere variabili proprie con righe `# env: CHIAVE=valore` (es. `# env: PLANET_ONE_SPEED=6`).

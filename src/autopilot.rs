@@ -113,6 +113,11 @@ pub struct Autopilot {
     /// `avanza`: righe del dialogo ancora da far scorrere (fino alle scelte o alla chiusura).
     advance: u32,
     pub failures: Vec<String>,
+    /// FPS misurati una volta al secondo durante il copione (prestazioni nel rapporto).
+    fps: Vec<f32>,
+    fps_timer: f32,
+    /// Risoluzione vera della finestra (il gestore delle finestre può ridurre quella chiesta).
+    resolution: Option<(u32, u32)>,
     /// Registrazione dell'audio del sistema in corso (`registra`), con il file di uscita.
     recorder: Option<(std::process::Child, PathBuf)>,
     pub passed: u32,
@@ -159,12 +164,25 @@ impl Autopilot {
 
     /// Rapporto finale in `<uscita>/RAPPORTO.txt`.
     fn report(&self) -> String {
+        let (w, h) = crate::devtools::window_size();
+        let (rw, rh) = self.resolution.unwrap_or((w, h));
+        let note = if (rw, rh) != (w, h) {
+            format!(" (chiesta {w}x{h})")
+        } else {
+            String::new()
+        };
         let mut s = format!(
-            "Copione: {}\nVerifiche passate: {}\nFallimenti: {}\n",
+            "Copione: {}\nRisoluzione: {rw}x{rh}{note}\nVerifiche passate: {}\nFallimenti: {}\n",
             self.script,
             self.passed,
             self.failures.len()
         );
+        if let Some((avg, low, min)) = fps_summary(&self.fps) {
+            s.push_str(&format!(
+                "FPS: medio {avg:.0}, 1% peggiore {low:.0}, minimo {min:.0} ({} campioni)\n",
+                self.fps.len()
+            ));
+        }
         for f in &self.failures {
             s.push_str(&format!("- {f}\n"));
         }
@@ -213,6 +231,25 @@ fn stop_recording(rec: Option<(std::process::Child, PathBuf)>) {
     let _ = child.kill();
     let _ = child.wait();
     info!("[PILOTA] registrazione salvata in {}", path.display());
+}
+
+/// FPS medio, media dell'1% peggiore e minimo (scartati i primi 5 s, di caricamento).
+pub fn fps_summary(samples: &[f32]) -> Option<(f32, f32, f32)> {
+    let s: Vec<f32> = samples
+        .iter()
+        .skip(5)
+        .copied()
+        .filter(|f| *f > 0.0)
+        .collect();
+    if s.is_empty() {
+        return None;
+    }
+    let avg = s.iter().sum::<f32>() / s.len() as f32;
+    let mut sorted = s.clone();
+    sorted.sort_by(f32::total_cmp);
+    let n = (sorted.len() / 100).max(1);
+    let low = sorted[..n].iter().sum::<f32>() / n as f32;
+    Some((avg, low, sorted[0]))
 }
 
 /// Nome di un tasto del copione.
@@ -378,12 +415,14 @@ pub fn evaluate(state: &Value, expr: &str) -> Result<(), String> {
 /// Pannelli egui che il pilota comanda passando dalla logica del gioco (egui non riceve i tasti
 /// simulati in `ButtonInput`): negozio, mobili, chiusura dei pannelli.
 #[derive(bevy::ecs::system::SystemParam)]
-pub struct PilotUi<'w> {
+pub struct PilotUi<'w, 's> {
     shop: ResMut<'w, crate::shop::ShopState>,
     containers: ResMut<'w, crate::containers::Containers>,
     inventory: ResMut<'w, crate::inventory::Inventory>,
     next: ResMut<'w, NextState<crate::AppState>>,
     chat: ResMut<'w, crate::ai::AiChat>,
+    diagnostics: Res<'w, DiagnosticsStore>,
+    windows: Query<'w, 's, &'static Window>,
 }
 
 /// Sistema (PreUpdate, dopo l'input): tasti tenuti, meta di `vai` e prossimo comando.
@@ -411,6 +450,21 @@ pub fn run_autopilot(
         return;
     }
     let dt = time.delta_secs();
+    // Prestazioni: un campione di FPS al secondo (tempo reale del gioco).
+    pilot.fps_timer -= dt;
+    if pilot.fps_timer <= 0.0 {
+        pilot.fps_timer = 1.0;
+        if let Some(win) = ui.windows.iter().next() {
+            pilot.resolution = Some((win.physical_width(), win.physical_height()));
+        }
+        if let Some(f) = ui
+            .diagnostics
+            .get(&FrameTimeDiagnosticsPlugin::FPS)
+            .and_then(|d| d.smoothed())
+        {
+            pilot.fps.push(f as f32);
+        }
+    }
     // Il copione parte quando la partita è in corso da un po' (scena e abitanti pronti).
     if !pilot.started {
         if *state.get() == crate::AppState::Playing {
@@ -1077,6 +1131,17 @@ mod tests {
         assert_eq!(pick_choice(&c, "3"), None);
         assert_eq!(pick_choice(&c, "arrived"), Some(1));
         assert_eq!(pick_choice(&c, "boh"), None);
+    }
+
+    #[test]
+    fn fps_summary_skips_loading_and_finds_the_worst() {
+        let mut s = vec![5.0; 5];
+        s.extend((0..200).map(|i| if i == 10 { 12.0 } else { 60.0 }));
+        let (avg, low, min) = fps_summary(&s).unwrap();
+        assert!(avg > 59.0 && avg < 60.0);
+        assert_eq!(min, 12.0);
+        assert!(low < 40.0);
+        assert!(fps_summary(&[1.0, 2.0]).is_none());
     }
 
     #[test]

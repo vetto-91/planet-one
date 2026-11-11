@@ -68,8 +68,13 @@ enum Request {
         host: String,
         model: String,
     },
-    /// Carica il modello prima della prima chat.
+    /// Carica il modello prima della prima chat (solo col pilota automatico).
     Preload {
+        host: String,
+        model: String,
+    },
+    /// Dice nel log dove sta il modello (scheda video o processore), dopo la prima risposta.
+    Inspect {
         host: String,
         model: String,
     },
@@ -154,6 +159,12 @@ fn worker(rx: mpsc::Receiver<Request>, tx: mpsc::Sender<Event>, mock: bool) {
             Request::Unload { host, model } => {
                 if !mock {
                     ollama::unload(&host, &model);
+                }
+            }
+            Request::Inspect { host, model } => {
+                if !mock {
+                    let r = ollama::placement(&host, &model).map(|(s, v)| (s, v, 0.0));
+                    let _ = tx.send(Event::Preloaded(model, r));
                 }
             }
             Request::Preload { host, model } => {
@@ -305,8 +316,11 @@ pub fn ai_pump(
         match ev {
             Event::Probe(p) => {
                 ai.probing = false;
-                // Appena il modello risulta installato lo si carica, così la prima chat non aspetta.
+                // Col pilota automatico il modello si carica appena risulta installato, così la
+                // prima chat delle prove non aspetta. Giocando no: se la prima risposta non
+                // arriva, il giocatore riprova (e il log dice perché era lenta).
                 if settings.ai_enabled
+                    && std::env::var_os("PLANET_ONE_SCRIPT").is_some()
                     && matches!(p, Probe::Ready)
                     && ai.preloaded.as_deref() != Some(settings.ai_model.as_str())
                 {
@@ -329,12 +343,12 @@ pub fn ai_pump(
             }
             Event::Models(list) => ai.models = list,
             Event::Preloaded(model, result) => match result {
-                Ok((total, vram, secs)) if total > 0.0 && vram + 0.05 < total => warn!(
-                    "[AI] {model} caricato in {secs:.0} s, ma solo {vram:.1} GB su {total:.1} sulla \
-                     scheda video: il resto va sul processore e le risposte saranno lente"
+                Ok((total, vram, _)) if total > 0.0 && vram + 0.05 < total => warn!(
+                    "[AI] {model}: solo {vram:.1} GB su {total:.1} sulla scheda video, il resto va \
+                     sul processore e le risposte saranno lente"
                 ),
                 Ok((total, _, secs)) => {
-                    info!("[AI] {model} caricato in {secs:.0} s ({total:.1} GB sulla scheda video)")
+                    info!("[AI] {model} in memoria ({total:.1} GB sulla scheda video, {secs:.0} s)")
                 }
                 Err(e) => {
                     warn!("[AI] {model} non caricato in anticipo: {e}");
@@ -346,6 +360,14 @@ pub fn ai_pump(
                     continue;
                 }
                 chat.thinking = false;
+                // Una volta per partita: dove sta il modello (utile se le risposte sono lente).
+                if ai.preloaded.is_none() {
+                    ai.preloaded = Some(settings.ai_model.clone());
+                    let _ = ai.tx.send(Request::Inspect {
+                        host: settings.ai_host.clone(),
+                        model: settings.ai_model.clone(),
+                    });
+                }
                 match result {
                     Ok(r) => {
                         // La risposta si mostra subito e si legge ad alta voce (Piper locale).
