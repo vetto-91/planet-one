@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.59.0 — Beta test: prove automatiche fino a 4K, meteo, interfaccia, insegne (2026-11-11)
 
 - **Insegne**: le targhe di arciere, fabbro, forno e locanda mostrano il nome della bottega invece di un rettangolo vuoto.
 - **Pioggia e neve**: niente più gocce come lunghe barre e fiocchi come grossi quadrati davanti alla camera; i fiocchi sono tondi. La nevicata è molto più fitta: pioggia e neve cadono soprattutto davanti alla camera (prima quasi tutte dietro o di lato) e restano piene anche girandosi di colpo.
