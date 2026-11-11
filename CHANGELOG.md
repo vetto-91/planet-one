@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.57.0 — Beta test: bug bloccanti (2026-11-11)
 
 - **Morte unica**: qualunque causa porti la vita a zero (contatto, frecce, caduta) il giocatore rinasce allo spawn con la vita piena, 2 s di invulnerabilità e la scritta «Sei svenuto…»; inventario e monete restano. Prima le frecce potevano portare la vita sotto zero senza morte, e da lì il giocatore non moriva più.
 - **Rete sotto il mondo**: chi finisce sotto il terreno senza un pavimento sotto i piedi viene riportato in superficie (log `[RETE]`). Le gallerie della grotta non sono toccate.
