@@ -53,6 +53,25 @@ fn game_tab(ui: &mut egui::Ui, cx: &mut SettingsCtx) {
     if ui.checkbox(&mut a.show_fps, "Mostra FPS").changed() {
         a.dirty = true;
     }
+    ui.horizontal(|ui| {
+        ui.label("Scala interfaccia:");
+        for (value, name) in [
+            (0.0, "Automatica"),
+            (0.75, "75%"),
+            (1.0, "100%"),
+            (1.25, "125%"),
+            (1.5, "150%"),
+            (2.0, "200%"),
+        ] {
+            if ui
+                .selectable_label((a.ui_scale - value).abs() < 0.01, name)
+                .clicked()
+            {
+                a.ui_scale = value;
+                a.dirty = true;
+            }
+        }
+    });
     ui.separator();
     ui.label(
         egui::RichText::new("Dialoghi con IA (locale)")

@@ -242,6 +242,8 @@ pub fn draw_enemy_bars(
         let Ok(screen) = camera.world_to_viewport(cam_t, world_pos) else {
             continue; // fuori dallo schermo o dietro la camera
         };
+        // Pixel dello schermo → punti di egui (scala dell'interfaccia).
+        let screen = crate::ui_style::screen_to_ui(ctx, screen);
         // Bevy 0.20: world_to_viewport restituisce gia' coordinate viewport
         // in pixel con origine in ALTO a sinistra (y-down), pronte per egui.
         // Non invertire y: quella conversione sposta la barra sotto il nemico.
@@ -317,6 +319,7 @@ pub fn draw_npc_labels(
         let Ok(screen) = camera.world_to_viewport(cam_t, t.translation() + Vec3::Y * 1.3) else {
             continue;
         };
+        let screen = crate::ui_style::screen_to_ui(ctx, screen);
         if !viewport.contains(egui::pos2(screen.x, screen.y)) {
             continue;
         }

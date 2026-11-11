@@ -1035,6 +1035,7 @@ fn draw_barks(
         let Ok(screen) = camera.world_to_viewport(cam_t, t.translation() + Vec3::Y * h) else {
             continue;
         };
+        let screen = crate::ui_style::screen_to_ui(ctx, screen);
         egui::Area::new(egui::Id::new(("bark", i)))
             .pivot(egui::Align2::CENTER_TOP)
             .fixed_pos(egui::pos2(screen.x, screen.y + 8.0))

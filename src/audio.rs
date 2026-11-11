@@ -60,6 +60,8 @@ pub struct AudioSettings {
     /// Contatore degli FPS a schermo.
     pub show_fps: bool,
     pub fullscreen: bool,
+    /// Scala dell'interfaccia (0 = automatica dalla risoluzione, vedi `ui_style::ui_scale`).
+    pub ui_scale: f32,
     /// Impostazioni grafiche (solo aspetto visivo).
     pub gfx: crate::graphics::GfxOptions,
     /// VSync e limite di FPS.
@@ -85,6 +87,7 @@ impl Default for AudioSettings {
             mouse_sensitivity: 0.003,
             show_fps: true,
             fullscreen: true,
+            ui_scale: 0.0,
             gfx: Default::default(),
             fps: Default::default(),
             dirty: false,
@@ -136,6 +139,11 @@ impl Default for AudioSettings {
                 }
                 if let Some(v) = line.trim().strip_prefix("fullscreen=") {
                     s.fullscreen = v.trim() != "0";
+                }
+                if let Some(v) = line.trim().strip_prefix("ui_scale=")
+                    && let Ok(v) = v.trim().parse::<f32>()
+                {
+                    s.ui_scale = if v > 0.0 { v.clamp(0.5, 3.0) } else { 0.0 };
                 }
                 s.gfx.read_line(line);
                 s.fps.read_line(line);
@@ -300,7 +308,7 @@ pub fn save_settings(mut settings: ResMut<AudioSettings>, mouse: Res<ButtonInput
     match std::fs::write(
         &path,
         format!(
-            "music_volume={:.2}\nambient_volume={:.2}\nvoice_volume={:.2}\nai_enabled={}\nai_model={}\nai_host={}\ntts_enabled={}\ntts_voice={}\nstt_enabled={}\nstt_model={}\ntime_speed={}\nmouse_sensitivity={:.5}\nshow_fps={}\nfullscreen={}\n{}{}",
+            "music_volume={:.2}\nambient_volume={:.2}\nvoice_volume={:.2}\nai_enabled={}\nai_model={}\nai_host={}\ntts_enabled={}\ntts_voice={}\nstt_enabled={}\nstt_model={}\ntime_speed={}\nmouse_sensitivity={:.5}\nshow_fps={}\nfullscreen={}\nui_scale={:.2}\n{}{}",
             settings.music_volume,
             settings.ambient_volume,
             settings.voice_volume,
@@ -315,6 +323,7 @@ pub fn save_settings(mut settings: ResMut<AudioSettings>, mouse: Res<ButtonInput
             settings.mouse_sensitivity,
             u8::from(settings.show_fps),
             u8::from(settings.fullscreen),
+            settings.ui_scale,
             settings.gfx.to_lines(),
             settings.fps.to_lines()
         ),

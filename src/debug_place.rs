@@ -1016,7 +1016,8 @@ pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
         let hover = (!over_ui)
             .then(|| {
                 camera.and_then(|cam| {
-                    let pos = ctx.input(|i| i.pointer.latest_pos())?;
+                    // Punti di egui → pixel dello schermo (scala dell'interfaccia).
+                    let pos = ctx.input(|i| i.pointer.latest_pos())? * ctx.zoom_factor();
                     cursor_ground(cam, pos)
                 })
             })
@@ -1155,7 +1156,7 @@ pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
     let proj = |p: Vec2| {
         cam.world_to_viewport(cam_t, Vec3::new(p.x, lift(p), p.y))
             .ok()
-            .map(|s| egui::pos2(s.x, s.y))
+            .map(|s| crate::ui_style::screen_to_ui(&ctx, s))
     };
     let line = |pts: &[Vec2], closed: bool, stroke: egui::Stroke| {
         let mut v: Vec<egui::Pos2> = pts.iter().filter_map(|p| proj(*p)).collect();
@@ -1221,7 +1222,7 @@ pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
                     / pl.points.len() as f32,
         ) {
             painter.text(
-                egui::pos2(s.x, s.y - 14.0),
+                crate::ui_style::screen_to_ui(&ctx, s) - egui::vec2(0.0, 14.0),
                 egui::Align2::CENTER_BOTTOM,
                 format!("P-{:04} {} ×{}", pl.id, pl.kind, pl.points.len()),
                 egui::FontId::proportional(14.0),

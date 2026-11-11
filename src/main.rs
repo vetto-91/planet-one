@@ -360,6 +360,7 @@ fn main() -> AppExit {
         .add_systems(
             EguiPrimaryContextPass,
             (
+                ui_style::apply_ui_scale,
                 inventory_ui::load_item_icons,
                 menu::ui,
                 debug_place::debug_ui,

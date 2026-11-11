@@ -1,7 +1,50 @@
 //! Stile UI condiviso: palette dei pannelli di dialogo (fondo scuro, bordo
 //! oro, testo chiaro), targhette nel mondo e tema egui globale.
 
+use bevy::prelude::*;
 use bevy_egui::egui::{self, Color32};
+use bevy_egui::{EguiContexts, PrimaryEguiContext};
+
+/// Scala dell'interfaccia scelta in automatico dall'altezza dello schermo in pixel logici
+/// (già divisi per il ridimensionamento del sistema): 1 fino a 1080 righe, poi cresce
+/// (1440p 1,33; 4K 2), così a 4K l'interfaccia ha la stessa misura che a 1080p.
+pub fn auto_ui_scale(logical_height: f32) -> f32 {
+    (logical_height / 1080.0).clamp(1.0, 3.0)
+}
+
+/// Scala da usare: quella scelta nelle impostazioni (0 = automatica).
+pub fn ui_scale(setting: f32, logical_height: f32) -> f32 {
+    if setting > 0.0 {
+        setting.clamp(0.5, 3.0)
+    } else {
+        auto_ui_scale(logical_height)
+    }
+}
+
+/// Da coordinate dello schermo in pixel logici (`Camera::world_to_viewport`) a punti di egui,
+/// che con la scala dell'interfaccia sono più grandi di un pixel.
+pub fn screen_to_ui(ctx: &egui::Context, p: Vec2) -> egui::Pos2 {
+    let z = ctx.zoom_factor();
+    egui::pos2(p.x / z, p.y / z)
+}
+
+/// Sistema (all'inizio del pass di egui): applica la scala dell'interfaccia.
+pub fn apply_ui_scale(
+    mut contexts: EguiContexts,
+    settings: Res<crate::audio::AudioSettings>,
+    cameras: Query<&Camera, With<PrimaryEguiContext>>,
+) {
+    let height = cameras
+        .iter()
+        .find_map(|c| c.logical_target_size())
+        .map_or(1080.0, |s| s.y);
+    let zoom = ui_scale(settings.ui_scale, height);
+    if let Ok(ctx) = contexts.ctx_mut()
+        && (ctx.zoom_factor() - zoom).abs() > 0.001
+    {
+        ctx.set_zoom_factor(zoom);
+    }
+}
 
 /// Fondo dei pannelli.
 pub const PANEL_FILL: Color32 = Color32::from_rgba_premultiplied(10, 12, 20, 245);
@@ -128,6 +171,18 @@ pub fn apply_style(ctx: &egui::Context) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ui_scale_grows_above_1080p() {
+        assert_eq!(auto_ui_scale(720.0), 1.0);
+        assert_eq!(auto_ui_scale(1080.0), 1.0);
+        assert!((auto_ui_scale(1440.0) - 1.333).abs() < 0.01);
+        assert_eq!(auto_ui_scale(2160.0), 2.0);
+        // 4K con il sistema al 200%: 1080 righe logiche, nessun ingrandimento in più.
+        assert_eq!(ui_scale(0.0, 1080.0), 1.0);
+        // Scelta a mano.
+        assert_eq!(ui_scale(1.5, 2160.0), 1.5);
+    }
 
     #[test]
     fn overlapping_plates_are_stacked() {

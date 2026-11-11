@@ -310,7 +310,7 @@ pub fn draw_map_overlay(
     // Segnalino del giocatore (freccia nella direzione dello sguardo) e casetta.
     if let Some((cam, cam_t)) = camera {
         if let Ok(p) = cam.world_to_viewport(cam_t, player_pos) {
-            let pos = egui::pos2(p.x, p.y);
+            let pos = crate::ui_style::screen_to_ui(ctx, p);
             let b = heading_deg.to_radians();
             let dir = egui::vec2(b.sin(), -b.cos());
             let perp = egui::vec2(-dir.y, dir.x);
@@ -335,14 +335,26 @@ pub fn draw_map_overlay(
         if let Some((name, at)) = village
             && let Ok(p) = cam.world_to_viewport(cam_t, at + Vec3::Y * 6.0)
         {
-            crate::ui_style::plate(&painter, egui::pos2(p.x, p.y), name, 28.0, gold);
+            crate::ui_style::plate(
+                &painter,
+                crate::ui_style::screen_to_ui(ctx, p),
+                name,
+                28.0,
+                gold,
+            );
         }
         static PLACES: std::sync::OnceLock<Vec<(String, Vec2)>> = std::sync::OnceLock::new();
         let places = PLACES.get_or_init(|| crate::water::load_spec().places);
         for (name, at) in places {
             let world = Vec3::new(at.x, 6.0, at.y);
             if let Ok(p) = cam.world_to_viewport(cam_t, world) {
-                crate::ui_style::plate(&painter, egui::pos2(p.x, p.y), name, 16.0, gold);
+                crate::ui_style::plate(
+                    &painter,
+                    crate::ui_style::screen_to_ui(ctx, p),
+                    name,
+                    16.0,
+                    gold,
+                );
             }
         }
         if let Some(h) = hut_pos
@@ -350,7 +362,7 @@ pub fn draw_map_overlay(
         {
             crate::ui_style::plate(
                 &painter,
-                egui::pos2(p.x, p.y - 26.0),
+                crate::ui_style::screen_to_ui(ctx, p) - egui::vec2(0.0, 26.0),
                 "Capanna del Viandante",
                 18.0,
                 gold,

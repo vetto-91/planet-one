@@ -4,6 +4,7 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **Scala dell'interfaccia**: a 1440p e 4K l'interfaccia si ingrandisce da sola (×1,33 e ×2) invece di restare minuscola; nelle impostazioni (Gioco → Scala interfaccia) si sceglie Automatica o 75–200%. Targhette, fumetti e mappa restano al loro posto.
 - **Meteo, ombre**: col cielo coperto (pioggia, temporale, nebbia, neve) il sole non proietta più ombre nette: la luce diretta quasi sparisce e quella del cielo diventa diffusa. Col nuvoloso le ombre sono tenui. Il sereno non cambia.
 - **Sottotetti**: la rampa finiva contro il muretto e in soffitta non si saliva; ora finisce prima e c'è il percorso fino in cima.
 - **Caserma**: due brande nel sottotetto per Livio e Mario, le ronde della notte.
