@@ -68,12 +68,18 @@ enum Request {
         host: String,
         model: String,
     },
+    /// Carica il modello prima della prima chat.
+    Preload {
+        host: String,
+        model: String,
+    },
 }
 
 enum Event {
     Probe(Probe),
     Models(Vec<String>),
     Reply(u64, Result<Reply, String>),
+    Preloaded(String, Result<(f32, f32, f32), String>),
 }
 
 /// Stato globale della IA e canali verso la thread worker.
@@ -87,6 +93,8 @@ pub struct AiState {
     probe_timer: f32,
     probing: bool,
     was_enabled: bool,
+    /// Modello già caricato in memoria (o in caricamento) per questa partita.
+    preloaded: Option<String>,
 }
 
 impl Default for AiState {
@@ -106,6 +114,7 @@ impl Default for AiState {
             probe_timer: PROBE_EVERY,
             probing: false,
             was_enabled: false,
+            preloaded: None,
         }
     }
 }
@@ -146,6 +155,14 @@ fn worker(rx: mpsc::Receiver<Request>, tx: mpsc::Sender<Event>, mock: bool) {
                 if !mock {
                     ollama::unload(&host, &model);
                 }
+            }
+            Request::Preload { host, model } => {
+                let r = if mock {
+                    Ok((0.0, 0.0, 0.0))
+                } else {
+                    ollama::preload(&host, &model)
+                };
+                let _ = tx.send(Event::Preloaded(model, r));
             }
         }
     }
@@ -253,6 +270,7 @@ pub fn ai_probe(time: Res<Time>, settings: Res<AudioSettings>, mut ai: ResMut<Ai
                 host: settings.ai_host.clone(),
                 model: settings.ai_model.clone(),
             });
+            ai.preloaded = None;
         }
         ai.status = AiStatus::Off;
         ai.probe_timer = 0.0;
@@ -287,6 +305,17 @@ pub fn ai_pump(
         match ev {
             Event::Probe(p) => {
                 ai.probing = false;
+                // Appena il modello risulta installato lo si carica, così la prima chat non aspetta.
+                if settings.ai_enabled
+                    && matches!(p, Probe::Ready)
+                    && ai.preloaded.as_deref() != Some(settings.ai_model.as_str())
+                {
+                    ai.preloaded = Some(settings.ai_model.clone());
+                    let _ = ai.tx.send(Request::Preload {
+                        host: settings.ai_host.clone(),
+                        model: settings.ai_model.clone(),
+                    });
+                }
                 ai.status = if settings.ai_enabled {
                     match p {
                         Probe::Ready => AiStatus::Ready,
@@ -299,6 +328,19 @@ pub fn ai_pump(
                 };
             }
             Event::Models(list) => ai.models = list,
+            Event::Preloaded(model, result) => match result {
+                Ok((total, vram, secs)) if total > 0.0 && vram + 0.05 < total => warn!(
+                    "[AI] {model} caricato in {secs:.0} s, ma solo {vram:.1} GB su {total:.1} sulla \
+                     scheda video: il resto va sul processore e le risposte saranno lente"
+                ),
+                Ok((total, _, secs)) => {
+                    info!("[AI] {model} caricato in {secs:.0} s ({total:.1} GB sulla scheda video)")
+                }
+                Err(e) => {
+                    warn!("[AI] {model} non caricato in anticipo: {e}");
+                    ai.preloaded = None;
+                }
+            },
             Event::Reply(id, result) => {
                 if id != chat.req {
                     continue;

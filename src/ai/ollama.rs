@@ -110,7 +110,7 @@ pub fn chat(host: &str, model: &str, system: &str, turns: &[Turn]) -> Result<Rep
         "model": model,
         "stream": false,
         "think": false,
-        "keep_alive": "2m",
+        "keep_alive": KEEP_ALIVE,
         "format": {
             "type": "object",
             "properties": {
@@ -119,7 +119,7 @@ pub fn chat(host: &str, model: &str, system: &str, turns: &[Turn]) -> Result<Rep
             },
             "required": ["risposta", "opzioni"]
         },
-        "options": {"temperature": 0.7, "num_predict": 220, "num_ctx": 3072},
+        "options": {"temperature": 0.7, "num_predict": 220, "num_ctx": CHAT_CTX},
         "messages": messages,
     });
     // Col gioco che occupa la scheda video la prima risposta (modello da caricare, persona lunga)
@@ -183,6 +183,48 @@ fn clean(s: &str, max: usize) -> String {
         _ => format!("{}…", cut.trim_end()),
     }
 }
+
+/// Carica il modello in memoria prima della prima chat (la prima risposta altrimenti aspetta il
+/// caricamento) e dice quanta parte sta sulla scheda video: (GB totali, GB in VRAM, secondi).
+pub fn preload(host: &str, model: &str) -> Result<(f32, f32, f32), String> {
+    let base = local_base(host).ok_or("host non locale")?;
+    let start = std::time::Instant::now();
+    agent(180)
+        .post(&format!("{base}/api/generate"))
+        .set("Content-Type", "application/json")
+        // Stesso contesto della chat: con quello predefinito di Ollama (che può essere enorme) il
+        // modello occupa molta più memoria, finisce in parte sul processore e la chat lo ricarica.
+        .send_string(
+            &json!({"model": model, "keep_alive": KEEP_ALIVE, "options": {"num_ctx": CHAT_CTX}})
+                .to_string(),
+        )
+        .map_err(|e| format!("caricamento fallito: {e}"))?;
+    let secs = start.elapsed().as_secs_f32();
+    let text = agent(5)
+        .get(&format!("{base}/api/ps"))
+        .call()
+        .map_err(|e| e.to_string())?
+        .into_string()
+        .map_err(|e| e.to_string())?;
+    let v: Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
+    let entry = v["models"]
+        .as_array()
+        .and_then(|l| {
+            l.iter().find(|m| {
+                let n = m["name"].as_str().unwrap_or("");
+                n == model || n.strip_suffix(":latest") == Some(model)
+            })
+        })
+        .ok_or("modello non in memoria dopo il caricamento")?;
+    let gb = |k: &str| entry[k].as_f64().unwrap_or(0.0) as f32 / 1e9;
+    Ok((gb("size"), gb("size_vram"), secs))
+}
+
+/// Contesto della chat (token): basta per la persona e qualche scambio.
+const CHAT_CTX: u32 = 3072;
+
+/// Quanto resta in memoria il modello dopo l'ultima richiesta.
+const KEEP_ALIVE: &str = "10m";
 
 /// Scarica il modello dalla memoria (VRAM) subito.
 pub fn unload(host: &str, model: &str) {

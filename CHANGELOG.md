@@ -6,6 +6,7 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 - **Sottotetti**: la rampa finiva contro il muretto e in soffitta non si saliva; ora finisce prima e c'è il percorso fino in cima.
 - **Caserma**: due brande nel sottotetto per Livio e Mario, le ronde della notte.
+- **IA locale, prima risposta lenta**: appena l'IA risulta pronta il modello viene caricato in anticipo, con lo stesso contesto piccolo della chat (3072 token); il log dice quanta parte sta sulla scheda video e avvisa se una parte va sul processore. Prima il modello poteva caricarsi col contesto predefinito di Ollama (enorme se configurato a 256k): 9,2 GB invece di 3,3, quasi tutti sul processore, e la chat non rispondeva in 150 s. Il modello resta in memoria 10 minuti dopo l'ultima richiesta (prima 2).
 - **IA locale**: la prima risposta può richiedere fino a 150 s (prima 40 s, e la chat si arrendeva); il messaggio d'errore nomina l'abitante giusto invece del Viandante.
 - **Inventario**: le monete si contano a parte («Oggetti: 4   Monete: 30»).
 - **Targhette degli abitanti**: quando due si sovrapporrebbero, quella più lontana sale sopra l'altra.
