@@ -238,6 +238,8 @@ pub struct VillageInfo {
     pub patrol: Vec<Vec3>,
     /// Porta della casa delle guardie e direzione dello sguardo verso l'esterno.
     pub barracks: Option<(Vec2, Vec2)>,
+    /// Ascissa sull'anello di ronda delle torri: le ronde entrano ed escono di turno da lì.
+    pub tower_stops: Vec<f32>,
 }
 
 impl VillageInfo {
@@ -274,6 +276,7 @@ impl VillageInfo {
             gates,
             center,
             patrol: Vec::new(),
+            tower_stops: Vec::new(),
             barracks,
         }
     }
@@ -984,6 +987,10 @@ pub fn sync_village(
                 ));
             }
         });
+    info.tower_stops = towers
+        .iter()
+        .map(|w| nearest_on_loop(&patrol, Vec3::new(w.center.x, w.floor, w.center.y)))
+        .collect();
     info.patrol = patrol;
     built.1 = 1;
     info!(
@@ -1330,6 +1337,28 @@ pub fn point_on_loop(path: &[Vec3], s: f32) -> (Vec3, Vec2) {
     (path[0], Vec2::X)
 }
 
+/// Ascissa sul percorso chiuso `path` del punto più vicino a `p` (in pianta).
+pub fn nearest_on_loop(path: &[Vec3], p: Vec3) -> f32 {
+    let n = path.len();
+    let (mut best, mut best_s, mut acc) = (f32::MAX, 0.0, 0.0);
+    for i in 0..n {
+        let (a, b) = (path[i].xz(), path[(i + 1) % n].xz());
+        let l = a.distance(b);
+        let k = if l > 1e-4 {
+            ((p.xz() - a).dot(b - a) / (l * l)).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        let d = p.xz().distance(a.lerp(b, k));
+        if d < best {
+            best = d;
+            best_s = acc + k * l;
+        }
+        acc += l;
+    }
+    best_s
+}
+
 /// Lunghezza del percorso chiuso.
 pub fn loop_length(path: &[Vec3]) -> f32 {
     let n = path.len();
@@ -1568,6 +1597,18 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn nearest_point_on_a_loop() {
+        let path = [
+            Vec3::new(0.0, 0.0, 0.0),
+            Vec3::new(10.0, 0.0, 0.0),
+            Vec3::new(10.0, 0.0, 10.0),
+            Vec3::new(0.0, 0.0, 10.0),
+        ];
+        assert!((nearest_on_loop(&path, Vec3::new(4.0, 3.0, -1.0)) - 4.0).abs() < 1e-3);
+        assert!((nearest_on_loop(&path, Vec3::new(11.0, 0.0, 5.0)) - 15.0).abs() < 1e-3);
     }
 
     #[test]

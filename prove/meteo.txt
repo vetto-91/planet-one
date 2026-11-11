@@ -1,24 +1,27 @@
-# Stagioni e meteo: la stessa piazza nei quattro periodi e con ogni tempo.
+# Meteo: la stessa inquadratura aperta (campagna a nord del paese) con ogni tempo.
 god on
-tp -1.2 3 14
-guarda 180 12
+tp 4 6 -20
+guarda 0 8
 meteo sereno
-aspetta 6
+aspetta 12
 foto meteo-sereno
 meteo nuvoloso
-aspetta 6
+aspetta 12
 foto meteo-nuvoloso
 meteo pioggia
-aspetta 6
+aspetta 12
 foto meteo-pioggia
 meteo temporale
-aspetta 6
+aspetta 12
 foto meteo-temporale
 meteo nebbia
-aspetta 6
+aspetta 12
 foto meteo-nebbia
 meteo neve
-aspetta 6
+aspetta 12
 foto meteo-neve
+# La neve si accumula col tempo.
+aspetta 90
+foto neve-dopo
 meteo auto
 esci

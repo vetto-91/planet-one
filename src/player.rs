@@ -63,6 +63,8 @@ pub struct GroundedState {
     pub ground_dist: f32,
     pub coyote_left: f32,
     pub last_ground_hit: f32,
+    /// In acqua profonda: si nuota (posa distesa in `facing`).
+    pub swimming: bool,
 }
 
 impl Default for GroundedState {
@@ -72,6 +74,7 @@ impl Default for GroundedState {
             ground_dist: f32::INFINITY,
             coyote_left: 0.0,
             last_ground_hit: 0.0,
+            swimming: false,
         }
     }
 }
@@ -284,6 +287,7 @@ pub fn movement(
             .map_or((1.0, None), |(depth, level)| swim_factors(depth, level));
         velocity.x = direction.x * speed * drag;
         velocity.z = direction.z * speed * drag;
+        state.swimming = swim_target.is_some();
         if let Some(target) = swim_target {
             let stroke = if keys.pressed(KeyCode::Space) {
                 0.5
@@ -396,7 +400,12 @@ pub fn run_move_and_slide(
     }
 }
 
-/// Ruota il mesh visivo del player.
+/// Inclinazione del corpo che nuota in avanti (rad) e quanto si alza (m): a galla, testa e schiena
+/// restano appena fuori dall'acqua.
+const SWIM_TILT: f32 = 1.15;
+const SWIM_LIFT: f32 = 0.0;
+
+/// Ruota il mesh visivo del player (e lo distende quando nuota).
 ///
 /// - In 3a persona: ruota solo sull'asse Y verso la direzione di movimento
 ///   (comportamento standard RPG), oppure verso la direzione della camera
@@ -405,7 +414,7 @@ pub fn run_move_and_slide(
 ///   con yaw+pitch della camera (se mai riattivato).
 pub fn facing(
     mut visuals: Query<&mut Transform, With<PlayerVisual>>,
-    players: Query<&LinearVelocity, With<Player>>,
+    players: Query<(&LinearVelocity, &GroundedState), With<Player>>,
     orbit: Res<crate::camera::OrbitCamera>,
     time: Res<Time>,
 ) {
@@ -423,7 +432,7 @@ pub fn facing(
 
     // 3a persona: se ci si muove, ruota verso la direzione del movimento;
     // se fermi, ruota verso la direzione della camera (verso il crosshair).
-    let Ok(velocity) = players.single() else {
+    let Ok((velocity, state)) = players.single() else {
         return;
     };
     let horizontal = Vec2::new(velocity.x, velocity.z);
@@ -432,11 +441,19 @@ pub fn facing(
     } else {
         orbit.yaw // fermo: guarda dove guarda la camera (crosshair)
     };
-    let target = Quat::from_rotation_y(target_yaw);
+    // Nuotando in avanti il corpo si distende sull'acqua; fermi si sta a galla dritti.
+    let stroking = state.swimming && horizontal.length() > 0.5;
+    let (tilt, lift) = if stroking {
+        (SWIM_TILT, SWIM_LIFT)
+    } else {
+        (0.0, 0.0)
+    };
+    let target = Quat::from_rotation_y(target_yaw) * Quat::from_rotation_x(-tilt);
 
     for mut transform in &mut visuals {
         let alpha = (10.0 * time.delta_secs()).clamp(0.0, 1.0);
         transform.rotation = transform.rotation.slerp(target, alpha);
+        transform.translation.y += (lift - transform.translation.y) * alpha;
     }
 }
 

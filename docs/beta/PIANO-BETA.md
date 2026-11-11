@@ -175,12 +175,12 @@ Gli FPS non dipendono molto dal luogo e le entità sono sempre le stesse: il cos
 |---|---|---|---|
 | F2-1 | Combattimento | **Bug**: i banditi uccisi nei primi 40 s di gioco ricomparivano subito, mentre il log diceva «tornerà una notte a caso» | corretto (popolamento iniziale una volta per scena, `BanditsSeeded`) |
 | F2-2 | Shell | `dai freccia` non funzionava: il nome è «Frecce» | corretto (singolare e plurale) |
-| F2-3 | Movimento | Nel mare il personaggio sta dritto in posa di riposo, con i piedi sopra l'acqua: sembra camminare sull'acqua. Manca una posa o un'animazione di nuoto | da fare |
-| F2-4 | Abitanti | Le guardie delle mura (Gino, Ivo, Livio, Mario) e il guardiano del faro (Ettore) lavorano 24 ore su 24 senza mai riposare; le guardie dei cancelli hanno invece tre turni. Incoerenza di regole | da decidere |
+| F2-3 | Movimento | Nel mare il personaggio sta dritto in posa di riposo, con i piedi sopra l'acqua: sembra camminare sull'acqua. Manca una posa o un'animazione di nuoto | corretto: fermi si sta a galla dritti, in movimento il corpo si distende sull'acqua (`player::facing`, copione `nuoto`) |
+| F2-4 | Abitanti | Le guardie delle mura (Gino, Ivo, Livio, Mario) e il guardiano del faro (Ettore) lavorano 24 ore su 24 senza mai riposare; le guardie dei cancelli hanno invece tre turni. Incoerenza di regole | corretto: le ronde hanno i turni (Gino 1, Ivo 2, Livio e Mario 3), a fine turno entrano in una torre e riposano (Gino e Ivo a letto alla caserma); ce n'è sempre almeno una sulle mura (test `the_walls_are_always_patrolled`, 24 ore verificate col pilota). Ettore lavora di notte (17→7) e dorme di giorno al faro |
 | F2-5 | Abitanti | Nessuno resta bloccato nelle 24 ore. Il campionamento ogni mezz'ora è grosso: un blocco breve può sfuggire | ok |
 | F2-6 | Salvataggi | F5/F9 riportano posizione, ora, inventario e quest | ok |
 | F2-7 | Caduta e morte | 22,7 m: danno 173, morte, rinascita allo spawn con la vita piena | ok |
-| F2-8 | Meteo | Le foto non sono conclusive: la camera era sotto il tetto del pozzo. Nella neve, a terra non c'è neve dopo 6 s: è giusto, si accumula col tempo | da rifare con un'inquadratura migliore |
+| F2-8 | Meteo | Le foto non sono conclusive: la camera era sotto il tetto del pozzo. Nella neve, a terra non c'è neve dopo 6 s: è giusto, si accumula col tempo | rifatto: nebbia, nuvole, pioggia (gocce visibili), temporale e neve si vedono; la neve copre il terreno dopo 90 s. L'inquadratura resta stretta accanto a una casa |
 
 
 Per ogni voce: un copione in `prove/`, cosa ci si aspetta, come si verifica (stato JSON, screenshot o test).

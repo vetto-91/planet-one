@@ -283,17 +283,26 @@ fn desired_phase(def: &VillagerDef, hour: f32, shelter: bool) -> Phase {
     if def.guard {
         return match def.shift {
             Some(t) if !on_duty(t, hour) => Phase::Rest,
-            _ => Phase::Work,
+            Some(_) => Phase::Work,
+            // Guardia senza turno (il guardiano del faro): segue i suoi orari e non si ripara.
+            None => phase_by_hours(def.hours, hour),
         };
     }
     // Con pioggia o neve forti gli abitanti si riparano in casa.
     if shelter {
         return Phase::Night;
     }
-    let (start, end, night) = def.hours;
-    if hour >= start && hour < end {
+    phase_by_hours(def.hours, hour)
+}
+
+/// Fase secondo gli orari `(inizio, fine, notte)`; fine e notte possono superare le 24
+/// (lavoro di notte: `17 31 31` = dalle 17 alle 7 del mattino dopo).
+fn phase_by_hours((start, end, night): (f32, f32, f32), hour: f32) -> Phase {
+    // Ora riportata nella giornata che comincia all'inizio del lavoro.
+    let h = if hour >= start { hour } else { hour + 24.0 };
+    if h < end {
         Phase::Work
-    } else if hour >= end && hour < night {
+    } else if h < night {
         Phase::Evening
     } else {
         Phase::Night
@@ -312,6 +321,12 @@ pub fn gate_post(gate: &crate::village::Gate, shift: u8) -> (Vec2, Vec2) {
         gate.pos + gate.inward * dist + gate.tangent * lateral,
         -gate.inward,
     )
+}
+
+/// Distanza lungo l'anello (nei due versi) fra le ascisse `a` e `b` di un giro lungo `length`.
+fn loop_gap(a: f32, b: f32, length: f32) -> f32 {
+    let d = (a - b).rem_euclid(length);
+    d.min(length - d)
 }
 
 /// Posizione iniziale sull'anello di una guardia di ronda (frazione del giro).
@@ -694,16 +709,82 @@ pub fn villager_routine(
         let want = desired_phase(&v.def, hour, weather.shelter);
         let here = Vec2::new(tf.translation.x, tf.translation.z);
         // Guardie di ronda: percorrono l'anello delle mura senza fermarsi, salvo quando parlano.
+        // Hanno un turno: a fine turno entrano nella torre più vicina sul loro cammino e vanno a
+        // riposare (a letto alla caserma, se ne hanno uno); a inizio turno escono da una torre.
         if let Some(wall) = v.def.wall.clone() {
             if info.patrol.len() < 2 {
                 *vis = Visibility::Hidden;
                 continue;
             }
             let length = crate::village::loop_length(&info.patrol);
+            let on_duty = want == Phase::Work;
+            let home = if homes.built {
+                home_of(&v.def, keys, &homes)
+            } else {
+                None
+            };
+            let rest = |v: &mut Villager,
+                        tf: &mut Transform,
+                        vis: &mut Visibility,
+                        npc: &mut Npc,
+                        commands: &mut Commands| {
+                v.hidden = true;
+                v.phase = Phase::Rest;
+                npc.mode = NpcMode::Busy;
+                commands.entity(entity).insert(ColliderDisabled);
+                match &home {
+                    Some(h) => {
+                        lie_in_bed(tf, h.bed.pos, h.bed.head);
+                        *vis = Visibility::Inherited;
+                    }
+                    None => *vis = Visibility::Hidden,
+                }
+            };
             if !v.placed {
                 v.placed = true;
                 v.patrol = patrol_start(&wall) * length;
                 *vis = Visibility::Inherited;
+                v.phase = Phase::Work;
+                if !on_duty {
+                    rest(&mut v, &mut tf, &mut vis, &mut npc, &mut commands);
+                    continue;
+                }
+            }
+            if v.hidden {
+                if !on_duty {
+                    continue;
+                }
+                // Inizio turno: esce dalla torre più vicina al suo tratto di mura.
+                let start = patrol_start(&wall) * length;
+                v.patrol = info
+                    .tower_stops
+                    .iter()
+                    .copied()
+                    .min_by(|a, b| {
+                        loop_gap(*a, start, length).total_cmp(&loop_gap(*b, start, length))
+                    })
+                    .unwrap_or(start);
+                v.hidden = false;
+                v.phase = Phase::Work;
+                *vis = Visibility::Inherited;
+                npc.mode = NpcMode::Ready;
+                commands.entity(entity).remove::<ColliderDisabled>();
+                tf.rotation = Quat::IDENTITY;
+                info!("[VILLAGERS] {} inizia il turno sulle mura", v.def.name);
+            } else if !on_duty {
+                // Fine turno: appena arriva a una torre ci entra.
+                let at_tower = info
+                    .tower_stops
+                    .iter()
+                    .any(|s| loop_gap(*s, v.patrol, length) < 0.6);
+                if at_tower {
+                    info!(
+                        "[VILLAGERS] {} finisce il turno ed entra nella torre",
+                        v.def.name
+                    );
+                    rest(&mut v, &mut tf, &mut vis, &mut npc, &mut commands);
+                    continue;
+                }
             }
             // Si ferma anche mentre si chiacchiera con la IA (stato Chat), non solo nel dialogo scritto.
             let chatting = *app_state.get() == crate::AppState::Chat && chat.npc_name == v.def.name;
@@ -1082,6 +1163,34 @@ mod tests {
         assert_eq!(desired_phase(&d, 19.0, false), Phase::Evening);
         assert_eq!(desired_phase(&d, 23.0, false), Phase::Night);
         assert_eq!(desired_phase(&d, 3.0, false), Phase::Night);
+        // Lavoro di notte, a cavallo della mezzanotte.
+        let night_shift = VillagerDef {
+            hours: (17.0, 31.0, 31.0),
+            ..Default::default()
+        };
+        assert_eq!(desired_phase(&night_shift, 20.0, false), Phase::Work);
+        assert_eq!(desired_phase(&night_shift, 3.0, false), Phase::Work);
+        assert_eq!(desired_phase(&night_shift, 8.0, false), Phase::Night);
+        assert_eq!(desired_phase(&night_shift, 16.9, false), Phase::Night);
+    }
+
+    #[test]
+    fn the_walls_are_always_patrolled() {
+        let defs = load_defs();
+        let walls: Vec<&VillagerDef> = defs.iter().filter(|d| d.wall.is_some()).collect();
+        assert!(
+            walls.iter().all(|d| d.shift.is_some()),
+            "guardie delle mura senza turno"
+        );
+        for step in 0..(24 * 12) {
+            let hour = step as f32 / 12.0;
+            assert!(
+                walls
+                    .iter()
+                    .any(|d| desired_phase(d, hour, false) == Phase::Work),
+                "nessuna ronda sulle mura alle {hour}"
+            );
+        }
     }
 
     #[test]
@@ -1108,11 +1217,19 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(desired_phase(&d, 10.0, true), Phase::Night);
+        // Le guardie in turno restano fuori anche col maltempo, e così il guardiano del faro.
         let g = VillagerDef {
             guard: true,
+            shift: Some(1),
             ..Default::default()
         };
         assert_eq!(desired_phase(&g, 10.0, true), Phase::Work);
+        let keeper = VillagerDef {
+            guard: true,
+            hours: (17.0, 31.0, 31.0),
+            ..Default::default()
+        };
+        assert_eq!(desired_phase(&keeper, 23.0, true), Phase::Work);
     }
 
     #[test]
@@ -1185,7 +1302,10 @@ mod tests {
     fn every_civilian_and_gate_guard_has_a_real_bed() {
         let v = parse(SPEC);
         let mut used = std::collections::HashSet::new();
-        for d in v.iter().filter(|d| d.name != "Ettore" && d.wall.is_none()) {
+        for d in v
+            .iter()
+            .filter(|d| d.name != "Ettore" && (d.wall.is_none() || d.home.is_some()))
+        {
             let (kind, _, bed) = d
                 .home
                 .clone()

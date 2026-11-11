@@ -7,6 +7,8 @@
 # "casa: tipo n letto" = edificio dove dorme (n-esimo di quel tipo, da 0, nell'ordine di debug/placements.txt) e posto letto.
 # "chiave: tipo n" = chiave in più oltre a quella di casa (per esempio dell'edificio dove lavora).
 # Guardie di ronda sul camminamento delle mura: "muro: nord|sud|est|ovest". Il posto si calcola dalla geometria (lavoro: è il ripiego).
+# Anche le ronde hanno un turno (almeno una sempre sulle mura); chi non ha un letto alla caserma riposa senza farsi vedere.
+# Una guardia senza turno segue "orari:"; si può lavorare di notte con fine e notte oltre le 24 (es. "orari: 17 31 31").
 
 [Osvaldo]
 casa: locanda 0 0
@@ -110,17 +112,21 @@ turno: 3
 lavoro: 0 0 0 1
 
 [Guardia Gino]
+casa: caserma 0 6
 ruolo: guardia
 modello: guardia
 guardia: si
 muro: nord
+turno: 1
 lavoro: 0 0 0 1
 
 [Guardia Ivo]
+casa: caserma 0 7
 ruolo: guardia
 modello: guardia
 guardia: si
 muro: sud
+turno: 2
 lavoro: 0 0 0 1
 
 [Guardia Livio]
@@ -128,6 +134,7 @@ ruolo: guardia
 modello: guardia
 guardia: si
 muro: est
+turno: 3
 lavoro: 0 0 0 1
 
 [Guardia Mario]
@@ -135,6 +142,7 @@ ruolo: guardia
 modello: guardia
 guardia: si
 muro: ovest
+turno: 3
 lavoro: 0 0 0 1
 
 [Ferruccio]
@@ -190,6 +198,7 @@ ruolo: guardiano del faro
 modello: guardia
 guardia: si
 lavoro: -10.6 90.4 1 0
+orari: 17 31 31
 
 [Gino]
 casa: mulino 0 0

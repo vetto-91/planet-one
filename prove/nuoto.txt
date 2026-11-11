@@ -1,0 +1,13 @@
+# Nuoto: fermi a galla dritti, in movimento distesi sull'acqua con la testa fuori.
+god on
+tp -11 3 110
+aspetta 3
+guarda 90 20
+vai -11 126
+foto fermo
+tieni d 3
+aspetta 1.2
+foto nuota
+dump nuoto
+verifica sopra_terreno > 1
+esci

@@ -7,6 +7,7 @@
 //! - `premi <tasto> [s]`: tiene premuto un tasto (`w a s d spazio shift ctrl e invio esc tab su giu
 //!   sinistra destra 0-9 i j m t c v f5 f9 click clickdx`) per `s` secondi (predefinito 0,1);
 //! - `avanza`: fa scorrere il dialogo (Invio) finché compaiono le scelte o si chiude;
+//! - `tieni <tasto> <s>`: come `premi`, ma il copione prosegue subito (foto in movimento);
 //! - `scegli <n o testo>`: nel dialogo sceglie la risposta (numero da 1 o parte del testo) e conferma;
 //! - `foto <nome>`: screenshot del gioco in `<uscita>/<nome>.png`;
 //! - `dump [nome]`: stato del gioco in JSON in `<uscita>/stato-<nome>.json`;
@@ -82,7 +83,8 @@ pub struct Autopilot {
     started: bool,
     frames: u32,
     wait: f32,
-    held: Vec<(PilotKey, f32)>,
+    /// Tasti tenuti: tasto, secondi rimasti, il copione aspetta che finisca (`premi`) o no (`tieni`).
+    held: Vec<(PilotKey, f32, bool)>,
     pub goal: Option<Goal>,
     /// `guarda <nome>`: punto da mettere al centro del mirino e fotogrammi già usati.
     pub aim: Option<(Vec3, u32)>,
@@ -352,7 +354,7 @@ pub fn run_autopilot(
     }
     // Tasti tenuti.
     let mut held = std::mem::take(&mut pilot.held);
-    held.retain_mut(|(k, left)| {
+    held.retain_mut(|(k, left, _)| {
         *left -= dt;
         let keep = *left > 0.0;
         match (*k, keep) {
@@ -491,7 +493,7 @@ pub fn run_autopilot(
             Some(n) => {
                 dialog.selected = n;
                 keys.press(KeyCode::Enter);
-                pilot.held.push((PilotKey::Key(KeyCode::Enter), 0.05));
+                pilot.held.push((PilotKey::Key(KeyCode::Enter), 0.05, true));
             }
             None => pilot.fail(0, format!("scegli {wanted}: nessuna scelta così")),
         }
@@ -505,14 +507,14 @@ pub fn run_autopilot(
         if dialog.open && !dialog.choosing {
             pilot.advance -= 1;
             keys.press(KeyCode::Enter);
-            pilot.held.push((PilotKey::Key(KeyCode::Enter), 0.05));
+            pilot.held.push((PilotKey::Key(KeyCode::Enter), 0.05, true));
             pilot.wait = 0.35;
             return;
         }
         pilot.advance = 0;
     }
     // La shell ha ancora comandi da eseguire, oppure un tasto è ancora tenuto.
-    if !shell.pending.is_empty() || !pilot.held.is_empty() || pilot.photo.is_some() {
+    if !shell.pending.is_empty() || pilot.held.iter().any(|h| h.2) || pilot.photo.is_some() {
         return;
     }
     let Some((n, line)) = pilot.lines.pop_front() else {
@@ -523,13 +525,15 @@ pub fn run_autopilot(
     let num = |i: usize| -> Option<f32> { words.get(i)?.replace(',', ".").parse().ok() };
     match words[0].to_lowercase().as_str() {
         "aspetta" | "wait" => pilot.wait = num(1).unwrap_or(1.0),
-        "premi" | "press" => match words.get(1).and_then(|k| parse_key(k)) {
+        "premi" | "press" | "tieni" | "hold" => match words.get(1).and_then(|k| parse_key(k)) {
             Some(k) => {
                 match k {
                     PilotKey::Key(c) => keys.press(c),
                     PilotKey::Mouse(b) => mouse.press(b),
                 }
-                pilot.held.push((k, num(2).unwrap_or(0.1)));
+                // `tieni` non blocca il copione: si può fotografare mentre il tasto è premuto.
+                let blocking = matches!(words[0].to_lowercase().as_str(), "premi" | "press");
+                pilot.held.push((k, num(2).unwrap_or(0.1), blocking));
             }
             None => pilot.fail(n, format!("tasto sconosciuto in «{line}»")),
         },
