@@ -557,6 +557,25 @@ pub fn sync_world_props(
                     for at in interior.fires {
                         crate::village_life::spawn_campfire(c, at, &mut meshes, &mut materials);
                     }
+                    for (at, key) in &interior.signs {
+                        // Tabella con la scritta della bottega sulla targa accanto alla porta.
+                        let sign_mat = materials.add(StandardMaterial {
+                            base_color: Color::WHITE,
+                            base_color_texture: Some(
+                                asset_server.load(format!("textures/cartelli/{key}.png")),
+                            ),
+                            perceptual_roughness: 0.9,
+                            ..default()
+                        });
+                        let size = crate::buildings::SIGN_SIZE;
+                        c.spawn((
+                            // Un rettangolo come nei cartelli (la faccia davanti del `Cuboid`
+                            // mostra la texture capovolta).
+                            Mesh3d(meshes.add(Rectangle::new(size.x, size.y))),
+                            MeshMaterial3d(sign_mat),
+                            Transform::from_translation(*at),
+                        ));
+                    }
                     if kind == "mulino" {
                         c.spawn((
                             crate::village_life::MillSails,

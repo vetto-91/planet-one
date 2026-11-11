@@ -18,6 +18,7 @@ SIGNS = {
     "locanda": ("Locanda", "vitto e alloggio"),
     "forno": ("Forno", "pane fresco"),
     "fabbro": ("Fabbro", ""),
+    "arcere": ("Arciere", "archi e frecce"),
     "faro": ("Faro", "a sud, sulla scogliera"),
     "porticciolo": ("Porticciolo", "barche e pesca"),
     "mulino": ("Mulino", "a nord"),

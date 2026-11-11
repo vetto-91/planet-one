@@ -4,6 +4,7 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **Insegne**: le targhe di arciere, fabbro, forno e locanda mostrano il nome della bottega invece di un rettangolo vuoto.
 - **Pioggia e neve**: niente più gocce come lunghe barre e fiocchi come grossi quadrati davanti alla camera; i fiocchi sono tondi. La nevicata è molto più fitta: pioggia e neve cadono soprattutto davanti alla camera (prima quasi tutte dietro o di lato) e restano piene anche girandosi di colpo.
 - **Scala dell'interfaccia**: a 1440p e 4K l'interfaccia si ingrandisce da sola (×1,33 e ×2) invece di restare minuscola; nelle impostazioni (Gioco → Scala interfaccia) si sceglie Automatica o 75–200%. Targhette, fumetti e mappa restano al loro posto.
 - **Meteo, ombre**: col cielo coperto (pioggia, temporale, nebbia, neve) il sole non proietta più ombre nette: la luce diretta quasi sparisce e quella del cielo diventa diffusa. Col nuvoloso le ombre sono tenui. Il sereno non cambia.
