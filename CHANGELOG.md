@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.58.0 — Beta test: ronde, nuoto, banditi (2026-11-11)
 
 - Banditi: uccisi nei primi 40 s di gioco ricomparivano subito; ora il popolamento iniziale avviene una volta per scena e chi muore torna solo di notte.
 - Shell: `dai` accetta singolare e plurale (`dai freccia`).
