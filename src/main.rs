@@ -159,7 +159,10 @@ fn main() -> AppExit {
                 close_when_requested: false,
                 ..default()
             })
+            // Senza finestra non arrivano tastiera né mouse; niente nemmeno dai gamepad:
+            // in prova comanda solo il pilota.
             .disable::<bevy::winit::WinitPlugin>()
+            .disable::<bevy::gilrs::GilrsPlugin>()
             .add(bevy::app::ScheduleRunnerPlugin::run_loop(
                 std::time::Duration::from_secs_f64(1.0 / 60.0),
             ))

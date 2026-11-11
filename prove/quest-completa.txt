@@ -8,12 +8,25 @@ dump ladro
 uccidi 15
 attendi quest = Collecting 10
 foto monete
-# Le monete cadono attorno al punto della morte: si cammina lì attorno per raccoglierle.
-vai 31 -35
-vai 33 -35
+# Le monete cadono in cerchio (fino a 1,8 m) attorno al punto in cui muore il ladro, che cambia
+# a seconda di dove ha inseguito il giocatore: si percorre a griglia (passo 2 m, raccolta entro 2 m)
+# tutta la zona dove può cadere (la fila a nord è più corta per l'accampamento).
+vai 29 -33
 vai 31 -33
+vai 33 -33
+vai 35 -33
+vai 35 -35
+vai 33 -35
+vai 31 -35
 vai 29 -35
+vai 27 -35
+vai 25 -35
+vai 25 -37
+vai 27 -37
+vai 29 -37
 vai 31 -37
+vai 33 -37
+vai 35 -37
 dump raccolta
 attendi quest = Returning 20
 verifica monete_quest = 12

@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 # Esegue i copioni del pilota automatico (prove/*.txt) e scrive prove/out/RAPPORTO.md.
 #
-# Uso: scripts/beta_check.sh [--aggiorna] [--senza-schermo] [--risoluzioni R] [copione ...]
+# Uso: scripts/beta_check.sh [--aggiorna] [--con-finestra] [--con-casse] [--risoluzioni R] [copione ...]
 #      (senza copioni: tutti)
+#
+# Di base le prove non disturbano chi usa il PC: niente finestra (la camera disegna in
+# un'immagine alla risoluzione esatta, foto senza HUD), quindi nessun input da tastiera, mouse
+# o gamepad, e l'audio va in una scheda virtuale di PulseAudio (casse mute; `registra` la
+# registra lo stesso). --con-finestra apre la finestra vera (foto con HUD e pannelli;
+# le risoluzioni più grandi dello schermo restano senza finestra); --con-casse fa suonare le casse.
 #
 # Risoluzioni standard, come un giocatore vero: 720p (1280x720), 1080p (1920x1080),
 # 1440p (2560x1440), 4k (3840x2160). --risoluzioni sceglie:
@@ -26,16 +32,30 @@ mkdir -p "$OUT"
 cargo build --release --offline >/dev/null 2>&1 || { echo "build fallita"; exit 2; }
 update=0
 mode=giro
+window=0
+speakers=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --aggiorna) update=1; shift ;;
-    # Senza finestra: la camera disegna in un'immagine (serve quando lo schermo non c'è,
-    # per esempio se è attiva un'altra sessione del PC). Foto senza HUD né pannelli.
-    --senza-schermo) export PLANET_ONE_HEADLESS=1; shift ;;
+    --con-finestra) window=1; shift ;;
+    --senza-schermo) window=0; shift ;;   # vecchio nome, ora è il comportamento di base
+    --con-casse) speakers=1; shift ;;
     --risoluzioni) mode="${2:-giro}"; shift 2 ;;
     *) break ;;
   esac
 done
+[ $window -eq 0 ] && export PLANET_ONE_HEADLESS=1
+# Audio in una scheda virtuale (null sink), tolta all'uscita.
+if [ $speakers -eq 0 ] && command -v pactl >/dev/null; then
+  sink_module=$(pactl load-module module-null-sink sink_name=planet_one_prove \
+    sink_properties=device.description=PlanetOneProve 2>/dev/null)
+  if [ -n "$sink_module" ]; then
+    export PULSE_SINK=planet_one_prove
+    trap 'pactl unload-module "$sink_module" 2>/dev/null' EXIT
+  else
+    echo "attenzione: scheda audio virtuale non creata, le prove suonano nelle casse"
+  fi
+fi
 STANDARD=(1280x720 1920x1080 2560x1440 3840x2160)
 size_of() {
   case "$1" in
@@ -77,7 +97,7 @@ report="$OUT/RAPPORTO.md"
   echo "# Rapporto del pilota automatico"
   echo
   echo "Data: $(date '+%Y-%m-%d %H:%M') · versione: $(grep -o 'v[0-9][0-9.]*' src/version.rs | head -1)" \
-    "· risoluzioni: $mode${PLANET_ONE_HEADLESS:+ · senza finestra}"
+    "· risoluzioni: $mode${PLANET_ONE_HEADLESS:+ · senza finestra}${PULSE_SINK:+ · casse mute}"
   echo
   echo "| Copione | Risoluzione | Esito | Verifiche ok | Fallimenti | FPS medio | 1% peggiore | WARN | ERROR | panic |"
   echo "|---|---|---|---|---|---|---|---|---|---|"

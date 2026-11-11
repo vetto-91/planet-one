@@ -192,12 +192,19 @@ impl Autopilot {
 
 /// Avvia la registrazione di ciò che esce dagli altoparlanti (monitor della scheda audio
 /// predefinita, PulseAudio o PipeWire) in un file WAV. Solo Linux: `parec` e `pactl`.
+/// Con `PULSE_SINK` (le prove di `beta_check.sh` suonano in una scheda virtuale, a casse mute)
+/// registra quella.
 fn start_recording(path: &std::path::Path) -> Result<std::process::Child, String> {
-    let sink = std::process::Command::new("pactl")
-        .arg("get-default-sink")
-        .output()
-        .map_err(|e| format!("pactl: {e}"))?;
-    let sink = String::from_utf8_lossy(&sink.stdout).trim().to_string();
+    let sink = match std::env::var("PULSE_SINK") {
+        Ok(s) if !s.is_empty() => s,
+        _ => {
+            let out = std::process::Command::new("pactl")
+                .arg("get-default-sink")
+                .output()
+                .map_err(|e| format!("pactl: {e}"))?;
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        }
+    };
     if sink.is_empty() {
         return Err("nessuna scheda audio predefinita".into());
     }

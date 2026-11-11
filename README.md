@@ -154,10 +154,15 @@ esci
 scripts/beta_check.sh                      # tutti i copioni di prove/, rapporto in prove/out/RAPPORTO.md
 scripts/beta_check.sh prove/giro.txt       # uno solo
 scripts/beta_check.sh --aggiorna           # le foto di questa corsa diventano i riferimenti
-scripts/beta_check.sh --senza-schermo      # senza finestra (schermo non disponibile)
+scripts/beta_check.sh --con-finestra       # con la finestra vera (foto con HUD e pannelli)
+scripts/beta_check.sh --con-casse          # l'audio esce dalle casse
 scripts/beta_check.sh --risoluzioni tutte  # ogni copione a 720p, 1080p, 1440p e 4K (di base: a rotazione)
 scripts/beta_check.sh --risoluzioni 4k     # tutti a una sola risoluzione (720p, 1080p, 1440p, 4k o LxA)
 ```
+
+Di base le prove non disturbano chi usa il PC: girano **senza finestra** (la camera disegna in un'immagine
+alla risoluzione esatta, quindi nessun input da tastiera, mouse o gamepad arriva al gioco) e con l'audio
+in una **scheda virtuale** di PulseAudio (`PULSE_SINK`), a casse mute; `registra` registra lo stesso.
 
 Un copione può chiedere variabili proprie con righe `# env: CHIAVE=valore` (es. `# env: PLANET_ONE_SPEED=6`).
 

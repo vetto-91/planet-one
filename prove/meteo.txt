@@ -1,7 +1,7 @@
-# Meteo: la stessa inquadratura aperta (campagna a nord del paese) con ogni tempo.
+# Meteo: la stessa inquadratura aperta (prato a ovest del paese, con cielo e orizzonte) con ogni tempo.
 god on
-tp 4 6 -20
-guarda 0 8
+tp -40 8 -10
+guarda 90 8
 meteo sereno
 aspetta 12
 foto meteo-sereno

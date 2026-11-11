@@ -229,7 +229,7 @@ Per ogni voce: un copione in `prove/`, cosa ci si aspetta, come si verifica (sta
 
 **Da decidere**: tutti gli effetti escono **identici a destra e a sinistra**. Non c'è audio posizionale, solo il volume che cala con la distanza: una campana o un abitante a sinistra non si sentono a sinistra. Bevy ha l'audio spaziale (ascoltatore sulla camera): è un miglioramento, non un difetto.
 
-**Limite scoperto l'11/11**: il pilota ha bisogno che la sessione di `dev` sia quella attiva. Se è attiva l'altra sessione del PC (un altro utente su un altro terminale virtuale), il gioco va in panic alla creazione della finestra (Vulkan «Invalid surface»). Con lo schermo solo bloccato, o il monitor spento, funziona. Il rendering software (Xvfb + llvmpipe) è troppo lento: in 5 minuti non finisce l'avvio. Rimedio: `PLANET_ONE_HEADLESS=1` (o `beta_check.sh --senza-schermo`), la camera disegna in un'immagine sulla GPU senza finestra; le foto non hanno HUD né pannelli. Parte sulla scheda giusta. Il primo tentativo è finito con la **memoria video esaurita**, perché Ollama teneva caricato un altro modello (circa 9 GB) e la scheda ha 12 GB.
+**Limite scoperto l'11/11**: il pilota ha bisogno che la sessione di `dev` sia quella attiva. Se è attiva l'altra sessione del PC (un altro utente su un altro terminale virtuale), il gioco va in panic alla creazione della finestra (Vulkan «Invalid surface»). Con lo schermo solo bloccato, o il monitor spento, funziona. Il rendering software (Xvfb + llvmpipe) è troppo lento: in 5 minuti non finisce l'avvio. Rimedio: `PLANET_ONE_HEADLESS=1` (oggi il modo di base di `beta_check.sh`), la camera disegna in un'immagine sulla GPU senza finestra; le foto non hanno HUD né pannelli. Parte sulla scheda giusta. Il primo tentativo è finito con la **memoria video esaurita**, perché Ollama teneva caricato un altro modello (circa 9 GB) e la scheda ha 12 GB.
 
 **Risoluzioni (11/11)**: `beta_check.sh` prova le risoluzioni standard 720p, 1080p, 1440p e 4K, come un giocatore vero (`--risoluzioni giro|tutte|…`). I monitor di questo PC arrivano a 2560×1440, ma il gestore delle finestre riduce una finestra 1440p o 4K a 2490×1376. Per questo le risoluzioni che non stanno sullo schermo girano senza finestra, alla misura esatta, e il rapporto mostra la risoluzione vera. Copione `fps` (nove luoghi, giorno e notte, grafica alta, RTX 3080 Ti):
 
@@ -246,7 +246,17 @@ Suite completa a rotazione (21 copioni, cinque o sei per risoluzione): tutti pas
 - senza finestra Bevy avvisava che mancava l'origine del dettaglio delle ombre (`ShadowLodOrigin`): ora è la camera, così le ombre e gli FPS misurati sono come a finestra;
 - `b2-torre`: il `tp` dentro la torre mette il giocatore sotto il pavimento prima che i collider siano pronti, e la rete di sicurezza lo riporta su (`[RETE]`). Il giocatore non ci arriva così; la prova passa;
 - una finestra 1080p può aprirsi sul secondo monitor (1920×1080) e venire ridotta a 1850×1043: il rapporto lo segnala nella colonna Risoluzione;
-- i copioni nuovi (`edifici`, `giro-camera`, `interfaccia`, `meteo` e altri) non hanno ancora foto di riferimento: si creano con `--aggiorna` quando le foto attuali vanno bene.
+- foto di riferimento: rifatte tutte senza finestra (15 copioni, 63 foto) dopo averle guardate una per una. `meteo` ora inquadra un prato aperto a ovest (prima il giocatore era attaccato a un muro); `scuri-casetta` inquadra la finestra sud da fuori e fotografa giorno, notte e mattina (prima si vedevano solo le guardie). `quest-completa` falliva una volta su tre: il ladro muore in punti diversi e il giro fisso a volte lasciava una moneta oltre i 2 m di raccolta; ora il pilota percorre la zona a griglia (passato 3 volte su 3). Corsa di verifica: 63 foto su 63 entro la soglia.
+
+**Prove che non disturbano (11/11)**: di base `beta_check.sh` gira senza finestra, quindi non arriva input da tastiera, mouse o gamepad, e con l'audio in una scheda virtuale di PulseAudio (`module-null-sink`, `PULSE_SINK`), tolta alla fine. Le casse restano mute e `registra` registra lo stesso: i livelli coincidono con la revisione dei suoni. Le foto senza finestra hanno comunque l'HUD. `--con-finestra` e `--con-casse` tornano come prima. Unico avviso nuovo: un «buffer underrun» di rodio nel copione `ascolto` (la scheda virtuale ha un suo orologio; non si sente nella registrazione).
+
+Trovati guardando le foto (da decidere):
+- **Meteo**: con nuvoloso, nebbia, pioggia, temporale e neve il sole proietta ancora **ombre nette** come col sereno. Il cielo coperto dovrebbe ammorbidirle o toglierle.
+- **Neve**: i fiocchi vicini alla camera sono grossi quadrati bianchi.
+- **Interfaccia a 4K**: l'HUD e i pannelli non si ingrandiscono con la risoluzione. Senza ridimensionamento del sistema (100%) sono minuscoli: serve una scala dell'interfaccia (automatica o nelle impostazioni).
+- **Insegne vuote**: alcuni edifici hanno la tabella senza scritta (forno, bottega di Osvaldo, sopra due porte).
+- **Camera**: girando attorno al giocatore sotto le tettoie del mercato, la camera entra nelle travi (una foto di `giro-camera` è coperta da una trave).
+- **Voce**: il saluto di Marta arriva a 0,0 dBFS (0,1% dei campioni al limite): va abbassata di qualche dB.
 
 Da tenere per la fase delle prestazioni:
 - le prove usano la grafica «alta» predefinita, mentre le impostazioni dell'utente sono basse (niente ombre, SSAO, bloom): gli FPS misurati sono quelli del caso peggiore;

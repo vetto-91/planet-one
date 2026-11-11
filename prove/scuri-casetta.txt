@@ -1,11 +1,17 @@
 # Gli scuri della casetta: aperti di giorno, chiusi la notte, riaperti dal Viandante al mattino.
+# Inquadratura: la finestra sul lato sud della casetta, da fuori.
 god on
-tp 3 2 -0.2
+tp 6.5 2 -4.5
+guarda 180 0
 aspetta 2
 verifica prop:casetta:scuri:0:attivo = true
+foto giorno
 ora 23
 attendi prop:casetta:scuri:0:attivo = false 120
+aspetta 2
+foto notte
 ora 8
 attendi prop:casetta:scuri:0:attivo = true 180
+aspetta 2
 foto mattina
 esci
