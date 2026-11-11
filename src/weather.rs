@@ -410,6 +410,14 @@ pub fn update_fog(
 const RAIN_POOL: usize = 900;
 const SNOW_POOL: usize = 600;
 const PRECIP_RADIUS: f32 = 15.0;
+/// Le particelle più vicine di così alla camera non si disegnano: a pochi centimetri
+/// dall'obiettivo una goccia o un fiocco riempirebbero mezzo schermo.
+const PRECIP_NEAR: f32 = 2.5;
+
+/// Una particella è troppo vicina alla camera per essere disegnata.
+fn too_close(pos: Vec3, cam: Vec3) -> bool {
+    pos.distance_squared(cam) < PRECIP_NEAR * PRECIP_NEAR
+}
 
 /// Particella di pioggia o neve.
 #[derive(Component)]
@@ -432,7 +440,8 @@ pub fn spawn_precip(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let drop = meshes.add(Cuboid::new(0.016, 0.6, 0.016));
-    let flake = meshes.add(Cuboid::new(0.05, 0.05, 0.05));
+    // Fiocco tondo (un cubo da vicino sembrava un quadratino bianco).
+    let flake = meshes.add(Sphere::new(0.018).mesh().ico(1).expect("ico"));
     let drop_mat = materials.add(StandardMaterial {
         base_color: Color::srgba(0.75, 0.82, 0.95, 0.55),
         alpha_mode: AlphaMode::Blend,
@@ -504,8 +513,12 @@ pub fn update_precip(
             p.fresh = true;
             continue;
         }
-        *vis = Visibility::Inherited;
         let pos = tf.translation;
+        *vis = if too_close(pos, cam) {
+            Visibility::Hidden
+        } else {
+            Visibility::Inherited
+        };
         let ground = field.height_at(pos.x, pos.z);
         let out = Vec2::new(pos.x - cam.x, pos.z - cam.z).length() > PRECIP_RADIUS;
         if p.fresh || out || pos.y < ground + 0.02 {
@@ -748,6 +761,14 @@ mod tests {
     fn weather_is_deterministic_per_date() {
         let d = date(10, 3, 2);
         assert_eq!(day_weather(&d), day_weather(&d));
+    }
+
+    #[test]
+    fn precip_near_the_camera_is_hidden() {
+        let cam = Vec3::new(0.0, 5.0, 0.0);
+        assert!(too_close(Vec3::new(0.3, 5.2, -0.5), cam));
+        assert!(!too_close(Vec3::new(0.0, 5.0, -3.0), cam));
+        assert!(!too_close(Vec3::new(8.0, 1.0, 3.0), cam));
     }
 
     #[test]
