@@ -169,6 +169,20 @@ Gli FPS non dipendono molto dal luogo e le entità sono sempre le stesse: il cos
 
 ## Fase 2 — Giro sistematico di ogni sistema (beta test)
 
+**Stato all'11/11/2026: primo giro** con i copioni `movimento`, `combattimento`, `salvataggi`, `meteo` e `vita-paese` (24 ore a velocità 6, un `dump` di tutti gli abitanti ogni mezz'ora).
+
+| # | Sistema | Esito | Stato |
+|---|---|---|---|
+| F2-1 | Combattimento | **Bug**: i banditi uccisi nei primi 40 s di gioco ricomparivano subito, mentre il log diceva «tornerà una notte a caso» | corretto (popolamento iniziale una volta per scena, `BanditsSeeded`) |
+| F2-2 | Shell | `dai freccia` non funzionava: il nome è «Frecce» | corretto (singolare e plurale) |
+| F2-3 | Movimento | Nel mare il personaggio sta dritto in posa di riposo, con i piedi sopra l'acqua: sembra camminare sull'acqua. Manca una posa o un'animazione di nuoto | da fare |
+| F2-4 | Abitanti | Le guardie delle mura (Gino, Ivo, Livio, Mario) e il guardiano del faro (Ettore) lavorano 24 ore su 24 senza mai riposare; le guardie dei cancelli hanno invece tre turni. Incoerenza di regole | da decidere |
+| F2-5 | Abitanti | Nessuno resta bloccato nelle 24 ore. Il campionamento ogni mezz'ora è grosso: un blocco breve può sfuggire | ok |
+| F2-6 | Salvataggi | F5/F9 riportano posizione, ora, inventario e quest | ok |
+| F2-7 | Caduta e morte | 22,7 m: danno 173, morte, rinascita allo spawn con la vita piena | ok |
+| F2-8 | Meteo | Le foto non sono conclusive: la camera era sotto il tetto del pozzo. Nella neve, a terra non c'è neve dopo 6 s: è giusto, si accumula col tempo | da rifare con un'inquadratura migliore |
+
+
 Per ogni voce: un copione in `prove/`, cosa ci si aspetta, come si verifica (stato JSON, screenshot o test).
 
 | Sistema | Cosa provare | Atteso |

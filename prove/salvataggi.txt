@@ -1,0 +1,26 @@
+# Salvataggi: F5 e F9 riportano posizione, ora, inventario, quest, porte e scuri.
+god on
+dai mela 7
+quest cerca
+tp -1.2 3 14
+aspetta 2
+ora 15
+aspetta 1
+dump prima
+premi f5
+aspetta 2
+tp 40 10 40
+dai mela 5
+quest completata
+ora 3
+aspetta 2
+premi f9
+aspetta 10
+dump dopo
+verifica quest = SeekThief
+verifica Apple = 7
+verifica z > 12
+verifica z < 16
+verifica ora >= 15
+verifica ora < 15.5
+esci

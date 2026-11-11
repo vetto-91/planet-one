@@ -1,0 +1,45 @@
+# Combattimento: spada, ascia, arco, scudo contro i banditi.
+god on
+dai spada corta
+dai ascia
+dai arco
+dai freccia 20
+dai scudo
+dump armi
+tp 74 12 38
+aspetta 2
+premi 1
+aspetta 0.5
+dump spada
+verifica arma contiene sword
+guarda banditi
+premi click
+aspetta 1
+premi click
+aspetta 1
+foto spada-attacco
+dump dopo-spada
+premi 2
+aspetta 0.5
+verifica arma contiene axe
+premi click
+aspetta 1
+premi 3
+aspetta 0.5
+verifica arma contiene bow
+premi click
+aspetta 1.5
+foto arco
+dump dopo-arco
+uccidi 40
+aspetta 1
+uccidi 40
+aspetta 1
+uccidi 40
+aspetta 2
+dump dopo-uccisi
+# I banditi uccisi tornano solo di notte, non subito.
+aspetta 20
+dump banditi-dopo
+verifica /vicini/0/tipo != nemico
+esci

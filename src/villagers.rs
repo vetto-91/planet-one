@@ -179,6 +179,11 @@ pub struct VillagerSave {
 }
 
 impl Villager {
+    /// Dati della routine per lo stato del pilota automatico: nascosto, tratti di strada e di casa.
+    pub fn debug_route(&self) -> (bool, usize, usize) {
+        (self.hidden, self.path.len(), self.indoor.len())
+    }
+
     /// Fase della routine (per lo stato del pilota automatico).
     pub fn phase_name(&self) -> String {
         format!("{:?}", self.phase)

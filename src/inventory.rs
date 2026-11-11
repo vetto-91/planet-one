@@ -210,9 +210,22 @@ impl ItemKind {
     /// Cerca un oggetto per nome (per i salvataggi), senza badare a maiuscole e accenti.
     pub fn from_name(text: &str) -> Option<ItemKind> {
         let wanted = crate::inventory_ui::normalize(text.trim());
-        ItemKind::ALL
-            .into_iter()
-            .find(|k| crate::inventory_ui::normalize(k.name()) == wanted)
+        let names = ItemKind::ALL.map(|k| (k, crate::inventory_ui::normalize(k.name())));
+        if let Some((k, _)) = names.iter().find(|(_, n)| *n == wanted) {
+            return Some(*k);
+        }
+        // Singolare o plurale («freccia» per «Frecce»): stesso inizio di almeno 5 lettere,
+        // lunghezza quasi uguale, e un solo oggetto che corrisponde.
+        let common =
+            |a: &str, b: &str| a.chars().zip(b.chars()).take_while(|(x, y)| x == y).count();
+        let close: Vec<ItemKind> = names
+            .iter()
+            .filter(|(_, n)| {
+                common(n, &wanted) >= 5 && n.chars().count().abs_diff(wanted.chars().count()) <= 2
+            })
+            .map(|(k, _)| *k)
+            .collect();
+        (close.len() == 1).then(|| close[0])
     }
 
     /// Chili in più se è uno zaino.
@@ -715,6 +728,14 @@ pub fn collect_pickups(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn names_accept_singular_and_plural() {
+        assert_eq!(ItemKind::from_name("frecce"), Some(ItemKind::Arrow));
+        assert_eq!(ItemKind::from_name("freccia"), Some(ItemKind::Arrow));
+        assert_eq!(ItemKind::from_name("mela"), Some(ItemKind::Apple));
+        assert_eq!(ItemKind::from_name("boh"), None);
+    }
 
     #[test]
     fn coins_and_ammo_have_no_weight_the_rest_does() {

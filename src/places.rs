@@ -608,6 +608,11 @@ pub fn bandits_return(center: Vec2, night: i64) -> bool {
 /// Sistema: i banditi uccisi non tornano subito: una notte a caso, con la stessa probabilità ogni
 /// notte, riappaiono dove mancano. All'avvio dell'app il campo è già popolato.
 #[allow(clippy::too_many_arguments)]
+/// Marcatore: i campi dei banditi di questa scena sono già stati popolati.
+#[derive(Component)]
+struct BanditsSeeded;
+
+#[allow(clippy::too_many_arguments)]
 fn keep_bandits(
     mut commands: Commands,
     server: Res<AssetServer>,
@@ -616,6 +621,7 @@ fn keep_bandits(
     dbg: Res<DebugPlace>,
     field: Option<Res<TerrainField>>,
     enemies: Query<&PatrolState, With<Enemy>>,
+    seeded: Query<(), With<BanditsSeeded>>,
     mut timer: Local<f32>,
     mut last_night: Local<Option<i64>>,
 ) {
@@ -628,7 +634,9 @@ fn keep_bandits(
         return;
     };
     let night_hours = clock.hour >= 21.5 || clock.hour < 4.5;
-    let start = time.elapsed_secs() < 40.0;
+    // Popolamento iniziale una volta per scena (il marcatore sparisce col reset della scena):
+    // prima valeva «i primi 40 s», e chi uccideva un bandito subito lo vedeva ricomparire.
+    let start = seeded.is_empty();
     let night = night_index(&clock);
     if !start && (!night_hours || *last_night == Some(night)) {
         return;
@@ -659,6 +667,9 @@ fn keep_bandits(
     }
     if spawned && !start {
         *last_night = Some(night);
+    }
+    if start {
+        commands.spawn((BanditsSeeded, crate::scene::SceneNode));
     }
 }
 

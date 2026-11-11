@@ -677,6 +677,28 @@ pub fn snapshot(world: &mut World) -> Value {
             ));
         }
     }
+    // Tutti gli abitanti, ovunque siano: servono a trovare chi resta bloccato.
+    let mut folks = world.query::<(
+        &GlobalTransform,
+        &crate::entities::Npc,
+        &crate::villagers::Villager,
+    )>();
+    let abitanti: Vec<Value> = folks
+        .iter(world)
+        .map(|(g, npc, v)| {
+            let p = g.translation();
+            let (hidden, path, indoor) = v.debug_route();
+            json!({
+                "nome": npc.name,
+                "pos": [p.x, p.y, p.z],
+                "fase": v.phase_name(),
+                "modo": format!("{:?}", npc.mode),
+                "nascosto": hidden,
+                "strada": path,
+                "casa": indoor,
+            })
+        })
+        .collect();
     let mut enemies = world.query::<(&GlobalTransform, &crate::combat::EnemyHealth)>();
     for (g, hp) in enemies.iter(world) {
         let p = g.translation();
@@ -737,6 +759,7 @@ pub fn snapshot(world: &mut World) -> Value {
         "inventario": items,
         "dialogo": dialog,
         "vicini": near.into_iter().map(|(_, v)| v).collect::<Vec<_>>(),
+        "abitanti": abitanti,
     })
 }
 

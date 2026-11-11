@@ -1,0 +1,24 @@
+# Stagioni e meteo: la stessa piazza nei quattro periodi e con ogni tempo.
+god on
+tp -1.2 3 14
+guarda 180 12
+meteo sereno
+aspetta 6
+foto meteo-sereno
+meteo nuvoloso
+aspetta 6
+foto meteo-nuvoloso
+meteo pioggia
+aspetta 6
+foto meteo-pioggia
+meteo temporale
+aspetta 6
+foto meteo-temporale
+meteo nebbia
+aspetta 6
+foto meteo-nebbia
+meteo neve
+aspetta 6
+foto meteo-neve
+meteo auto
+esci

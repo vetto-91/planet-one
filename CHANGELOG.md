@@ -2,6 +2,12 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- Banditi: uccisi nei primi 40 s di gioco ricomparivano subito; ora il popolamento iniziale avviene una volta per scena e chi muore torna solo di notte.
+- Shell: `dai` accetta singolare e plurale (`dai freccia`).
+- Pilota: il `dump` elenca tutti gli abitanti (fase, nascosto, percorso); nuovi copioni `movimento`, `combattimento`, `salvataggi`, `meteo`, `vita-paese`.
+
 ## v0.0.57.0 — Beta test: bug bloccanti (2026-11-11)
 
 - **Morte unica**: qualunque causa porti la vita a zero (contatto, frecce, caduta) il giocatore rinasce allo spawn con la vita piena, 2 s di invulnerabilità e la scritta «Sei svenuto…»; inventario e monete restano. Prima le frecce potevano portare la vita sotto zero senza morte, e da lì il giocatore non moriva più.
