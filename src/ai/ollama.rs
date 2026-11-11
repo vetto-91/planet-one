@@ -122,7 +122,9 @@ pub fn chat(host: &str, model: &str, system: &str, turns: &[Turn]) -> Result<Rep
         "options": {"temperature": 0.7, "num_predict": 220, "num_ctx": 3072},
         "messages": messages,
     });
-    let resp = agent(40)
+    // Col gioco che occupa la scheda video la prima risposta (modello da caricare, persona lunga)
+    // può superare i 40 s: prima la chat finiva in «la IA non risponde».
+    let resp = agent(150)
         .post(&format!("{base}/api/chat"))
         .set("Content-Type", "application/json")
         .send_string(&body.to_string())

@@ -903,7 +903,7 @@ fn house(
         back_x: x0,
     };
     if attic_room.x1 - attic_room.x0 > 0.9 {
-        rooms::furnish_attic(b, int, &attic_room);
+        rooms::furnish_attic(b, int, &attic_room, kind);
     }
     int.lights.push(Vec3::new(0.0, attic_y + 1.6, 0.0));
     // Camini: se la casa ha un focolare il camino sale da lì fino sopra il tetto; altrimenti

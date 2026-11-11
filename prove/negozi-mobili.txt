@@ -1,0 +1,42 @@
+# Negozio del Viandante e mobili: comprare, monete che non bastano, prendere da un forziere.
+god on
+# A quest finita il Viandante offre direttamente il negozio.
+quest completata
+attendi npc:viandante:modo = Ready 120
+vai viandante
+attendi npc:viandante:dist < 2.6 120
+guarda viandante
+premi e
+aspetta 1
+avanza
+scegli comprare
+aspetta 1
+verifica app = Shop
+dump negozio
+foto negozio
+compra pozione
+aspetta 0.5
+verifica monete < 30
+verifica HealthPotion >= 1
+compra cintura
+aspetta 0.5
+verifica /negozio/messaggio contiene abbastanza
+chiudi
+aspetta 1
+verifica app = Playing
+# Forziere della sala del tesoro, nella grotta.
+tp 94.5 2 40
+aspetta 3
+mira container
+premi e
+aspetta 1
+verifica app = Container
+dump forziere
+foto forziere
+prendi
+aspetta 0.5
+dump dopo-forziere
+chiudi
+aspetta 1
+verifica app = Playing
+esci

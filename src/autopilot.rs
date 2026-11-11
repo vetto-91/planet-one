@@ -15,6 +15,10 @@
 //!   `contiene`); i campi sono in [`field`]. Un fallimento scrive `[VERIFICA] FALLITA` nel log;
 //! - `attendi <campo> <op> <valore> [s]`: aspetta che la condizione sia vera (massimo `s`, 30 s);
 //! - `mai <campo> <op> <valore> [s]`: la condizione non deve mai essere vera per `s` secondi;
+//! - `mira <tipo o id>`: mette nel mirino l'oggetto con stato più vicino (porta, scuri, mobile…);
+//! - `compra <n o nome>`, `prendi` (tutto dal mobile aperto), `chiudi` (torna al gioco): i pannelli
+//!   egui non ricevono i tasti simulati, quindi il pilota passa dalla logica del gioco;
+//! - `di <testo>`: nella chat con l'IA locale manda una frase;
 //! - `esci`: scrive il rapporto e chiude il gioco (codice d'uscita 1 se qualcosa è fallito).
 //!
 //! Ogni altra riga va alla shell dei trucchi (`tp`, `ora`, `meteo`, `dai`, `god`, `vai`, `guarda`…):
@@ -322,6 +326,17 @@ pub fn evaluate(state: &Value, expr: &str) -> Result<(), String> {
     }
 }
 
+/// Pannelli egui che il pilota comanda passando dalla logica del gioco (egui non riceve i tasti
+/// simulati in `ButtonInput`): negozio, mobili, chiusura dei pannelli.
+#[derive(bevy::ecs::system::SystemParam)]
+pub struct PilotUi<'w> {
+    shop: ResMut<'w, crate::shop::ShopState>,
+    containers: ResMut<'w, crate::containers::Containers>,
+    inventory: ResMut<'w, crate::inventory::Inventory>,
+    next: ResMut<'w, NextState<crate::AppState>>,
+    chat: ResMut<'w, crate::ai::AiChat>,
+}
+
 /// Sistema (PreUpdate, dopo l'input): tasti tenuti, meta di `vai` e prossimo comando.
 #[allow(clippy::too_many_arguments)]
 pub fn run_autopilot(
@@ -335,7 +350,13 @@ pub fn run_autopilot(
     mut dialog: ResMut<crate::entities::DialogState>,
     players: Query<&Transform, With<Player>>,
     cameras: Query<&GlobalTransform, With<Camera3d>>,
+    props: Query<(
+        &GlobalTransform,
+        &crate::hut::PropKind,
+        Option<&crate::hut::PropId>,
+    )>,
     mut exit: MessageWriter<AppExit>,
+    mut ui: PilotUi,
 ) {
     if !pilot.active {
         return;
@@ -545,6 +566,55 @@ pub fn run_autopilot(
             }
         }
         "avanza" | "next" => pilot.advance = 30,
+        "compra" | "buy" => {
+            let wanted = words[1..].join(" ").to_lowercase();
+            let stock = crate::shop::stock(&ui.shop.key);
+            let found = wanted
+                .parse::<usize>()
+                .ok()
+                .and_then(|i| i.checked_sub(1))
+                .filter(|i| *i < stock.len())
+                .or_else(|| {
+                    stock
+                        .iter()
+                        .position(|s| s.kind.name().to_lowercase().contains(&wanted))
+                });
+            match (found, *state.get() == crate::AppState::Shop) {
+                (Some(i), true) => ui.shop.pending = Some(i),
+                (_, false) => pilot.fail(n, "compra: nessun negozio aperto".into()),
+                (None, true) => pilot.fail(n, format!("compra: «{wanted}» non è in vendita")),
+            }
+        }
+        "prendi" | "take" => {
+            let moved = ui.containers.take_all_open(&mut ui.inventory);
+            info!("[PILOTA] presi {moved} oggetti dal mobile");
+        }
+        "chiudi" | "close" => ui.next.set(crate::AppState::Playing),
+        "di" | "say" => {
+            if *state.get() == crate::AppState::Chat {
+                ui.chat.action = Some(crate::ai::ChatAction::Send(words[1..].join(" ")));
+            } else {
+                pilot.fail(n, "di: nessuna chat aperta".into());
+            }
+        }
+        "mira" | "aim" => {
+            // L'oggetto con stato più vicino (entro 6 m) il cui tipo o id contiene la parola.
+            let wanted = words[1..].join(" ").to_lowercase();
+            let here = players.single().map(|t| t.translation).unwrap_or_default();
+            let target = props
+                .iter()
+                .filter(|(_, kind, id)| {
+                    format!("{kind:?}").to_lowercase().contains(&wanted)
+                        || id.is_some_and(|i| i.0.to_lowercase().contains(&wanted))
+                })
+                .map(|(g, ..)| g.translation())
+                .filter(|p| p.distance(here) < 6.0)
+                .min_by(|a, b| a.distance(here).total_cmp(&b.distance(here)));
+            match target {
+                Some(p) => pilot.aim = Some((p, 0)),
+                None => pilot.fail(n, format!("mira {wanted}: niente entro 6 m")),
+            }
+        }
         "foto" | "shot" => {
             let name = words.get(1).copied().unwrap_or("foto");
             pilot.photo = Some(pilot.out.join(format!("{name}.png")));
@@ -644,6 +714,35 @@ pub fn snapshot(world: &mut World) -> Value {
     }
     let equip = world.resource::<crate::inventory::Equipment>();
     let arma = equip.weapon.map(|w| format!("{w:?}"));
+    let shop = world.resource::<crate::shop::ShopState>();
+    let negozio = json!({
+        "venditore": shop.vendor,
+        "messaggio": shop.message,
+        "articoli": crate::shop::stock(&shop.key)
+            .iter()
+            .map(|s| format!("{} ({} monete)", s.kind.name(), s.price))
+            .collect::<Vec<_>>(),
+    });
+    let mobile = world
+        .resource::<crate::containers::Containers>()
+        .open_items()
+        .map(|(key, items)| {
+            json!({
+                "chiave": key,
+                "oggetti": items
+                    .iter()
+                    .map(|s| format!("{:?} x{}", s.kind, s.qty))
+                    .collect::<Vec<_>>(),
+            })
+        });
+    let c = world.resource::<crate::ai::AiChat>();
+    let chat = json!({
+        "con": c.npc_name,
+        "pensa": c.thinking,
+        "errore": c.error,
+        "turni": c.history.len(),
+        "risposta": c.history.iter().rev().find(|t| !t.player).map(|t| t.text.clone()),
+    });
     let d = world.resource::<crate::entities::DialogState>();
     let dialog = json!({
         "aperto": d.open,
@@ -762,6 +861,9 @@ pub fn snapshot(world: &mut World) -> Value {
         "quest": quest,
         "inventario": items,
         "dialogo": dialog,
+        "negozio": negozio,
+        "chat": chat,
+        "mobile": mobile,
         "vicini": near.into_iter().map(|(_, v)| v).collect::<Vec<_>>(),
         "abitanti": abitanti,
     })

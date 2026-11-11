@@ -1,0 +1,26 @@
+# Chat con l'IA locale (Ollama su questo computer): si parla con un abitante e si attende la risposta.
+# Se Ollama non è attivo il copione fallisce alla prima verifica sulla chat.
+god on
+ia on
+aspetta 5
+tp marta
+attendi npc:marta:modo = Ready 60
+guarda marta
+premi e
+aspetta 1
+avanza
+dump scelte
+scegli parliamo
+aspetta 1
+verifica app = Chat
+# Prima parla l'abitante: finché «pensa» la frase del giocatore verrebbe ignorata.
+attendi /chat/turni >= 1 180
+di Buongiorno! Che cosa vendi oggi?
+attendi /chat/turni >= 3 180
+dump risposta
+foto chat
+verifica /chat/errore = null
+chiudi
+aspetta 1
+verifica app = Playing
+esci

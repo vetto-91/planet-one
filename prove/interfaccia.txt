@@ -1,0 +1,49 @@
+# Interfaccia: menu Esc, diario, mappa, inventario, personaggio, aspetta, shell. Una foto per pannello.
+god on
+dai spada corta
+dai mela 3
+quest cerca
+tp -1.2 3 14
+aspetta 2
+premi esc
+aspetta 1
+verifica app = Paused
+foto menu
+chiudi
+aspetta 1
+premi j
+aspetta 1
+verifica app = Journal
+foto diario
+chiudi
+aspetta 1
+premi m
+aspetta 2
+verifica app = Map
+foto mappa
+chiudi
+aspetta 1
+premi i
+aspetta 1
+verifica app = Inventory
+foto inventario
+chiudi
+aspetta 1
+premi c
+aspetta 1
+verifica app = Character
+foto personaggio
+chiudi
+aspetta 1
+premi t
+aspetta 1
+verifica app = Wait
+foto aspetta
+chiudi
+aspetta 1
+tieni tab 2
+aspetta 1
+foto obiettivi
+aspetta 2
+verifica app = Playing
+esci

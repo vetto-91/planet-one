@@ -138,6 +138,8 @@ esci
 | `foto [nome]`, `dump [nome]` | Screenshot; stato del gioco in JSON (giocatore, quest, dialogo, inventario, dintorni) |
 | `verifica <campo> <op> <valore>` | Controllo (`=`, `!=`, `<`, `>`, `contiene`); campi: `vita`, `x/y/z`, `sopra_terreno`, `quest`, `monete`, `dialogo`, `parla`, `ora`, `fps`, `npc:<nome>:<campo>`, `prop:<id>:<campo>`, `/puntatore/json` |
 | `attendi …` / `mai … [s]` | La condizione diventa vera entro `s` secondi / non lo diventa mai |
+| `compra <n o nome>`, `prendi`, `chiudi` | Negozio e mobili (i pannelli non ricevono i tasti simulati) |
+| `mira <oggetto>`, `di <frase>` | Mirino sull'oggetto più vicino (porta, scuri, mobile…); frase nella chat con l'IA locale |
 | `esci` | Rapporto in `prove/out/<copione>/RAPPORTO.txt`; codice d'uscita 1 se qualcosa è fallito |
 
 `vai`, `dove`, `guarda`, `foto`, `dump` e `copione <file>` funzionano anche dalla shell (`\`), insieme a

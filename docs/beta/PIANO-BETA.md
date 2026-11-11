@@ -181,6 +181,15 @@ Gli FPS non dipendono molto dal luogo e le entità sono sempre le stesse: il cos
 | F2-6 | Salvataggi | F5/F9 riportano posizione, ora, inventario e quest | ok |
 | F2-7 | Caduta e morte | 22,7 m: danno 173, morte, rinascita allo spawn con la vita piena | ok |
 | F2-8 | Meteo | Le foto non sono conclusive: la camera era sotto il tetto del pozzo. Nella neve, a terra non c'è neve dopo 6 s: è giusto, si accumula col tempo | rifatto: nebbia, nuvole, pioggia (gocce visibili), temporale e neve si vedono; la neve copre il terreno dopo 90 s. L'inquadratura resta stretta accanto a una casa |
+| F2-9 | Abitanti | Livio e Mario senza letto | corretto: due brande nel sottotetto della caserma |
+| F2-10 | Interni | **Bug**: nei sottotetti la rampa finiva contro il muretto, quindi in soffitta non si saliva (né il giocatore né un abitante). Trovato dalla prova di camminata con le nuove brande | corretto: la rampa finisce 0,6 m prima (dove c'è spazio) e c'è il percorso fino al sottotetto |
+| F2-11 | Negozio e mobili | Comprare, monete insufficienti (pulsante spento, messaggio), forziere della grotta (54 monete e 2 pozioni), «prendi tutto» | ok (copione `negozi-mobili`) |
+| F2-12 | Interfaccia | Menu Esc, diario, mappa, inventario, personaggio, «Aspetta», obiettivi (TAB) si aprono e chiudono | ok (copione `interfaccia`) |
+| F2-13 | Interfaccia | L'inventario dice «Oggetti: 34» contando anche le 30 monete; le targhette dei nomi degli abitanti si sovrappongono quando sono vicini | da decidere |
+| F2-14 | IA locale | **Bug**: la prima risposta, col gioco che occupa la scheda video, superava i 40 s e la chat diceva «la IA non risponde»; il messaggio d'errore nominava sempre il Viandante, con chiunque si parlasse | corretto: attesa fino a 150 s, nome giusto. Con Marta e `gemma4:e4b` la chat risponde (copione `ia-locale`) |
+| F2-15 | Grafica | Le foto degli edifici del copione `edifici` vengono dall'alto: `guarda <edificio>` mira alla porta, che è sotto i piedi. Va aggiunta la distanza della camera | da fare |
+| F2-16 | Suoni | Non si possono controllare dai log né dalle foto | da provare a orecchio (tu) |
+
 
 
 Per ogni voce: un copione in `prove/`, cosa ci si aspetta, come si verifica (stato JSON, screenshot o test).

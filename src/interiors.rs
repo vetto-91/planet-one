@@ -156,7 +156,10 @@ pub(crate) fn floors_and_stairs(
         let len = n as f32 * RUN;
         let hole = if i + 1 == flights {
             let (tx0, tx1) = (x1 - STAIR_WIDTH - 0.05, x1 - 0.05);
-            let top = knee - 0.05;
+            // La rampa finisce 0,6 m prima del muretto del sottotetto: in cima ci si deve
+            // poter fermare e scendere di lato (prima il muretto la chiudeva: in soffitta non si saliva).
+            // Nelle case piccole non c'è spazio: si arretra solo quanto la rampa permette.
+            let top = (knee - 0.65).max(z0 + len + 0.1).min(knee - 0.05);
             let start = top - len;
             for k in 0..n {
                 let mut za = start + k as f32 * RUN;
@@ -181,6 +184,15 @@ pub(crate) fn floors_and_stairs(
                 STAIR_WIDTH,
             );
             layout.top_x0 = tx0;
+            // Percorso fino al sottotetto (vi dormono le ronde della caserma): ai piedi della
+            // rampa, su per la rampa e fuori dal vano verso il centro.
+            walk.extend([
+                Vec3::new(cx, lower, (start - 0.45).max(z0 + 0.3)),
+                Vec3::new(cx, lower, start.max(z0 + 0.3)),
+                Vec3::new(cx, upper, start + len),
+                Vec3::new(tx0 - 0.6, upper, start + len),
+            ]);
+            layout.routes.push(walk.clone());
             (tx0, tx1, start, top)
         } else {
             let forward = i % 2 == 0;
@@ -751,7 +763,14 @@ pub(crate) fn furnish(
 }
 
 /// Sottotetto arredato.
-pub(crate) fn furnish_attic(b: &mut B, int: &mut Interior, r: &Room) {
+pub(crate) fn furnish_attic(b: &mut B, int: &mut Interior, r: &Room, kind: &str) {
+    if kind == "caserma" {
+        // Casa delle guardie: nel sottotetto dormono le ronde delle mura (due brande).
+        bed(b, int, r, r.x0 + 1.1, r.z(0.27), Vec3::NEG_X, 2);
+        bed(b, int, r, r.x0 + 1.1, r.z(0.73), Vec3::NEG_X, 3);
+        chest(b, int, r.x0 + 2.4, r.z(0.5), r.y);
+        return;
+    }
     attic(b, int, r);
 }
 

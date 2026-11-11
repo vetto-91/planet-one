@@ -284,6 +284,27 @@ impl Containers {
         info!("[CONTAINER] aperto {} ({})", c.key, c.kind.name());
     }
 
+    /// Contenuto del mobile aperto (per lo stato del pilota automatico).
+    pub fn open_items(&self) -> Option<(String, Vec<ItemStack>)> {
+        let (key, _) = self.open.as_ref()?;
+        Some((key.clone(), self.stores.get(key)?.items.clone()))
+    }
+
+    /// Prende tutto dal mobile aperto (come il tasto R); restituisce quanti pezzi.
+    pub fn take_all_open(&mut self, inventory: &mut Inventory) -> u32 {
+        let Some((key, _)) = self.open.clone() else {
+            return 0;
+        };
+        let Some(store) = self.stores.get_mut(&key) else {
+            return 0;
+        };
+        let mut moved = 0;
+        for s in store.items.clone() {
+            moved += take(store, inventory, s.kind, s.qty);
+        }
+        moved
+    }
+
     /// Contenuti per il salvataggio: solo i mobili già aperti, gli altri si rigenerano uguali.
     pub fn snapshot(&self) -> Vec<crate::save::ContainerSave> {
         let mut list: Vec<crate::save::ContainerSave> = self

@@ -322,8 +322,11 @@ pub fn ai_pump(
                     }
                     Err(e) => {
                         warn!("[AI] errore: {e}");
-                        chat.error =
-                            Some("Il Viandante resta in silenzio… (la IA non risponde)".into());
+                        // Prima il messaggio nominava sempre il Viandante, con chiunque si parlasse.
+                        chat.error = Some(format!(
+                            "{} resta in silenzio… (la IA non risponde)",
+                            chat.npc_name
+                        ));
                         if chat.options.is_empty() {
                             chat.options = vec!["Arrivederci.".into()];
                         }
