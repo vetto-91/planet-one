@@ -45,7 +45,7 @@ pub fn spawn_camera(
     // Cielo: cubemap procedurale generata a runtime (senza asset HDRI).
     let skybox = images.add(sky::gradient_skybox());
 
-    commands.spawn((
+    let mut camera = commands.spawn((
         Camera3d::default(),
         // Resa fisica: HDR, tonemapping, bagliore delle luci, occlusione ambientale (ADR 0016).
         bevy::camera::Hdr,
@@ -61,6 +61,12 @@ pub fn spawn_camera(
             ..Default::default()
         },
     ));
+    // Senza finestra la camera disegna in un'immagine (vedi `devtools::headless`).
+    if crate::devtools::headless() {
+        let target = crate::devtools::headless_target(&mut images);
+        camera.insert(bevy::camera::RenderTarget::Image(target.clone().into()));
+        commands.insert_resource(crate::devtools::HeadlessTarget(target));
+    }
 }
 
 /// Costruisce gli elementi della scena soggetti a reset: terreno, luci e

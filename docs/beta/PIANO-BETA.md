@@ -215,7 +215,11 @@ Per ogni voce: un copione in `prove/`, cosa ci si aspetta, come si verifica (sta
 
 ---
 
-**Limite scoperto l'11/11**: il pilota ha bisogno che la sessione di `dev` sia quella attiva. Se è attiva l'altra sessione del PC (un altro utente su un altro terminale virtuale), il gioco va in panic alla creazione della finestra (Vulkan «Invalid surface»). Con lo schermo solo bloccato, o il monitor spento, funziona. Il rendering software (Xvfb + llvmpipe) è troppo lento: in 5 minuti non finisce l'avvio. Rimedio possibile: una modalità senza finestra, con la camera che disegna in un'immagine sulla GPU.
+**Limite scoperto l'11/11**: il pilota ha bisogno che la sessione di `dev` sia quella attiva. Se è attiva l'altra sessione del PC (un altro utente su un altro terminale virtuale), il gioco va in panic alla creazione della finestra (Vulkan «Invalid surface»). Con lo schermo solo bloccato, o il monitor spento, funziona. Il rendering software (Xvfb + llvmpipe) è troppo lento: in 5 minuti non finisce l'avvio. Rimedio: `PLANET_ONE_HEADLESS=1` (o `beta_check.sh --senza-schermo`), la camera disegna in un'immagine sulla GPU senza finestra; le foto non hanno HUD né pannelli. Parte sulla scheda giusta. Il primo tentativo è finito con la **memoria video esaurita**, perché Ollama teneva caricato un altro modello (circa 9 GB) e la scheda ha 12 GB.
+
+Da tenere per la fase delle prestazioni:
+- le prove usano la grafica «alta» predefinita, mentre le impostazioni dell'utente sono basse (niente ombre, SSAO, bloom): gli FPS misurati sono quelli del caso peggiore;
+- ogni luce puntiforme con ombre alloca una cubemap; con le luci interne con ombre accese la memoria video cresce molto (è l'oggetto dell'errore «Out of Memory»).
 
 ## Fase 3 — Documenti e pulizia
 

@@ -9,7 +9,8 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 - **IA locale**: la prima risposta può richiedere fino a 150 s (prima 40 s, e la chat si arrendeva); il messaggio d'errore nomina l'abitante giusto invece del Viandante.
 - **Inventario**: le monete si contano a parte («Oggetti: 4   Monete: 30»).
 - **Targhette degli abitanti**: quando due si sovrapporrebbero, quella più lontana sale sopra l'altra.
-- Pilota: `registra <nome>`/`ferma` (audio degli altoparlanti in WAV, Linux) e `scripts/ascolta.py` (volume, saturazione, silenzi, eventi, spettrogramma, parlato con whisper.cpp locale); `guarda <nome> <distanza>` mira a metà facciata degli edifici; `compra`, `prendi`, `chiudi`, `mira <oggetto>`, `di <frase>`; il `dump` mostra negozio, mobile aperto e chat. Nuovi copioni `negozi-mobili`, `interfaccia`, `ia-locale`, `edifici`.
+- **Modalità senza finestra** (`PLANET_ONE_HEADLESS=1`, `beta_check.sh --senza-schermo`): la camera disegna in un'immagine, per le prove quando lo schermo non c'è; `PLANET_ONE_GFX=basso|medio|alto` per le prove.
+- Pilota: `camera <yaw> <pitch> [distanza]`, `ruota`, `prima-persona`, `giro-foto <nome> <n>` (foto tutt'attorno); `registra <nome>`/`ferma` (audio degli altoparlanti in WAV, Linux) e `scripts/ascolta.py` (volume, saturazione, silenzi, eventi, spettrogramma, parlato con whisper.cpp locale); `guarda <nome> <distanza>` mira a metà facciata degli edifici; `compra`, `prendi`, `chiudi`, `mira <oggetto>`, `di <frase>`; il `dump` mostra negozio, mobile aperto e chat. Nuovi copioni `negozi-mobili`, `interfaccia`, `ia-locale`, `edifici`.
 
 ## v0.0.58.0 — Beta test: ronde, nuoto, banditi (2026-11-11)
 

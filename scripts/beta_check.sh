@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Esegue i copioni del pilota automatico (prove/*.txt) e scrive prove/out/RAPPORTO.md.
 #
-# Uso: scripts/beta_check.sh [--aggiorna] [copione ...]   (senza copioni: tutti)
+# Uso: scripts/beta_check.sh [--aggiorna] [--senza-schermo] [copione ...]   (senza copioni: tutti)
 # Le foto di ogni copione si confrontano con prove/riferimento/<copione>/<foto>.png
 # (ridotte a 480x270, ImageMagick `compare`, RMSE normalizzato; soglia SOGLIA=0.12). --aggiorna copia le foto
 # di questa corsa come nuovi riferimenti.
@@ -15,7 +15,15 @@ OUT=prove/out
 mkdir -p "$OUT"
 cargo build --release --offline >/dev/null 2>&1 || { echo "build fallita"; exit 2; }
 update=0
-if [ "${1:-}" = "--aggiorna" ]; then update=1; shift; fi
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --aggiorna) update=1; shift ;;
+    # Senza finestra: la camera disegna in un'immagine (serve quando lo schermo non c'è,
+    # per esempio se è attiva un'altra sessione del PC). Foto senza HUD né pannelli.
+    --senza-schermo) export PLANET_ONE_HEADLESS=1; shift ;;
+    *) break ;;
+  esac
+done
 SOGLIA="${SOGLIA:-0.12}"
 scripts=("$@")
 [ ${#scripts[@]} -eq 0 ] && scripts=(prove/*.txt)

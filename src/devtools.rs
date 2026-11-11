@@ -9,6 +9,7 @@
 //! - `PLANET_ONE_SESSION=Nome`: partita attiva senza menu (salvataggi di prova; F5/F9).
 //! - `PLANET_ONE_MENU=1`: mostra il menu anche con le altre variabili; `PLANET_ONE_WINDOWED=1`: a finestra.
 //! - `PLANET_ONE_DELAY_SCALE=0.1`: moltiplica i ritardi con cui il Viandante chiude porta/finestre.
+//! - `PLANET_ONE_HEADLESS=1`: niente finestra, la camera disegna in un'immagine (pilota senza schermo).
 //! - `PLANET_ONE_SIZE=1280x720`: dimensione della finestra (screenshot ripetibili).
 //! - `PLANET_ONE_ANIM=sprint|jog|walk`: forza l'animazione del giocatore (per gli screenshot).
 //! - `PLANET_ONE_LOOK=yaw,pitch[,distanza[,1]]`: orientamento della camera in gradi
@@ -34,6 +35,29 @@ fn parse_size(text: &str) -> Option<(u32, u32)> {
     (w >= 320 && h >= 240).then_some((w, h))
 }
 
+/// Modalità senza finestra (`PLANET_ONE_HEADLESS=1`): la camera disegna in un'immagine.
+pub fn headless() -> bool {
+    std::env::var("PLANET_ONE_HEADLESS").is_ok_and(|v| v != "0")
+}
+
+/// Immagine su cui disegna la camera nella modalità senza finestra (foto del pilota).
+#[derive(Resource, Clone)]
+pub struct HeadlessTarget(pub Handle<Image>);
+
+/// Crea l'immagine di destinazione della camera senza finestra (dimensione di `PLANET_ONE_SIZE`).
+pub fn headless_target(images: &mut Assets<Image>) -> Handle<Image> {
+    let (w, h) = window_size();
+    let mut image = Image::new_target_texture(
+        w,
+        h,
+        bevy::render::render_resource::TextureFormat::Rgba8UnormSrgb,
+        None,
+    );
+    // Le foto copiano l'immagine dalla GPU.
+    image.texture_descriptor.usage |= bevy::render::render_resource::TextureUsages::COPY_SRC;
+    images.add(image)
+}
+
 /// Con le variabili di prova si entra subito in partita, a finestra, senza menu.
 /// `PLANET_ONE_MENU=1` mostra comunque il menu.
 pub fn skip_menu() -> bool {
@@ -43,6 +67,7 @@ pub fn skip_menu() -> bool {
         "PLANET_ONE_LOOK",
         "PLANET_ONE_SHELL",
         "PLANET_ONE_SCRIPT",
+        "PLANET_ONE_HEADLESS",
     ]
     .iter()
     .any(|v| std::env::var_os(v).is_some());

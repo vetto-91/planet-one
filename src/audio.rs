@@ -156,6 +156,15 @@ impl Default for AudioSettings {
                 s.music_volume * 100.0
             );
         }
+        // Prove: `PLANET_ONE_GFX=basso|medio|alto` sceglie la grafica senza toccare il file.
+        if let Ok(v) = std::env::var("PLANET_ONE_GFX") {
+            match v.to_lowercase().as_str() {
+                "basso" | "low" => s.gfx = crate::graphics::GfxOptions::LOW,
+                "medio" | "medium" => s.gfx = crate::graphics::GfxOptions::MEDIUM,
+                "alto" | "high" => s.gfx = crate::graphics::GfxOptions::HIGH,
+                other => warn!("[DEVTOOLS] PLANET_ONE_GFX={other} non valido: basso, medio o alto"),
+            }
+        }
         s
     }
 }

@@ -115,41 +115,60 @@ pub enum AppState {
 }
 
 fn main() -> AppExit {
+    // `PLANET_ONE_HEADLESS=1`: niente finestra (né winit), la camera disegna in un'immagine sulla
+    // GPU e il gioco gira a 60 Hz; serve al pilota automatico quando lo schermo non è disponibile.
+    let headless = devtools::headless();
+    let defaults = DefaultPlugins
+        .set(bevy::log::LogPlugin {
+            fmt_layer: |_| {
+                Some(Box::new(
+                    bevy::log::tracing_subscriber::fmt::layer()
+                        .with_timer(localtime::LogClock)
+                        // Copia delle ultime righe per F12 «Segnala bug».
+                        .with_writer(bugreport::tee),
+                ))
+            },
+            ..default()
+        })
+        .set(WindowPlugin {
+            primary_window: Some(Window {
+                title: "Planet One".into(),
+                // `PLANET_ONE_SIZE=1280x720`: finestra fissa per screenshot ripetibili.
+                resolution: devtools::window_size().into(),
+                // Avvio a schermo intero di default; F11 torna a finestra.
+                // Le prove automatiche nascono già a finestra (e con la dimensione chiesta).
+                mode: if devtools::skip_menu() {
+                    bevy::window::WindowMode::Windowed
+                } else {
+                    bevy::window::WindowMode::Fullscreen(
+                        bevy::window::MonitorSelection::Current,
+                        bevy::window::VideoModeSelection::Current,
+                    )
+                },
+                ..default()
+            }),
+            // In Bevy 0.20 Esc non chiude più la finestra di default:
+            // lo lasciamo gestire solo al menu di gioco.
+            ..default()
+        });
+    let defaults = if headless {
+        defaults
+            .set(WindowPlugin {
+                primary_window: None,
+                exit_condition: bevy::window::ExitCondition::DontExit,
+                close_when_requested: false,
+                ..default()
+            })
+            .disable::<bevy::winit::WinitPlugin>()
+            .add(bevy::app::ScheduleRunnerPlugin::run_loop(
+                std::time::Duration::from_secs_f64(1.0 / 60.0),
+            ))
+    } else {
+        defaults
+    };
     App::new()
         .add_plugins((
-            DefaultPlugins
-                .set(bevy::log::LogPlugin {
-                    fmt_layer: |_| {
-                        Some(Box::new(
-                            bevy::log::tracing_subscriber::fmt::layer()
-                                .with_timer(localtime::LogClock)
-                                // Copia delle ultime righe per F12 «Segnala bug».
-                                .with_writer(bugreport::tee),
-                        ))
-                    },
-                    ..default()
-                })
-                .set(WindowPlugin {
-                    primary_window: Some(Window {
-                        title: "Planet One".into(),
-                        // `PLANET_ONE_SIZE=1280x720`: finestra fissa per screenshot ripetibili.
-                        resolution: devtools::window_size().into(),
-                        // Avvio a schermo intero di default; F11 torna a finestra.
-                        // Le prove automatiche nascono già a finestra (e con la dimensione chiesta).
-                        mode: if devtools::skip_menu() {
-                            bevy::window::WindowMode::Windowed
-                        } else {
-                            bevy::window::WindowMode::Fullscreen(
-                                bevy::window::MonitorSelection::Current,
-                                bevy::window::VideoModeSelection::Current,
-                            )
-                        },
-                        ..default()
-                    }),
-                    // In Bevy 0.20 Esc non chiude più la finestra di default:
-                    // lo lasciamo gestire solo al menu di gioco.
-                    ..default()
-                }),
+            defaults,
             PhysicsPlugins::default(),
             // Debug fisica Avian (collider wireframe): disabilitato di
             // default, attivabile con F3. Utile per confrontare mesh e collider.

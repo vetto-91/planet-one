@@ -100,6 +100,8 @@ Variabili d'ambiente per provare il gioco senza giocarlo (con una qualunque di `
 | `PLANET_ONE_SCRIPT=prove/giro.txt` | **Pilota automatico**: esegue un copione (vedi sotto) |
 | `PLANET_ONE_SPEED=4` | Tempo di gioco accelerato |
 | `PLANET_ONE_SIZE=1280x720` | Dimensione della finestra (screenshot ripetibili) |
+| `PLANET_ONE_HEADLESS=1` | Senza finestra: la camera disegna in un'immagine (foto senza HUD); per le prove quando lo schermo non c'è |
+| `PLANET_ONE_GFX=basso` | Grafica delle prove (`basso`, `medio`, `alto`) senza toccare le impostazioni |
 | `PLANET_ONE_DATA_DIR=/tmp/prova` | Salvataggi e impostazioni in una cartella di prova |
 | `PLANET_ONE_OUT=cartella` | Dove il pilota scrive foto, stati e rapporto |
 | `PLANET_ONE_GIVE=1` | Tutte le armi, frecce e 200 monete |
@@ -139,6 +141,8 @@ esci
 | `verifica <campo> <op> <valore>` | Controllo (`=`, `!=`, `<`, `>`, `contiene`); campi: `vita`, `x/y/z`, `sopra_terreno`, `quest`, `monete`, `dialogo`, `parla`, `ora`, `fps`, `npc:<nome>:<campo>`, `prop:<id>:<campo>`, `/puntatore/json` |
 | `attendi …` / `mai … [s]` | La condizione diventa vera entro `s` secondi / non lo diventa mai |
 | `compra <n o nome>`, `prendi`, `chiudi` | Negozio e mobili (i pannelli non ricevono i tasti simulati) |
+| `camera <yaw> <pitch> [distanza]`, `ruota <gradi>`, `prima-persona [off]` | Punto di vista della camera |
+| `giro-foto <nome> <n> [pitch] [distanza]` | n foto tutt'attorno al giocatore |
 | `registra <nome>`, `ferma` | Registra l'audio degli altoparlanti (Linux); `scripts/ascolta.py file.wav [--trascrivi]` lo descrive |
 | `mira <oggetto>`, `di <frase>` | Mirino sull'oggetto più vicino (porta, scuri, mobile…); frase nella chat con l'IA locale |
 | `esci` | Rapporto in `prove/out/<copione>/RAPPORTO.txt`; codice d'uscita 1 se qualcosa è fallito |
@@ -150,6 +154,7 @@ esci
 scripts/beta_check.sh                      # tutti i copioni di prove/, rapporto in prove/out/RAPPORTO.md
 scripts/beta_check.sh prove/giro.txt       # uno solo
 scripts/beta_check.sh --aggiorna           # le foto di questa corsa diventano i riferimenti
+scripts/beta_check.sh --senza-schermo      # senza finestra (schermo non disponibile)
 ```
 
 Un copione può chiedere variabili proprie con righe `# env: CHIAVE=valore` (es. `# env: PLANET_ONE_SPEED=6`).

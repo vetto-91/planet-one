@@ -21,6 +21,8 @@
 //! - `di <testo>`: nella chat con l'IA locale manda una frase;
 //! - `registra <nome>` / `ferma`: registra in `<uscita>/<nome>.wav` ciò che esce dagli altoparlanti
 //!   (solo Linux, `parec`); `scripts/ascolta.py` lo analizza (volume, picchi, silenzi, spettrogramma, parlato);
+//! - `camera <yaw> <pitch> [distanza]`, `ruota <gradi>`, `prima-persona [off]`: punto di vista;
+//! - `giro-foto <nome> <n> [pitch] [distanza]`: n foto tutt'attorno al giocatore (una ogni 360/n gradi);
 //! - `esci`: scrive il rapporto e chiude il gioco (codice d'uscita 1 se qualcosa è fallito).
 //!
 //! Ogni altra riga va alla shell dei trucchi (`tp`, `ora`, `meteo`, `dai`, `god`, `vai`, `guarda`…):
@@ -613,6 +615,50 @@ pub fn run_autopilot(
             }
         }
         "avanza" | "next" => pilot.advance = 30,
+        "camera" => match (num(1), num(2)) {
+            // Angoli assoluti in gradi (yaw 0 = camera a sud del giocatore, guarda verso nord).
+            (Some(yaw), Some(pitch)) => {
+                orbit.yaw = yaw.to_radians();
+                orbit.pitch = pitch.to_radians();
+                if let Some(d) = num(3) {
+                    orbit.distance = d.clamp(1.5, 30.0);
+                }
+            }
+            _ => pilot.fail(
+                n,
+                format!("uso: camera <yaw> <pitch> [distanza] («{line}»)"),
+            ),
+        },
+        "ruota" | "rotate" => match num(1) {
+            Some(deg) => orbit.yaw += deg.to_radians(),
+            None => pilot.fail(n, format!("uso: ruota <gradi> («{line}»)")),
+        },
+        "prima-persona" | "first-person" => {
+            let on = words.get(1).is_none_or(|w| *w != "off");
+            orbit.first_person_lock = on;
+            orbit.mode = if on {
+                crate::camera::CameraMode::FirstPerson
+            } else {
+                crate::camera::CameraMode::ThirdPerson
+            };
+        }
+        "giro-foto" | "orbit-shots" => {
+            // `giro-foto <nome> <n> [pitch] [distanza]`: n foto attorno al giocatore, a passi uguali.
+            let name = words.get(1).copied().unwrap_or("giro");
+            let count = num(2).map_or(8, |c| c.clamp(1.0, 36.0) as usize);
+            let pitch = num(3).unwrap_or(15.0);
+            let dist = num(4).map_or(String::new(), |d| format!(" {d}"));
+            let mut expanded: Vec<(usize, String)> = Vec::new();
+            for i in 0..count {
+                let yaw = i as f32 * 360.0 / count as f32;
+                expanded.push((n, format!("camera {yaw:.0} {pitch}{dist}")));
+                expanded.push((n, "aspetta 0.4".to_string()));
+                expanded.push((n, format!("foto {name}-{:03.0}", yaw)));
+            }
+            for l in expanded.into_iter().rev() {
+                pilot.lines.push_front(l);
+            }
+        }
         "compra" | "buy" => {
             let wanted = words[1..].join(" ").to_lowercase();
             let stock = crate::shop::stock(&ui.shop.key);
@@ -723,15 +769,22 @@ pub fn run_autopilot(
 }
 
 /// Sistema: screenshot richiesto dal pilota o dalla shell.
-pub fn take_photos(mut commands: Commands, mut pilot: ResMut<Autopilot>) {
+pub fn take_photos(
+    mut commands: Commands,
+    mut pilot: ResMut<Autopilot>,
+    headless: Option<Res<crate::devtools::HeadlessTarget>>,
+) {
     if let Some(path) = pilot.photo.take() {
         if let Some(dir) = path.parent() {
             let _ = std::fs::create_dir_all(dir);
         }
         info!("[PILOTA] foto {}", path.display());
-        commands
-            .spawn(Screenshot::primary_window())
-            .observe(save_to_disk(path));
+        // Senza finestra si fotografa l'immagine su cui disegna la camera (senza HUD né pannelli).
+        let shot = match &headless {
+            Some(target) => Screenshot::image(target.0.clone()),
+            None => Screenshot::primary_window(),
+        };
+        commands.spawn(shot).observe(save_to_disk(path));
     }
 }
 
