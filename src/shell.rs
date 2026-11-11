@@ -29,6 +29,7 @@ const HELP: &[&str] = &[
     "vai|corri <x> <z> · vai <luogo o abitante> · dove <nome> · guarda <yaw> <pitch>|<nome> [distanza]",
     "foto [nome] · dump [nome] (stato in JSON) · copione <file> (pilota automatico)",
     "quest <inizio|cerca|raccogli|torna|completata> · uccidi [raggio] · vicino [raggio] · fps · entita",
+    "volume <musica|ambiente|voci> <0-100> (solo per questa partita)",
 ];
 
 /// Trucchi attivi: non salvati, tutti spenti a ogni avvio.
@@ -140,6 +141,8 @@ pub enum Cmd {
     Near(f32),
     Fps,
     Entities,
+    /// Volume (0-100) di musica, ambiente o voci; non viene salvato.
+    Volume(String, f32),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -222,6 +225,18 @@ pub fn parse(line: &str) -> Result<Cmd, String> {
             args.first().and_then(|a| a.parse().ok()).unwrap_or(15.0),
         )),
         "fps" => Ok(Cmd::Fps),
+        "volume" => match (
+            args.first(),
+            args.get(1).and_then(|v| v.parse::<f32>().ok()),
+        ) {
+            (Some(what), Some(v))
+                if matches!(what.to_lowercase().as_str(), "musica" | "ambiente" | "voci")
+                    && (0.0..=100.0).contains(&v) =>
+            {
+                Ok(Cmd::Volume(what.to_lowercase(), v))
+            }
+            _ => Err("uso: volume <musica|ambiente|voci> <0-100>".into()),
+        },
         "entita" | "entità" | "entities" => Ok(Cmd::Entities),
         "foto" | "shot" => Ok(Cmd::Photo(args.first().unwrap_or(&"foto").to_string())),
         "dump" => Ok(Cmd::Dump(args.first().unwrap_or(&"stato").to_string())),
@@ -675,6 +690,15 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
                 Some(f) => format!("FPS: {f:.0}"),
                 None => "FPS non disponibili".to_string(),
             });
+        }
+        Cmd::Volume(what, v) => {
+            let level = v / 100.0;
+            match what.as_str() {
+                "musica" => ctx.audio.music_volume = level,
+                "ambiente" => ctx.audio.ambient_volume = level,
+                _ => ctx.audio.voice_volume = level,
+            }
+            shell.say(format!("volume {what}: {v:.0}%"));
         }
         Cmd::Entities => {
             shell.say(format!("entità: {}", ctx.every.iter().count()));

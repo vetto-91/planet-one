@@ -148,7 +148,7 @@ esci
 | `esci` | Rapporto in `prove/out/<copione>/RAPPORTO.txt`; codice d'uscita 1 se qualcosa è fallito |
 
 `vai`, `dove`, `guarda`, `foto`, `dump` e `copione <file>` funzionano anche dalla shell (`\`), insieme a
-`quest <inizio|cerca|raccogli|torna|completata>` (salta a una fase), `uccidi [raggio]`, `vicino [raggio]`, `fps` ed `entita`.
+`quest <inizio|cerca|raccogli|torna|completata>` (salta a una fase), `uccidi [raggio]`, `vicino [raggio]`, `fps`, `entita` e `volume <musica|ambiente|voci> <0-100>` (solo per la partita in corso).
 
 ```bash
 scripts/beta_check.sh                      # tutti i copioni di prove/, rapporto in prove/out/RAPPORTO.md

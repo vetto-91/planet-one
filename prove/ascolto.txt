@@ -1,0 +1,81 @@
+# Ascolto: registra l'audio in vari posti e momenti; poi scripts/ascolta.py su ogni WAV.
+god on
+ora 11
+# Effetti da soli: la musica coprirebbe passi e campane.
+volume musica 0
+tp -1.2 3 14
+aspetta 3
+registra piazza
+aspetta 8
+ferma
+tp -1.2 3 6
+aspetta 2
+registra passi-pietra
+vai -1.2 -3
+ferma
+tp 20 3 -20
+aspetta 2
+registra passi-erba
+vai 20 -6
+ferma
+tp -11 3 104
+aspetta 3
+registra mare
+aspetta 8
+ferma
+tp -6 3 12
+ora 11.98
+registra campane
+aspetta 14
+ferma
+meteo pioggia
+aspetta 4
+registra pioggia
+aspetta 8
+ferma
+meteo temporale
+registra temporale
+aspetta 25
+ferma
+meteo auto
+tp 74 12 38
+registra combattimento
+premi click
+aspetta 0.6
+premi click
+aspetta 3
+ferma
+ora 23
+tp 0 3 0
+aspetta 4
+registra notte
+aspetta 8
+ferma
+# Una voce: il saluto di un abitante (scripts/ascolta.py --trascrivi).
+ora 11
+attendi npc:marta:modo = Ready 120
+tp marta
+aspetta 1
+attendi npc:marta:modo = Ready 60
+guarda marta
+registra voce
+premi e
+aspetta 1
+verifica dialogo = true
+aspetta 5
+ferma
+chiudi
+# La musica da sola, di giorno e di notte.
+volume musica 80
+volume ambiente 0
+volume voci 0
+ora 12
+registra musica-giorno
+aspetta 10
+ferma
+ora 23
+aspetta 6
+registra musica-notte
+aspetta 10
+ferma
+esci

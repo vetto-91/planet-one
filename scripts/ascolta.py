@@ -73,16 +73,26 @@ def bands(x):
     return out
 
 
+def band_envelope(x, lo=1500.0, hi=8000.0):
+    """Volume (dB) per finestra nella banda dei suoni secchi (passi, colpi): la musica, che sta
+    nei bassi e nei medi, la copre meno."""
+    f = frames(x)
+    spec = np.abs(np.fft.rfft(f * np.hanning(f.shape[1]), axis=1)) ** 2
+    freqs = np.fft.rfftfreq(f.shape[1], 1.0 / RATE)
+    sel = (freqs >= lo) & (freqs < hi)
+    return 10.0 * np.log10(spec[:, sel].sum(axis=1) + 1e-12)
+
+
 def onsets(env_db):
-    """Istanti in cui il volume sale di colpo (colpi, passi, campane)."""
-    rise = np.diff(env_db, prepend=env_db[:1])
-    floor = np.percentile(env_db, 30)
-    idx = np.where((rise > 6.0) & (env_db > floor + 6.0))[0]
-    # Non più di un evento ogni 0,15 s.
+    """Istanti in cui il volume nella banda alta sale di colpo sopra il suo andamento recente."""
+    n = len(env_db)
     picked = []
-    for i in idx:
-        if not picked or (i - picked[-1]) * WIN > 0.15:
-            picked.append(i)
+    look = max(1, int(0.5 / WIN))
+    for i in range(1, n):
+        base = np.percentile(env_db[max(0, i - look):i], 20)
+        if env_db[i] - base > 6.0 and env_db[i] - env_db[i - 1] > 2.0:
+            if not picked or (i - picked[-1]) * WIN > 0.15:
+                picked.append(i)
     return np.array(picked) * WIN
 
 
@@ -125,7 +135,7 @@ def main():
     clip = float(np.mean(np.abs(x) > 0.985))
     silent = float(np.mean(env < -55.0))
     left, right = stereo_peaks(a.wav)
-    ev = onsets(env)
+    ev = onsets(band_envelope(x))
     gaps = np.diff(ev)
     steady = ""
     if len(gaps) >= 4:

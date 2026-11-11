@@ -1,0 +1,11 @@
+# Camera tutt'attorno: la piazza da otto lati, poi la prima persona.
+god on
+tp -1.2 3 14
+aspetta 3
+giro-foto piazza 8 20 12
+prima-persona
+camera 180 0
+aspetta 0.5
+foto prima-persona
+prima-persona off
+esci

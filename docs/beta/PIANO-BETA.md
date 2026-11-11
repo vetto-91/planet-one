@@ -188,7 +188,7 @@ Gli FPS non dipendono molto dal luogo e le entità sono sempre le stesse: il cos
 | F2-13 | Interfaccia | L'inventario dice «Oggetti: 34» contando anche le 30 monete; le targhette dei nomi degli abitanti si sovrappongono quando sono vicini | corretto nel codice: monete contate a parte («Oggetti: 4   Monete: 30»), targhette sovrapposte spostate in alto (test `overlapping_plates_are_stacked`); **non ancora visto a schermo** |
 | F2-14 | IA locale | **Bug**: la prima risposta, col gioco che occupa la scheda video, superava i 40 s e la chat diceva «la IA non risponde»; il messaggio d'errore nominava sempre il Viandante, con chiunque si parlasse | corretto: attesa fino a 150 s, nome giusto. Con Marta e `gemma4:e4b` la chat risponde (copione `ia-locale`) |
 | F2-15 | Grafica | Le foto degli edifici del copione `edifici` vengono dall'alto: `guarda <edificio>` mira alla porta, che è sotto i piedi. Va aggiunta la distanza della camera | `guarda <edificio> <distanza>` mira a metà facciata e allontana la camera; **non ancora visto a schermo** |
-| F2-16 | Suoni | Non si possono controllare dai log né dalle foto | strumenti pronti: `registra`/`ferma` nel pilota (WAV da `parec`) e `scripts/ascolta.py` (volume, picchi, saturazione, silenzi, eventi, regolarità dei passi, bande, spettrogramma, parlato con whisper.cpp locale). Provato su una voce del Viandante; l'ascolto del gioco è da fare |
+| F2-16 | Suoni | Non si possono controllare dai log né dalle foto | strumenti pronti: `registra`/`ferma` nel pilota (WAV da `parec`) e `scripts/ascolta.py` (volume, picchi, saturazione, silenzi, eventi, regolarità dei passi, bande, spettrogramma, parlato con whisper.cpp locale). Primo ascolto fatto (copione `ascolto`, musica a parte), vedi «Ascolto dei suoni» sotto |
 
 
 
@@ -214,6 +214,20 @@ Per ogni voce: un copione in `prove/`, cosa ci si aspetta, come si verifica (sta
 | **Piattaforme** | Build Windows e macOS dalla CI | Si avviano e trovano gli asset |
 
 ---
+
+**Ascolto dei suoni (11/11)**, registrati dal gioco senza finestra e analizzati con `scripts/ascolta.py`:
+
+| Suono | Cosa si misura | Giudizio |
+|---|---|---|
+| Passi sull'erba | Colpi regolari ogni 0,46 s (variazione 13%), soffi brevi su tutta la banda | buoni |
+| Passi sulla pietra | Schiocchi secchi ogni ~0,5 s | buoni |
+| Campane a mezzogiorno | 12 rintocchi annunciati nel log; nella registrazione uno ogni ~2,9 s, tutta l'energia sotto 1 kHz | si sentono, timbro un po' cupo |
+| Piazza, mare, notte (grilli) | Fondi continui; notte −33 dBFS con grilli negli acuti | ok |
+| Pioggia e temporale | Fruscio largo e costante; in 25 s di temporale nessun tuono riconoscibile | il fruscio somiglia a un rumore bianco; tuoni rari o deboli |
+| Voce (saluto di Marta) | Picco −0,6 dBFS; whisper la trascrive esatta | si capisce bene; picco al limite della saturazione |
+| Musica giorno/notte | −16,7 dBFS medi, notte più grave (63% bassi) | ok |
+
+**Da decidere**: tutti gli effetti escono **identici a destra e a sinistra**. Non c'è audio posizionale, solo il volume che cala con la distanza: una campana o un abitante a sinistra non si sentono a sinistra. Bevy ha l'audio spaziale (ascoltatore sulla camera): è un miglioramento, non un difetto.
 
 **Limite scoperto l'11/11**: il pilota ha bisogno che la sessione di `dev` sia quella attiva. Se è attiva l'altra sessione del PC (un altro utente su un altro terminale virtuale), il gioco va in panic alla creazione della finestra (Vulkan «Invalid surface»). Con lo schermo solo bloccato, o il monitor spento, funziona. Il rendering software (Xvfb + llvmpipe) è troppo lento: in 5 minuti non finisce l'avvio. Rimedio: `PLANET_ONE_HEADLESS=1` (o `beta_check.sh --senza-schermo`), la camera disegna in un'immagine sulla GPU senza finestra; le foto non hanno HUD né pannelli. Parte sulla scheda giusta. Il primo tentativo è finito con la **memoria video esaurita**, perché Ollama teneva caricato un altro modello (circa 9 GB) e la scheda ha 12 GB.
 
