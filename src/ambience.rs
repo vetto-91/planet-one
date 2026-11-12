@@ -615,11 +615,18 @@ fn update_ambience(
         if birds > 0.03 {
             let i = (st.uniform() * sounds.birds.len() as f32) as usize % sounds.birds.len();
             let loud = 0.25 + st.uniform() * 0.5;
+            // Da un albero qualsiasi attorno, a qualche metro d'altezza.
+            let at = crate::audio::around(
+                player.translation,
+                st.uniform() * std::f32::consts::TAU,
+                6.0 + st.uniform() * 14.0,
+                3.0 + st.uniform() * 5.0,
+            );
             commands.spawn((
                 AudioPlayer::new(sounds.birds[i].clone()),
-                PlaybackSettings::DESPAWN
-                    .with_volume(Volume::Linear(master * birds.min(1.0) * loud * 0.55))
+                crate::audio::spatial_once(master * birds.min(1.0) * loud * 0.55)
                     .with_speed(0.9 + st.uniform() * 0.25),
+                at,
             ));
         }
     }
@@ -629,11 +636,17 @@ fn update_ambience(
         st.fish = 4.0 + st.uniform() * 8.0;
         let near = falloff(st.water, 18.0) * light;
         if near > 0.05 {
+            let at = crate::audio::around(
+                player.translation,
+                st.uniform() * std::f32::consts::TAU,
+                4.0 + st.uniform() * 8.0,
+                -0.5,
+            );
             commands.spawn((
                 AudioPlayer::new(sounds.fish.clone()),
-                PlaybackSettings::DESPAWN
-                    .with_volume(Volume::Linear(master * near * 0.8))
+                crate::audio::spatial_once(master * near * 0.8)
                     .with_speed(0.9 + st.uniform() * 0.25),
+                at,
             ));
         }
     }
@@ -645,11 +658,18 @@ fn update_ambience(
         if near > 0.03 {
             let i = (st.uniform() * sounds.gulls.len() as f32) as usize % sounds.gulls.len();
             let loud = 0.4 + st.uniform() * 0.5;
+            // In volo, in alto e più lontani degli uccelli.
+            let at = crate::audio::around(
+                player.translation,
+                st.uniform() * std::f32::consts::TAU,
+                15.0 + st.uniform() * 25.0,
+                10.0 + st.uniform() * 10.0,
+            );
             commands.spawn((
                 AudioPlayer::new(sounds.gulls[i].clone()),
-                PlaybackSettings::DESPAWN
-                    .with_volume(Volume::Linear(master * near * loud * 0.5))
+                crate::audio::spatial_once(master * near * loud * 0.5)
                     .with_speed(0.92 + st.uniform() * 0.2),
+                at,
             ));
         }
     }

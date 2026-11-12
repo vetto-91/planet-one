@@ -444,15 +444,17 @@ pub fn advance_dialog(
                 // Offerta finale (non una scelta di quest): il dialogo scritto si chiude
                 // normalmente (la quest avanza), poi eventualmente si apre negozio o chat.
                 let name = dialog.speaker.clone();
+                let speaker = dialog.speaker_entity;
                 let action = dialog.offer_actions.get(choice).copied();
                 let key = dialog.shop;
                 close_dialog(&mut dialog, None, true);
                 if action == Some(Offer::Bye) {
                     let v = crate::ai::persona::load(&name).voice;
                     let salt = (time.elapsed_secs() * 1000.0) as u32;
-                    voice.play(
+                    voice.play_from(
                         vec![crate::voice::farewell_clip(&v, salt)],
                         crate::voice::VoiceKind::Bark,
+                        speaker,
                     );
                 }
                 match (action, key) {
@@ -542,7 +544,11 @@ pub fn dialog_walk_away(
         dialog.block_interact = false;
         barks.say(entity, npc.name, texts.denaro_rubato.text("saluto", &[]));
         if let Some(c) = texts.denaro_rubato.voice("saluto.1") {
-            voice.play(vec![c.to_string()], crate::voice::VoiceKind::Bark);
+            voice.play_from(
+                vec![c.to_string()],
+                crate::voice::VoiceKind::Bark,
+                Some(entity),
+            );
         }
         info!("[DIALOG] giocatore allontanato: dialogo chiuso");
     }

@@ -8,7 +8,7 @@ use crate::audio::AudioSettings;
 use crate::daynight::GameClock;
 use crate::debug_place::DebugPlace;
 use crate::player::Player;
-use bevy::audio::{AudioSink, AudioSource, Volume};
+use bevy::audio::{AudioSinkPlayback, AudioSource, SpatialAudioSink, Volume};
 use bevy::prelude::*;
 
 /// Distanza (m) oltre cui la campana non si sente.
@@ -136,7 +136,11 @@ pub fn ring_bells(
     commands.spawn((
         BellStrike(at),
         AudioPlayer::new(sound.0.clone()),
-        PlaybackSettings::DESPAWN.with_volume(Volume::Linear(0.0)),
+        // Dal campanile: si sente da che parte sta la chiesa.
+        PlaybackSettings::DESPAWN
+            .with_spatial(true)
+            .with_volume(Volume::Linear(0.0)),
+        Transform::from_translation(at),
     ));
     st.remaining -= 1;
     st.timer = STRIKE_GAP;
@@ -151,14 +155,16 @@ pub fn bell_gain(distance: f32) -> f32 {
 pub fn update_bell_volume(
     settings: Res<AudioSettings>,
     players: Query<&GlobalTransform, With<Player>>,
-    mut bells: Query<(&BellStrike, &mut AudioSink)>,
+    mut bells: Query<(&BellStrike, &mut SpatialAudioSink)>,
 ) {
     let Ok(p) = players.single() else {
         return;
     };
     for (b, mut sink) in &mut bells {
         let d = p.translation().distance(b.0);
-        let target = Volume::Linear(settings.ambient_volume * 1.4 * bell_gain(d));
+        let target = Volume::Linear(
+            settings.ambient_volume * 1.4 * crate::audio::SPATIAL_GAIN * bell_gain(d),
+        );
         if sink.volume() != target {
             sink.set_volume(target);
         }

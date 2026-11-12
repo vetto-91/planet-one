@@ -55,6 +55,8 @@ pub fn spawn_camera(
         bevy::anti_alias::smaa::Smaa::default(),
         bevy::pbr::ScreenSpaceAmbientOcclusion::default(),
         Transform::from_xyz(-4.0, 3.5, 6.0),
+        // Orecchie dell'audio posizionale (vedi `audio::listener`).
+        crate::audio::listener(),
         Skybox {
             image: Some(skybox),
             brightness: 1000.0,

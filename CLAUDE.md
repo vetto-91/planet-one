@@ -66,7 +66,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 - `src/village_life.rs`: fumo dei camini del paese e torce sulle mura; carretti, botti, casse, panni e reti sono piazzamenti (`buildings::model`, `scripts/gen_paese.py`).
 - `src/places.rs`: luoghi da scoprire e banditi che ricompaiono (ADR 0029), posizioni da `scripts/gen_luoghi.py`, nomi in `isola.txt` (`luogo:`).
 - `src/world_props.rs`: alberi, fiori, panchine, lampioni veri creati da `debug/placements.txt`.
-- `src/audio.rs`: musica di sottofondo giorno/notte con dissolvenza (OGG in `assets/audio/music/`), volume musiche salvato in `~/.config/planet-one/settings.txt`.
+- `src/audio.rs`: musica di sottofondo giorno/notte con dissolvenza (OGG in `assets/audio/music/`), volume musiche salvato in `~/.config/planet-one/settings.txt`; audio posizionale (ascoltatore sulla camera, `spatial_once`, ADR 0032).
 - `src/hut.rs`: casetta-chiosco del Viandante (mesh con UV dalla foto `assets/textures/capanna.png`, fondamenta e scale di pietra, interni, oggetti con stato `PropState`: porta, finestre, stufa con fumo, luce, serranda) e routine giornaliera del negoziante (`Keeper`). Gli oggetti si usano col mirino (`Interactable.aim`, vedi `entities::interact`).
 - `src/map.rs`: mappa (M): camera ortografica dall'alto sulla scena reale + overlay egui (bussola, segnalino); `MapView` per lo zoom.
 - `src/debug_place.rs`: modalità debug piazzamenti (F4), file `debug/placements.txt` (riletto all'avvio).

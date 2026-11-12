@@ -535,7 +535,11 @@ pub fn thief_notice_player(
             texts.denaro_rubato.text("ladro_avvistato", &[]),
         );
         if let Some(c) = texts.denaro_rubato.voice("ladro_avvistato.1") {
-            voice.play(vec![c.to_string()], crate::voice::VoiceKind::Bark);
+            voice.play_from(
+                vec![c.to_string()],
+                crate::voice::VoiceKind::Bark,
+                Some(thief),
+            );
         }
         info!("[QUEST] il ladro ha notato il giocatore");
     }

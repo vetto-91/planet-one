@@ -719,6 +719,7 @@ pub fn update_weather_audio(
     sounds: Option<Res<WeatherSounds>>,
     mut state: ResMut<WeatherState>,
     mut loops: Query<(&WeatherLoop, &mut AudioSink)>,
+    cameras: Query<&GlobalTransform, With<Camera3d>>,
 ) {
     let master = settings.ambient_volume * 1.2;
     let inside = 1.0 - 0.6 * state.sheltered;
@@ -745,11 +746,17 @@ pub fn update_weather_audio(
         }
     });
     if let Some(sounds) = sounds {
-        for _ in 0..fire {
+        let cam = cameras
+            .single()
+            .map(|c| c.translation())
+            .unwrap_or_default();
+        for k in 0..fire {
+            // Il fulmine cade da una parte del cielo, lontano: il tuono arriva da lì.
+            let angle = rnd(time.elapsed_secs() + k as f32, 7) * std::f32::consts::TAU;
             commands.spawn((
                 AudioPlayer::new(sounds.thunder.clone()),
-                PlaybackSettings::DESPAWN
-                    .with_volume(Volume::Linear(master * 1.3 * (1.0 - 0.4 * state.sheltered))),
+                crate::audio::spatial_once(master * 1.3 * (1.0 - 0.4 * state.sheltered)),
+                crate::audio::around(cam, angle, 150.0, 80.0),
             ));
         }
     }

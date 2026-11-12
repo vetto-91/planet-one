@@ -119,6 +119,10 @@ fn main() -> AppExit {
     // GPU e il gioco gira a 60 Hz; serve al pilota automatico quando lo schermo non è disponibile.
     let headless = devtools::headless();
     let defaults = DefaultPlugins
+        .set(bevy::audio::AudioPlugin {
+            default_spatial_scale: bevy::audio::SpatialScale::new(audio::SPATIAL_SCALE),
+            ..default()
+        })
         .set(bevy::log::LogPlugin {
             fmt_layer: |_| {
                 Some(Box::new(

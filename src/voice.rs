@@ -16,6 +16,8 @@ use std::collections::VecDeque;
 /// Sopra la musica le tiene il ducking (`audio::DUCK_LEVEL`), non il guadagno.
 /// Vale anche per la voce dell'IA (`ai::tts`).
 pub const VOICE_GAIN: f32 = 0.85;
+/// Altezza della bocca sopra l'origine di un personaggio (m).
+const SPEAKER_MOUTH: f32 = 0.7;
 
 /// Origine della voce: la voce di un dialogo si ferma alla chiusura del
 /// dialogo, quella di un fumetto (congedo, battuta del ladro) no.
@@ -54,14 +56,22 @@ pub struct VoiceQueue {
     pending: VecDeque<String>,
     kind: Option<VoiceKind>,
     interrupt: bool,
+    /// Chi parla: la voce esce dalla sua testa (audio posizionale); `None` = da nessuna parte.
+    speaker: Option<Entity>,
 }
 
 impl VoiceQueue {
     /// Riproduce le clip in sequenza, interrompendo la voce in corso.
     pub fn play(&mut self, clips: Vec<String>, kind: VoiceKind) {
+        self.play_from(clips, kind, None);
+    }
+
+    /// Come `play`, con la voce che esce da `speaker` (e lo segue se si muove).
+    pub fn play_from(&mut self, clips: Vec<String>, kind: VoiceKind, speaker: Option<Entity>) {
         self.pending = clips.into();
         self.kind = Some(kind);
         self.interrupt = true;
+        self.speaker = speaker;
     }
 
     /// C'è una voce in coda (o appena richiesta)?
@@ -91,6 +101,7 @@ pub fn drive_voice(
     settings: Res<AudioSettings>,
     asset_server: Res<AssetServer>,
     playing: Query<Entity, With<VoiceClip>>,
+    speakers: Query<(), With<GlobalTransform>>,
 ) {
     if queue.interrupt {
         queue.interrupt = false;
@@ -103,12 +114,27 @@ pub fn drive_voice(
         return;
     }
     if let Some(clip) = queue.pending.pop_front() {
-        commands.spawn((
-            VoiceClip,
-            AudioPlayer::new(asset_server.load(format!("audio/voci/{clip}.ogg"))),
-            PlaybackSettings::DESPAWN
-                .with_volume(Volume::Linear(settings.voice_volume * VOICE_GAIN)),
-        ));
+        let player = AudioPlayer::new(asset_server.load(format!("audio/voci/{clip}.ogg")));
+        let volume = settings.voice_volume * VOICE_GAIN;
+        match queue.speaker.filter(|e| speakers.contains(*e)) {
+            // Figlia di chi parla, all'altezza della bocca: la segue mentre cammina.
+            Some(speaker) => {
+                commands.spawn((
+                    VoiceClip,
+                    player,
+                    crate::audio::spatial_once(volume),
+                    Transform::from_xyz(0.0, SPEAKER_MOUTH, 0.0),
+                    ChildOf(speaker),
+                ));
+            }
+            None => {
+                commands.spawn((
+                    VoiceClip,
+                    player,
+                    PlaybackSettings::DESPAWN.with_volume(Volume::Linear(volume)),
+                ));
+            }
+        }
         info!("[VOICE] clip avviata: {clip}");
     } else {
         queue.kind = None;
@@ -128,7 +154,7 @@ pub fn dialog_voice(
             && let Some(clips) = dialog.voices.get(dialog.index)
             && !clips.is_empty()
         {
-            queue.play(clips.clone(), VoiceKind::Dialog);
+            queue.play_from(clips.clone(), VoiceKind::Dialog, dialog.speaker_entity);
         }
     } else if last.0 {
         queue.stop(VoiceKind::Dialog);

@@ -78,4 +78,22 @@ aspetta 6
 registra musica-notte
 aspetta 10
 ferma
+# Audio posizionale: le campane di mezzogiorno dalla piazza (la chiesa è a ovest).
+# Guardando a nord devono sentirsi più a sinistra, guardando a sud più a destra
+# (scripts/ascolta.py, riga «Canali»).
+volume musica 0
+volume ambiente 100
+tp 2 3 12
+aspetta 2
+ora 11.95
+camera 0 15
+aspetta 3
+registra campane-nord
+aspetta 8
+ferma
+camera 180 15
+aspetta 1
+registra campane-sud
+aspetta 8
+ferma
 esci

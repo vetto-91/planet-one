@@ -57,3 +57,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0029 | Luoghi da scoprire | accettato |
 | 0030 | Rampe sotto le scale | accettato |
 | 0031 | Pilota automatico e segnalazioni per il beta test | accettato |
+| 0032 | Audio posizionale | accettato |

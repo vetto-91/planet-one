@@ -177,6 +177,43 @@ impl Default for AudioSettings {
     }
 }
 
+/// Audio posizionale (ADR 0032): i suoni con una posizione (campane, voci, uccelli, gabbiani,
+/// pesci, tuoni) escono più forti dall'orecchio dalla loro parte. L'ascoltatore è la camera.
+///
+/// Bevy (rodio) fa calare il volume con 1/d², molto più in fretta dei nostri cali con la
+/// distanza: con questa scala le distanze entro 250 m valgono meno di 1 e quel calo non c'è.
+/// La direzione invece non dipende dalla scala.
+pub const SPATIAL_SCALE: f32 = 1.0 / 250.0;
+/// Un suono posizionale davanti esce al 75% per orecchio (da un lato: 100% e 50%);
+/// questo guadagno lo riporta quasi al volume di prima senza far saturare le voci di lato.
+pub const SPATIAL_GAIN: f32 = 1.15;
+/// Distanza fra le orecchie dell'ascoltatore (m).
+pub const EAR_GAP: f32 = 0.3;
+
+/// Orecchie dell'ascoltatore, da mettere sulla camera.
+///
+/// Scambiate di proposito: in rodio 0.22 (`Spatial::set_positions`) il canale di un orecchio
+/// diventa più forte quando quell'orecchio è più LONTANO dal suono, quindi con le orecchie
+/// al loro posto una campana a sinistra si sentiva a destra (verificato registrando).
+pub fn listener() -> bevy::audio::SpatialListener {
+    bevy::audio::SpatialListener {
+        left_ear_offset: Vec3::X * EAR_GAP / 2.0,
+        right_ear_offset: Vec3::X * EAR_GAP / -2.0,
+    }
+}
+
+/// Impostazioni di un suono posizionale che si ferma da solo.
+pub fn spatial_once(volume: f32) -> PlaybackSettings {
+    PlaybackSettings::DESPAWN
+        .with_spatial(true)
+        .with_volume(Volume::Linear(volume * SPATIAL_GAIN))
+}
+
+/// Punto a `dist` metri dal centro nella direzione `angle` (radianti), alto `height`.
+pub fn around(center: Vec3, angle: f32, dist: f32, height: f32) -> Transform {
+    Transform::from_translation(center + Vec3::new(angle.cos() * dist, height, angle.sin() * dist))
+}
+
 /// Abbassamento temporaneo della musica mentre parla un personaggio (ducking).
 #[derive(Resource)]
 pub struct MusicDuck {
