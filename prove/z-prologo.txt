@@ -1,0 +1,147 @@
+# La storia principale del Prologo (ADR 0034), dalla spiaggia alla traversata: le quattro missioni
+# a tappe, con «Denaro Rubato» in mezzo (saltata con la shell: ha i suoi copioni).
+# Il nome comincia per z perché un copione nuovo non sposti le risoluzioni degli altri.
+god on
+ia off
+meteo sereno
+ora 10
+missioni on
+# MP-01 Il Nome sulla Sabbia
+tp 30 3 87.5
+aspetta 3
+verifica /missioni/mp01 = 2
+foto spiaggia
+tp gaspare
+aspetta 1
+attendi npc:gaspare:modo = Ready 60
+tp gaspare
+aspetta 1
+guarda gaspare
+aspetta 1
+premi e
+aspetta 1
+verifica parla = Gaspare
+foto gaspare-risveglio
+avanza
+aspetta 1
+verifica dialogo = false
+verifica /missioni/mp01 = 3
+# Senza la traversata aperta Gaspare non offre il passaggio.
+verifica /missioni/continente = false
+tp 0.4 3 46
+aspetta 2
+verifica /missioni/mp01 = 4
+quest cerca
+aspetta 1
+verifica /missioni/mp01 = 5
+verifica monete >= 35
+# MP-03 Le Voci delle Pietre Antiche (dopo Denaro Rubato)
+quest completata
+aspetta 1
+tp viandante
+aspetta 1
+guarda viandante
+aspetta 1
+premi e
+aspetta 1
+verifica parla = Viandante
+avanza
+scegli Arrivederci
+aspetta 1
+verifica /missioni/mp03 = 2
+tp gino
+aspetta 1
+attendi npc:gino:modo = Ready 60
+tp gino
+aspetta 1
+guarda gino
+aspetta 1
+premi e
+aspetta 1
+avanza
+aspetta 1
+verifica /missioni/mp03 = 3
+tp -56 4 62
+aspetta 2
+verifica /missioni/mp03 = 4
+tp -66 4 22
+aspetta 2
+verifica /missioni/mp03 = 5
+# Di giorno la cima della torre non basta: serve la notte.
+tp 58.5 27 -58.5
+aspetta 3
+dump torre
+verifica /missioni/mp03 = 5
+ora 23
+aspetta 2
+verifica /missioni/mp03 = 6
+foto torre-notte
+# MP-04 Sotto l'Arco dei Sei Gradoni
+ora 10
+aspetta 1
+tp anselmo
+aspetta 1
+attendi npc:anselmo:modo = Ready 60
+tp anselmo
+aspetta 1
+guarda anselmo
+aspetta 1
+premi e
+aspetta 1
+avanza
+aspetta 1
+verifica /missioni/mp04 = 2
+tp 91 4 20
+aspetta 2
+verifica /missioni/mp04 = 3
+tp 96.5 2.0 33.2
+aspetta 3
+verifica /missioni/mp04 = 4
+tp 87 1.5 38.4
+aspetta 3
+verifica /missioni/mp04 = 5
+# MP-05 Oltre il Velo del Nord
+tp gaspare
+aspetta 1
+attendi npc:gaspare:modo = Ready 60
+tp gaspare
+aspetta 1
+guarda gaspare
+aspetta 1
+premi e
+aspetta 1
+avanza
+aspetta 1
+verifica /missioni/mp05 = 2
+ora 20.5
+tp -1.2 3 10
+aspetta 2
+verifica /missioni/mp05 = 3
+foto sera-delle-lanterne
+ora 6
+aspetta 2
+tp gaspare
+aspetta 1
+attendi npc:gaspare:modo = Ready 90
+tp gaspare
+aspetta 1
+guarda gaspare
+aspetta 1
+premi e
+aspetta 1
+avanza
+aspetta 1
+verifica /missioni/mp05 = 4
+verifica /missioni/continente = true
+# Ora Gaspare porta al continente.
+guarda gaspare
+aspetta 1
+premi e
+aspetta 1
+avanza
+scegli Portami
+attendi regione = nord 90
+attendi app = Playing 90
+aspetta 4
+verifica /missioni/continente = true
+esci

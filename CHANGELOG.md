@@ -2,6 +2,13 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Storia principale del Prologo** (ADR 0034): quattro missioni nuove attorno a «Denaro Rubato». *Il Nome sulla Sabbia*: una partita nuova comincia sulla spiaggia a est del molo, tra i rottami; Gaspare ti soccorre e ti manda dal Viandante. *Le Voci delle Pietre Antiche*: il Viandante rivela il continente, poi Gino, le rovine, il santuario e la torre antica di notte. *Sotto l'Arco dei Sei Gradoni*: Don Anselmo e la discesa nella grotta fino al laghetto e al cunicolo. *Oltre il Velo del Nord*: Gaspare prepara la barca, la Sera delle Lanterne in piazza, la partenza prima dell'alba.
+- **Il continente si apre con la storia**: Gaspare offre il passaggio solo dopo l'ultima missione del Prologo (dal continente si torna sempre).
+- Le missioni sono scritte in `assets/quests/prologo/missioni.txt`, modificabile a mano; compaiono nel diario (J) e si salvano con la partita. Shell: `missioni [on|off]`, `missione <id> <tappa>`.
+- Shell e pilota: un nome esatto vince su uno che lo contiene («gino» è il mugnaio, non la Guardia Gino).
+
 ## v0.0.61.0 — Continente del Nord: la Piana delle Brume e i suoi abitanti (2026-11-12)
 
 - **Continente del Nord, primo passo** (ADR 0033): una seconda regione di 1.200 × 1.200 m, la Piana delle Brume dell'Atto I. Approdo delle Brume, bosco di querce e betulle, Grande Lago con isolotto, Rio delle Betulle, collina di Barnaba, Fontebruma (mura, due porte, piazza con la Fonte Grigia, locanda, fabbro, forno, chiesa, case) e i 16 luoghi della trama, con i sentieri che li collegano e i nomi sulla mappa. Nebbia e pioggia sottile di base.

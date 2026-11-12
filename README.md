@@ -209,10 +209,24 @@ grep "\[EVENT\]" run.log    # eventi finestra/cursore
 | 1–9, 0 | Usa l'oggetto nello slot corrispondente della barra in basso (pozione: +25 HP) |
 | Click sinistro | Attacco melee |
 
+## La storia del Prologo
+
+Una partita nuova comincia sulla **spiaggia a est del molo**, tra i rottami. La storia principale dell'isola
+è in cinque missioni (diario: `J`):
+
+1. **Il Nome sulla Sabbia** — guarda i rottami, raggiungi Gaspare al molo, sali a Fontevivo, trova il Viandante.
+2. **Denaro Rubato** — vedi più sotto.
+3. **Le Voci delle Pietre Antiche** — il Viandante, Gino al mulino, le rovine, il santuario, la torre antica di notte.
+4. **Sotto l'Arco dei Sei Gradoni** — Don Anselmo, poi la grotta a est fino al laghetto e in fondo al cunicolo.
+5. **Oltre il Velo del Nord** — Gaspare, la Sera delle Lanterne in piazza (dopo le 20), la partenza prima dell'alba.
+
+Finita l'ultima, Gaspare ti porta al Continente del Nord. I testi e le condizioni delle missioni sono in
+`assets/quests/prologo/missioni.txt` (ADR 0034). Shell: `missioni` (stato), `missione mp03 2` (salta a una tappa).
+
 ## Il Continente del Nord (primo passo)
 
 Oltre all'Isola di Fontevivo c'è una seconda regione, molto più grande: la **Piana delle Brume**
-(Atto I della trama, ADR 0033). Ci si arriva in barca: al porticciolo dell'isola parla con **Gaspare**
+(Atto I della trama, ADR 0033). Ci si arriva in barca, finita la storia del Prologo: al porticciolo dell'isola parla con **Gaspare**
 e scegli «Portami al Continente del Nord». Sbarchi all'**Approdo delle Brume**, nella nebbia; il sentiero
 attraversa il bosco di querce e betulle, costeggia il **Grande Lago** e arriva a **Fontebruma**
 (circa 700 m a nord). Gaspare aspetta all'approdo per riportarti a Fontevivo quando vuoi.

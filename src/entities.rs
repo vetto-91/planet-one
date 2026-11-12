@@ -272,6 +272,9 @@ pub fn interact(
     mut nearest: ResMut<NearestInteract>,
     quest: Res<crate::quests::denaro_rubato::QuestState>,
     texts: Res<crate::quests::QuestTexts>,
+    mut missions: ResMut<crate::quests::missions::Missions>,
+    clock: Res<crate::daynight::GameClock>,
+    character: Res<crate::character::Character>,
     cameras: Query<&GlobalTransform, With<Camera3d>>,
     spatial: SpatialQuery,
     blockers: Query<(), With<crate::camera::BlocksCamera>>,
@@ -387,7 +390,24 @@ pub fn interact(
         dialog.speaker = npc.name.to_string();
         // Battute e scelte dalla quest (file dialoghi.txt), altrimenti default dell'NPC.
         // Solo il Viandante parla di quest; gli altri abitanti usano il loro saluto.
-        let (lines, choices, voices) = if npc.name == "Viandante" {
+        // Una tappa di missione che chiede di parlare con lui ha la precedenza (il Viandante
+        // solo quando «Denaro Rubato» non ha niente in sospeso da dirgli).
+        let facts = crate::quests::missions::Facts {
+            pos: p,
+            hour: clock.hour,
+            quest_accepted: quest.accepted,
+            quest_done: quest.stage == crate::quests::denaro_rubato::QuestStage::Completed,
+        };
+        let busy_keeper = npc.name == "Viandante" && quest.accepted && !facts.quest_done;
+        let mission = if busy_keeper {
+            None
+        } else {
+            missions.dialog_for(npc.name, &facts, &character.name)
+        };
+        let (lines, choices, voices) = if let Some(lines) = mission {
+            let n = lines.len();
+            (lines, Vec::new(), vec![Vec::new(); n])
+        } else if npc.name == "Viandante" {
             crate::quests::npc_dialog(&quest, &texts)
         } else {
             (Vec::new(), Vec::new(), Vec::new())
@@ -425,6 +445,7 @@ pub fn interact(
 pub fn advance_dialog(
     keys: Res<ButtonInput<KeyCode>>,
     mut travel: ResMut<crate::save::TravelRequest>,
+    missions: Res<crate::quests::missions::Missions>,
     mut dialog: ResMut<DialogState>,
     ai: Res<crate::ai::AiState>,
     settings: Res<crate::audio::AudioSettings>,
@@ -507,7 +528,13 @@ pub fn advance_dialog(
                 if dialog.shop.is_some() {
                     actions.push(Offer::Shop);
                 }
-                if dialog.speaker == FERRYMAN {
+                // Il passaggio c'è quando la via del nord è aperta (ultima missione del
+                // Prologo); dal continente si torna sempre. Nelle prove le missioni sono ferme.
+                if dialog.speaker == FERRYMAN
+                    && (!missions.enabled
+                        || missions.unlocked("continente")
+                        || crate::region::current() != crate::region::Region::Isola)
+                {
                     actions.push(Offer::Passage);
                 }
                 if settings.ai_enabled && ai.status == crate::ai::AiStatus::Ready {

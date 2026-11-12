@@ -375,15 +375,18 @@ pub fn field<'a>(state: &'a Value, name: &str) -> Option<&'a Value> {
             let mut parts = p[4..].splitn(2, ':');
             let who = parts.next()?.to_lowercase();
             let what = parts.next().unwrap_or("dist");
+            // Il nome esatto vince su quello che lo contiene (Gino, non la Guardia Gino).
+            let rank = |v: &Value| {
+                v.get("nome")
+                    .and_then(Value::as_str)
+                    .map_or(0, |n| crate::shell::name_rank(n, &who))
+            };
             return state
                 .pointer("/vicini")?
                 .as_array()?
                 .iter()
-                .find(|v| {
-                    v.get("nome")
-                        .and_then(Value::as_str)
-                        .is_some_and(|n| n.to_lowercase().contains(&who))
-                })?
+                .max_by_key(|v| rank(v))
+                .filter(|v| rank(v) > 0)?
                 .get(what);
         }
         p => return state.pointer(&format!("/inventario/{p}")),
@@ -912,6 +915,17 @@ pub fn snapshot(world: &mut World) -> Value {
         "monete": quest.coins_collected,
         "accettata": quest.accepted,
     });
+    // Missioni del Prologo: tappa corrente (da 1) di ognuna, e ciò che hanno sbloccato.
+    let missioni = {
+        let m = world.resource::<crate::quests::missions::Missions>();
+        let mut map = serde_json::Map::new();
+        map.insert("attive".into(), json!(m.enabled));
+        map.insert("continente".into(), json!(m.unlocked("continente")));
+        for (id, step) in m.snapshot() {
+            map.insert(id, json!(step + 1));
+        }
+        Value::Object(map)
+    };
     let inv = world.resource::<crate::inventory::Inventory>();
     let mut items = serde_json::Map::new();
     for s in &inv.slots {
@@ -1065,6 +1079,7 @@ pub fn snapshot(world: &mut World) -> Value {
         },
         "arma": arma,
         "quest": quest,
+        "missioni": missioni,
         "inventario": items,
         "dialogo": dialog,
         "negozio": negozio,

@@ -211,6 +211,7 @@ fn main() -> AppExit {
         .init_resource::<quest::QuestState>()
         .init_resource::<quests::QuestTexts>()
         .init_resource::<quests::Barks>()
+        .init_resource::<quests::missions::Missions>()
         .init_resource::<menu::JournalTab>()
         .add_plugins(map::plugin)
         .add_plugins(ai::plugin)
@@ -381,6 +382,10 @@ fn main() -> AppExit {
                 save::draw_notice,
             )
                 .chain(),
+        )
+        .add_systems(
+            Update,
+            quests::missions::track_missions.run_if(in_state(AppState::Playing)),
         )
         .add_systems(Update, debug_place::sync_markers)
         .add_systems(

@@ -31,6 +31,7 @@ const HELP: &[&str] = &[
     "quest <inizio|cerca|raccogli|torna|completata> · uccidi [raggio] · vicino [raggio] · fps · entita",
     "volume <musica|ambiente|voci> <0-100> (solo per questa partita)",
     "regione <isola|nord> (viaggio fra l'Isola di Fontevivo e il Continente del Nord)",
+    "missioni [on|off] · missione <mp01|mp03|mp04|mp05> <tappa> (storia del Prologo)",
 ];
 
 /// Trucchi attivi: non salvati, tutti spenti a ogni avvio.
@@ -103,6 +104,9 @@ pub enum Cmd {
     Status,
     Clear,
     Reset,
+    /// Missioni del Prologo: accese/spente, o salto a una tappa.
+    Missions(Option<bool>),
+    Mission(String, usize),
     /// Viaggio in un'altra regione del mondo.
     Region(crate::region::Region),
     God(Option<bool>),
@@ -226,6 +230,18 @@ pub fn parse(line: &str) -> Result<Cmd, String> {
                 _ => Err("uso: quest <inizio|cerca|raccogli|torna|completata>".into()),
             }
         }
+        "missioni" => Ok(Cmd::Missions(match args.first().copied() {
+            Some("on" | "si" | "sì") => Some(true),
+            Some("off" | "no") => Some(false),
+            _ => None,
+        })),
+        "missione" => match (
+            args.first(),
+            args.get(1).and_then(|a| a.parse::<usize>().ok()),
+        ) {
+            (Some(id), Some(step)) if step >= 1 => Ok(Cmd::Mission((*id).to_string(), step - 1)),
+            _ => Err("uso: missione <mp01|mp03|mp04|mp05> <tappa da 1>".into()),
+        },
         "uccidi" | "kill" => Ok(Cmd::Kill(
             args.first().and_then(|a| a.parse().ok()).unwrap_or(30.0),
         )),
@@ -407,6 +423,7 @@ pub struct ShellCtx<'w, 's> {
     homes: Res<'w, crate::world_props::Homes>,
     pilot: ResMut<'w, crate::autopilot::Autopilot>,
     quest: ResMut<'w, crate::quests::denaro_rubato::QuestState>,
+    missions: ResMut<'w, crate::quests::missions::Missions>,
     diagnostics: Res<'w, bevy::diagnostic::DiagnosticsStore>,
     every: Query<'w, 's, Entity>,
     enemies: Query<'w, 's, EnemyData, EnemyFilter>,
@@ -424,6 +441,17 @@ pub struct ShellCtx<'w, 's> {
         ),
         Without<Player>,
     >,
+}
+
+/// Quanto un nome corrisponde a quello cercato (minuscolo): 2 esatto, 1 lo contiene, 0 no.
+/// «gino» è il mugnaio Gino, non la Guardia Gino.
+pub fn name_rank(full: &str, wanted: &str) -> u8 {
+    let full = full.to_lowercase();
+    if full == wanted {
+        2
+    } else {
+        u8::from(full.contains(wanted))
+    }
 }
 
 fn on_off(v: bool) -> &'static str {
@@ -448,7 +476,8 @@ fn resolve_place(ctx: &ShellCtx, name: &str, n: usize) -> Option<Vec3> {
     if let Some((_, t, _)) = ctx
         .npcs
         .iter()
-        .find(|(npc, ..)| npc.name.to_lowercase().contains(name))
+        .max_by_key(|(npc, ..)| name_rank(npc.name, name))
+        .filter(|(npc, ..)| name_rank(npc.name, name) > 0)
     {
         // Posizione nel mondo: il Viandante è figlio della casetta.
         return Some(t.translation() + Vec3::new(1.2, 0.4, 0.0));
@@ -589,7 +618,8 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
                 let npc = ctx
                     .npcs
                     .iter()
-                    .find(|(npc, ..)| npc.name.to_lowercase().contains(name.as_str()))
+                    .max_by_key(|(npc, ..)| name_rank(npc.name, &name))
+                    .filter(|(npc, ..)| name_rank(npc.name, &name) > 0)
                     .map(|(_, t, _)| t.translation() + Vec3::Y * 0.2);
                 let building = ctx
                     .place
@@ -633,6 +663,23 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
             ctx.pilot.dump = Some(Some(dir.join(format!("stato-{name}.json"))));
             shell.say(format!("stato in {}", dir.display()));
         }
+        Cmd::Missions(on) => {
+            if let Some(on) = on {
+                ctx.missions.enabled = on;
+            }
+            shell.say(format!("missioni {}", on_off(ctx.missions.enabled)));
+            let done = ctx.quest.stage == crate::quests::denaro_rubato::QuestStage::Completed;
+            for e in ctx.missions.journal(done) {
+                let goal = e
+                    .objectives
+                    .last()
+                    .map_or(String::new(), |(g, _)| g.clone());
+                shell.say(format!("  {} — {}", e.title, goal));
+            }
+        }
+        Cmd::Mission(id, step) => match ctx.missions.jump(&id, step) {
+            Ok(text) | Err(text) => shell.say(text),
+        },
         Cmd::Quest(stage) => {
             use crate::quests::denaro_rubato::QuestStage as Q;
             let q = &mut ctx.quest;

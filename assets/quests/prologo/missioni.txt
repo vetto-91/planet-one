@@ -1,0 +1,133 @@
+# Missioni principali del Prologo sull'isola (ADR 0034). Modificabile a mano: riletto all'avvio.
+# Fonte: Trama-Planet-One, documenti 01, 06 e 09. «Denaro Rubato» (MP-02) è la quest nel codice.
+#
+# [missione <id>]   titolo, sommario, dopo: <id di un'altra missione> | denaro_rubato
+# [tappa]           obiettivo: testo nel diario
+#                   quando: una condizione per riga, devono valere tutte:
+#                     vicino <x> <z> <raggio> | sotto <quota> | sopra <quota> | ora <da> <a>
+#                     parla <abitante> | quest accettata | quest completata
+#                   > battuta dell'abitante della condizione «parla» ({nome} = il protagonista)
+#                   pensiero: testo mostrato a tappa fatta    monete: premio    sblocca: nome
+
+[missione mp01]
+titolo: Il Nome sulla Sabbia
+sommario: Ti sei svegliato su una spiaggia, tra rottami che non sai riconoscere. Non ricordi chi sei.
+
+[tappa]
+obiettivo: Guarda i rottami sulla spiaggia
+quando: vicino 30 85 4
+pensiero: Legno incastrato alla maniera antica, e un ferro piegato che non è di nessuna barca. Nessuna vela, nessun nome.
+
+[tappa]
+obiettivo: Raggiungi il pescatore al molo
+quando: parla Gaspare
+> Per tutti i venti del sud… respiri ancora! Ettore ha visto quei legni dalla cima del faro, prima dell'alba.
+> Ci sono incastri vecchi di mille anni e un ferro che non ho mai visto in nessuna fucina. Da che nave vieni?
+> Non lo ricordi. Succede a chi attraversa il Velo delle Correnti: il sale lava via i pensieri.
+> Nelle vecchie storie del mare un capitano si salvò dicendo di chiamarsi «Nessuno». Ma finché resti Nessuno appartieni alla nebbia.
+> {nome}… suona limpido contro il vento del mattino. Allora ascoltami, {nome}: non sei più Nessuno. Benvenuto a Fontevivo.
+> Segui la strada di pietra fino al paese e cerca il Viandante, alla casetta in piazza. E sappi che quest'isola è solo il primo approdo.
+
+[tappa]
+obiettivo: Sali a Fontevivo per la strada di pietra
+quando: vicino 0.4 46 7
+pensiero: Mura di pietra, e lampioni che brillano senza fiamma. La gente di qui la chiama Luce Viva.
+
+[tappa]
+obiettivo: Trova il Viandante alla casetta in piazza
+quando: quest accettata
+monete: 5
+
+[missione mp03]
+titolo: Le Voci delle Pietre Antiche
+sommario: Il Viandante dice che a nord, oltre la nebbia, c'è un continente. Le pietre antiche dell'isola sanno come arrivarci.
+dopo: denaro_rubato
+
+[tappa]
+obiettivo: Chiedi al Viandante che cosa c'è a nord
+quando: parla Viandante
+> Hai riportato più di dodici monete, {nome}. Hai riportato una domanda: perché un uomo ruba per andarsene?
+> Quest'isola è solo il molo d'ingresso. A nord, oltre la nebbia, si alza un intero continente.
+> Nessun remo forza da solo lo Stretto, e nessun passo attraversa la roccia sotto il mare. Chi è venuto prima di noi lo sapeva.
+> Ascolta le pietre che hanno lasciato: le rovine a sud-ovest, il santuario a ovest, la torre sull'altura. E parla con Gino, al mulino: lui conosce il vento del nord.
+
+[tappa]
+obiettivo: Parla con Gino al mulino, a nord
+quando: parla Gino
+> Senti come tira? Viene dal nord, e porta semi che qui non crescono e una polvere color ocra.
+> Dietro il mulino l'isola finisce. Di là c'è lo Stretto: da una parte gli scogli che tirano il ferro, dall'altra il vortice.
+> Se vuoi vedere dove finisce il mare, sali sulla torre antica in una notte limpida. Io la vela te la cucio, quando sarà il momento.
+
+[tappa]
+obiettivo: Esamina le rovine antiche, a sud-ovest
+quando: vicino -56 62 7
+pensiero: Sei colonne, e un'iscrizione consumata: «…finché il fuoco del faro, il prisma del santuario e l'acqua sotto la grotta non tornano a cantare lo stesso accordo».
+
+[tappa]
+obiettivo: Esamina il santuario, a ovest
+quando: vicino -66 22 5
+pensiero: Sull'altare, una pietra color ambra tagliata come una lente. Dentro, la luce si divide e si ricompone.
+
+[tappa]
+obiettivo: Sali di notte in cima alla torre antica
+quando: vicino 58.5 -58.5 5
+quando: sopra 18
+quando: ora 21 4.5
+pensiero: Sopra la nebbia, a nord, vette azzurre e il bagliore di un altro faro. La stella ferma è alta quarantotto gradi: la rotta è quella.
+monete: 15
+
+[missione mp04]
+titolo: Sotto l'Arco dei Sei Gradoni
+sommario: L'iscrizione parla di un'acqua sotto la grotta. Don Anselmo sa qualcosa della grotta a est che i banditi non osano esplorare.
+dopo: mp03
+
+[tappa]
+obiettivo: Chiedi a Don Anselmo della grotta
+quando: parla Don Anselmo
+> La grotta a est… i banditi le girano attorno, ma non scendono oltre la prima sala. Hanno ragione ad aver paura, e torto sul perché.
+> Chi la scavò la fece a gradoni, come una scala verso il basso. In fondo c'è un'acqua ferma che non riflette il soffitto.
+> Scendi con rispetto, {nome}. E quando l'acqua ti mostrerà qualcosa, non chiederti se è vero: chiediti se è per te.
+
+[tappa]
+obiettivo: Raggiungi la grotta sulla costa est
+quando: vicino 91 20 7
+
+[tappa]
+obiettivo: Scendi nelle gallerie fino al laghetto
+quando: vicino 96.5 33.2 3.5
+quando: sotto 2.2
+pensiero: Nell'acqua bassa, tra i quattro pilastri, non si specchia la roccia: si specchiano stelle, e le luci di città lontane.
+
+[tappa]
+obiettivo: Segui il cunicolo fino in fondo
+quando: vicino 87 38.4 3
+quando: sotto 2.2
+pensiero: Una corda di rame e oro, fitta di nodi. E dietro la nicchia, murata dall'acqua, una porta che guarda a nord: una via sotto il mare.
+monete: 20
+
+[missione mp05]
+titolo: Oltre il Velo del Nord
+sommario: La rotta è nota e la via è aperta. Resta da preparare la barca e salutare Fontevivo.
+dopo: mp04
+
+[tappa]
+obiettivo: Parla con Gaspare al molo della traversata
+quando: parla Gaspare
+> L'hai vista davvero, la terra a nord? Allora è deciso, {nome}. La barca regge: Ferruccio ha fissato lo scafo col bronzo, niente ferro per gli scogli che tirano.
+> Gino porta la vela, Ettore terrà acceso il faro tutta la notte. Si parte prima dell'alba, quando lo Stretto respira.
+> Stasera però resta in paese: accendono le lanterne in piazza. Una partenza senza un saluto porta male.
+
+[tappa]
+obiettivo: Stasera, dopo le otto, vai in piazza per la Sera delle Lanterne
+quando: vicino -1.2 10 9
+quando: ora 20 24
+pensiero: Le lanterne accese una a una, e le voci di tutti: «Quando vorrai tornare dal nord, qui ti aspetteremo sempre».
+
+[tappa]
+obiettivo: Prima dell'alba torna da Gaspare al molo
+quando: parla Gaspare
+quando: ora 3.5 9
+> Eccoti. Il mare è piatto e la stella ferma è alta. Di là troverai nebbia, e un bosco che arriva fin sulla riva.
+> Quando sei pronto dimmelo, e si salpa. E ricordati: l'isola resta qui. Si può sempre tornare.
+sblocca: continente
+monete: 10

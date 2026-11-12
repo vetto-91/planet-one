@@ -152,6 +152,7 @@ pub struct UiQueries<'w, 's> {
     pub shop: ResMut<'w, crate::shop::ShopState>,
     pub occluded: Res<'w, hud::Occluded>,
     pub map_view: Res<'w, map::MapView>,
+    pub missions: Res<'w, crate::quests::missions::Missions>,
     pub clock: ResMut<'w, crate::daynight::GameClock>,
     pub wait: ResMut<'w, crate::daynight::WaitUi>,
     pub player_pos: Query<'w, 's, &'static GlobalTransform, With<crate::player::Player>>,
@@ -303,7 +304,7 @@ pub fn ui(
             if keys.pressed(KeyCode::Tab)
                 && quest.accepted
                 && quest.stage != QuestStage::Completed
-                && let Some(entry) = crate::quests::journal_entries(&quest, &texts)
+                && let Some(entry) = crate::quests::journal_entries(&quest, &texts, &q.missions)
                     .into_iter()
                     .find(|e| e.status == QuestStatus::Active)
             {
@@ -462,7 +463,7 @@ pub fn ui(
             }
         }
         AppState::Journal => {
-            let entries = crate::quests::journal_entries(&quest, &texts);
+            let entries = crate::quests::journal_entries(&quest, &texts, &q.missions);
             draw_journal(ctx, &entries, &mut tab);
         }
         AppState::Shop => {

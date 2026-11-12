@@ -1,0 +1,532 @@
+//! Missioni a tappe guidate da un file di testo (ADR 0034): la storia principale del Prologo.
+//!
+//! `assets/quests/prologo/missioni.txt` descrive ogni missione come una fila di tappe; ogni
+//! tappa ha un obiettivo, una o più condizioni (`quando:`), un eventuale dialogo con un
+//! abitante e un effetto. Il motore non sa nulla delle singole storie: per aggiungere o
+//! cambiare una missione basta il file. «Denaro Rubato» resta la quest scritta nel codice
+//! (`denaro_rubato`) e fa da anello della catena tramite la condizione `quest`.
+
+use super::denaro_rubato::{QuestStage, QuestState};
+use super::{ObjState, QuestEntry, QuestStatus};
+use bevy::prelude::*;
+
+const FILE: &str = "assets/quests/prologo/missioni.txt";
+const EMBEDDED: &str = include_str!("../../assets/quests/prologo/missioni.txt");
+
+/// Condizione di una tappa: tutte quelle elencate devono valere insieme.
+#[derive(Clone, Debug, PartialEq)]
+pub enum When {
+    /// Il giocatore è entro `r` metri dal punto (x, z).
+    Near(Vec2, f32),
+    /// Il giocatore è sotto questa quota (gallerie sotterranee).
+    Below(f32),
+    /// Il giocatore è sopra questa quota (cima di una torre).
+    Above(f32),
+    /// Ora del giorno fra `a` e `b` (anche a cavallo della mezzanotte).
+    Hour(f32, f32),
+    /// Il dialogo della tappa con questo abitante è stato letto fino in fondo.
+    Talk(String),
+    /// «Denaro Rubato»: accettata o completata.
+    Quest(bool),
+}
+
+/// Una tappa di una missione.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Step {
+    pub goal: String,
+    pub when: Vec<When>,
+    /// Battute dell'abitante della condizione `parla` (segnaposto `{nome}`).
+    pub lines: Vec<String>,
+    /// Pensiero del protagonista mostrato al completamento.
+    pub note: String,
+    pub coins: u32,
+    /// Cose sbloccate nel mondo (per esempio `continente`).
+    pub unlocks: Vec<String>,
+}
+
+/// Una missione letta dal file.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Mission {
+    pub id: String,
+    pub title: String,
+    pub summary: String,
+    /// Missione che deve essere finita prima (vuoto = nessuna).
+    pub after: String,
+    /// Serve «Denaro Rubato» completata.
+    pub after_quest: bool,
+    pub steps: Vec<Step>,
+}
+
+/// Interpreta `missioni.txt`; le righe errate vengono ignorate.
+pub fn parse(text: &str) -> Vec<Mission> {
+    let mut out: Vec<Mission> = Vec::new();
+    let nums = |v: &str| -> Vec<f32> {
+        v.split_whitespace()
+            .filter_map(|t| t.replace(',', ".").parse().ok())
+            .collect()
+    };
+    for raw in text.lines() {
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if let Some(head) = line.strip_prefix('[').and_then(|l| l.strip_suffix(']')) {
+            let mut w = head.split_whitespace();
+            match (w.next(), w.next()) {
+                (Some("missione"), Some(id)) => out.push(Mission {
+                    id: id.to_string(),
+                    ..Default::default()
+                }),
+                (Some("tappa"), _) => {
+                    if let Some(m) = out.last_mut() {
+                        m.steps.push(Step::default());
+                    }
+                }
+                _ => {}
+            }
+            continue;
+        }
+        let Some(m) = out.last_mut() else {
+            continue;
+        };
+        // Battuta di dialogo: «> testo».
+        if let Some(say) = line.strip_prefix('>') {
+            if let Some(s) = m.steps.last_mut() {
+                s.lines.push(say.trim().to_string());
+            }
+            continue;
+        }
+        let Some((key, value)) = line.split_once(':') else {
+            continue;
+        };
+        let (key, value) = (key.trim(), value.trim());
+        match (key, m.steps.last_mut()) {
+            ("titolo", None) => m.title = value.to_string(),
+            ("sommario", None) => m.summary = value.to_string(),
+            ("dopo", None) => {
+                if value == "denaro_rubato" {
+                    m.after_quest = true;
+                } else {
+                    m.after = value.to_string();
+                }
+            }
+            ("obiettivo", Some(s)) => s.goal = value.to_string(),
+            ("pensiero", Some(s)) => s.note = value.to_string(),
+            ("monete", Some(s)) => s.coins = value.parse().unwrap_or(0),
+            ("sblocca", Some(s)) => s.unlocks.push(value.to_string()),
+            ("quando", Some(s)) => {
+                let (kind, rest) = value.split_once(' ').unwrap_or((value, ""));
+                let n = nums(rest);
+                let cond = match (kind, n.as_slice()) {
+                    ("vicino", [x, z, r]) => Some(When::Near(Vec2::new(*x, *z), *r)),
+                    ("sotto", [y]) => Some(When::Below(*y)),
+                    ("sopra", [y]) => Some(When::Above(*y)),
+                    ("ora", [a, b]) => Some(When::Hour(*a, *b)),
+                    ("parla", _) if !rest.trim().is_empty() => {
+                        Some(When::Talk(rest.trim().to_string()))
+                    }
+                    ("quest", _) => match rest.trim() {
+                        "accettata" => Some(When::Quest(false)),
+                        "completata" => Some(When::Quest(true)),
+                        _ => None,
+                    },
+                    _ => None,
+                };
+                match cond {
+                    Some(c) => s.when.push(c),
+                    None => warn!("[MISSIONI] condizione ignorata: {line}"),
+                }
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
+/// Stato delle missioni della partita.
+#[derive(Resource)]
+pub struct Missions {
+    pub list: Vec<Mission>,
+    /// Per ogni missione: tappa corrente (uguale al numero di tappe = finita).
+    pub progress: Vec<usize>,
+    /// Le missioni avanzano solo in una partita vera: nelle prove automatiche restano ferme
+    /// (e il passaggio di Gaspare è libero) finché il copione non scrive `missioni on`.
+    pub enabled: bool,
+    /// Abitante il cui dialogo di missione è aperto: si completa leggendolo fino in fondo.
+    talking: Option<String>,
+    /// Dialoghi di missione letti fino in fondo (nome dell'abitante), in attesa di essere contati.
+    talked: Vec<String>,
+}
+
+impl Default for Missions {
+    fn default() -> Self {
+        let text = [
+            std::path::PathBuf::from(FILE),
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(FILE),
+        ]
+        .iter()
+        .find_map(|p| std::fs::read_to_string(p).ok())
+        .unwrap_or_else(|| EMBEDDED.to_string());
+        let list = parse(&text);
+        Self {
+            progress: vec![0; list.len()],
+            list,
+            enabled: false,
+            talking: None,
+            talked: Vec::new(),
+        }
+    }
+}
+
+/// Cosa serve sapere del mondo per valutare le condizioni.
+pub struct Facts {
+    pub pos: Vec3,
+    pub hour: f32,
+    pub quest_accepted: bool,
+    pub quest_done: bool,
+}
+
+impl Missions {
+    fn index(&self, id: &str) -> Option<usize> {
+        self.list.iter().position(|m| m.id == id)
+    }
+
+    pub fn done(&self, id: &str) -> bool {
+        self.index(id)
+            .is_some_and(|i| self.progress[i] >= self.list[i].steps.len())
+    }
+
+    /// La missione `i` è cominciata (le precedenti sono finite)?
+    fn started(&self, i: usize, quest_done: bool) -> bool {
+        let m = &self.list[i];
+        (m.after.is_empty() || self.done(&m.after)) && (!m.after_quest || quest_done)
+    }
+
+    /// Qualcosa di sbloccato da una tappa già completata (per esempio `continente`).
+    pub fn unlocked(&self, what: &str) -> bool {
+        self.list.iter().zip(&self.progress).any(|(m, p)| {
+            m.steps[..(*p).min(m.steps.len())]
+                .iter()
+                .any(|s| s.unlocks.iter().any(|u| u == what))
+        })
+    }
+
+    /// Tappa corrente di ogni missione cominciata e non finita.
+    fn current(&self, quest_done: bool) -> impl Iterator<Item = (usize, &Step)> {
+        (0..self.list.len()).filter_map(move |i| {
+            let step = self.list[i].steps.get(self.progress[i])?;
+            self.started(i, quest_done).then_some((i, step))
+        })
+    }
+
+    /// Battute che `npc` deve dire adesso per una tappa `parla` (le altre condizioni della
+    /// tappa devono già valere). Apre il dialogo di missione.
+    pub fn dialog_for(&mut self, npc: &str, facts: &Facts, player: &str) -> Option<Vec<String>> {
+        if !self.enabled {
+            return None;
+        }
+        let lines = self.current(facts.quest_done).find_map(|(_, step)| {
+            let mine = step
+                .when
+                .iter()
+                .any(|w| matches!(w, When::Talk(n) if n == npc));
+            let rest = step
+                .when
+                .iter()
+                .filter(|w| !matches!(w, When::Talk(_)))
+                .all(|w| holds(w, facts, &[]));
+            (mine && rest && !step.lines.is_empty()).then(|| step.lines.clone())
+        })?;
+        self.talking = Some(npc.to_string());
+        Some(lines.iter().map(|l| l.replace("{nome}", player)).collect())
+    }
+
+    /// Il dialogo si è chiuso: se era di missione ed è stato letto tutto, vale come «parlato».
+    pub fn dialog_closed(&mut self, finished: bool) {
+        if let Some(npc) = self.talking.take()
+            && finished
+        {
+            self.talked.push(npc);
+        }
+    }
+
+    /// Avanza le tappe le cui condizioni valgono; restituisce quelle appena completate.
+    pub fn advance(&mut self, facts: &Facts) -> Vec<(usize, Step, bool)> {
+        let mut done = Vec::new();
+        if !self.enabled {
+            return done;
+        }
+        for i in 0..self.list.len() {
+            let Some(step) = self.list[i].steps.get(self.progress[i]) else {
+                continue;
+            };
+            if !self.started(i, facts.quest_done) || step.when.is_empty() {
+                continue;
+            }
+            if step.when.iter().all(|w| holds(w, facts, &self.talked)) {
+                let step = step.clone();
+                self.progress[i] += 1;
+                let finished = self.progress[i] >= self.list[i].steps.len();
+                done.push((i, step, finished));
+            }
+        }
+        self.talked.clear();
+        done
+    }
+
+    /// Voci del diario: missioni cominciate, con le tappe fatte e quella in corso.
+    pub fn journal(&self, quest_done: bool) -> Vec<QuestEntry> {
+        if !self.enabled {
+            return Vec::new();
+        }
+        (0..self.list.len())
+            .filter(|i| self.started(*i, quest_done))
+            .map(|i| {
+                let (m, p) = (&self.list[i], self.progress[i]);
+                let finished = p >= m.steps.len();
+                QuestEntry {
+                    title: m.title.clone(),
+                    summary: m.summary.clone(),
+                    status: if finished {
+                        QuestStatus::Completed
+                    } else {
+                        QuestStatus::Active
+                    },
+                    objectives: m
+                        .steps
+                        .iter()
+                        .enumerate()
+                        .filter(|(k, _)| *k <= p)
+                        .map(|(k, s)| {
+                            let state = if k < p {
+                                ObjState::Done
+                            } else {
+                                ObjState::Current
+                            };
+                            (s.goal.clone(), state)
+                        })
+                        .collect(),
+                }
+            })
+            .collect()
+    }
+
+    /// Stato da salvare: (missione, tappa).
+    pub fn snapshot(&self) -> Vec<(String, usize)> {
+        self.list
+            .iter()
+            .zip(&self.progress)
+            .map(|(m, p)| (m.id.clone(), *p))
+            .collect()
+    }
+
+    pub fn restore(&mut self, saved: &[(String, usize)]) {
+        for (id, p) in saved {
+            if let Some(i) = self.index(id) {
+                self.progress[i] = (*p).min(self.list[i].steps.len());
+            }
+        }
+    }
+
+    /// Nuova partita: tutto da capo.
+    pub fn reset(&mut self) {
+        self.progress.iter_mut().for_each(|p| *p = 0);
+        self.talking = None;
+        self.talked.clear();
+    }
+
+    /// Shell e prove: porta una missione a una tappa (le precedenti risultano fatte).
+    pub fn jump(&mut self, id: &str, step: usize) -> Result<String, String> {
+        let i = self
+            .index(id)
+            .ok_or_else(|| format!("missione sconosciuta: {id}"))?;
+        // Le missioni che la precedono risultano finite.
+        let mut before = self.list[i].after.clone();
+        while let Some(j) = self.index(&before) {
+            self.progress[j] = self.list[j].steps.len();
+            before = self.list[j].after.clone();
+        }
+        self.progress[i] = step.min(self.list[i].steps.len());
+        self.enabled = true;
+        Ok(format!(
+            "{}: tappa {} di {}",
+            self.list[i].title,
+            self.progress[i] + 1,
+            self.list[i].steps.len()
+        ))
+    }
+}
+
+fn holds(w: &When, f: &Facts, talked: &[String]) -> bool {
+    match w {
+        When::Near(p, r) => f.pos.xz().distance(*p) <= *r,
+        When::Below(y) => f.pos.y < *y,
+        When::Above(y) => f.pos.y > *y,
+        When::Hour(a, b) => {
+            if a <= b {
+                f.hour >= *a && f.hour < *b
+            } else {
+                f.hour >= *a || f.hour < *b
+            }
+        }
+        When::Talk(npc) => talked.iter().any(|t| t == npc),
+        When::Quest(done) => {
+            if *done {
+                f.quest_done
+            } else {
+                f.quest_accepted
+            }
+        }
+    }
+}
+
+/// Sistema: valuta le condizioni, completa le tappe, dà i premi e avvisa il giocatore.
+#[allow(clippy::too_many_arguments)]
+pub fn track_missions(
+    mut missions: ResMut<Missions>,
+    quest: Res<QuestState>,
+    clock: Res<crate::daynight::GameClock>,
+    dialog: Res<crate::entities::DialogState>,
+    players: Query<&GlobalTransform, With<crate::player::Player>>,
+    mut inventory: ResMut<crate::inventory::Inventory>,
+    mut session: ResMut<crate::save::Session>,
+    mut was_open: Local<bool>,
+) {
+    if *was_open && !dialog.open {
+        missions.dialog_closed(dialog.finished);
+    }
+    *was_open = dialog.open;
+    let Ok(player) = players.single() else {
+        return;
+    };
+    let facts = Facts {
+        pos: player.translation(),
+        hour: clock.hour,
+        quest_accepted: quest.accepted,
+        quest_done: quest.stage == QuestStage::Completed,
+    };
+    for (i, step, finished) in missions.advance(&facts) {
+        let title = missions.list[i].title.clone();
+        if step.coins > 0 {
+            inventory.add(crate::inventory::ItemKind::Coin, step.coins);
+        }
+        let next = missions.list[i]
+            .steps
+            .get(missions.progress[i])
+            .map(|s| s.goal.clone());
+        let text = match (&next, finished) {
+            (_, true) => format!("Missione compiuta: {title}"),
+            (Some(goal), false) if step.note.is_empty() => format!("{title} — {goal}"),
+            _ => step.note.clone(),
+        };
+        info!(
+            "[MISSIONE] {} — tappa fatta: {}{}",
+            missions.list[i].id,
+            step.goal,
+            if finished { " (missione compiuta)" } else { "" }
+        );
+        session.notify(text);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn all() -> Missions {
+        Missions {
+            enabled: true,
+            ..Default::default()
+        }
+    }
+
+    fn facts(pos: Vec3, hour: f32, accepted: bool, done: bool) -> Facts {
+        Facts {
+            pos,
+            hour,
+            quest_accepted: accepted,
+            quest_done: done,
+        }
+    }
+
+    #[test]
+    fn the_prologue_file_has_the_four_new_main_missions_in_a_chain() {
+        let m = all();
+        let ids: Vec<&str> = m.list.iter().map(|x| x.id.as_str()).collect();
+        assert_eq!(ids, ["mp01", "mp03", "mp04", "mp05"]);
+        for mission in &m.list {
+            assert!(!mission.title.is_empty() && !mission.summary.is_empty());
+            assert!(mission.steps.len() >= 3, "{}", mission.id);
+            for s in &mission.steps {
+                assert!(!s.goal.is_empty() && !s.when.is_empty(), "{}", mission.id);
+                // Chi deve parlare ha qualcosa da dire.
+                if s.when.iter().any(|w| matches!(w, When::Talk(_))) {
+                    assert!(!s.lines.is_empty(), "{}: {}", mission.id, s.goal);
+                }
+            }
+        }
+        assert!(m.list[1].after_quest, "mp03 viene dopo Denaro Rubato");
+        assert_eq!(m.list[2].after, "mp03");
+        assert_eq!(m.list[3].after, "mp04");
+        // Solo l'ultima tappa del Prologo apre la via del continente.
+        assert!(!m.unlocked("continente"));
+    }
+
+    #[test]
+    fn steps_advance_only_when_every_condition_holds() {
+        let text = "[missione a]\ntitolo: A\nsommario: s\n[tappa]\nobiettivo: vai\n\
+                    quando: vicino 10 10 3\nquando: ora 21 4\nmonete: 5\n\
+                    [tappa]\nobiettivo: parla\nquando: parla Gino\n> Ciao {nome}.\nsblocca: x\n";
+        let mut m = Missions {
+            list: parse(text),
+            progress: vec![0],
+            enabled: true,
+            talking: None,
+            talked: Vec::new(),
+        };
+        // Posto giusto, ora sbagliata.
+        assert!(
+            m.advance(&facts(Vec3::new(10.0, 0.0, 11.0), 12.0, false, false))
+                .is_empty()
+        );
+        // Ora giusta (a cavallo della mezzanotte), posto sbagliato.
+        assert!(
+            m.advance(&facts(Vec3::new(50.0, 0.0, 11.0), 23.0, false, false))
+                .is_empty()
+        );
+        let done = m.advance(&facts(Vec3::new(10.0, 0.0, 11.0), 2.0, false, false));
+        assert_eq!(done.len(), 1);
+        assert_eq!(done[0].1.coins, 5);
+        assert!(!done[0].2);
+        // Il dialogo vale solo se letto fino in fondo.
+        let f = facts(Vec3::ZERO, 12.0, false, false);
+        assert_eq!(m.dialog_for("Marta", &f, "Ada"), None);
+        assert_eq!(
+            m.dialog_for("Gino", &f, "Ada"),
+            Some(vec!["Ciao Ada.".to_string()])
+        );
+        m.dialog_closed(false);
+        assert!(m.advance(&f).is_empty());
+        m.dialog_for("Gino", &f, "Ada");
+        m.dialog_closed(true);
+        let done = m.advance(&f);
+        assert!(done[0].2, "missione finita");
+        assert!(m.done("a") && m.unlocked("x"));
+    }
+
+    #[test]
+    fn progress_survives_a_save_and_the_chain_waits_for_the_stolen_money() {
+        let mut m = all();
+        // mp03 non comincia finché Denaro Rubato non è completata.
+        assert_eq!(m.journal(false).len(), 1);
+        m.jump("mp04", 1).unwrap();
+        assert!(m.done("mp03"));
+        let saved = m.snapshot();
+        let mut again = all();
+        again.restore(&saved);
+        assert_eq!(again.progress, m.progress);
+        assert_eq!(again.journal(true).len(), 3);
+        again.reset();
+        assert!(!again.done("mp03"));
+    }
+}

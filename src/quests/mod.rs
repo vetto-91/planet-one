@@ -11,6 +11,7 @@
 //! e una riga in [`journal_entries`] / [`npc_dialog`].
 
 pub mod denaro_rubato;
+pub mod missions;
 
 use bevy::prelude::*;
 use denaro_rubato::QuestState;
@@ -210,9 +211,15 @@ pub struct QuestEntry {
 }
 
 /// Voci del diario: solo le quest accettate. Una riga per quest registrata.
-pub fn journal_entries(quest: &QuestState, texts: &QuestTexts) -> Vec<QuestEntry> {
+pub fn journal_entries(
+    quest: &QuestState,
+    texts: &QuestTexts,
+    missions: &missions::Missions,
+) -> Vec<QuestEntry> {
     let mut entries = Vec::new();
     entries.extend(denaro_rubato::journal_entry(quest, &texts.denaro_rubato));
+    // Le missioni del Prologo, nell'ordine della storia.
+    entries.extend(missions.journal(quest.stage == denaro_rubato::QuestStage::Completed));
     entries
 }
 

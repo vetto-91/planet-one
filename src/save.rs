@@ -25,6 +25,9 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
+/// Dove comincia una nuova partita: la spiaggia a est del molo, tra i rottami (missione mp01).
+pub const NEW_GAME_START: Vec3 = Vec3::new(30.0, 1.6, 87.5);
+
 /// Salvataggi automatici tenuti per ogni personaggio e intervallo (secondi reali).
 const AUTO_SLOTS: u32 = 3;
 const AUTO_EVERY: f32 = 300.0;
@@ -129,6 +132,8 @@ pub struct SaveData {
     pub villagers: Vec<VillagerSave>,
     pub keeper_asleep: bool,
     pub keeper_stove_manual: bool,
+    /// Missioni del Prologo: (id, tappa corrente).
+    pub missions: Vec<(String, usize)>,
     /// Regione in cui si trova il giocatore.
     pub region: Region,
     /// Stato delle altre regioni visitate (porte, contenitori, nemici…), com'erano quando
@@ -149,7 +154,8 @@ const WORLD_SECTIONS: [&str; 8] = [
     "abitanti",
     "viandante",
 ];
-const HERO_SECTIONS: [&str; 8] = [
+const HERO_SECTIONS: [&str; 9] = [
+    "missioni",
     "personaggio",
     "tempo",
     "giocatore",
@@ -328,6 +334,7 @@ impl SaveData {
             villagers: Vec::new(),
             keeper_asleep: false,
             keeper_stove_manual: false,
+            missions: Vec::new(),
             region: Region::Isola,
             elsewhere: Vec::new(),
             present: HashSet::new(),
@@ -498,6 +505,11 @@ impl SaveData {
         line("[viandante]".into());
         line(format!("a_letto = {}", yes(self.keeper_asleep)));
         line(format!("stufa_manuale = {}", yes(self.keeper_stove_manual)));
+        line(String::new());
+        line("[missioni]".into());
+        for (id, step) in &self.missions {
+            line(format!("{id} = {step}"));
+        }
         // Le altre regioni visitate: un salvataggio dentro l'altro, righe che iniziano con «>».
         for (region, inner) in &self.elsewhere {
             let mut copy = (**inner).clone();
@@ -662,6 +674,10 @@ impl SaveData {
                     "ladro_avvistato" => self.thief_spotted = read_bool(v)?,
                     _ => return None,
                 }
+            }
+            "missioni" => {
+                let (k, v) = pair?;
+                self.missions.push((k.to_string(), v.parse().ok()?));
             }
             "porte" => {
                 let (k, v) = pair?;
@@ -1004,6 +1020,7 @@ pub struct WorldParams<'w, 's> {
     clock: ResMut<'w, GameClock>,
     weather: ResMut<'w, WeatherState>,
     quest: ResMut<'w, QuestState>,
+    missions: ResMut<'w, crate::quests::missions::Missions>,
     containers: ResMut<'w, Containers>,
     village: Res<'w, crate::village::VillageInfo>,
     memory: ResMut<'w, RegionMemory>,
@@ -1041,6 +1058,7 @@ fn collect(kind: SaveKind, session: &Session, hero: &HeroParams, world: &WorldPa
         });
     let mut d = SaveData::blank();
     d.kind = kind;
+    d.missions = world.missions.snapshot();
     d.region = crate::region::current();
     d.elsewhere = world
         .memory
@@ -1141,6 +1159,9 @@ fn collect(kind: SaveKind, session: &Session, hero: &HeroParams, world: &WorldPa
 /// Applica una fotografia alla scena appena ricostruita.
 fn apply(d: &SaveData, hero: &mut HeroParams, world: &mut WorldParams) {
     let has = |s: &str| d.present.contains(s);
+    if has("missioni") {
+        world.missions.restore(&d.missions);
+    }
     if has("personaggio") {
         *hero.character = Character {
             name: d.name.clone(),
@@ -1450,6 +1471,9 @@ pub fn finish_loading(
         LoadRequest::New(character) => {
             start_session(&mut session, &character.name, 0.0);
             world.memory.0.clear();
+            // La storia comincia sulla spiaggia a est del molo, tra i rottami (missione mp01).
+            world.missions.reset();
+            world.missions.enabled = true;
             *hero.character = character;
             *hero.inventory = Inventory::default();
             *hero.equip = Equipment::default();
@@ -1460,7 +1484,8 @@ pub fn finish_loading(
             world.weather.snow_cover = 0.0;
             *world.containers = Containers::default();
             if let Ok((mut t, _, mut hp)) = hero.players.single_mut() {
-                t.translation = Vec3::new(0.0, 1.0, 0.0);
+                t.translation = NEW_GAME_START;
+                hero.orbit.yaw = std::f32::consts::PI * 0.75;
                 hp.max = hero.character.stats.max_health();
                 hp.current = hp.max;
             }
@@ -1495,6 +1520,10 @@ pub fn finish_loading(
             request.kind = Some(SaveKind::Auto);
         }
         LoadRequest::File(data) => {
+            // Una partita salvata è una partita vera: le missioni sono attive (un salvataggio
+            // vecchio, senza la sezione, riparte dalla prima tappa di ogni missione).
+            world.missions.reset();
+            world.missions.enabled = true;
             world.memory.0 = data
                 .elsewhere
                 .iter()

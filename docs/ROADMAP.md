@@ -70,6 +70,7 @@ Strategia: **vertical slice prima**. Una demo giocabile (1 quest, 1 NPC, 1 nemic
 | 13.4 — Beta test: audio e camera | Audio posizionale (ADR 0032), passi sull'erba, voci che non saturano, camera fuori dalle gronde, intoppi segnalati dal pilota | `v0.0.60.0` |
 | 14.1 — Continente del Nord: regione esplorabile | Regioni separate e viaggio con Gaspare (ADR 0033); Piana delle Brume: approdo, bosco di querce e betulle, Grande Lago, Fontebruma, i 16 luoghi | `v0.0.61.0` |
 | 14.2 — Continente del Nord: abitanti | I 12 di Fontebruma, Olmo, Nereo, le tre famiglie isolate, Barnaba: case, orari, voci, personalità IA, negozi | `v0.0.61.0` |
+| 14.3 — Isola: storia principale del Prologo | Motore di missioni a tappe da file (ADR 0034); Il Nome sulla Sabbia, Le Voci delle Pietre Antiche, Sotto l'Arco dei Sei Gradoni, Oltre il Velo del Nord; il continente si apre con la storia | in corso |
 | 5.y — Mondo vivo | Colonna sonora con volume, casetta-chiosco esplorabile (porta, interni, stufa con fumo), routine giorno/notte del Viandante, voci dei personaggi, versione nel menu | `v0.0.7.0` |
 | 5.z — Mondo vivo, rifiniture | Interazione col mirino, casetta con serranda/interruttore/finestre e luci con ombre, routine del Viandante v2, voci normalizzate con ducking della musica | `v0.0.8.0` |
 | 5.w — Mappa e strumenti | Mappa dall'alto (M) con bussola e zoom, modalità debug piazzamenti (F4) con file `debug/placements.txt`, vetri e scuri spessi, il Viandante chiude porta e finestre | `v0.0.9.0` |
