@@ -11,8 +11,11 @@ use bevy::audio::Volume;
 use bevy::prelude::*;
 use std::collections::VecDeque;
 
-/// Guadagno delle voci rispetto allo slider (le voci devono sovrastare la musica).
-const VOICE_GAIN: f32 = 1.4;
+/// Guadagno delle voci rispetto allo slider. Le clip arrivano già quasi al massimo
+/// (picchi fra −3 e −0,8 dBFS): con 1,4 a volume pieno superavano 0 dBFS e saturavano.
+/// Sopra la musica le tiene il ducking (`audio::DUCK_LEVEL`), non il guadagno.
+/// Vale anche per la voce dell'IA (`ai::tts`).
+pub const VOICE_GAIN: f32 = 0.85;
 
 /// Origine della voce: la voce di un dialogo si ferma alla chiusura del
 /// dialogo, quella di un fumetto (congedo, battuta del ladro) no.

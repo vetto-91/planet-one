@@ -190,8 +190,9 @@ impl Default for MusicDuck {
     }
 }
 
-/// Livello della musica mentre parla un personaggio.
-const DUCK_LEVEL: f32 = 0.35;
+/// Livello della musica mentre parla un personaggio (le voci non sono amplificate:
+/// è la musica a farsi da parte).
+const DUCK_LEVEL: f32 = 0.25;
 /// Costante di tempo (s) della dissolvenza del ducking.
 const DUCK_TAU: f32 = 0.25;
 

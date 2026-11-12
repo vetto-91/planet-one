@@ -15,8 +15,6 @@ use std::process::{Command, Stdio};
 use std::sync::{Mutex, mpsc};
 use std::time::{Duration, Instant};
 
-/// Guadagno rispetto allo slider delle voci (come i clip registrati).
-const VOICE_GAIN: f32 = 1.4;
 /// Tempo massimo (s) di una sintesi.
 const SYNTH_TIMEOUT: u64 = 30;
 /// Ogni quanti secondi si ricerca Piper e le voci.
@@ -360,8 +358,9 @@ pub fn tts_pump(
                     AiVoice,
                     VoiceClip,
                     AudioPlayer::new(handle),
-                    PlaybackSettings::DESPAWN
-                        .with_volume(Volume::Linear(settings.voice_volume * VOICE_GAIN)),
+                    PlaybackSettings::DESPAWN.with_volume(Volume::Linear(
+                        settings.voice_volume * crate::voice::VOICE_GAIN,
+                    )),
                 ));
                 info!("[TTS] voce avviata");
             }

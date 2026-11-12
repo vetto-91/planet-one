@@ -258,7 +258,7 @@ Trovati guardando le foto (da decidere):
 - **Memoria video**: un altro modello di Ollama (`ornith-1.5:35b-256k`, 9,4 GB) occupava la scheda e il gioco andava in «Out of Memory» anche a 720p. Scaricato con il permesso dell'utente; succederà di nuovo ogni volta che quel modello è in memoria.
 - **Insegne vuote** (corretto): le targhe accanto alle porte di arciere, fabbro, forno e locanda avevano solo un rettangolo chiaro al posto della scritta. Ora hanno la tabella con il nome (stesse texture dei cartelli, `scripts/make_cartelli.py`; nuova `arcere.png`, «Arciere — archi e frecce»).
 - **Camera nelle gronde** (corretto): girando attorno al giocatore la camera entrava nelle gronde dei tetti (una foto di `giro-camera` era coperta da una tavola). I tetti erano coperti per la camera solo da blocchi dritti dentro i muri; ora ogni falda (case, chiesa, pozzo: tutto ciò che usa `gable`) ha una lastra inclinata con le misure vere, gronde comprese, che ferma la camera come un muro.
-- **Voce**: il saluto di Marta arriva a 0,0 dBFS (0,1% dei campioni al limite): va abbassata di qualche dB.
+- **Voce** (corretto): il saluto di Marta arrivava a 0,0 dBFS e gracchiava (0,2% dei campioni saturati con le voci al 100%). Le clip sono già quasi al massimo (picchi fra −3 e −0,8 dBFS) e il gioco le amplificava di 1,4: ora il guadagno è 0,85 per tutte le voci (registrate e IA) e la musica, mentre si parla, scende al 25% invece del 35%. Con le voci al 100%: picco −2,1 dBFS, nessuna saturazione, la trascrizione di whisper resta esatta.
 
 Da tenere per la fase delle prestazioni:
 - le prove usano la grafica «alta» predefinita, mentre le impostazioni dell'utente sono basse (niente ombre, SSAO, bloom): gli FPS misurati sono quelli del caso peggiore;

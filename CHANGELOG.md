@@ -4,6 +4,7 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **Voci**: non gracchiano più a volume pieno (prima superavano il massimo); mentre un personaggio parla la musica si abbassa un po' di più.
 - **Camera**: non entra più nelle gronde dei tetti girando attorno al giocatore; le falde di case, chiesa e pozzo la fermano come i muri.
 
 ## v0.0.59.0 — Beta test: prove automatiche fino a 4K, meteo, interfaccia, insegne (2026-11-11)
