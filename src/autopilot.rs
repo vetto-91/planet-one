@@ -83,6 +83,9 @@ impl Goal {
     }
 }
 
+/// Un frame più lungo di così è un intoppo visibile (meno di 10 FPS per un attimo).
+const SLOW_FRAME_MS: f32 = 100.0;
+
 /// Stato del pilota e richieste dalla shell (`foto`, `dump`).
 #[derive(Resource, Default)]
 pub struct Autopilot {
@@ -118,6 +121,10 @@ pub struct Autopilot {
     fps_timer: f32,
     /// Risoluzione vera della finestra (il gestore delle finestre può ridurre quella chiesta).
     resolution: Option<(u32, u32)>,
+    /// Ultimo comando eseguito (riga, testo): a chi attribuire un frame lento.
+    current: (usize, String),
+    /// Frame più lenti di `SLOW_FRAME_MS`: (durata in ms, riga, comando).
+    slow: Vec<(f32, usize, String)>,
     /// Registrazione dell'audio del sistema in corso (`registra`), con il file di uscita.
     recorder: Option<(std::process::Child, PathBuf)>,
     pub passed: u32,
@@ -181,6 +188,12 @@ impl Autopilot {
             s.push_str(&format!(
                 "FPS: medio {avg:.0}, 1% peggiore {low:.0}, minimo {min:.0} ({} campioni)\n",
                 self.fps.len()
+            ));
+        }
+        if let Some((ms, n, cmd)) = self.slow.iter().max_by(|a, b| a.0.total_cmp(&b.0)) {
+            s.push_str(&format!(
+                "Frame lenti (oltre {SLOW_FRAME_MS:.0} ms): {}, il peggiore {ms:.0} ms alla riga {n} ({cmd})\n",
+                self.slow.len()
             ));
         }
         for f in &self.failures {
@@ -472,6 +485,21 @@ pub fn run_autopilot(
             pilot.fps.push(f as f32);
         }
     }
+    // Intoppi: ogni frame lento, con il comando che stava girando.
+    if pilot.started
+        && let Some(ms) = ui
+            .diagnostics
+            .get(&FrameTimeDiagnosticsPlugin::FRAME_TIME)
+            .and_then(|d| d.value())
+        && ms as f32 > SLOW_FRAME_MS
+        // La foto stessa (copia dell'immagine dalla scheda video) non è un intoppo del gioco.
+        && !pilot.current.1.starts_with("foto")
+        && !pilot.current.1.starts_with("giro-foto")
+    {
+        let (n, cmd) = pilot.current.clone();
+        warn!("[PILOTA] frame lento: {ms:.0} ms (riga {n}: {cmd})");
+        pilot.slow.push((ms as f32, n, cmd));
+    }
     // Il copione parte quando la partita è in corso da un po' (scena e abitanti pronti).
     if !pilot.started {
         if *state.get() == crate::AppState::Playing {
@@ -652,6 +680,7 @@ pub fn run_autopilot(
         return;
     };
     info!("[PILOTA] > {line}");
+    pilot.current = (n, line.clone());
     let words: Vec<&str> = line.split_whitespace().collect();
     let num = |i: usize| -> Option<f32> { words.get(i)?.replace(',', ".").parse().ok() };
     match words[0].to_lowercase().as_str() {

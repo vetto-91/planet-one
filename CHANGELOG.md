@@ -4,6 +4,7 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- Pilota: segnala gli intoppi (frame oltre i 100 ms) con il comando in corso, nel log e nel rapporto.
 - **Voci**: non gracchiano più a volume pieno (prima superavano il massimo); mentre un personaggio parla la musica si abbassa un po' di più.
 - **Camera**: non entra più nelle gronde dei tetti girando attorno al giocatore; le falde di case, chiesa e pozzo la fermano come i muri.
 
