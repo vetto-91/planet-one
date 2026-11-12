@@ -562,242 +562,258 @@ nota: luogo
 punti: (-110.00,152.00)
 rotazioni: 0
 
-[P-0074] tipo: stalla | modalità: singolo
+[P-0074] tipo: casa-piccola | modalità: singolo
+quando: generato da gen_nord.py
+punto: x 20.00, z 139.00
+quantità: 1   seed: 586006
+nota: luogo
+punti: (20.00,139.00)
+rotazioni: 250
+
+[P-0075] tipo: stalla | modalità: singolo
 quando: generato da gen_nord.py
 punto: x 226.00, z 292.00
-quantità: 1   seed: 586006
+quantità: 1   seed: 593925
 nota: luogo
 punti: (226.00,292.00)
 rotazioni: 70
 
-[P-0075] tipo: casse | modalità: singolo
+[P-0076] tipo: casse | modalità: singolo
 quando: generato da gen_nord.py
 punto: x 218.00, z 284.00
-quantità: 1   seed: 593925
+quantità: 1   seed: 601844
 nota: luogo
 punti: (218.00,284.00)
 rotazioni: 0
 
-[P-0076] tipo: carretto | modalità: singolo
+[P-0077] tipo: carretto | modalità: singolo
 quando: generato da gen_nord.py
 punto: x 224.00, z 302.00
-quantità: 1   seed: 601844
+quantità: 1   seed: 609763
 nota: luogo
 punti: (224.00,302.00)
 rotazioni: 130
 
-[P-0077] tipo: botti | modalità: singolo
+[P-0078] tipo: botti | modalità: singolo
 quando: generato da gen_nord.py
 punto: x 232.00, z 300.00
-quantità: 1   seed: 609763
+quantità: 1   seed: 617682
 nota: luogo
 punti: (232.00,300.00)
 rotazioni: 0
 
-[P-0078] tipo: casse | modalità: singolo
+[P-0079] tipo: casse | modalità: singolo
 quando: generato da gen_nord.py
 punto: x 146.00, z 188.00
-quantità: 1   seed: 617682
+quantità: 1   seed: 625601
 nota: luogo
 punti: (146.00,188.00)
 rotazioni: 0
 
-[P-0079] tipo: casse | modalità: singolo
+[P-0080] tipo: casse | modalità: singolo
 quando: generato da gen_nord.py
 punto: x 134.00, z 216.00
-quantità: 1   seed: 625601
+quantità: 1   seed: 633520
 nota: luogo
 punti: (134.00,216.00)
 rotazioni: 40
 
-[P-0080] tipo: torre-rovina | modalità: singolo
+[P-0081] tipo: torre-rovina | modalità: singolo
 quando: generato da gen_nord.py
 punto: x -235.00, z 20.00
-quantità: 1   seed: 633520
+quantità: 1   seed: 641439
 nota: luogo
 punti: (-235.00,20.00)
 rotazioni: 135
 
-[P-0081] tipo: botti | modalità: singolo
+[P-0082] tipo: botti | modalità: singolo
 quando: generato da gen_nord.py
 punto: x 190.00, z -380.00
-quantità: 1   seed: 641439
+quantità: 1   seed: 649358
 nota: luogo
 punti: (190.00,-380.00)
 rotazioni: 0
 
-[P-0082] tipo: casse | modalità: singolo
+[P-0083] tipo: casse | modalità: singolo
 quando: generato da gen_nord.py
 punto: x 194.00, z -376.00
-quantità: 1   seed: 649358
+quantità: 1   seed: 657277
 nota: luogo
 punti: (194.00,-376.00)
 rotazioni: 20
 
-[P-0083] tipo: pagliaio | modalità: singolo
+[P-0084] tipo: pagliaio | modalità: singolo
 quando: generato da gen_nord.py
 punto: x 186.00, z -386.00
-quantità: 1   seed: 657277
+quantità: 1   seed: 665196
 nota: luogo
 punti: (186.00,-386.00)
 rotazioni: 0
 
-[P-0084] tipo: carretto | modalità: singolo
+[P-0085] tipo: carretto | modalità: singolo
 quando: generato da gen_nord.py
 punto: x 198.00, z -384.00
-quantità: 1   seed: 665196
+quantità: 1   seed: 673115
 nota: luogo
 punti: (198.00,-384.00)
 rotazioni: 300
 
-[P-0085] tipo: rovine | modalità: singolo
+[P-0086] tipo: rovine | modalità: singolo
 quando: generato da gen_nord.py
 punto: x -110.00, z 262.00
-quantità: 1   seed: 673115
+quantità: 1   seed: 681034
 nota: luogo
 punti: (-110.00,262.00)
 rotazioni: 0
 
-[P-0086] tipo: casa-piccola | modalità: singolo
+[P-0087] tipo: casa-piccola | modalità: singolo
 quando: generato da gen_nord.py
 punto: x -266.00, z 168.00
-quantità: 1   seed: 681034
+quantità: 1   seed: 688953
 nota: luogo
 punti: (-266.00,168.00)
 rotazioni: 110
 
-[P-0087] tipo: botti | modalità: singolo
+[P-0088] tipo: botti | modalità: singolo
 quando: generato da gen_nord.py
 punto: x -260.00, z 173.00
-quantità: 1   seed: 688953
+quantità: 1   seed: 696872
 nota: luogo
 punti: (-260.00,173.00)
 rotazioni: 0
 
-[P-0088] tipo: banditi | modalità: singolo
+[P-0089] tipo: banditi | modalità: singolo
 quando: generato da gen_nord.py
 punto: x 30.00, z -490.00
-quantità: 1   seed: 696872
+quantità: 1   seed: 704791
 nota: luogo
 punti: (30.00,-490.00)
 rotazioni: 200
 
-[P-0089] tipo: arco | modalità: singolo
+[P-0090] tipo: arco | modalità: singolo
 quando: generato da gen_nord.py
 punto: x 0.00, z -548.00
-quantità: 1   seed: 704791
+quantità: 1   seed: 712710
 nota: luogo
 punti: (0.00,-548.00)
 rotazioni: 0
 
-[P-0090] tipo: casa | modalità: singolo
+[P-0091] tipo: casa-grande | modalità: singolo
 quando: generato da gen_nord.py
-punto: x -362.00, z 332.00
-quantità: 1   seed: 712710
+punto: x -363.00, z 332.00
+quantità: 1   seed: 720629
 nota: luogo
-punti: (-362.00,332.00)
+punti: (-363.00,332.00)
 rotazioni: 80
 
-[P-0091] tipo: pagliaio | modalità: singolo
+[P-0092] tipo: pagliaio | modalità: singolo
 quando: generato da gen_nord.py
 punto: x -352.00, z 340.00
-quantità: 1   seed: 720629
+quantità: 1   seed: 728548
 nota: luogo
 punti: (-352.00,340.00)
 rotazioni: 0
 
-[P-0092] tipo: pagliaio | modalità: singolo
+[P-0093] tipo: pagliaio | modalità: singolo
 quando: generato da gen_nord.py
 punto: x -356.00, z 322.00
-quantità: 1   seed: 728548
+quantità: 1   seed: 736467
 nota: luogo
 punti: (-356.00,322.00)
 rotazioni: 0
 
-[P-0093] tipo: orto | modalità: singolo
+[P-0094] tipo: orto | modalità: singolo
 quando: generato da gen_nord.py
 punto: x -370.00, z 344.00
-quantità: 1   seed: 736467
+quantità: 1   seed: 744386
 nota: luogo
 punti: (-370.00,344.00)
 rotazioni: 0
 
-[P-0094] tipo: casa-piccola | modalità: singolo
+[P-0095] tipo: casa-piccola | modalità: singolo
 quando: generato da gen_nord.py
 punto: x 327.00, z 330.00
-quantità: 1   seed: 744386
+quantità: 1   seed: 752305
 nota: luogo
 punti: (327.00,330.00)
 rotazioni: 90
 
-[P-0095] tipo: casa-piccola | modalità: singolo
+[P-0096] tipo: casa-piccola | modalità: singolo
 quando: generato da gen_nord.py
 punto: x 345.00, z 330.00
-quantità: 1   seed: 752305
+quantità: 1   seed: 760224
 nota: luogo
 punti: (345.00,330.00)
 rotazioni: 270
 
-[P-0096] tipo: carbonaia | modalità: singolo
+[P-0097] tipo: carbonaia | modalità: singolo
 quando: generato da gen_nord.py
 punto: x 336.00, z 318.00
-quantità: 1   seed: 760224
+quantità: 1   seed: 768143
 nota: luogo
 punti: (336.00,318.00)
 rotazioni: 0
 
-[P-0097] tipo: carbonaia | modalità: singolo
+[P-0098] tipo: carbonaia | modalità: singolo
 quando: generato da gen_nord.py
 punto: x 330.00, z 344.00
-quantità: 1   seed: 768143
+quantità: 1   seed: 776062
 nota: luogo
 punti: (330.00,344.00)
 rotazioni: 0
 
-[P-0098] tipo: carbonaia | modalità: singolo
+[P-0099] tipo: carbonaia | modalità: singolo
 quando: generato da gen_nord.py
 punto: x 342.00, z 343.00
-quantità: 1   seed: 776062
+quantità: 1   seed: 783981
 nota: luogo
 punti: (342.00,343.00)
 rotazioni: 0
 
-[P-0099] tipo: palafitta | modalità: singolo
+[P-0100] tipo: palafitta | modalità: singolo
 quando: generato da gen_nord.py
 punto: x -198.00, z 98.00
-quantità: 1   seed: 783981
+quantità: 1   seed: 791900
 nota: luogo
 punti: (-198.00,98.00)
 rotazioni: 300
 
-[P-0100] tipo: palafitta | modalità: singolo
+[P-0101] tipo: palafitta | modalità: singolo
 quando: generato da gen_nord.py
 punto: x -188.00, z 104.00
-quantità: 1   seed: 791900
+quantità: 1   seed: 799819
 nota: luogo
 punti: (-188.00,104.00)
 rotazioni: 330
 
-[P-0101] tipo: casa-piccola | modalità: singolo
+[P-0102] tipo: casa-grande | modalità: singolo
+quando: generato da gen_nord.py
+punto: x -218.00, z 84.00
+quantità: 1   seed: 807738
+nota: luogo
+punti: (-218.00,84.00)
+rotazioni: 120
+
+[P-0103] tipo: casa-piccola | modalità: singolo
 quando: generato da gen_nord.py
 punto: x 356.00, z 46.00
-quantità: 1   seed: 799819
+quantità: 1   seed: 815657
 nota: luogo
 punti: (356.00,46.00)
 rotazioni: 250
 
-[P-0102] tipo: casse | modalità: singolo
+[P-0104] tipo: casse | modalità: singolo
 quando: generato da gen_nord.py
 punto: x 362.00, z 34.00
-quantità: 1   seed: 807738
+quantità: 1   seed: 823576
 nota: luogo
 punti: (362.00,34.00)
 rotazioni: 0
 
-[P-0103] tipo: botti | modalità: singolo
+[P-0105] tipo: botti | modalità: singolo
 quando: generato da gen_nord.py
 punto: x 352.00, z 38.00
-quantità: 1   seed: 815657
+quantità: 1   seed: 831495
 nota: luogo
 punti: (352.00,38.00)
 rotazioni: 0

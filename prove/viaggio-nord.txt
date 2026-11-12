@@ -40,6 +40,44 @@ verifica app = Map
 foto mappa
 chiudi
 aspetta 1
+# Gli abitanti: Mirta vende erbe alla bancarella, Barnaba accoglie con un indovinello.
+ora 10
+tp 0 6 -246
+aspetta 8
+camera 0 20 5
+tp mirta
+aspetta 1
+attendi npc:mirta:modo = Ready 60
+guarda mirta
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+verifica parla = Mirta
+avanza
+scegli comprare
+aspetta 1
+verifica app = Shop
+foto negozio-mirta
+chiudi
+aspetta 1
+tp barnaba
+aspetta 2
+attendi npc:barnaba:modo = Ready 60
+guarda barnaba
+aspetta 1
+premi e
+aspetta 1
+verifica parla = Barnaba
+foto barnaba
+chiudi
+aspetta 1
+# Il Grande Lago è acqua vera: al largo si nuota.
+tp -60 1 150
+aspetta 4
+dump lago
+verifica sopra_terreno > 1
+verifica y < 0
 # I luoghi nuovi.
 tp 0 8 -534
 aspetta 6

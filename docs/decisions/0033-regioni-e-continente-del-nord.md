@@ -33,8 +33,13 @@ Il gioco caricava un solo mondo di 300 × 300 m, tutto insieme, ed era già limi
 - **Clima**: nella Piana delle Brume, senza meteo forzato, c'è nebbia con pioggia sottile (neve d'inverno).
 
 ## Conseguenze
-- Il primo traguardo è la **regione esplorabile**: abitanti (a parte Gaspare), negozi, missioni, eventi,
-  stati dei luoghi sulla mappa, viaggio veloce e bottino che si rigenera arrivano nei passi successivi.
+- Primo traguardo: la **regione esplorabile**. Secondo: gli **abitanti** (`nord/abitanti.txt`, generato da
+  `gen_nord.py`; personalità in `assets/ai/`, voci dei saluti con Piper locale da `gen_voci_abitanti.py`):
+  i 12 di Fontebruma, Olmo, Nereo, le tre famiglie isolate, Barnaba. I negozi riusano gli assortimenti
+  esistenti (erborista, armaiolo, viandante). Missioni, eventi, stati dei luoghi sulla mappa, viaggio veloce
+  e bottino che si rigenera arrivano nei passi successivi.
+- La famiglia delle palafitte dorme in una casa a riva (le palafitte non hanno letti); non c'è un modello
+  di bambino: Milo usa quello di un adulto.
 - Le mura di Fontebruma sono di pietra come a Fontevivo (la trama parla di palizzata).
 - Sulla mappa del continente il bosco si vede solo attorno al giocatore (è piantato a zone).
 - Il lago ha le onde del mare e la stessa acqua trasparente.

@@ -7,7 +7,7 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 - **Continente del Nord, primo passo** (ADR 0033): una seconda regione di 1.200 × 1.200 m, la Piana delle Brume dell'Atto I. Approdo delle Brume, bosco di querce e betulle, Grande Lago con isolotto, Rio delle Betulle, collina di Barnaba, Fontebruma (mura, due porte, piazza con la Fonte Grigia, locanda, fabbro, forno, chiesa, case) e i 16 luoghi della trama, con i sentieri che li collegano e i nomi sulla mappa. Nebbia e pioggia sottile di base.
 - **Viaggio**: Gaspare, al porticciolo, porta in barca al continente e riporta indietro dall'approdo; il personaggio conserva inventario, quest, data e ora, e ogni regione ricorda com'era stata lasciata (anche nei salvataggi). Shell: `regione <isola|nord>`.
 - Luoghi nuovi: arco di pietra, carbonaie, palafitte. Vegetazione del continente piantata a zone attorno al giocatore.
-- Per ora sul continente c'è solo Gaspare: abitanti, negozi e missioni arrivano nei prossimi passi.
+- **Abitanti del continente**: i 12 di Fontebruma (l'Anziano Vieri, Dalia la locandiera, Brando, Mirta, Corrado, Luce, Sereno, il Capitano Dario e le guardie Greta, Tancredi e Vespero), Olmo al lago, l'eremita Nereo, le tre famiglie isolate (Giona, Ada e Milo; Rocco e Brenno; Tullio, Sira e Nonna Calliope) e Barnaba sulla collina. Ognuno ha casa, letto, orari, saluti con la voce e una personalità per l'IA locale presa dalla trama; Mirta, Corrado e Sereno vendono. Missioni ed eventi arrivano nei prossimi passi.
 
 ## v0.0.60.0 — Beta test: audio posizionale, passi sull'erba, voci, camera e gronde (2026-11-12)
 

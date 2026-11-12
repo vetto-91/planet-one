@@ -131,6 +131,7 @@ POI = [
     ("santuario", -380, 130, 90),
     # Lago: pontile di Olmo e isolotto
     ("barca", 2, 151, 80), ("reti", 10, 144, 0), ("botti", 11, 150, 0), ("casse", -110, 152, 0),
+    ("casa-piccola", 20, 139, 250),
     # Segheria vecchia sul Rio
     ("stalla", 226, 292, 70), ("casse", 218, 284, 0), ("carretto", 224, 302, 130), ("botti", 232, 300, 0),
     # Ponte coperto dei contrabbandieri
@@ -148,12 +149,12 @@ POI = [
     # Arco di pietra
     ("arco", 0, -548, 0),
     # Podere delle querce cave
-    ("casa", -362, 332, 80), ("pagliaio", -352, 340, 0), ("pagliaio", -356, 322, 0), ("orto", -370, 344, 0),
+    ("casa-grande", -363, 332, 80), ("pagliaio", -352, 340, 0), ("pagliaio", -356, 322, 0), ("orto", -370, 344, 0),
     # Carbonaie: le due capanne una di fronte all'altra, a venti passi
     ("casa-piccola", 327, 330, 90), ("casa-piccola", 345, 330, 270), ("carbonaia", 336, 318, 0),
     ("carbonaia", 330, 344, 0), ("carbonaia", 342, 343, 0),
     # Palafitte dei giunchi bianchi
-    ("palafitta", -198, 98, 300), ("palafitta", -188, 104, 330),
+    ("palafitta", -198, 98, 300), ("palafitta", -188, 104, 330), ("casa-grande", -218, 84, 120),
     # Collina di Barnaba
     ("casa-piccola", 356, 46, 250), ("casse", 362, 34, 0), ("botti", 352, 38, 0),
 ]
@@ -217,18 +218,73 @@ def write_village():
     (WORLD / "villaggio.txt").write_text("\n".join(t) + "\n")
 
 
+# --- Abitanti (Trama-Planet-One/10, sezione 4) ----------------------------------------------------
+# nome, (tipo di casa, x, z della casa, letto), ruolo, modello, lavoro (x, z, dx, dz), orari, altro
+VILLAGERS = [
+    ("Gaspare", ("casa-piccola", -14, 448, 0), "pescatore", "civile-m-verde", (5.0, 461.0, -1, -1), "4 23 24", []),
+    # Fontebruma
+    ("Anziano Vieri", ("casa-grande", -9.5, -236.5, 0), "custode della fonte", "prete", (3.4, -248.6, -1, 1), "7 20 22", []),
+    ("Dalia", ("locanda", -9.5, -222, 0), "locandiera", "civile-f-rosa", (-4.4, -222.0, 1, 0), "6 23 24", []),
+    ("Brando", ("casa-grande", 9.5, -279, 0), "carpentiere", "civile-m-rosso", (4.4, -279.0, -1, 0), "7 19 22",
+     ["sera: 4.0 -252.5 -1 0"]),
+    ("Mirta", ("casa-media", 9.5, -265, 0), "erborista", "civile-f-viola", (-6.0, -257.4, 0, 1), "7 18 21",
+     ["negozio: erborista"]),
+    ("Corrado", ("fabbro", -10.5, -280, 0), "fabbro", "civile-m-rosso", (-4.6, -280.0, 1, 0), "7 19 22",
+     ["negozio: armaiolo"]),
+    ("Luce", ("casa", 22, -242, 0), "staffetta", "arciera", (-3.6, -244.5, 1, 0), "6 19 22",
+     ["sera: -5.0 -253.0 1 0"]),
+    ("Sereno", ("locanda", -9.5, -222, 1), "mercante", "civile-m-ocra", (6.5, -257.4, 0, 1), "8 19 23",
+     ["negozio: viandante"]),
+    ("Capitano Dario", ("caserma", 9.5, -208, 0), "capitano delle guardie", "guardia", (3.6, -203.0, -1, 1), "6 22 23",
+     ["guardia: si"]),
+    ("Guardia Greta", ("caserma", 9.5, -208, 1), "guardia", "arciera", (0, 0, 0, 1), None,
+     ["guardia: si", "cancello: Sud", "turno: 1"]),
+    ("Guardia Tancredi", ("caserma", 9.5, -208, 2), "guardia", "guardia", (0, 0, 0, 1), None,
+     ["guardia: si", "cancello: Sud", "turno: 2"]),
+    ("Guardia Vespero", ("caserma", 9.5, -208, 3), "guardia", "guardia", (0, 0, 0, 1), None,
+     ["guardia: si", "cancello: Sud", "turno: 3"]),
+    # Sul lago e nel bosco
+    ("Olmo", ("casa-piccola", 20, 139, 0), "pescatore", "civile-m-verde", (8.5, 149.5, -1, 0), "5 19 21", []),
+    ("Nereo", ("casa-piccola", -266, 168, 0), "eremita", "civile-m-ocra", (-261.0, 171.5, 1, -1), "7 20 22", []),
+    # Podere delle querce cave
+    ("Giona", ("casa-grande", -363, 332, 0), "apicoltore", "civile-m-ocra", (-353.5, 337.0, 1, 0), "7 19 21", []),
+    ("Ada", ("casa-grande", -363, 332, 1), "vasaia", "civile-f-viola", (-367.0, 341.5, 0, 1), "6 19 21", []),
+    ("Milo", ("casa-grande", -363, 332, 2), "ragazzo", "civile-m-verde", (-357.0, 326.0, 1, 0), "8 18 20", []),
+    # Carbonaie del fumo nero
+    ("Rocco", ("casa-piccola", 327, 330, 0), "carbonaio", "civile-m-rosso", (332.5, 321.0, 1, 0), "6 20 22", []),
+    ("Brenno", ("casa-piccola", 345, 330, 0), "carbonaio e fonditore", "civile-m-verde", (339.0, 339.5, -1, 0), "6 20 22", []),
+    # Palafitte dei giunchi bianchi
+    ("Tullio", ("casa-grande", -218, 84, 0), "costruttore di chiatte", "civile-m-ocra", (-207.0, 93.0, 1, 1), "6 19 21", []),
+    ("Sira", ("casa-grande", -218, 84, 1), "tessitrice", "civile-f-rosa", (-211.0, 90.0, 1, 0), "7 19 21", []),
+    ("Nonna Calliope", ("casa-grande", -218, 84, 2), "anziana", "civile-f-viola", (-213.5, 87.0, 1, 1), "8 18 20", []),
+    # Collina di Barnaba
+    ("Barnaba", ("casa-piccola", 356, 46, 0), "eremita della collina", "civile-m-ocra", (351.0, 41.0, -1, 0), "6 21 23", []),
+]
+
+
+def home_index(kind, x, z):
+    """Indice (da 0) dell'edificio di quel tipo più vicino a (x, z), nell'ordine dei piazzamenti."""
+    same = [(k, px, pz) for k, px, pz, _ in VILLAGE + POI if k == kind]
+    best = min(range(len(same)), key=lambda i: math.hypot(same[i][1] - x, same[i][2] - z))
+    assert math.hypot(same[best][1] - x, same[best][2] - z) < 1.0, (kind, x, z)
+    return best
+
+
 def write_villagers():
-    (WORLD / "abitanti.txt").write_text(
-        "# Abitanti di Fontebruma e della piana (stesso formato di assets/world/abitanti.txt).\n"
-        "# Per ora c'è solo Gaspare, che aspetta con la barca all'Approdo delle Brume per riportarti\n"
-        "# sull'isola: i 12 abitanti, le tre famiglie isolate e Barnaba arrivano nel passo successivo\n"
-        "# (Trama-Planet-One/10_ATTO_I_APPRODO_BOSCO_DEL_SUD_E_SISTEMA_MAPPA.md, sezione 4).\n"
-        "\n[Gaspare]\n"
-        "casa: casa-piccola 5 0\n"
-        "ruolo: pescatore\n"
-        "modello: civile-m-verde\n"
-        "lavoro: 5.0 461.0 -1 -1\n"
-        "orari: 4 23 24\n")
+    t = ["# Abitanti di Fontebruma e della piana (generato da scripts/gen_nord.py; stesso formato di",
+         "# assets/world/abitanti.txt). Persona e voce per la IA: assets/ai/<nome>.txt.",
+         "# Gaspare aspetta con la barca all'Approdo delle Brume per riportarti sull'isola.", ""]
+    for name, (kind, hx, hz, bed), role, model, work, hours, extra in VILLAGERS:
+        t.append(f"[{name}]")
+        t.append(f"casa: {kind} {home_index(kind, hx, hz)} {bed}")
+        t.append(f"ruolo: {role}")
+        t.append(f"modello: {model}")
+        t += extra
+        t.append("lavoro: %g %g %g %g" % work)
+        if hours:
+            t.append(f"orari: {hours}")
+        t.append("")
+    (WORLD / "abitanti.txt").write_text("\n".join(t))
 
 
 def write_placements():

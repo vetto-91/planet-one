@@ -1136,6 +1136,55 @@ mod tests {
     }
 
     #[test]
+    fn the_continent_villagers_have_homes_beds_personas_and_voices() {
+        use crate::region::{Region, set};
+        set(Region::Nord);
+        let defs = load_defs();
+        let dbg = crate::debug_place::DebugPlace::default();
+        set(Region::Isola);
+        // I 12 di Fontebruma (con le tre guardie), Olmo, Nereo, le tre famiglie, Barnaba e Gaspare.
+        assert_eq!(defs.len(), 23);
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets");
+        let mut used = std::collections::HashSet::new();
+        for d in &defs {
+            let (kind, n, bed) = d
+                .home
+                .clone()
+                .unwrap_or_else(|| panic!("{} senza casa", d.name));
+            let houses = dbg
+                .items
+                .iter()
+                .filter(|p| p.kind == kind)
+                .map(|p| p.points.len())
+                .sum::<usize>();
+            assert!(n < houses, "{}: {kind} {n} non esiste ({houses})", d.name);
+            let beds = crate::buildings::model(&kind, 1).interior.beds.len();
+            assert!(bed < beds, "{}: letto {bed} su {beds}", d.name);
+            assert!(
+                used.insert(d.home.clone()),
+                "{}: letto già occupato",
+                d.name
+            );
+            let slug = d.name.to_lowercase().replace(' ', "-");
+            assert!(
+                root.join(format!("ai/{slug}.txt")).is_file(),
+                "{}: manca la persona",
+                d.name
+            );
+            for clip in 1..=2 {
+                assert!(
+                    root.join(format!("audio/voci/abitanti/{slug}-{clip}.ogg"))
+                        .is_file(),
+                    "{}: manca la voce {clip}",
+                    d.name
+                );
+            }
+        }
+        assert_eq!(defs.iter().filter(|d| d.guard).count(), 4);
+        assert_eq!(defs.iter().filter(|d| d.shop.is_some()).count(), 3);
+    }
+
+    #[test]
     fn spec_has_villagers_and_guards() {
         let v = parse(SPEC);
         assert!(v.len() >= 8);

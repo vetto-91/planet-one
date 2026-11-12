@@ -1,11 +1,176 @@
-# Abitanti di Fontebruma e della piana (stesso formato di assets/world/abitanti.txt).
-# Per ora c'è solo Gaspare, che aspetta con la barca all'Approdo delle Brume per riportarti
-# sull'isola: i 12 abitanti, le tre famiglie isolate e Barnaba arrivano nel passo successivo
-# (Trama-Planet-One/10_ATTO_I_APPRODO_BOSCO_DEL_SUD_E_SISTEMA_MAPPA.md, sezione 4).
+# Abitanti di Fontebruma e della piana (generato da scripts/gen_nord.py; stesso formato di
+# assets/world/abitanti.txt). Persona e voce per la IA: assets/ai/<nome>.txt.
+# Gaspare aspetta con la barca all'Approdo delle Brume per riportarti sull'isola.
 
 [Gaspare]
 casa: casa-piccola 5 0
 ruolo: pescatore
 modello: civile-m-verde
-lavoro: 5.0 461.0 -1 -1
+lavoro: 5 461 -1 -1
 orari: 4 23 24
+
+[Anziano Vieri]
+casa: casa-grande 0 0
+ruolo: custode della fonte
+modello: prete
+lavoro: 3.4 -248.6 -1 1
+orari: 7 20 22
+
+[Dalia]
+casa: locanda 0 0
+ruolo: locandiera
+modello: civile-f-rosa
+lavoro: -4.4 -222 1 0
+orari: 6 23 24
+
+[Brando]
+casa: casa-grande 1 0
+ruolo: carpentiere
+modello: civile-m-rosso
+sera: 4.0 -252.5 -1 0
+lavoro: 4.4 -279 -1 0
+orari: 7 19 22
+
+[Mirta]
+casa: casa-media 1 0
+ruolo: erborista
+modello: civile-f-viola
+negozio: erborista
+lavoro: -6 -257.4 0 1
+orari: 7 18 21
+
+[Corrado]
+casa: fabbro 0 0
+ruolo: fabbro
+modello: civile-m-rosso
+negozio: armaiolo
+lavoro: -4.6 -280 1 0
+orari: 7 19 22
+
+[Luce]
+casa: casa 1 0
+ruolo: staffetta
+modello: arciera
+sera: -5.0 -253.0 1 0
+lavoro: -3.6 -244.5 1 0
+orari: 6 19 22
+
+[Sereno]
+casa: locanda 0 1
+ruolo: mercante
+modello: civile-m-ocra
+negozio: viandante
+lavoro: 6.5 -257.4 0 1
+orari: 8 19 23
+
+[Capitano Dario]
+casa: caserma 0 0
+ruolo: capitano delle guardie
+modello: guardia
+guardia: si
+lavoro: 3.6 -203 -1 1
+orari: 6 22 23
+
+[Guardia Greta]
+casa: caserma 0 1
+ruolo: guardia
+modello: arciera
+guardia: si
+cancello: Sud
+turno: 1
+lavoro: 0 0 0 1
+
+[Guardia Tancredi]
+casa: caserma 0 2
+ruolo: guardia
+modello: guardia
+guardia: si
+cancello: Sud
+turno: 2
+lavoro: 0 0 0 1
+
+[Guardia Vespero]
+casa: caserma 0 3
+ruolo: guardia
+modello: guardia
+guardia: si
+cancello: Sud
+turno: 3
+lavoro: 0 0 0 1
+
+[Olmo]
+casa: casa-piccola 6 0
+ruolo: pescatore
+modello: civile-m-verde
+lavoro: 8.5 149.5 -1 0
+orari: 5 19 21
+
+[Nereo]
+casa: casa-piccola 7 0
+ruolo: eremita
+modello: civile-m-ocra
+lavoro: -261 171.5 1 -1
+orari: 7 20 22
+
+[Giona]
+casa: casa-grande 2 0
+ruolo: apicoltore
+modello: civile-m-ocra
+lavoro: -353.5 337 1 0
+orari: 7 19 21
+
+[Ada]
+casa: casa-grande 2 1
+ruolo: vasaia
+modello: civile-f-viola
+lavoro: -367 341.5 0 1
+orari: 6 19 21
+
+[Milo]
+casa: casa-grande 2 2
+ruolo: ragazzo
+modello: civile-m-verde
+lavoro: -357 326 1 0
+orari: 8 18 20
+
+[Rocco]
+casa: casa-piccola 8 0
+ruolo: carbonaio
+modello: civile-m-rosso
+lavoro: 332.5 321 1 0
+orari: 6 20 22
+
+[Brenno]
+casa: casa-piccola 9 0
+ruolo: carbonaio e fonditore
+modello: civile-m-verde
+lavoro: 339 339.5 -1 0
+orari: 6 20 22
+
+[Tullio]
+casa: casa-grande 3 0
+ruolo: costruttore di chiatte
+modello: civile-m-ocra
+lavoro: -207 93 1 1
+orari: 6 19 21
+
+[Sira]
+casa: casa-grande 3 1
+ruolo: tessitrice
+modello: civile-f-rosa
+lavoro: -211 90 1 0
+orari: 7 19 21
+
+[Nonna Calliope]
+casa: casa-grande 3 2
+ruolo: anziana
+modello: civile-f-viola
+lavoro: -213.5 87 1 1
+orari: 8 18 20
+
+[Barnaba]
+casa: casa-piccola 10 0
+ruolo: eremita della collina
+modello: civile-m-ocra
+lavoro: 351 41 -1 0
+orari: 6 21 23

@@ -218,7 +218,8 @@ attraversa il bosco di querce e betulle, costeggia il **Grande Lago** e arriva a
 (circa 700 m a nord). Gaspare aspetta all'approdo per riportarti a Fontevivo quando vuoi.
 
 Inventario, quest, data e ora viaggiano con te; ogni regione resta com'era quando l'hai lasciata.
-Per ora il continente si esplora soltanto: abitanti, negozi e missioni arrivano nei prossimi passi.
+Ci vivono 22 abitanti (più Gaspare all'approdo): i 12 di Fontebruma, Olmo al lago, l'eremita Nereo, tre famiglie
+isolate nel bosco e Barnaba sulla collina; Mirta, Corrado e Sereno vendono. Missioni ed eventi arrivano nei prossimi passi.
 Dalla shell: `regione nord` e `regione isola`. I dati del continente si rigenerano con
 `python3 scripts/gen_nord.py` (coordinate dei luoghi in cima allo script).
 
