@@ -29,6 +29,9 @@ pub fn interior_half(kind: &str) -> Option<Vec2> {
         "campo-ladro" => Vec2::new(3.2, 3.2),
         "banditi" => Vec2::new(6.5, 5.8),
         "rovine" => Vec2::new(6.2, 5.2),
+        "arco" => Vec2::new(4.2, 1.2),
+        "carbonaia" => Vec2::new(2.0, 2.0),
+        "palafitta" => Vec2::new(3.0, 3.0),
         _ => return None,
     })
 }
@@ -69,6 +72,9 @@ pub fn is_building(kind: &str) -> bool {
             | "torre-rovina"
             | "grotta"
             | "santuario"
+            | "arco"
+            | "carbonaia"
+            | "palafitta"
     )
 }
 
@@ -1948,6 +1954,129 @@ pub fn model(kind: &str, seed: u32) -> Building {
         "barca" => {
             boat(&mut b, &mut r);
             (1.3, 3.2, Vec::new())
+        }
+        // Arco di pietra del Nord: due piloni e un architrave, a cavallo del sentiero.
+        "arco" => {
+            for s in [-1.0f32, 1.0] {
+                b.cuboid_c(
+                    Vec3::new(s * 3.1, 2.6, 0.0),
+                    Vec3::new(1.5, 5.6, 1.7),
+                    STONE,
+                );
+                b.cuboid_c(
+                    Vec3::new(s * 3.1, 0.2, 0.0),
+                    Vec3::new(2.0, 0.8, 2.2),
+                    STONE_DARK,
+                );
+                b.cuboid_c(
+                    Vec3::new(s * 2.2, 5.0, 0.0),
+                    Vec3::new(0.9, 0.8, 1.5),
+                    STONE_DARK,
+                );
+            }
+            b.cuboid_c(Vec3::new(0.0, 5.95, 0.0), Vec3::new(8.6, 1.1, 1.9), STONE);
+            b.cuboid_c(
+                Vec3::new(0.0, 6.75, 0.0),
+                Vec3::new(5.0, 0.5, 1.5),
+                STONE_DARK,
+            );
+            (
+                8.4,
+                2.4,
+                vec![
+                    (Vec3::new(-3.1, 2.8, 0.0), Vec3::new(2.0, 5.8, 2.2)),
+                    (Vec3::new(3.1, 2.8, 0.0), Vec3::new(2.0, 5.8, 2.2)),
+                ],
+            )
+        }
+        // Carbonaia: montagnola di legna coperta di terra e muschio, con la bocca in cima che fuma.
+        "carbonaia" => {
+            b.force = Some(Mat::Plain);
+            b.pyramid(Vec3::new(0.0, -0.1, 0.0), 1.9, 2.3, [0.2, 0.19, 0.15, 1.0]);
+            b.pyramid(Vec3::new(0.0, 1.5, 0.0), 0.7, 0.75, [0.08, 0.08, 0.08, 1.0]);
+            b.force = None;
+            for (x, z) in [(1.7f32, 0.6f32), (-1.5, -1.1)] {
+                b.cuboid_c(Vec3::new(x, 0.25, z), Vec3::new(0.9, 0.5, 0.35), TIMBER);
+            }
+            int.chimneys.push(Vec3::new(0.0, 2.2, 0.0));
+            (
+                3.8,
+                3.8,
+                vec![(Vec3::new(0.0, 0.9, 0.0), Vec3::new(2.6, 1.8, 2.6))],
+            )
+        }
+        // Palafitta: capanna su un impalcato sopra l'acqua, con la passerella verso riva (+Z).
+        "palafitta" => {
+            let deck = 1.5;
+            for (x, z) in [
+                (-2.3f32, -2.3f32),
+                (2.3, -2.3),
+                (-2.3, 2.3),
+                (2.3, 2.3),
+                (0.0, 0.0),
+            ] {
+                b.cuboid_c(
+                    Vec3::new(x, deck / 2.0 - 1.2, z),
+                    Vec3::new(0.26, deck + 2.4, 0.26),
+                    TIMBER,
+                );
+            }
+            b.force = Some(Mat::Planks);
+            b.cuboid_c(
+                Vec3::new(0.0, deck, 0.0),
+                Vec3::new(5.4, 0.16, 5.4),
+                [0.46, 0.34, 0.2, 1.0],
+            );
+            // passerella
+            b.cuboid_c(
+                Vec3::new(0.0, deck, 5.2),
+                Vec3::new(1.3, 0.14, 5.0),
+                [0.44, 0.32, 0.19, 1.0],
+            );
+            // capanna (aperta sul davanti)
+            let wall: Col = [0.52, 0.4, 0.24, 1.0];
+            b.cuboid_c(
+                Vec3::new(0.0, deck + 1.1, -2.0),
+                Vec3::new(4.2, 2.1, 0.14),
+                wall,
+            );
+            for s in [-1.0f32, 1.0] {
+                b.cuboid_c(
+                    Vec3::new(s * 2.05, deck + 1.1, -0.6),
+                    Vec3::new(0.14, 2.1, 2.9),
+                    wall,
+                );
+            }
+            b.force = None;
+            b.gable(
+                (-2.3, 2.3, -2.2, 1.0),
+                deck + 2.15,
+                1.3,
+                0.3,
+                true,
+                [0.62, 0.55, 0.3, 1.0],
+                wall,
+            );
+            for z in [3.0f32, 5.0, 7.0] {
+                b.cuboid_c(
+                    Vec3::new(0.0, deck / 2.0 - 0.8, z),
+                    Vec3::new(0.18, deck + 1.6, 0.18),
+                    TIMBER,
+                );
+            }
+            int.ground
+                .push((Vec3::new(0.0, deck, 0.0), Vec3::new(5.4, 0.16, 5.4)));
+            int.ground
+                .push((Vec3::new(0.0, deck, 5.2), Vec3::new(1.3, 0.14, 5.0)));
+            int.walls
+                .push((Vec3::new(0.0, deck + 1.1, -2.0), Vec3::new(4.2, 2.1, 0.2)));
+            for s in [-1.0f32, 1.0] {
+                int.walls.push((
+                    Vec3::new(s * 2.05, deck + 1.1, -0.6),
+                    Vec3::new(0.2, 2.1, 2.9),
+                ));
+            }
+            (5.4, 5.4, Vec::new())
         }
         "pagliaio" => {
             b.cuboid(

@@ -283,7 +283,7 @@ pub fn sync_world_props(
         }
         for (j, &p) in pl.points.iter().enumerate() {
             // Molo e barche stanno apposta in mare.
-            let at_sea = matches!(pl.kind.as_str(), "molo" | "barca");
+            let at_sea = matches!(pl.kind.as_str(), "molo" | "barca" | "palafitta");
             if !at_sea && crate::terrain::is_water(p.x, p.y) {
                 info!(
                     "[PROPS] oggetto in ({:.1},{:.1}) saltato: in mare",
@@ -299,7 +299,7 @@ pub fn sync_world_props(
                 let model = crate::buildings::model(&pl.kind, seed);
                 // Molo e barche stanno sul mare (quota fissa), il resto si appoggia al terreno.
                 let fixed_y = match pl.kind.as_str() {
-                    "molo" => Some(crate::terrain::SEA_LEVEL),
+                    "molo" | "palafitta" => Some(crate::terrain::SEA_LEVEL),
                     "barca" => Some(crate::terrain::SEA_LEVEL + 0.05),
                     _ => None,
                 };

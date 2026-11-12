@@ -58,3 +58,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0030 | Rampe sotto le scale | accettato |
 | 0031 | Pilota automatico e segnalazioni per il beta test | accettato |
 | 0032 | Audio posizionale | accettato |
+| 0033 | Regioni del mondo e Continente del Nord | accettato |

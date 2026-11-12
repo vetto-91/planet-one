@@ -14,6 +14,7 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 use std::collections::VecDeque;
 
+#[cfg(test)]
 const SPEC: &str = include_str!("../assets/world/abitanti.txt");
 /// Velocità di camminata (m/s) e altezza del centro del corpo sul terreno.
 const WALK_SPEED: f32 = 1.3;
@@ -107,20 +108,9 @@ fn parse(text: &str) -> Vec<VillagerDef> {
     v
 }
 
-/// Legge `assets/world/abitanti.txt` (disco, poi copia incorporata).
+/// Legge l'`abitanti.txt` della regione corrente (disco, poi copia incorporata).
 pub fn load_defs() -> Vec<VillagerDef> {
-    let rel = "assets/world/abitanti.txt";
-    let candidates = [
-        std::path::PathBuf::from(rel),
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel),
-    ];
-    match candidates
-        .iter()
-        .find_map(|p| std::fs::read_to_string(p).ok())
-    {
-        Some(t) => parse(&t),
-        None => parse(SPEC),
-    }
+    parse(&crate::region::world_text("abitanti.txt"))
 }
 
 /// Fase della giornata di un abitante.

@@ -27,6 +27,14 @@ SIGNS = {
     "rovine": ("Rovine", "antico tempio"),
     "grotta": ("Grotta", "attenti ai banditi"),
     "santuario": ("Santuario", ""),
+    # Continente del Nord (scripts/gen_nord.py)
+    "fontebruma": ("FONTEBRUMA", "il paese nel bosco"),
+    "approdo": ("Approdo", "delle Brume"),
+    "lanterna": ("Lanterna Spezzata", "stazione di posta"),
+    "lago": ("Lago", "degli Specchi Bianchi"),
+    "torre-muschiosa": ("Torre muschiosa", "a ovest"),
+    "collina": ("Collina", "di Barnaba, a est"),
+    "arco": ("Arco di pietra", "a nord"),
 }
 W, H = 512, 192
 

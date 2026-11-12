@@ -349,6 +349,7 @@ pub fn field<'a>(state: &'a Value, name: &str) -> Option<&'a Value> {
         "dialogo" => "/dialogo/aperto",
         "parla" => "/dialogo/chi",
         "app" => "/app",
+        "regione" => "/regione",
         "ora" => "/ora",
         "meteo" => "/meteo",
         "fps" => "/fps",
@@ -1053,6 +1054,7 @@ pub fn snapshot(world: &mut World) -> Value {
         "temperatura": temp,
         "fps": fps.map(|f| f.round()),
         "entita": world.entities().len(),
+        "regione": crate::region::current().key(),
         "giocatore": {
             "pos": [pos.x, pos.y, pos.z],
             "vita": player.map(|p| p.1),

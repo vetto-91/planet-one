@@ -16,6 +16,7 @@ use crate::terrain::TerrainField;
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
+#[cfg(test)]
 const SPEC: &str = include_str!("../assets/world/villaggio.txt");
 
 /// Semi-larghezza del vano del cancello e dei piloni.
@@ -105,20 +106,9 @@ fn parse_spec(text: &str) -> VillageSpec {
     s
 }
 
-/// Legge `assets/world/villaggio.txt` (disco, poi copia incorporata).
+/// Legge il `villaggio.txt` della regione corrente (disco, poi copia incorporata).
 pub fn load_spec() -> VillageSpec {
-    let rel = "assets/world/villaggio.txt";
-    let candidates = [
-        std::path::PathBuf::from(rel),
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel),
-    ];
-    match candidates
-        .iter()
-        .find_map(|p| std::fs::read_to_string(p).ok())
-    {
-        Some(t) => parse_spec(&t),
-        None => parse_spec(SPEC),
-    }
+    parse_spec(&crate::region::world_text("villaggio.txt"))
 }
 
 /// Vertici del muro: i piazzamenti `muro` in ordine di id.

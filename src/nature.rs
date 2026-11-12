@@ -6,7 +6,7 @@
 use crate::debug_place::DebugPlace;
 use crate::scene::SceneNode;
 use crate::seasons::{SeasonGround, SeasonLeaf, SeasonLook, SeasonSnowRoof};
-use crate::terrain::{TERRAIN_SIZE, TerrainField, noise2};
+use crate::terrain::{TerrainField, noise2};
 use crate::trees::{FirAssets, broadleaf_foliage, broadleaf_trunk, bush, fir_foliage_far};
 use crate::village::{VillageInfo, dist_to_segment, in_polygon};
 use crate::water::{Forest, ForestKind, IslandSpec};
@@ -300,7 +300,7 @@ pub(crate) struct Blocked {
 
 impl Blocked {
     fn index(&self, p: Vec2) -> Option<usize> {
-        let f = |v: f32| (v + TERRAIN_SIZE / 2.0).floor() as isize;
+        let f = |v: f32| (v + crate::terrain::size() / 2.0).floor() as isize;
         let (x, z) = (f(p.x), f(p.y));
         let n = self.n as isize;
         ((0..n).contains(&x) && (0..n).contains(&z)).then(|| (z * n + x) as usize)
@@ -327,7 +327,7 @@ impl Blocked {
 
 /// Dove non si pianta: paese, strade, sentieri, edifici, campi, ponti.
 pub(crate) fn blocked_map(dbg: &DebugPlace, village: &VillageInfo, island: &IslandSpec) -> Blocked {
-    let n = TERRAIN_SIZE as usize + 1;
+    let n = crate::terrain::size() as usize + 1;
     let mut b = Blocked {
         n,
         cells: vec![false; n * n],
@@ -336,8 +336,8 @@ pub(crate) fn blocked_map(dbg: &DebugPlace, village: &VillageInfo, island: &Isla
     for z in 0..n {
         for x in 0..n {
             let p = Vec2::new(
-                x as f32 - TERRAIN_SIZE / 2.0 + 0.5,
-                z as f32 - TERRAIN_SIZE / 2.0 + 0.5,
+                x as f32 - crate::terrain::size() / 2.0 + 0.5,
+                z as f32 - crate::terrain::size() / 2.0 + 0.5,
             );
             let near_wall = poly.len() >= 3
                 && (in_polygon(poly, p)
@@ -419,9 +419,19 @@ fn plant(
     blocked: &Blocked,
     forests: &[Forest],
     vegetation: f32,
+    only: Option<(i32, i32)>,
 ) -> BTreeMap<(i32, i32), Chunk> {
     let mut chunks: BTreeMap<(i32, i32), Chunk> = BTreeMap::new();
-    let half = TERRAIN_SIZE / 2.0;
+    let half = crate::terrain::size() / 2.0;
+    // Limiti (m) della zona da piantare: tutto il terreno, o un riquadro con un margine per
+    // i punti che lo spostamento casuale porta dentro da fuori.
+    let (lo, hi) = match only {
+        Some((cx, cz)) => (
+            Vec2::new(cx as f32, cz as f32) * CHUNK - Vec2::splat(4.0),
+            Vec2::new(cx as f32 + 1.0, cz as f32 + 1.0) * CHUNK + Vec2::splat(4.0),
+        ),
+        None => (Vec2::splat(-half), Vec2::splat(half)),
+    };
     let key = |p: Vec2| ((p.x / CHUNK).floor() as i32, (p.y / CHUNK).floor() as i32);
     // Terra asciutta, non in pendenza forte.
     let ground = |p: Vec2| -> Option<Vec3> {
@@ -434,9 +444,17 @@ fn plant(
         ((dx * dx + dz * dz).sqrt() / 2.0 < 0.65).then_some(Vec3::new(p.x, h, p.y))
     };
     let grid = |step: f32| {
-        let n = (TERRAIN_SIZE / step) as i32;
-        (0..n).flat_map(move |iz| {
-            (0..n).map(move |ix| Vec2::new(ix as f32 * step - half, iz as f32 * step - half))
+        let n = (crate::terrain::size() / step) as i32;
+        // Indici del reticolo globale (uguale per ogni riquadro: i bordi combaciano).
+        let range = |a: f32, b: f32| {
+            let i0 = (((a + half) / step).floor() as i32).clamp(0, n);
+            let i1 = (((b + half) / step).ceil() as i32).clamp(0, n);
+            i0..i1
+        };
+        let (xs, zs) = (range(lo.x, hi.x), range(lo.y, hi.y));
+        zs.flat_map(move |iz| {
+            xs.clone()
+                .map(move |ix| Vec2::new(ix as f32 * step - half, iz as f32 * step - half))
         })
     };
     let jitter = |c: Vec2, step: f32, salt: f32| {
@@ -454,17 +472,34 @@ fn plant(
             continue;
         };
         let chunk = chunks.entry(key(p)).or_default();
+        // Continente: le betulle sono le varianti 0 e 2, la quercia è la 1, più grande.
+        let birch = if hash01(c, 7.0) < 0.5 { 0 } else { 2 };
+        let oak = match kind {
+            ForestKind::Oaks => Some(true),
+            ForestKind::Birches => Some(false),
+            ForestKind::OakBirch => Some(hash01(c, 4.0) < 0.45),
+            _ => None,
+        };
         let broad = match kind {
             ForestKind::Firs => false,
-            ForestKind::Broadleaf => true,
             ForestKind::Mixed => hash01(c, 4.0) < 0.5,
+            _ => true,
+        };
+        let size = match oak {
+            Some(true) => 1.35 + hash01(c, 6.0) * 0.6,
+            Some(false) => 0.9 + hash01(c, 6.0) * 0.45,
+            None => 0.8 + hash01(c, 6.0) * 0.55,
         };
         let place = Place {
             pos: at - Vec3::Y * 0.1,
             yaw: hash01(c, 5.0) * std::f32::consts::TAU,
-            scale: 0.8 + hash01(c, 6.0) * 0.55,
+            scale: size,
         };
-        let v = (hash01(c, 7.0) * 3.0) as usize % 3;
+        let v = match oak {
+            Some(true) => 1,
+            Some(false) => birch,
+            None => (hash01(c, 7.0) * 3.0) as usize % 3,
+        };
         if broad {
             chunk.broad[v].push(place);
         } else {
@@ -535,6 +570,9 @@ fn plant(
         } else {
             chunk.grass.push(place);
         }
+    }
+    if let Some(key) = only {
+        chunks.retain(|k, _| *k == key);
     }
     chunks
 }
@@ -857,7 +895,9 @@ pub fn sync_nature(
     let Some(field) = field else {
         return;
     };
-    if village.poly.len() < 3 {
+    // Il continente è troppo grande per piantarlo tutto insieme: ci pensa `stream_nature`.
+    if village.poly.len() < 3 || crate::region::current() != crate::region::Region::Isola {
+        *built = None;
         return;
     }
     let want = (dbg.revision(), settings.gfx.vegetation);
@@ -876,6 +916,7 @@ pub fn sync_nature(
         &blocked,
         &island.forests,
         f32::from(settings.gfx.vegetation) / 100.0,
+        None,
     );
     let trees: usize = chunks
         .values()
@@ -884,6 +925,113 @@ pub fn sync_nature(
     info!("[NATURE] {} riquadri, {trees} alberi", chunks.len());
     let kit = make_kit(&mut meshes, &mut materials, &server, &pbr);
     spawn_chunks(&mut commands, &mut meshes, &kit, chunks);
+}
+
+/// Riquadri attorno al giocatore tenuti sul continente (raggio in riquadri) e oltre cui spariscono.
+const STREAM_NEAR: i32 = 6;
+const STREAM_FAR: i32 = 8;
+/// Riquadri piantati per volta, per non fermare il gioco.
+const STREAM_BATCH: usize = 3;
+
+/// Stato della vegetazione a zone del continente.
+#[derive(Default)]
+pub struct Stream {
+    kit: Option<Kit>,
+    blocked: Option<Blocked>,
+    forests: Vec<Forest>,
+    /// Riquadri senza niente (lago, mare, paese): non si ripiantano a ogni giro.
+    empty: std::collections::HashSet<(i32, i32)>,
+    built: Option<(u32, u8)>,
+    timer: f32,
+}
+
+/// Sistema (continente): pianta i riquadri vicini al giocatore e toglie quelli lontani.
+/// Sull'isola tutto resta piantato insieme da [`sync_nature`].
+#[allow(clippy::too_many_arguments)]
+pub fn stream_nature(
+    mut commands: Commands,
+    time: Res<Time>,
+    field: Option<Res<TerrainField>>,
+    dbg: Res<DebugPlace>,
+    village: Res<VillageInfo>,
+    settings: Res<crate::audio::AudioSettings>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    server: Res<AssetServer>,
+    pbr: Res<crate::pbr::PbrMaterials>,
+    existing: Query<(Entity, &NatureChunk)>,
+    player: Query<&GlobalTransform, With<crate::player::Player>>,
+    mut st: Local<Stream>,
+) {
+    if crate::region::current() == crate::region::Region::Isola {
+        if st.built.is_some() {
+            *st = Stream::default();
+        }
+        return;
+    }
+    let (Some(field), Ok(player)) = (field, player.single()) else {
+        return;
+    };
+    if village.poly.len() < 3 {
+        return;
+    }
+    let want = (dbg.revision(), settings.gfx.vegetation);
+    if st.built != Some(want) {
+        for (e, _) in &existing {
+            commands.entity(e).despawn();
+        }
+        let island = crate::water::load_spec();
+        st.blocked = Some(blocked_map(&dbg, &village, &island));
+        st.forests = island.forests;
+        st.empty.clear();
+        if st.kit.is_none() {
+            st.kit = Some(make_kit(&mut meshes, &mut materials, &server, &pbr));
+        }
+        st.built = Some(want);
+        st.timer = 0.0;
+        info!(
+            "[NATURE] continente: vegetazione a zone ({} boschi)",
+            st.forests.len()
+        );
+        return;
+    }
+    st.timer -= time.delta_secs();
+    if st.timer > 0.0 {
+        return;
+    }
+    st.timer = 0.2;
+    let key = |p: Vec2| ((p.x / CHUNK).floor() as i32, (p.y / CHUNK).floor() as i32);
+    let p = player.translation();
+    let here = key(Vec2::new(p.x, p.z));
+    let far = |k: (i32, i32)| (k.0 - here.0).abs().max((k.1 - here.1).abs());
+    let mut loaded = std::collections::HashSet::new();
+    for (e, chunk) in &existing {
+        let k = key(chunk.center);
+        if far(k) > STREAM_FAR {
+            commands.entity(e).despawn();
+        } else {
+            loaded.insert(k);
+        }
+    }
+    // I più vicini per primi.
+    let mut wanted: Vec<(i32, i32)> = (-STREAM_NEAR..=STREAM_NEAR)
+        .flat_map(|dz| (-STREAM_NEAR..=STREAM_NEAR).map(move |dx| (here.0 + dx, here.1 + dz)))
+        .filter(|k| !loaded.contains(k) && !st.empty.contains(k))
+        .collect();
+    wanted.sort_by_key(|k| far(*k));
+    let vegetation = f32::from(settings.gfx.vegetation) / 100.0;
+    let st = &mut *st;
+    let (Some(blocked), Some(kit)) = (&st.blocked, &st.kit) else {
+        return;
+    };
+    for k in wanted.into_iter().take(STREAM_BATCH) {
+        let chunks = plant(&field, blocked, &st.forests, vegetation, Some(k));
+        if chunks.is_empty() {
+            st.empty.insert(k);
+        } else {
+            spawn_chunks(&mut commands, &mut meshes, kit, chunks);
+        }
+    }
 }
 
 /// Sistema: mostra la versione giusta di ogni riquadro secondo la distanza.
@@ -950,7 +1098,10 @@ pub fn apply_nature_season(
 }
 
 pub fn plugin(app: &mut App) {
-    app.add_systems(Update, (sync_nature, nature_lod, apply_nature_season));
+    app.add_systems(
+        Update,
+        (sync_nature, stream_nature, nature_lod, apply_nature_season),
+    );
 }
 
 #[cfg(test)]
@@ -1003,7 +1154,7 @@ mod tests {
 
     #[test]
     fn blocked_cells_are_marked_within_the_radius() {
-        let n = TERRAIN_SIZE as usize + 1;
+        let n = crate::terrain::size() as usize + 1;
         let mut b = Blocked {
             n,
             cells: vec![false; n * n],

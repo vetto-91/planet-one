@@ -1,0 +1,96 @@
+# Continente del Nord, Atto I: la Piana delle Brume (generato da scripts/gen_nord.py).
+# Coordinate in metri: x = Est, z = Sud (il nord è -Z). Il mare è a sud.
+#
+# costa: z della riva a sud   confine: |x| massimo e z minimo (nord) dove si può andare
+costa: 474
+confine: 520 572
+# lago-grande: x z semiasse_x semiasse_z   isolotto: x z raggio
+lago-grande: -110 150 110 80
+isolotto: -110 150 13
+# canale: semi_larghezza | x z, ...   (il Rio delle Betulle, dal lago al mare)
+canale: 4.5 | -8.00 165.00, 40.00 180.00, 90.00 196.00, 140.00 202.00, 195.00 215.00, 240.00 262.00, 268.00 335.00, 284.00 410.00, 290.00 478.00
+#
+# altura: x z raggio altezza
+altura: -235 20 46 9
+altura: 360 40 62 17
+altura: -420 -260 90 8
+altura: 300 -220 80 6
+altura: -300 420 70 5
+#
+# ponte: x1 z1 x2 z2
+ponte: 52.5 178 58.5 193
+ponte: 140 192 140 212
+#
+# bosco: x z raggio densità tipo (querce, betulle, querce-betulle)
+bosco: -450 -540 108 0.61 querce
+bosco: -300 -540 108 0.54 querce-betulle
+bosco: -150 -540 108 0.39 querce
+bosco: 0 -540 108 0.47 querce
+bosco: 150 -540 108 0.62 querce-betulle
+bosco: 300 -540 108 0.51 querce-betulle
+bosco: 450 -540 108 0.38 querce
+bosco: -525 -390 108 0.6 querce-betulle
+bosco: -375 -390 108 0.57 betulle
+bosco: -225 -390 108 0.4 betulle
+bosco: -75 -390 108 0.45 querce-betulle
+bosco: 75 -390 108 0.61 querce-betulle
+bosco: 225 -390 108 0.54 betulle
+bosco: 375 -390 108 0.38 querce-betulle
+bosco: 525 -390 108 0.47 querce-betulle
+bosco: -450 -240 108 0.59 querce-betulle
+bosco: -300 -240 108 0.41 betulle
+bosco: -150 -240 108 0.42 betulle
+bosco: 150 -240 108 0.56 betulle
+bosco: 300 -240 108 0.4 betulle
+bosco: 450 -240 108 0.45 querce-betulle
+bosco: -525 -90 108 0.6 querce
+bosco: -375 -90 108 0.43 querce
+bosco: -225 -90 108 0.4 querce-betulle
+bosco: -75 -90 108 0.58 querce
+bosco: 75 -90 108 0.59 querce
+bosco: 225 -90 108 0.41 querce-betulle
+bosco: 375 -90 108 0.43 querce
+bosco: 525 -90 108 0.6 querce
+bosco: -450 60 108 0.46 querce
+bosco: -300 60 108 0.39 querce-betulle
+bosco: -150 60 108 0.56 querce-betulle
+bosco: 0 60 108 0.6 querce
+bosco: 150 60 108 0.43 querce-betulle
+bosco: 300 60 108 0.41 querce-betulle
+bosco: 450 60 108 0.58 querce
+bosco: -525 210 108 0.48 querce-betulle
+bosco: -375 210 108 0.38 betulle
+bosco: -225 210 108 0.53 betulle
+bosco: -75 210 108 0.61 querce-betulle
+bosco: 75 210 108 0.45 betulle
+bosco: 225 210 108 0.39 betulle
+bosco: 375 210 108 0.56 betulle
+bosco: 525 210 108 0.6 querce-betulle
+bosco: -450 360 108 0.38 querce
+bosco: -300 360 108 0.5 betulle
+bosco: -150 360 108 0.62 betulle
+bosco: 0 360 108 0.48 querce
+bosco: 150 360 108 0.38 betulle
+bosco: 300 360 108 0.53 betulle
+bosco: 450 360 108 0.61 querce
+
+gabbiani: 0 470 5
+
+# Nomi sulla mappa.
+luogo: Approdo delle Brume | 0 462
+luogo: Lanterna Spezzata | 30 250
+luogo: Nove Querce | -380 130
+luogo: Isolotto del lago | -110 150
+luogo: Segheria vecchia | 228 292
+luogo: Ponte coperto | 140 202
+luogo: Torre muschiosa | -235 20
+luogo: Campo dell'ambra | 190 -380
+luogo: Acquedotto sommerso | -110 262
+luogo: Capanna dell'eremita | -262 165
+luogo: Bivacco del nord | 24 -486
+luogo: Arco di pietra | 0 -548
+luogo: Podere delle querce cave | -360 330
+luogo: Carbonaie del fumo nero | 335 330
+luogo: Palafitte dei giunchi | -196 92
+luogo: Collina di Barnaba | 360 40
+luogo: Fontebruma | 0 -250

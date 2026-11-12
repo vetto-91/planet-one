@@ -17,7 +17,6 @@ use bevy::prelude::*;
 use bevy_egui::egui;
 
 /// Lato (m) del terreno (isola + mare attorno).
-const TERRAIN_SIZE: f32 = crate::terrain::TERRAIN_SIZE;
 /// Altezza della camera sopra il terreno.
 const MAP_CAM_HEIGHT: f32 = 300.0;
 /// Fondo della mappa (carta scura) al posto del cielo.
@@ -40,7 +39,7 @@ impl Default for MapView {
         Self {
             zoom: 180.0,
             min: 20.0,
-            max: TERRAIN_SIZE * 1.3,
+            max: crate::terrain::size() * 1.3,
             center: Vec2::ZERO,
         }
     }
@@ -78,18 +77,29 @@ pub fn enter_map(
         &mut Camera,
         Option<&Skybox>,
     )>,
+    players: Query<&GlobalTransform, (With<crate::player::Player>, Without<Camera>)>,
 ) {
     let Ok((entity, mut tf, mut proj, mut cam, skybox)) = cameras.single_mut() else {
         return;
     };
+    // L'isola si vede tutta, centrata; il continente è grande: la mappa si apre sul giocatore.
+    let big = crate::terrain::size() > 400.0;
+    view.max = crate::terrain::size() * 1.3;
+    view.zoom = if big { 420.0 } else { 180.0 };
+    let start = players
+        .single()
+        .ok()
+        .filter(|_| big)
+        .map_or(Vec2::ZERO, |p| p.translation().xz());
     saved.0 = Some(Saved {
         transform: *tf,
         projection: proj.clone(),
         clear: cam.clear_color,
         skybox: skybox.cloned(),
     });
-    view.center = Vec2::ZERO;
-    *tf = Transform::from_xyz(0.0, MAP_CAM_HEIGHT, 0.0).looking_at(Vec3::ZERO, Vec3::NEG_Z);
+    view.center = start;
+    *tf = Transform::from_xyz(start.x, MAP_CAM_HEIGHT, start.y)
+        .looking_at(Vec3::new(start.x, 0.0, start.y), Vec3::NEG_Z);
     *proj = Projection::Orthographic(OrthographicProjection {
         scaling_mode: ScalingMode::FixedVertical {
             viewport_height: view.zoom,
@@ -192,7 +202,7 @@ pub fn map_zoom(
     {
         view.center = Vec2::new(p.translation().x, p.translation().z);
     }
-    let limit = TERRAIN_SIZE / 2.0;
+    let limit = crate::terrain::size() / 2.0;
     view.center = view.center.clamp(Vec2::splat(-limit), Vec2::splat(limit));
 
     if let Ok((mut proj, mut tf)) = cameras.single_mut() {
@@ -343,9 +353,8 @@ pub fn draw_map_overlay(
                 gold,
             );
         }
-        static PLACES: std::sync::OnceLock<Vec<(String, Vec2)>> = std::sync::OnceLock::new();
-        let places = PLACES.get_or_init(|| crate::water::load_spec().places);
-        for (name, at) in places {
+        let spec = crate::water::load_spec_cached();
+        for (name, at) in &spec.places {
             let world = Vec3::new(at.x, 6.0, at.y);
             if let Ok(p) = cam.world_to_viewport(cam_t, world) {
                 crate::ui_style::plate(

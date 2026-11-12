@@ -30,6 +30,7 @@ const HELP: &[&str] = &[
     "foto [nome] · dump [nome] (stato in JSON) · copione <file> (pilota automatico)",
     "quest <inizio|cerca|raccogli|torna|completata> · uccidi [raggio] · vicino [raggio] · fps · entita",
     "volume <musica|ambiente|voci> <0-100> (solo per questa partita)",
+    "regione <isola|nord> (viaggio fra l'Isola di Fontevivo e il Continente del Nord)",
 ];
 
 /// Trucchi attivi: non salvati, tutti spenti a ogni avvio.
@@ -102,6 +103,8 @@ pub enum Cmd {
     Status,
     Clear,
     Reset,
+    /// Viaggio in un'altra regione del mondo.
+    Region(crate::region::Region),
     God(Option<bool>),
     Noclip(Option<bool>),
     Invisible(Option<bool>),
@@ -172,6 +175,11 @@ pub fn parse(line: &str) -> Result<Cmd, String> {
         "stato" | "status" => Ok(Cmd::Status),
         "pulisci" | "clear" => Ok(Cmd::Clear),
         "reset" => Ok(Cmd::Reset),
+        "regione" | "region" | "viaggia" => args
+            .first()
+            .and_then(|a| crate::region::Region::parse(a))
+            .map(Cmd::Region)
+            .ok_or_else(|| "uso: regione <isola|nord>".to_string()),
         "vai" | "go" | "corri" | "run" => {
             let sprint = matches!(first.to_lowercase().as_str(), "corri" | "run");
             let numbers: Vec<f32> = args
@@ -493,7 +501,7 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
         }
         Cmd::Clear => shell.log.clear(),
         // Gestito in `shell_execute`, che può cambiare stato.
-        Cmd::Reset => {}
+        Cmd::Reset | Cmd::Region(_) => {}
         Cmd::God(v) => {
             let on = apply_switch(&mut ctx.cheats.god, v);
             shell.say(format!("godmode {}", on_off(on)));
@@ -906,11 +914,20 @@ pub fn shell_execute(
     mut shell: ResMut<Shell>,
     mut ctx: ShellCtx,
     mut next: ResMut<NextState<AppState>>,
+    mut travel: ResMut<crate::save::TravelRequest>,
 ) {
     for line in std::mem::take(&mut shell.pending) {
         shell.say(format!("> {line}"));
         match parse(&line) {
             Ok(Cmd::Reset) => next.set(AppState::Resetting),
+            Ok(Cmd::Region(region)) => {
+                if region == crate::region::current() {
+                    shell.say(format!("sei già qui: {}", region.title()));
+                } else {
+                    shell.say(format!("in viaggio verso {}", region.title()));
+                    travel.0 = Some(region);
+                }
+            }
             Ok(cmd) => run(cmd, &mut shell, &mut ctx),
             Err(e) => shell.say(e),
         }

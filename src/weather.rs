@@ -284,6 +284,18 @@ pub fn update_weather(
     state.temp = temperature(doy, hour, if active { kind } else { Kind::Clear });
 
     let (tc, tr, ts, tf) = targets(kind, active);
+    // Piana delle Brume (Atto I): finché non la si dirada, la nebbia è perenne, con una pioggia
+    // sottile; solo d'inverno diventa neve. Un meteo forzato (shell, prove) ha la precedenza.
+    let (tc, tr, ts, tf) = if forced.is_none()
+        && crate::region::current() == crate::region::Region::Nord
+        && !(kind == Kind::Snow && active)
+    {
+        state.kind = Kind::Fog;
+        state.active = true;
+        (0.75, 0.3, 0.0, 0.8)
+    } else {
+        (tc, tr, ts, tf)
+    };
     let k = if state.first {
         1.0
     } else {

@@ -41,6 +41,7 @@ mod places;
 mod player;
 mod props;
 mod quests;
+mod region;
 mod save;
 mod scene;
 mod seasons;

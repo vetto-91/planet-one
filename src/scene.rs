@@ -133,6 +133,12 @@ pub fn spawn_world(
     // --- Player ---
     player::spawn(commands, asset_server);
 
+    // Il resto (casetta del Viandante, abitanti di Fontevivo, ladro) vive solo sull'isola.
+    if crate::region::current() != crate::region::Region::Isola {
+        crate::villagers::spawn_villagers(commands, meshes, materials, asset_server);
+        return;
+    }
+
     // --- Casetta-chiosco con il Viandante come negoziante. Il fronte (-Z locale,
     //     con il banco) guarda verso il player, che parte a -X; la quota viene
     //     appoggiata al terreno da `props::snap_to_ground`. ---
@@ -212,7 +218,23 @@ pub fn reset_scene(
     asset_server: Res<AssetServer>,
     mut texts: ResMut<crate::quests::QuestTexts>,
     mut homes: ResMut<crate::world_props::Homes>,
+    load: Res<crate::save::LoadRequest>,
+    mut dbg: ResMut<crate::debug_place::DebugPlace>,
+    mut village: ResMut<crate::village::VillageInfo>,
+    mut terrain_assets: ResMut<terrain::TerrainAssets>,
 ) {
+    // 0. Cambio di regione (viaggio o salvataggio fatto altrove): dati del mondo dell'altra regione.
+    if let Some(region) = load.region()
+        && region != crate::region::current()
+    {
+        crate::region::set(region);
+        dbg.reload();
+        *village = crate::village::VillageInfo::build(&dbg.items);
+        terrain_assets.built_mesh = None;
+        homes.list.clear();
+        info!("[REGIONE] {}", region.title());
+    }
+
     // 1. Despawn di tutte le entità radice della scena.
     //    In Bevy 0.20 despawn() è già ricorsivo sui Children (relationship).
     for entity in &scene_nodes {

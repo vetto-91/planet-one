@@ -1,0 +1,76 @@
+# Viaggio fra l'Isola di Fontevivo e il Continente del Nord (ADR 0033): andata con Gaspare dal
+# porticciolo, giro a Fontebruma e ai luoghi nuovi, ritorno. Il personaggio porta con sé le sue cose.
+god on
+meteo sereno
+ora 11
+verifica regione = isola
+verifica monete >= 30
+tp gaspare
+aspetta 1
+attendi npc:gaspare:modo = Ready 60
+guarda gaspare
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+scegli Portami
+attendi regione = nord 90
+attendi app = Playing 90
+aspetta 6
+verifica monete >= 30
+verifica z > 430
+foto approdo
+# Il sentiero verso il bosco si percorre a piedi.
+vai 6 420
+verifica z < 424
+# Fontebruma: porta sud e piazza con la Fonte Grigia.
+tp 0 6 -180
+aspetta 6
+camera 0 22 14
+aspetta 1
+foto fontebruma-porta
+tp 0 6 -250
+aspetta 6
+camera 45 30 16
+aspetta 1
+foto fontebruma-piazza
+premi m
+aspetta 3
+verifica app = Map
+foto mappa
+chiudi
+aspetta 1
+# I luoghi nuovi.
+tp 0 8 -534
+aspetta 6
+camera 0 12 13
+aspetta 1
+foto arco
+tp -204 8 110
+aspetta 6
+camera 130 18 14
+aspetta 1
+foto palafitte
+# Ritorno: Gaspare aspetta all'approdo.
+tp 0 6 452
+camera 0 20 5
+aspetta 4
+attendi npc:gaspare:modo = Ready 120
+tp gaspare
+aspetta 1
+attendi npc:gaspare:modo = Ready 60
+guarda gaspare
+aspetta 1
+foto gaspare-nord
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+scegli Riportami
+attendi regione = isola 90
+attendi app = Playing 90
+aspetta 6
+verifica monete >= 30
+verifica z > 80
+foto ritorno
+esci

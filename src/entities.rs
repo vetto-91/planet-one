@@ -134,7 +134,23 @@ pub struct DialogState {
 pub enum Offer {
     Shop,
     Chat,
+    /// Passaggio in barca verso l'altra regione (Gaspare).
+    Passage,
     Bye,
+}
+
+/// Chi porta in barca fra l'Isola e il Continente (ADR 0033).
+pub const FERRYMAN: &str = "Gaspare";
+
+/// Dove porta il traghettatore partendo dalla regione corrente, e come lo si chiede.
+pub fn passage() -> (crate::region::Region, &'static str) {
+    match crate::region::current() {
+        crate::region::Region::Isola => (
+            crate::region::Region::Nord,
+            "Portami al Continente del Nord",
+        ),
+        crate::region::Region::Nord => (crate::region::Region::Isola, "Riportami a Fontevivo"),
+    }
 }
 
 /// Distanza (m) oltre cui il dialogo si chiude da solo (range interazione: 5 m).
@@ -408,6 +424,7 @@ pub fn interact(
 #[allow(clippy::too_many_arguments)]
 pub fn advance_dialog(
     keys: Res<ButtonInput<KeyCode>>,
+    mut travel: ResMut<crate::save::TravelRequest>,
     mut dialog: ResMut<DialogState>,
     ai: Res<crate::ai::AiState>,
     settings: Res<crate::audio::AudioSettings>,
@@ -466,6 +483,10 @@ pub fn advance_dialog(
                         chat.begin(&name);
                         next.set(crate::AppState::Chat);
                     }
+                    (Some(Offer::Passage), _) => {
+                        info!("[VIAGGIO] passaggio in barca con {name}");
+                        travel.0 = Some(passage().0);
+                    }
                     _ => {}
                 }
                 return;
@@ -486,6 +507,9 @@ pub fn advance_dialog(
                 if dialog.shop.is_some() {
                     actions.push(Offer::Shop);
                 }
+                if dialog.speaker == FERRYMAN {
+                    actions.push(Offer::Passage);
+                }
                 if settings.ai_enabled && ai.status == crate::ai::AiStatus::Ready {
                     actions.push(Offer::Chat);
                 }
@@ -500,6 +524,7 @@ pub fn advance_dialog(
                             match a {
                                 Offer::Shop => "Vorrei comprare qualcosa",
                                 Offer::Chat => "Parliamo d'altro…",
+                                Offer::Passage => passage().1,
                                 Offer::Bye => "Arrivederci",
                             }
                             .to_string()

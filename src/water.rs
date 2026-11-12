@@ -3,7 +3,7 @@
 //! I dati stanno in `assets/world/isola.txt`. Il ruscello scava il terreno: la superficie
 //! scende sempre verso il mare, così l'acqua non risale mai.
 
-use crate::terrain::{SEA_LEVEL, TERRAIN_SIZE};
+use crate::terrain::SEA_LEVEL;
 use bevy::asset::RenderAssetUsages;
 use bevy::image::{ImageAddressMode, ImageFilterMode, ImageSampler, ImageSamplerDescriptor};
 use bevy::math::Affine2;
@@ -11,6 +11,7 @@ use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 
+#[cfg(test)]
 const SPEC: &str = include_str!("../assets/world/isola.txt");
 /// Passo (m) con cui si percorre il ruscello.
 const STREAM_STEP: f32 = 0.5;
@@ -54,6 +55,17 @@ pub struct IslandSpec {
     pub places: Vec<(String, Vec2)>,
     /// Centro dell'orbita dei gabbiani e quanti sono.
     pub gulls: Option<(Vec2, usize)>,
+    /// Terraferma invece di isola (`costa:`): z della riva a sud, oltre c'è il mare.
+    pub coast: Option<f32>,
+    /// Confine percorribile della terraferma: |x| massimo e z minimo, a nord (`confine:`).
+    pub bounds: Option<(f32, f32)>,
+    /// Grande lago a livello del mare: centro e semiassi (`lago-grande:`).
+    pub basin: Option<(Vec2, Vec2)>,
+    /// Isolotto nel lago: centro e raggio (`isolotto:`).
+    pub islet: Option<(Vec2, f32)>,
+    /// Canale a livello del mare (l'emissario del lago): polilinea e semi-larghezza (`canale:`).
+    pub channel: Vec<Vec2>,
+    pub channel_half: f32,
 }
 
 /// Mandria o gregge: `kind` è l'indice in `animals::GRAZERS`.
@@ -79,6 +91,10 @@ pub enum ForestKind {
     Firs,
     Mixed,
     Broadleaf,
+    /// Continente: grandi querce, betulle bianche, o le due insieme.
+    Oaks,
+    Birches,
+    OakBirch,
 }
 
 /// Zona di bosco.
@@ -115,6 +131,9 @@ pub fn parse_spec(text: &str) -> IslandSpec {
                 Some("abeti") => Some(ForestKind::Firs),
                 Some("misto") => Some(ForestKind::Mixed),
                 Some("latifoglie") => Some(ForestKind::Broadleaf),
+                Some("querce") => Some(ForestKind::Oaks),
+                Some("betulle") => Some(ForestKind::Birches),
+                Some("querce-betulle") => Some(ForestKind::OakBirch),
                 _ => None,
             };
             if let (Some(kind), [x, z, radius, density]) = (kind, n.as_slice()) {
@@ -169,6 +188,24 @@ pub fn parse_spec(text: &str) -> IslandSpec {
             }),
             ("gabbiani", [x, z, count]) => s.gulls = Some((Vec2::new(*x, *z), *count as usize)),
             ("lago", [x, z, r]) => s.lake = Some((Vec2::new(*x, *z), *r)),
+            ("costa", [z]) => s.coast = Some(*z),
+            ("confine", [x, z]) => s.bounds = Some((*x, *z)),
+            ("lago-grande", [x, z, rx, rz]) => {
+                s.basin = Some((Vec2::new(*x, *z), Vec2::new(*rx, *rz)));
+            }
+            ("isolotto", [x, z, r]) => s.islet = Some((Vec2::new(*x, *z), *r)),
+            ("canale", _) => {
+                if let Some((head, pts)) = value.split_once('|') {
+                    s.channel_half = nums(head).first().copied().unwrap_or(4.0);
+                    s.channel = pts
+                        .split(',')
+                        .filter_map(|p| {
+                            let n = nums(p);
+                            (n.len() >= 2).then(|| Vec2::new(n[0], n[1]))
+                        })
+                        .collect();
+                }
+            }
             ("ponte", [x1, z1, x2, z2]) => {
                 s.bridges.push((Vec2::new(*x1, *z1), Vec2::new(*x2, *z2)));
             }
@@ -192,20 +229,26 @@ pub fn parse_spec(text: &str) -> IslandSpec {
     s
 }
 
-/// Legge `assets/world/isola.txt` (disco, poi copia incorporata).
+/// Legge l'`isola.txt` della regione corrente (disco, poi copia incorporata).
 pub fn load_spec() -> IslandSpec {
-    let rel = "assets/world/isola.txt";
-    let candidates = [
-        std::path::PathBuf::from(rel),
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel),
-    ];
-    match candidates
-        .iter()
-        .find_map(|p| std::fs::read_to_string(p).ok())
-    {
-        Some(t) => parse_spec(&t),
-        None => parse_spec(SPEC),
+    parse_spec(&crate::region::world_text("isola.txt"))
+}
+
+/// Dati della regione corrente, letti una volta per regione (per chi li chiede spesso).
+pub fn load_spec_cached() -> std::sync::Arc<IslandSpec> {
+    use crate::region::Region;
+    use std::sync::{Arc, Mutex};
+    static CACHE: Mutex<Vec<(Region, Arc<IslandSpec>)>> = Mutex::new(Vec::new());
+    let region = crate::region::current();
+    let mut cache = CACHE
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if let Some((_, s)) = cache.iter().find(|(r, _)| *r == region) {
+        return s.clone();
     }
+    let spec = Arc::new(load_spec());
+    cache.push((region, spec.clone()));
+    spec
 }
 
 fn smooth(e0: f32, e1: f32, x: f32) -> f32 {
@@ -314,8 +357,8 @@ pub fn plan_water(spec: &IslandSpec, ground: impl Fn(Vec2) -> f32) -> WaterPlan 
 pub fn carve(plan: &WaterPlan, h: &mut [f32], n: usize, step: f32) -> Vec<bool> {
     let original = h.to_vec();
     let mut wet = vec![false; n * n];
-    let index = |w: f32| ((w + TERRAIN_SIZE / 2.0) / step).round() as isize;
-    let world = |i: usize| -TERRAIN_SIZE / 2.0 + i as f32 * step;
+    let index = |w: f32| ((w + crate::terrain::size() / 2.0) / step).round() as isize;
+    let world = |i: usize| -crate::terrain::size() / 2.0 + i as f32 * step;
     let clamp = |i: isize| i.clamp(0, n as isize - 1) as usize;
     let mut dig = |center: Vec2, half: f32, surface: f32, depth: f32| {
         let reach = half + BANK;

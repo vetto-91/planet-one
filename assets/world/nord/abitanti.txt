@@ -1,0 +1,11 @@
+# Abitanti di Fontebruma e della piana (stesso formato di assets/world/abitanti.txt).
+# Per ora c'è solo Gaspare, che aspetta con la barca all'Approdo delle Brume per riportarti
+# sull'isola: i 12 abitanti, le tre famiglie isolate e Barnaba arrivano nel passo successivo
+# (Trama-Planet-One/10_ATTO_I_APPRODO_BOSCO_DEL_SUD_E_SISTEMA_MAPPA.md, sezione 4).
+
+[Gaspare]
+casa: casa-piccola 5 0
+ruolo: pescatore
+modello: civile-m-verde
+lavoro: 5.0 461.0 -1 -1
+orari: 4 23 24

@@ -148,7 +148,7 @@ esci
 | `esci` | Rapporto in `prove/out/<copione>/RAPPORTO.txt`; codice d'uscita 1 se qualcosa è fallito |
 
 `vai`, `dove`, `guarda`, `foto`, `dump` e `copione <file>` funzionano anche dalla shell (`\`), insieme a
-`quest <inizio|cerca|raccogli|torna|completata>` (salta a una fase), `uccidi [raggio]`, `vicino [raggio]`, `fps`, `entita` e `volume <musica|ambiente|voci> <0-100>` (solo per la partita in corso).
+`quest <inizio|cerca|raccogli|torna|completata>` (salta a una fase), `uccidi [raggio]`, `vicino [raggio]`, `fps`, `entita`, `volume <musica|ambiente|voci> <0-100>` (solo per la partita in corso) e `regione <isola|nord>` (viaggio fra le regioni).
 
 ```bash
 scripts/beta_check.sh                      # tutti i copioni di prove/, rapporto in prove/out/RAPPORTO.md
@@ -208,6 +208,19 @@ grep "\[EVENT\]" run.log    # eventi finestra/cursore
 | Su/Giù o W/S | Nel dialogo: cambia la scelta evidenziata |
 | 1–9, 0 | Usa l'oggetto nello slot corrispondente della barra in basso (pozione: +25 HP) |
 | Click sinistro | Attacco melee |
+
+## Il Continente del Nord (primo passo)
+
+Oltre all'Isola di Fontevivo c'è una seconda regione, molto più grande: la **Piana delle Brume**
+(Atto I della trama, ADR 0033). Ci si arriva in barca: al porticciolo dell'isola parla con **Gaspare**
+e scegli «Portami al Continente del Nord». Sbarchi all'**Approdo delle Brume**, nella nebbia; il sentiero
+attraversa il bosco di querce e betulle, costeggia il **Grande Lago** e arriva a **Fontebruma**
+(circa 700 m a nord). Gaspare aspetta all'approdo per riportarti a Fontevivo quando vuoi.
+
+Inventario, quest, data e ora viaggiano con te; ogni regione resta com'era quando l'hai lasciata.
+Per ora il continente si esplora soltanto: abitanti, negozi e missioni arrivano nei prossimi passi.
+Dalla shell: `regione nord` e `regione isola`. I dati del continente si rigenerano con
+`python3 scripts/gen_nord.py` (coordinate dei luoghi in cima allo script).
 
 ## Quest: "Denaro Rubato"
 

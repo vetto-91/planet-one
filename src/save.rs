@@ -14,6 +14,7 @@ use crate::player::{Player, PlayerHealth};
 use crate::quests::denaro_rubato::{
     NeedsGroundSnap, QuestCoin, QuestStage, QuestState, QuestThief,
 };
+use crate::region::Region;
 use crate::villagers::{Villager, VillagerSave};
 use crate::weather::{Kind as WeatherKind, WeatherState};
 use avian3d::prelude::*;
@@ -128,8 +129,50 @@ pub struct SaveData {
     pub villagers: Vec<VillagerSave>,
     pub keeper_asleep: bool,
     pub keeper_stove_manual: bool,
+    /// Regione in cui si trova il giocatore.
+    pub region: Region,
+    /// Stato delle altre regioni visitate (porte, contenitori, nemici…), com'erano quando
+    /// le si è lasciate.
+    pub elsewhere: Vec<(Region, Box<SaveData>)>,
     /// Sezioni trovate nel file: quelle mancanti non toccano il mondo.
     pub present: HashSet<String>,
+}
+
+/// Sezioni che descrivono il mondo di una regione (le altre seguono il personaggio).
+const WORLD_SECTIONS: [&str; 8] = [
+    "porte",
+    "contenitori",
+    "a_terra",
+    "monete_quest",
+    "nemici",
+    "ricomparse",
+    "abitanti",
+    "viandante",
+];
+const HERO_SECTIONS: [&str; 8] = [
+    "personaggio",
+    "tempo",
+    "giocatore",
+    "inventario",
+    "barra",
+    "equipaggiamento",
+    "effetti",
+    "quest",
+];
+
+/// Stato delle regioni lasciate durante questa partita.
+#[derive(Resource, Default)]
+pub struct RegionMemory(pub Vec<(Region, SaveData)>);
+
+impl RegionMemory {
+    fn put(&mut self, region: Region, data: SaveData) {
+        self.0.retain(|(r, _)| *r != region);
+        self.0.push((region, data));
+    }
+
+    fn get(&self, region: Region) -> Option<&SaveData> {
+        self.0.iter().find(|(r, _)| *r == region).map(|(_, d)| d)
+    }
 }
 
 fn v3(v: Vec3) -> String {
@@ -285,6 +328,8 @@ impl SaveData {
             villagers: Vec::new(),
             keeper_asleep: false,
             keeper_stove_manual: false,
+            region: Region::Isola,
+            elsewhere: Vec::new(),
             present: HashSet::new(),
         }
     }
@@ -306,6 +351,7 @@ impl SaveData {
         line(format!("salvato = {}", self.saved_at));
         line(format!("tempo_giocato = {:.0}", self.played_secs));
         line(format!("luogo = {}", self.place));
+        line(format!("regione = {}", self.region.key()));
         line(String::new());
         line("[personaggio]".into());
         line(format!("nome = {}", self.name));
@@ -452,6 +498,18 @@ impl SaveData {
         line("[viandante]".into());
         line(format!("a_letto = {}", yes(self.keeper_asleep)));
         line(format!("stufa_manuale = {}", yes(self.keeper_stove_manual)));
+        // Le altre regioni visitate: un salvataggio dentro l'altro, righe che iniziano con «>».
+        for (region, inner) in &self.elsewhere {
+            let mut copy = (**inner).clone();
+            copy.elsewhere.clear();
+            line(String::new());
+            line(format!("[regione:{}]", region.key()));
+            for l in copy.to_text().lines() {
+                if !l.trim().is_empty() && !l.starts_with('#') {
+                    line(format!("> {l}"));
+                }
+            }
+        }
         t
     }
 
@@ -459,6 +517,7 @@ impl SaveData {
     pub fn parse(text: &str) -> Result<Self, String> {
         let mut d = Self::blank();
         let mut section = String::new();
+        let mut nested: Vec<(Region, String)> = Vec::new();
         for raw in text.lines() {
             let line = raw.trim();
             if line.is_empty() || line.starts_with('#') {
@@ -466,11 +525,32 @@ impl SaveData {
             }
             if let Some(name) = line.strip_prefix('[').and_then(|l| l.strip_suffix(']')) {
                 section = name.trim().to_lowercase();
-                d.present.insert(section.clone());
+                if !section.starts_with("regione:") {
+                    d.present.insert(section.clone());
+                }
+                continue;
+            }
+            // Stato di un'altra regione: righe «> …» da leggere come un salvataggio a sé.
+            if let Some(key) = section.strip_prefix("regione:") {
+                if let (Some(region), Some(inner)) = (Region::parse(key), line.strip_prefix('>')) {
+                    match nested.iter_mut().find(|(r, _)| *r == region) {
+                        Some((_, text)) => {
+                            text.push_str(inner.trim());
+                            text.push('\n');
+                        }
+                        None => nested.push((region, format!("{}\n", inner.trim()))),
+                    }
+                }
                 continue;
             }
             if d.read_line(&section, line).is_none() {
                 warn!("[SAVE] riga ignorata in [{section}]: {line}");
+            }
+        }
+        for (region, text) in nested {
+            if let Ok(mut inner) = Self::parse(&text) {
+                inner.region = region;
+                d.elsewhere.push((region, Box::new(inner)));
             }
         }
         if !d.present.contains("partita") || d.name.trim().is_empty() {
@@ -491,6 +571,7 @@ impl SaveData {
                     "salvato" => self.saved_at = v.to_string(),
                     "tempo_giocato" => self.played_secs = v.parse().ok()?,
                     "luogo" => self.place = v.to_string(),
+                    "regione" => self.region = Region::parse(v)?,
                     _ => return None,
                 }
             }
@@ -859,7 +940,25 @@ pub enum LoadRequest {
     None,
     New(Character),
     File(Box<SaveData>),
+    /// Viaggio verso un'altra regione: la fotografia della partita al momento della partenza.
+    Travel(Box<SaveData>, Region),
 }
+
+impl LoadRequest {
+    /// Regione in cui si troverà il giocatore dopo questa richiesta (`None` = quella corrente).
+    pub fn region(&self) -> Option<Region> {
+        match self {
+            LoadRequest::None => None,
+            LoadRequest::New(_) => Some(Region::Isola),
+            LoadRequest::File(d) => Some(d.region),
+            LoadRequest::Travel(_, to) => Some(*to),
+        }
+    }
+}
+
+/// Richiesta di viaggio verso un'altra regione (barca di Gaspare, shell).
+#[derive(Resource, Default)]
+pub struct TravelRequest(pub Option<Region>);
 
 /// Risorse del personaggio.
 #[derive(SystemParam)]
@@ -907,6 +1006,7 @@ pub struct WorldParams<'w, 's> {
     quest: ResMut<'w, QuestState>,
     containers: ResMut<'w, Containers>,
     village: Res<'w, crate::village::VillageInfo>,
+    memory: ResMut<'w, RegionMemory>,
     meshes: ResMut<'w, Assets<Mesh>>,
     materials: ResMut<'w, Assets<StandardMaterial>>,
     asset_server: Res<'w, AssetServer>,
@@ -920,13 +1020,14 @@ pub struct WorldParams<'w, 's> {
 }
 
 /// Nome del luogo per l'elenco dei salvataggi.
-fn place_name(village: &crate::village::VillageInfo, p: Vec3) -> &'static str {
-    if crate::village::in_polygon(&village.poly, Vec2::new(p.x, p.z)) {
-        "Fontevivo"
-    } else if p.z > 75.0 {
-        "Porto"
-    } else {
-        "Campagna"
+fn place_name(village: &crate::village::VillageInfo, p: Vec3) -> String {
+    let inside = crate::village::in_polygon(&village.poly, Vec2::new(p.x, p.z));
+    match crate::region::current() {
+        _ if inside => village.spec.name.clone(),
+        Region::Isola if p.z > 75.0 => "Porto".into(),
+        Region::Isola => "Campagna".into(),
+        Region::Nord if p.z > 420.0 => "Approdo delle Brume".into(),
+        Region::Nord => "Piana delle Brume".into(),
     }
 }
 
@@ -940,10 +1041,23 @@ fn collect(kind: SaveKind, session: &Session, hero: &HeroParams, world: &WorldPa
         });
     let mut d = SaveData::blank();
     d.kind = kind;
+    d.region = crate::region::current();
+    d.elsewhere = world
+        .memory
+        .0
+        .iter()
+        .filter(|(r, _)| *r != d.region)
+        .map(|(r, m)| (*r, Box::new(m.clone())))
+        .collect();
+    d.present = WORLD_SECTIONS
+        .iter()
+        .chain(&HERO_SECTIONS)
+        .map(|s| (*s).to_string())
+        .collect();
     d.game_version = crate::version::GAME_VERSION.to_string();
     d.saved_at = now_text();
     d.played_secs = session.played;
-    d.place = place_name(&world.village, pos).to_string();
+    d.place = place_name(&world.village, pos);
     d.name = hero.character.name.clone();
     d.class = hero.character.class;
     d.stats = hero.character.stats;
@@ -1281,6 +1395,36 @@ pub fn session_tick(
     }
 }
 
+/// Sistema: parte il viaggio chiesto in `TravelRequest`. Fotografa la partita, ricorda lo stato
+/// della regione che si lascia e ricostruisce la scena nell'altra (`scene::reset_scene`).
+pub fn start_travel(
+    mut travel: ResMut<TravelRequest>,
+    session: Res<Session>,
+    hero: HeroParams,
+    mut world: WorldParams,
+    mut load: ResMut<LoadRequest>,
+    mut next: ResMut<NextState<AppState>>,
+) {
+    let Some(to) = travel.0.take() else {
+        return;
+    };
+    let from = crate::region::current();
+    if to == from {
+        return;
+    }
+    let data = collect(SaveKind::Auto, &session, &hero, &world);
+    let mut left = data.clone();
+    left.elsewhere.clear();
+    world.memory.put(from, left);
+    info!(
+        "[VIAGGIO] partenza da {} verso {}",
+        from.title(),
+        to.title()
+    );
+    *load = LoadRequest::Travel(Box::new(data), to);
+    next.set(AppState::Resetting);
+}
+
 /// Sistema (stato Loading): appena la scena è pronta applica la richiesta ed entra in gioco.
 #[allow(clippy::too_many_arguments)]
 pub fn finish_loading(
@@ -1293,10 +1437,11 @@ pub fn finish_loading(
     mut world: WorldParams,
     mut next: ResMut<NextState<AppState>>,
 ) {
+    // Sull'isola si aspetta anche la casetta del Viandante (i suoi oggetti con stato).
     let ready = homes.built
         && field.is_some()
         && !hero.players.is_empty()
-        && world.props.iter().next().is_some();
+        && (crate::region::current() != Region::Isola || world.props.iter().next().is_some());
     if !ready {
         return;
     }
@@ -1304,6 +1449,7 @@ pub fn finish_loading(
         LoadRequest::None => {}
         LoadRequest::New(character) => {
             start_session(&mut session, &character.name, 0.0);
+            world.memory.0.clear();
             *hero.character = character;
             *hero.inventory = Inventory::default();
             *hero.equip = Equipment::default();
@@ -1321,7 +1467,39 @@ pub fn finish_loading(
             request.kind = Some(SaveKind::Auto);
             info!("[SAVE] nuova partita: {}", hero.character.name);
         }
+        LoadRequest::Travel(mut data, to) => {
+            // Il personaggio porta con sé tutto il suo; il mondo è quello ricordato della
+            // regione d'arrivo (o nuovo, la prima volta).
+            data.present.retain(|s| HERO_SECTIONS.contains(&s.as_str()));
+            if let Some(m) = world.memory.get(to).cloned() {
+                data.doors = m.doors;
+                data.containers = m.containers;
+                data.pickups = m.pickups;
+                data.quest_coins = m.quest_coins;
+                data.enemies = m.enemies;
+                data.respawns = m.respawns;
+                data.villagers = m.villagers;
+                data.keeper_asleep = m.keeper_asleep;
+                data.keeper_stove_manual = m.keeper_stove_manual;
+                data.present
+                    .extend(WORLD_SECTIONS.iter().map(|s| (*s).to_string()));
+            }
+            let (pos, yaw) = to.arrival();
+            data.pos = pos;
+            data.yaw = yaw;
+            data.first_person = false;
+            *world.containers = Containers::default();
+            apply(&data, &mut hero, &mut world);
+            info!("[VIAGGIO] arrivo: {}", to.title());
+            session.notify(to.title());
+            request.kind = Some(SaveKind::Auto);
+        }
         LoadRequest::File(data) => {
+            world.memory.0 = data
+                .elsewhere
+                .iter()
+                .map(|(r, d)| (*r, (**d).clone()))
+                .collect();
             start_session(&mut session, &data.name, data.played_secs);
             *hero.inventory = Inventory::default();
             *hero.equip = Equipment::default();
@@ -1389,10 +1567,13 @@ pub fn plugin(app: &mut App) {
     app.init_resource::<Session>()
         .init_resource::<SaveRequest>()
         .init_resource::<LoadRequest>()
+        .init_resource::<RegionMemory>()
+        .init_resource::<TravelRequest>()
         .add_systems(
             Update,
             (
                 session_tick.run_if(in_state(AppState::Playing)),
+                start_travel.run_if(in_state(AppState::Playing)),
                 process_save,
                 finish_loading.run_if(in_state(AppState::Loading)),
             ),
@@ -1402,6 +1583,26 @@ pub fn plugin(app: &mut App) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_region_and_the_other_regions_survive_a_save() {
+        let mut d = sample();
+        d.region = Region::Nord;
+        let mut island = sample();
+        island.region = Region::Isola;
+        island.doors = vec![("casa:0".into(), true)];
+        island.elsewhere.clear();
+        d.elsewhere = vec![(Region::Isola, Box::new(island))];
+        let back = SaveData::parse(&d.to_text()).unwrap();
+        assert_eq!(back.region, Region::Nord);
+        assert_eq!(back.elsewhere.len(), 1);
+        let (region, inner) = &back.elsewhere[0];
+        assert_eq!(*region, Region::Isola);
+        assert_eq!(inner.doors, vec![("casa:0".to_string(), true)]);
+        // Un salvataggio vecchio, senza la riga della regione, è sull'isola.
+        let old = d.to_text().replace("regione = nord\n", "");
+        assert_eq!(SaveData::parse(&old).unwrap().region, Region::Isola);
+    }
 
     fn sample() -> SaveData {
         let mut d = SaveData::blank();

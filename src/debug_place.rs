@@ -24,9 +24,12 @@ use bevy_egui::{EguiContexts, egui};
 use std::fmt::Write as _;
 
 /// File con i piazzamenti (relativo alla cartella del progetto / di lavoro).
-pub const FILE: &str = "debug/placements.txt";
+/// File dei piazzamenti della regione corrente.
+pub fn file() -> &'static str {
+    crate::region::current().placements_file()
+}
 /// Tipi predefiniti.
-const KINDS: [&str; 43] = [
+const KINDS: [&str; 46] = [
     "albero",
     "roccia",
     "cespuglio",
@@ -48,6 +51,9 @@ const KINDS: [&str; 43] = [
     "bancarella-frutta",
     "bancarella-pesce",
     "pagliaio",
+    "arco",
+    "carbonaia",
+    "palafitta",
     "spaventapasseri",
     "campo",
     "orto",
@@ -221,6 +227,9 @@ pub fn footprint(kind: &str) -> f32 {
         "mulino" | "torre-rovina" | "santuario" => 3.2,
         "campo-ladro" => 2.6,
         "banditi" | "rovine" | "grotta" => 6.0,
+        "arco" => 4.4,
+        "carbonaia" => 2.0,
+        "palafitta" => 3.2,
         _ => 0.5,
     }
 }
@@ -314,12 +323,27 @@ impl Default for DebugPlace {
         };
         d.items = read_file();
         d.next_id = d.items.iter().map(|p| p.id).max().unwrap_or(0) + 1;
-        info!("[DEBUG] piazzamenti letti da {FILE}: {}", d.items.len());
+        info!("[DEBUG] piazzamenti letti da {}: {}", file(), d.items.len());
         d
     }
 }
 
 impl DebugPlace {
+    /// Rilegge i piazzamenti della regione corrente (dopo un cambio di regione).
+    pub fn reload(&mut self) {
+        self.items = read_file();
+        self.next_id = self.items.iter().map(|p| p.id).max().unwrap_or(0) + 1;
+        self.pending.clear();
+        self.grabbed = None;
+        self.markers_dirty = true;
+        self.revision += 1;
+        info!(
+            "[DEBUG] piazzamenti letti da {}: {}",
+            file(),
+            self.items.len()
+        );
+    }
+
     pub fn revision(&self) -> u32 {
         self.revision
     }
@@ -539,13 +563,13 @@ pub fn utc_now() -> String {
 }
 
 fn file_path() -> std::path::PathBuf {
-    let rel = std::path::PathBuf::from(FILE);
+    let rel = std::path::PathBuf::from(file());
     if rel.parent().is_some_and(|p| p.exists()) || std::path::Path::new("Cargo.toml").exists() {
         return rel;
     }
     // Avviato da un'altra cartella durante lo sviluppo: usa quella del progetto, se esiste
     // su questa macchina (nei pacchetti distribuiti non esiste: si usa la cartella corrente).
-    let manifest = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(FILE);
+    let manifest = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(file());
     if manifest.parent().is_some_and(|p| p.exists()) {
         manifest
     } else {
@@ -664,7 +688,7 @@ fn parse_points(v: &str) -> Vec<Vec2> {
 fn read_file() -> Vec<Placement> {
     // Se il file non c'è (pacchetto distribuito) si usano i piazzamenti incorporati nel gioco.
     let text = std::fs::read_to_string(file_path())
-        .unwrap_or_else(|_| include_str!("../debug/placements.txt").to_string());
+        .unwrap_or_else(|_| crate::region::embedded_placements().to_string());
     let mut items: Vec<Placement> = Vec::new();
     for line in text.lines() {
         let line = line.trim();
@@ -1456,7 +1480,7 @@ fn panel(ui: &mut egui::Ui, dbg: &mut DebugPlace, in_map: bool, hour: &str) {
     if redo.is_some() {
         dbg.redistribute_req = redo;
     }
-    ui.label(format!("File: {FILE}  (ora di gioco {hour})"));
+    ui.label(format!("File: {}  (ora di gioco {hour})", file()));
 }
 
 fn place_panel(ui: &mut egui::Ui, dbg: &mut DebugPlace) {

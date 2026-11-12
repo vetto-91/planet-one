@@ -14,7 +14,6 @@ use crate::player::{GroundedState, Player};
 use crate::shell::Cheats;
 use crate::terrain::{SEA_LEVEL, Surface, TerrainField};
 use crate::village::VillageInfo;
-use crate::water::Forest;
 use crate::weather::{Noise, RATE, WeatherState, make_loop, to_wav};
 use bevy::audio::{AudioSink, AudioSource, Volume};
 use bevy::prelude::*;
@@ -69,7 +68,6 @@ pub struct AmbienceSounds {
     steps: Vec<Vec<Handle<AudioSource>>>,
     splash: Handle<AudioSource>,
     fish: Handle<AudioSource>,
-    forests: Vec<Forest>,
 }
 
 // --- Sintesi -----------------------------------------------------------------------------------
@@ -499,7 +497,6 @@ fn setup(mut commands: Commands, mut sources: ResMut<Assets<AudioSource>>) {
         steps,
         splash,
         fish,
-        forests: crate::water::load_spec().forests,
     });
 }
 
@@ -557,7 +554,7 @@ fn update_ambience(
         st.timer = 0.25;
         st.shore = field.distance_to_shore(flat);
         st.water = field.distance_to_fresh_water(flat);
-        st.forest = sounds
+        st.forest = crate::water::load_spec_cached()
             .forests
             .iter()
             .map(|f| 1.0 - ((flat.distance(f.center) / f.radius - 0.6) * 2.5).clamp(0.0, 1.0))

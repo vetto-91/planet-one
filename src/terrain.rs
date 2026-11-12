@@ -24,11 +24,15 @@ use bevy::render::mesh::{Indices, PrimitiveTopology, VertexAttributeValues};
 /// Estensione del terreno sul piano XZ (m): il piano è centrato in origine.
 /// È un'isola: il quadrato centrale di `HEIGHTMAP_SIZE` m usa la heightmap, il
 /// resto è procedurale (colline dolci e costa irregolare) e scende nel mare.
-pub const TERRAIN_SIZE: f32 = 300.0;
+pub fn size() -> f32 {
+    crate::region::current().size()
+}
 /// Lato (m) del quadrato coperto dalla heightmap PNG (centrato).
 const HEIGHTMAP_SIZE: f32 = 100.0;
-/// Passo (m) della griglia di vertici.
-pub(crate) const STEP: f32 = 0.5;
+/// Passo (m) della griglia di vertici (dipende dalla regione).
+pub(crate) fn step() -> f32 {
+    crate::region::current().step()
+}
 /// Quota (m) del livello del mare e della riva (dove si ferma il giocatore).
 pub const SEA_LEVEL: f32 = -1.0;
 const SHORE_LEVEL: f32 = -0.3;
@@ -133,8 +137,8 @@ impl TerrainField {
     /// Quota (m) del terreno in (x, z), interpolazione bilineare tra i vertici.
     pub fn height_at(&self, x: f32, z: f32) -> f32 {
         let max = (self.n - 1) as f32;
-        let fx = ((x + TERRAIN_SIZE / 2.0) / STEP).clamp(0.0, max);
-        let fz = ((z + TERRAIN_SIZE / 2.0) / STEP).clamp(0.0, max);
+        let fx = ((x + size() / 2.0) / step()).clamp(0.0, max);
+        let fz = ((z + size() / 2.0) / step()).clamp(0.0, max);
         let (x0, z0) = (fx.floor() as usize, fz.floor() as usize);
         let (x1, z1) = ((x0 + 1).min(self.n - 1), (z0 + 1).min(self.n - 1));
         let (u, v) = (fx - x0 as f32, fz - z0 as f32);
@@ -146,7 +150,7 @@ impl TerrainField {
 
     /// Materiale del suolo nel vertice più vicino a (x, z).
     pub fn surface_at(&self, x: f32, z: f32) -> Surface {
-        let i = |w: f32| ((w + TERRAIN_SIZE / 2.0) / STEP).round() as isize;
+        let i = |w: f32| ((w + size() / 2.0) / step()).round() as isize;
         let (ix, iz) = (i(x), i(z));
         let n = self.n as isize;
         if (0..n).contains(&ix) && (0..n).contains(&iz) {
@@ -173,7 +177,7 @@ impl TerrainField {
 
     /// C'è acqua dolce in (x, z)?
     pub fn in_fresh_water(&self, x: f32, z: f32) -> bool {
-        let i = |w: f32| ((w + TERRAIN_SIZE / 2.0) / STEP).round() as isize;
+        let i = |w: f32| ((w + size() / 2.0) / step()).round() as isize;
         let (ix, iz) = (i(x), i(z));
         let n = self.n as isize;
         (0..n).contains(&ix) && (0..n).contains(&iz) && self.wet[(iz * n + ix) as usize]
@@ -217,7 +221,7 @@ pub fn spawn_terrain(
     asset_server: &AssetServer,
 ) {
     let placeholder_mesh = meshes.add(Plane3d {
-        half_size: Vec2::splat(TERRAIN_SIZE / 2.0),
+        half_size: Vec2::splat(size() / 2.0),
         ..Default::default()
     });
 
@@ -230,12 +234,12 @@ pub fn spawn_terrain(
         // Il wireframe di F3 sul terreno (720.000 triangoli) è troppo pesante: lo sostituisce
         // `terrain_debug_gizmos`.
         DebugRender::none(),
-        Collider::cuboid(TERRAIN_SIZE, 1.0, TERRAIN_SIZE),
+        Collider::cuboid(size(), 1.0, size()),
         Mesh3d(placeholder_mesh),
         MeshMaterial3d(materials.add(crate::pbr::material(
             asset_server,
             "grass",
-            Vec2::splat(TERRAIN_SIZE / GRASS_TILE_M),
+            Vec2::splat(size() / GRASS_TILE_M),
         ))),
     ));
 }
@@ -336,7 +340,9 @@ pub fn update_terrain(
         h_max = h_max.max(*h);
     }
     info!(
-        "terrain diagnostics: island {n}x{n} vertices, height range [{h_min:.2}, {h_max:.2}] m, size {TERRAIN_SIZE} m"
+        "terrain diagnostics: {} {n}x{n} vertices, height range [{h_min:.2}, {h_max:.2}] m, size {} m",
+        crate::region::current().key(),
+        size()
     );
 
     // Mare solo attorno all'isola (flood-fill dal bordo), sabbia sfumata, barriera di riva.
@@ -393,8 +399,8 @@ pub fn update_terrain(
         .filter(|(x, z)| water.1[z * n + x])
         .map(|(x, z)| {
             Vec2::new(
-                x as f32 * STEP - TERRAIN_SIZE / 2.0,
-                z as f32 * STEP - TERRAIN_SIZE / 2.0,
+                x as f32 * step() - size() / 2.0,
+                z as f32 * step() - size() / 2.0,
             )
         })
         .collect();
@@ -423,11 +429,7 @@ pub fn update_terrain(
         MeshMaterial3d(materials.add(StandardMaterial {
             alpha_mode: AlphaMode::Blend,
             depth_bias: 0.5,
-            ..crate::pbr::material(
-                &asset_server,
-                "sand",
-                Vec2::splat(TERRAIN_SIZE / SAND_TILE_M),
-            )
+            ..crate::pbr::material(&asset_server, "sand", Vec2::splat(size() / SAND_TILE_M))
         })),
         Transform::default(),
         bevy::light::NotShadowCaster,
@@ -439,11 +441,7 @@ pub fn update_terrain(
         MeshMaterial3d(materials.add(StandardMaterial {
             alpha_mode: AlphaMode::Blend,
             depth_bias: 1.5,
-            ..crate::pbr::material(
-                &asset_server,
-                "cobble",
-                Vec2::splat(TERRAIN_SIZE / ROAD_TILE_M),
-            )
+            ..crate::pbr::material(&asset_server, "cobble", Vec2::splat(size() / ROAD_TILE_M))
         })),
         Transform::default(),
         bevy::light::NotShadowCaster,
@@ -475,11 +473,7 @@ pub fn update_terrain(
             base_color: Color::srgb(0.62, 0.48, 0.34),
             alpha_mode: AlphaMode::Blend,
             depth_bias: 1.2,
-            ..crate::pbr::material(
-                &asset_server,
-                "sand",
-                Vec2::splat(TERRAIN_SIZE / SAND_TILE_M),
-            )
+            ..crate::pbr::material(&asset_server, "sand", Vec2::splat(size() / SAND_TILE_M))
         })),
         Transform::default(),
         bevy::light::NotShadowCaster,
@@ -491,11 +485,7 @@ pub fn update_terrain(
         MeshMaterial3d(materials.add(StandardMaterial {
             alpha_mode: AlphaMode::Blend,
             depth_bias: 0.8,
-            ..crate::pbr::material(
-                &asset_server,
-                "stone",
-                Vec2::splat(TERRAIN_SIZE / ROCK_TILE_M),
-            )
+            ..crate::pbr::material(&asset_server, "stone", Vec2::splat(size() / ROCK_TILE_M))
         })),
         Transform::default(),
         bevy::light::NotShadowCaster,
@@ -639,11 +629,11 @@ pub fn terrain_debug_gizmos(
     let pos = p.translation();
     let n = data.n;
     let at = |ix: usize, iz: usize| data.h[iz * n + ix];
-    let world = |i: usize| -TERRAIN_SIZE / 2.0 + i as f32 * STEP;
-    let idx = |w: f32| (((w + TERRAIN_SIZE / 2.0) / STEP).round().max(0.0) as usize).min(n - 1);
+    let world = |i: usize| -size() / 2.0 + i as f32 * step();
+    let idx = |w: f32| (((w + size() / 2.0) / step()).round().max(0.0) as usize).min(n - 1);
     let (cx, cz) = (idx(pos.x), idx(pos.z));
-    let r = (35.0 / STEP) as usize;
-    let skip = (2.0 / STEP) as usize; // passo 2 m
+    let r = (35.0 / step()) as usize;
+    let skip = (2.0 / step()) as usize; // passo 2 m
     let color = Color::srgb(1.0, 0.6, 0.1);
     let (x0, x1) = (cx.saturating_sub(r) / skip * skip, (cx + r).min(n - 1));
     let (z0, z1) = (cz.saturating_sub(r) / skip * skip, (cz + r).min(n - 1));
@@ -727,11 +717,93 @@ fn island_radius(a: f32) -> f32 {
 /// Vero se il punto (x, z) cade in mare (solo la parte procedurale: il quadrato
 /// centrale della heightmap è sempre terra). Usato per non piazzare oggetti in acqua.
 pub fn is_water(x: f32, z: f32) -> bool {
+    if crate::region::current() != crate::region::Region::Isola {
+        // Terraferma: mare a sud, lago e rio (dati della regione, letti una volta per regione).
+        return continent_water(&crate::water::load_spec_cached(), Vec2::new(x, z));
+    }
     if x.abs() <= HEIGHTMAP_SIZE / 2.0 && z.abs() <= HEIGHTMAP_SIZE / 2.0 {
         return false;
     }
     let m = (x * x + z * z).sqrt() / island_radius(z.atan2(x));
     m > 0.9
+}
+
+/// Quanto un punto è dentro il grande lago: 0 al centro, 1 sul bordo (frastagliato).
+fn basin_m(island: &crate::water::IslandSpec, p: Vec2) -> Option<f32> {
+    let (c, r) = island.basin?;
+    let d = (p - c) / r;
+    let edge = 1.0 + (noise2(p.x * 0.03 + 2.0, p.y * 0.03 + 8.0) - 0.5) * 0.28;
+    Some(d.length() / edge)
+}
+
+/// Distanza (m) dall'asse del canale (il rio).
+fn channel_dist(island: &crate::water::IslandSpec, p: Vec2) -> f32 {
+    island
+        .channel
+        .windows(2)
+        .map(|s| dist_to_segment(p, s[0], s[1]))
+        .fold(f32::MAX, f32::min)
+}
+
+/// z della riva sud della terraferma all'ascissa `x` (costa ondulata).
+fn coast_z(coast: f32, x: f32) -> f32 {
+    // Davanti all'approdo (x = 0) la riva è dritta, così molo e sentiero cadono giusti.
+    coast + (noise2(x * 0.02 + 3.0, 1.5) - 0.5) * 22.0 * smooth(20.0, 90.0, x.abs())
+}
+
+/// Acqua della terraferma: mare a sud, lago (fuori dall'isolotto) e rio.
+fn continent_water(island: &crate::water::IslandSpec, p: Vec2) -> bool {
+    let Some(coast) = island.coast else {
+        return false;
+    };
+    let on_islet = island.islet.is_some_and(|(c, r)| p.distance(c) < r);
+    p.y > coast_z(coast, p.x) - 6.0
+        || (basin_m(island, p).is_some_and(|m| m < 0.97) && !on_islet)
+        || channel_dist(island, p) < island.channel_half + 1.5
+}
+
+/// Altezza (m) della terraferma in (x, z): piana ondulata, mare a sud, lago e rio a livello
+/// del mare (li allaga lo stesso riempimento del mare), rilievi oltre il confine.
+fn continent_height(x: f32, z: f32, island: &crate::water::IslandSpec, poly: &[Vec2]) -> f32 {
+    let p = Vec2::new(x, z);
+    let coast = island.coast.unwrap_or(f32::MAX);
+    let mut land = 2.3
+        + (noise2(x * 0.012 + 5.0, z * 0.012 + 9.0) - 0.5) * 2.6
+        + (noise2(x * 0.05, z * 0.05 + 40.0) - 0.5) * 0.9;
+    // Alture: mai dentro il paese né vicino alle mura.
+    let hills = island.hill_height(p);
+    let keep_out = if hills.abs() > 0.01 && poly.len() >= 3 {
+        smooth(8.0, 22.0, signed_distance(poly, p).max(0.0))
+    } else {
+        1.0
+    };
+    land += hills * keep_out;
+    // Il paese sta in piano, a una quota sola, con un raccordo dolce fuori dalle mura.
+    if poly.len() >= 3 {
+        let d = signed_distance(poly, p);
+        land += (2.4 - land) * smooth(26.0, 6.0, d);
+    }
+    // Confine: oltre il limite percorribile il terreno sale in un crinale.
+    if let Some((xb, zb)) = island.bounds {
+        let out = (x.abs() - xb).max(-zb - z).max(0.0);
+        land += smooth(0.0, 70.0, out) * 26.0;
+    }
+    // Lago: sponda dolce e fondo sotto il livello del mare.
+    if let Some(m) = basin_m(island, p) {
+        land += (-3.4 - land) * smooth(1.12, 0.82, m);
+    }
+    if let Some((c, r)) = island.islet {
+        land += (1.9 - land) * smooth(1.0, 0.5, p.distance(c) / r);
+    }
+    // Rio: canale sotto il livello del mare, con le sponde raccordate.
+    if island.channel.len() >= 2 {
+        let d = channel_dist(island, p);
+        let half = island.channel_half;
+        land += (-2.6 - land) * smooth(half + 4.0, half, d);
+    }
+    // Mare a sud.
+    let cz = coast_z(coast, x);
+    land + (-3.6 - land) * smooth(cz - 12.0, cz + 8.0, z)
 }
 
 /// Altezza (m) del terreno in (x, z).
@@ -788,13 +860,17 @@ fn build_field(
     pads: &[BuildingPad],
     island: &crate::water::IslandSpec,
 ) -> (Field, (crate::water::WaterPlan, Vec<bool>)) {
-    let n = (TERRAIN_SIZE / STEP) as usize + 1;
+    let n = (size() / step()) as usize + 1;
     let mut h = Vec::with_capacity(n * n);
     for iz in 0..n {
         for ix in 0..n {
-            let x = -TERRAIN_SIZE / 2.0 + ix as f32 * STEP;
-            let z = -TERRAIN_SIZE / 2.0 + iz as f32 * STEP;
-            h.push(island_height(image, x, z, island, &village.poly));
+            let x = -size() / 2.0 + ix as f32 * step();
+            let z = -size() / 2.0 + iz as f32 * step();
+            h.push(if island.coast.is_some() {
+                continent_height(x, z, island, &village.poly)
+            } else {
+                island_height(image, x, z, island, &village.poly)
+            });
         }
     }
     flatten_village(&mut h, n, &village.poly);
@@ -802,7 +878,7 @@ fn build_field(
     let field = Field { n, h };
     let plan = crate::water::plan_water(island, |p| field_height(&field, p));
     let Field { n, mut h } = field;
-    let wet = crate::water::carve(&plan, &mut h, n, STEP);
+    let wet = crate::water::carve(&plan, &mut h, n, step());
     flatten_pads(&mut h, n, pads);
     (Field { n, h }, (plan, wet))
 }
@@ -810,7 +886,7 @@ fn build_field(
 /// Quota del campo in (x, z), per il vertice più vicino.
 fn field_height(field: &Field, p: Vec2) -> f32 {
     let i = |w: f32| {
-        (((w + TERRAIN_SIZE / 2.0) / STEP).round() as isize).clamp(0, field.n as isize - 1) as usize
+        (((w + size() / 2.0) / step()).round() as isize).clamp(0, field.n as isize - 1) as usize
     };
     field.at(i(p.x), i(p.y))
 }
@@ -823,7 +899,7 @@ fn rock_weights(field: &Field) -> Vec<f32> {
             let (x, z) = (i % n, i / n);
             let dx = field.at((x + 1).min(n - 1), z) - field.at(x.saturating_sub(1), z);
             let dz = field.at(x, (z + 1).min(n - 1)) - field.at(x, z.saturating_sub(1));
-            let slope = (dx * dx + dz * dz).sqrt() / (2.0 * STEP);
+            let slope = (dx * dx + dz * dz).sqrt() / (2.0 * step());
             smooth(0.55, 0.95, slope)
         })
         .collect()
@@ -834,8 +910,14 @@ fn cliff_fence(field: &Field, island: &crate::water::IslandSpec) -> Vec<bool> {
     let n = field.n;
     (0..n * n)
         .map(|i| {
-            let x = -TERRAIN_SIZE / 2.0 + (i % n) as f32 * STEP;
-            let z = -TERRAIN_SIZE / 2.0 + (i / n) as f32 * STEP;
+            let x = -size() / 2.0 + (i % n) as f32 * step();
+            let z = -size() / 2.0 + (i / n) as f32 * step();
+            // Terraferma: il recinto è il confine percorribile (a ovest, a est e a nord).
+            if island.coast.is_some() {
+                return island
+                    .bounds
+                    .is_some_and(|(xb, zb)| x.abs() > xb + 6.0 || z < -zb - 6.0);
+            }
             let angle = z.atan2(x);
             let m = (x * x + z * z).sqrt() / island_radius(angle);
             island.cliff_at(angle).0 > 0.5 && m > 0.925
@@ -884,8 +966,8 @@ fn flatten_pads(h: &mut [f32], n: usize, pads: &[BuildingPad]) {
     /// Bordo pieno attorno all'impronta e larghezza del raccordo (m).
     const RIM: f32 = 1.3;
     const BLEND: f32 = 3.5;
-    let world = |ix: usize| -TERRAIN_SIZE / 2.0 + ix as f32 * STEP;
-    let index = |w: f32| ((w + TERRAIN_SIZE / 2.0) / STEP).round() as isize;
+    let world = |ix: usize| -size() / 2.0 + ix as f32 * step();
+    let index = |w: f32| ((w + size() / 2.0) / step()).round() as isize;
     let clamp = |i: isize| i.clamp(0, n as isize - 1) as usize;
     let rotations: Vec<(f32, f32)> = pads.iter().map(|p| p.yaw.sin_cos()).collect();
     // Quota di ogni spiazzo, dal terreno prima di ogni modifica.
@@ -949,9 +1031,8 @@ fn flatten_village(h: &mut [f32], n: usize, poly: &[Vec2]) {
         hi = hi.max(*p);
     }
     let margin = 8.0;
-    let idx = |w: f32| {
-        (((w + TERRAIN_SIZE / 2.0) / STEP).round() as isize).clamp(0, n as isize - 1) as usize
-    };
+    let idx =
+        |w: f32| (((w + size() / 2.0) / step()).round() as isize).clamp(0, n as isize - 1) as usize;
     let (x0, x1, z0, z1) = (
         idx(lo.x - margin),
         idx(hi.x + margin),
@@ -987,8 +1068,8 @@ fn flatten_village(h: &mut [f32], n: usize, poly: &[Vec2]) {
     for z in z0..=z1 {
         for x in x0..=x1 {
             let p = Vec2::new(
-                -TERRAIN_SIZE / 2.0 + x as f32 * STEP,
-                -TERRAIN_SIZE / 2.0 + z as f32 * STEP,
+                -size() / 2.0 + x as f32 * step(),
+                -size() / 2.0 + z as f32 * step(),
             );
             let d = signed_distance(poly, p);
             let f = 1.0 - smooth(0.0, 6.0, d.max(0.0));
@@ -1002,9 +1083,8 @@ fn flatten_village(h: &mut [f32], n: usize, poly: &[Vec2]) {
 fn road_weights(field: &Field, roads: &[Road]) -> Vec<f32> {
     let n = field.n;
     let mut w = vec![0.0f32; n * n];
-    let idx = |v: f32| {
-        (((v + TERRAIN_SIZE / 2.0) / STEP).round() as isize).clamp(0, n as isize - 1) as usize
-    };
+    let idx =
+        |v: f32| (((v + size() / 2.0) / step()).round() as isize).clamp(0, n as isize - 1) as usize;
     for road in roads {
         let half = road.width / 2.0;
         for seg in road.pts.windows(2) {
@@ -1015,8 +1095,8 @@ fn road_weights(field: &Field, roads: &[Road]) -> Vec<f32> {
             for z in z0..=z1 {
                 for x in x0..=x1 {
                     let p = Vec2::new(
-                        -TERRAIN_SIZE / 2.0 + x as f32 * STEP,
-                        -TERRAIN_SIZE / 2.0 + z as f32 * STEP,
+                        -size() / 2.0 + x as f32 * step(),
+                        -size() / 2.0 + z as f32 * step(),
                     );
                     let d = dist_to_segment(p, a, b);
                     let nz = (noise2(p.x * 0.7 + 3.0, p.y * 0.7) - 0.5) * 0.5;
@@ -1039,7 +1119,7 @@ fn road_weights(field: &Field, roads: &[Road]) -> Vec<f32> {
 fn build_terrain_mesh(field: &Field) -> Mesh {
     let n = field.n;
     let mut mesh = Plane3d {
-        half_size: Vec2::splat(TERRAIN_SIZE / 2.0),
+        half_size: Vec2::splat(size() / 2.0),
         ..Default::default()
     }
     .mesh()
@@ -1071,14 +1151,14 @@ fn add_ground_detail(mesh: &mut Mesh, field: &Field) {
             let z = i / n;
             let left = field.h[z * n + x.saturating_sub(1)];
             let right = field.h[z * n + (x + 1).min(n - 1)];
-            let t = Vec3::new(2.0 * STEP, right - left, 0.0).normalize();
+            let t = Vec3::new(2.0 * step(), right - left, 0.0).normalize();
             [t.x, t.y, t.z, TANGENT_W]
         })
         .collect();
     mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, tangents);
     let colors: Vec<[f32; 4]> = (0..n * n)
         .map(|i| {
-            let (x, z) = ((i % n) as f32 * STEP, (i / n) as f32 * STEP);
+            let (x, z) = ((i % n) as f32 * step(), (i / n) as f32 * step());
             let low = (x * 0.041).sin() * (z * 0.033).cos() + (x * 0.013 + z * 0.021).sin();
             let high = (x * 0.31 + 1.3).sin() * (z * 0.27).cos();
             let k = 1.0 + low * 0.12 + high * 0.04;
@@ -1120,7 +1200,7 @@ fn build_terrain_collider(field: &Field) -> Collider {
     let heights: Vec<Vec<f32>> = (0..n)
         .map(|x| (0..n).map(|z| field.at(x, z)).collect())
         .collect();
-    Collider::heightfield(heights, Vec3::new(TERRAIN_SIZE, 1.0, TERRAIN_SIZE))
+    Collider::heightfield(heights, Vec3::new(size(), 1.0, size()))
 }
 
 /// Celle collegate al mare: flood-fill 4-connesso dal bordo sulle quote sotto `thr`.
@@ -1203,11 +1283,11 @@ fn sand_weights(field: &Field, ocean: &[bool]) -> Vec<f32> {
                 return 0.0;
             }
             let (x, z) = (
-                -TERRAIN_SIZE / 2.0 + (i % n) as f32 * STEP,
-                -TERRAIN_SIZE / 2.0 + (i / n) as f32 * STEP,
+                -size() / 2.0 + (i % n) as f32 * step(),
+                -size() / 2.0 + (i / n) as f32 * step(),
             );
             // Bordo irregolare: la distanza è modulata da rumore.
-            let d = dist[i] as f32 * STEP + (noise2(x * 0.09 + 5.0, z * 0.09 + 9.0) - 0.5) * 7.0;
+            let d = dist[i] as f32 * step() + (noise2(x * 0.09 + 5.0, z * 0.09 + 9.0) - 0.5) * 7.0;
             let by_dist = 1.0 - smooth(9.0, 23.0, d);
             let by_height = 1.0 - smooth(SEA_LEVEL + 3.0, SEA_LEVEL + 5.5, field.h[i]);
             by_dist * by_height
@@ -1259,7 +1339,7 @@ fn build_sea_mesh(field: &Field, ocean: &[bool]) -> Mesh {
         pos.extend([[x0, 0.0, z0], [x1, 0.0, z0], [x1, 0.0, z1], [x0, 0.0, z1]]);
         idx.extend([b, b + 2, b + 1, b, b + 3, b + 2]);
     };
-    let w = |i: usize| -TERRAIN_SIZE / 2.0 + i as f32 * 2.0 * STEP;
+    let w = |i: usize| -size() / 2.0 + i as f32 * 2.0 * step();
     for bz in 0..blocks {
         let mut run: Option<usize> = None;
         for bx in 0..=blocks {
@@ -1275,7 +1355,7 @@ fn build_sea_mesh(field: &Field, ocean: &[bool]) -> Mesh {
             }
         }
     }
-    let (h, big) = (TERRAIN_SIZE / 2.0, 4000.0);
+    let (h, big) = (size() / 2.0, 4000.0);
     quad(-big, -big, big, -h);
     quad(-big, h, big, big);
     quad(-big, -h, -h, h);
@@ -1309,8 +1389,8 @@ fn build_barrier(
     // Dentro l'impronta di un molo (x ±1,6 m, z da −2,5 a +12,5 m locali) il muro cade.
     let on_pier = |x: usize, z: usize| {
         let p = Vec2::new(
-            -TERRAIN_SIZE / 2.0 + x as f32 * STEP,
-            -TERRAIN_SIZE / 2.0 + z as f32 * STEP,
+            -size() / 2.0 + x as f32 * step(),
+            -size() / 2.0 + z as f32 * step(),
         );
         piers.iter().any(|(c, yaw)| {
             let d = p - *c;
@@ -1334,22 +1414,22 @@ fn build_barrier(
                 .collect()
         })
         .collect();
-    Collider::heightfield(heights, Vec3::new(TERRAIN_SIZE, 1.0, TERRAIN_SIZE))
+    Collider::heightfield(heights, Vec3::new(size(), 1.0, size()))
 }
 
 /// Punti della linea di riva (per i paletti del debug): metà tra una cella di mare e una di terra.
 fn shore_points(field: &Field, mask: &[bool]) -> Vec<Vec2> {
     let n = field.n;
-    let w = |i: usize| -TERRAIN_SIZE / 2.0 + i as f32 * STEP;
+    let w = |i: usize| -size() / 2.0 + i as f32 * step();
     let mut v = Vec::new();
     for z in 0..n - 1 {
         for x in 0..n - 1 {
             let m = mask[z * n + x];
             if m != mask[z * n + x + 1] {
-                v.push(Vec2::new(w(x) + STEP / 2.0, w(z)));
+                v.push(Vec2::new(w(x) + step() / 2.0, w(z)));
             }
             if m != mask[(z + 1) * n + x] {
-                v.push(Vec2::new(w(x), w(z) + STEP / 2.0));
+                v.push(Vec2::new(w(x), w(z) + step() / 2.0));
             }
         }
     }
@@ -1376,6 +1456,55 @@ fn sample_height(image: &Image, x: u32, y: u32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn nord_spec() -> crate::water::IslandSpec {
+        crate::region::set(crate::region::Region::Nord);
+        let spec = crate::water::load_spec();
+        crate::region::set(crate::region::Region::Isola);
+        spec
+    }
+
+    #[test]
+    fn the_continent_has_sea_south_a_lake_an_islet_and_closed_borders() {
+        let spec = nord_spec();
+        let h = |x: f32, z: f32| continent_height(x, z, &spec, &[]);
+        // Piana percorribile, sopra il livello del mare.
+        assert!(h(20.0, -80.0) > 0.5, "{}", h(20.0, -80.0));
+        // Mare a sud dell'approdo.
+        assert!(h(0.0, 520.0) < SEA_LEVEL - 1.0);
+        // Il lago è sotto il livello del mare (lo allaga il mare), l'isolotto ne emerge.
+        let (c, r) = spec.basin.unwrap();
+        assert!(h(c.x + r.x * 0.5, c.y) < SEA_LEVEL - 1.0);
+        let (ic, _) = spec.islet.unwrap();
+        assert!(h(ic.x, ic.y) > 1.0);
+        // Il rio è un canale a livello del mare per tutta la lunghezza.
+        for p in &spec.channel {
+            assert!(h(p.x, p.y) < SEA_LEVEL - 0.5, "{p:?} {}", h(p.x, p.y));
+        }
+        // Oltre il confine il terreno sale: di lì non si passa.
+        let (xb, zb) = spec.bounds.unwrap();
+        assert!(h(xb + 70.0, 0.0) > 20.0);
+        assert!(h(0.0, -zb - 26.0) > h(0.0, -zb + 30.0) + 2.0);
+        // L'approdo è terra, il molo sporge sul mare.
+        assert!(h(0.0, 452.0) > 0.5, "{}", h(0.0, 452.0));
+        assert!(continent_water(&spec, Vec2::new(0.0, 480.0)));
+        assert!(!continent_water(&spec, Vec2::new(0.0, 440.0)));
+    }
+
+    #[test]
+    fn every_place_of_the_continent_is_on_dry_land_inside_the_borders() {
+        let spec = nord_spec();
+        let (xb, zb) = spec.bounds.unwrap();
+        assert!(spec.places.len() >= 17);
+        for (name, p) in &spec.places {
+            assert!(p.x.abs() < xb && p.y > -zb, "{name} fuori dal confine");
+            // Il molo, il ponte, l'isolotto e le palafitte stanno sull'acqua o accanto.
+            let wet = ["Approdo", "Ponte", "Isolotto", "Palafitte", "Acquedotto"];
+            if !wet.iter().any(|w| name.starts_with(w)) {
+                assert!(!continent_water(&spec, *p), "{name} in acqua");
+            }
+        }
+    }
     use bevy::mesh::{Mesh, Meshable, VertexAttributeValues};
 
     /// Le tangenti analitiche devono avere lo stesso segno di quelle generate da mikktspace.

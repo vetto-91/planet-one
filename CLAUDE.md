@@ -44,6 +44,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 
 - `src/main.rs`: stati dell'app (`MainMenu`, `Loading`, `Playing`, `Paused`, `Journal`, `Wait`, `Map`, `Resetting`) e cablaggio dei sistemi.
 - `src/scene.rs`: costruzione e reset della scena.
+- `src/region.rs`: regioni del mondo (Isola di Fontevivo, Continente del Nord): misura e passo del terreno, file dei dati, punto d'arrivo; viaggio in `save::start_travel` (ADR 0033). Dati del continente in `assets/world/nord/` e `debug/placements-nord.txt`, generati da `scripts/gen_nord.py`.
 - `src/terrain.rs`: heightmap → mesh e collider, hot-reload; `src/water.rs`: alture, scogliere, ruscello, onde da `assets/world/isola.txt` (ADR 0026).
 - `src/player.rs`: movimento, salto, corsa, ground-check (in `FixedUpdate`, character controller kinematico).
 - `src/camera.rs`: orbita, terza e prima persona.
