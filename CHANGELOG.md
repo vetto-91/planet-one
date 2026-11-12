@@ -4,6 +4,7 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **Passi sull'erba**: un fruscio leggero di steli invece di un tonfo sordo più forte dei passi sulla pietra.
 - **Audio posizionale** (ADR 0032): campane, voci, uccelli, gabbiani, pesci e tuoni si sentono dalla parte da cui arrivano; le voci seguono chi parla.
 - Pilota: segnala gli intoppi (frame oltre i 100 ms) con il comando in corso, nel log e nel rapporto.
 - **Voci**: non gracchiano più a volume pieno (prima superavano il massimo); mentre un personaggio parla la musica si abbassa un po' di più.

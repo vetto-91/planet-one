@@ -346,10 +346,12 @@ pub fn synth_step(surface: Surface, seed: u32) -> Vec<u8> {
         let thud = |f: f32, d: f32| (TAU * f * t).sin() * (-t * d).exp();
         let attack = (t * 500.0).min(1.0);
         let s = match surface {
-            // Erba: un fruscio morbido e un tonfo sordo, niente spigoli.
+            // Erba: fili che si piegano sotto il piede, un fruscio breve e acuto (sopra i 2 kHz)
+            // con la grana degli steli; del tonfo resta appena un accenno. Prima era rumore
+            // medio-basso con un tonfo a 62 Hz: un «tump» sordo che con l'erba non c'entrava.
             Surface::Grass => {
-                let soft = (t * 55.0).min(1.0);
-                mid * 2.2 * soft * (-t * 12.0).exp() * 0.55 + thud(62.0, 28.0) * 0.22
+                let swish = (t * 70.0).min(1.0) * (-t * 24.0).exp();
+                hi * swish * (0.55 + 0.45 * grain) + thud(80.0, 40.0) * 0.04
             }
             // Steli di grano o ortaggi: fruscio lungo e secco che sfrega sulle gambe.
             Surface::Crops => {
@@ -375,7 +377,16 @@ pub fn synth_step(surface: Surface, seed: u32) -> Vec<u8> {
         };
         out.push(s * attack);
     }
-    to_wav(&out, 0.75)
+    to_wav(&out, step_peak(surface))
+}
+
+/// Picco di un passo per superficie (`to_wav` porta ogni passo a questo picco): l'erba è
+/// soffice e si sente meno della pietra o del legno.
+fn step_peak(surface: Surface) -> f32 {
+    match surface {
+        Surface::Grass => 0.4,
+        _ => 0.75,
+    }
 }
 
 // --- Regole sui livelli ------------------------------------------------------------------------
@@ -845,6 +856,66 @@ mod tests {
         }
         for s in Surface::ALL {
             audible(&synth_step(s, 1));
+        }
+    }
+
+    /// Quota dell'energia sotto i 250 Hz (FFT a mano, solo per i test).
+    fn bass_share(s: &[i16]) -> f64 {
+        let n = s.len().min(4096);
+        let (mut low, mut all) = (0.0f64, 0.0f64);
+        for k in 1..n / 2 {
+            let (mut re, mut im) = (0.0f64, 0.0f64);
+            for (i, v) in s[..n].iter().enumerate() {
+                let a = std::f64::consts::TAU * (k * i) as f64 / n as f64;
+                re += *v as f64 * a.cos();
+                im -= *v as f64 * a.sin();
+            }
+            let e = re * re + im * im;
+            all += e;
+            if (k as f64) * (RATE as f64) / (n as f64) < 250.0 {
+                low += e;
+            }
+        }
+        low / all
+    }
+
+    #[test]
+    fn grass_steps_are_soft_rustles() {
+        let grass = pcm(&synth_step(Surface::Grass, 1));
+        let stone = pcm(&synth_step(Surface::Stone, 1));
+        let peak = |s: &[i16]| s.iter().map(|v| v.unsigned_abs() as u32).max().unwrap();
+        // Più piano della pietra.
+        assert!(
+            peak(&grass) < peak(&stone) * 6 / 10,
+            "{} {}",
+            peak(&grass),
+            peak(&stone)
+        );
+        // Niente tonfo: quasi tutta l'energia sopra i 250 Hz.
+        let bass = bass_share(&grass);
+        assert!(bass < 0.1, "bassi {bass:.2}");
+    }
+
+    /// Scrive un passo per superficie in `PLANET_ONE_OUT` (WAV) per ascoltarli con `scripts/ascolta.py`:
+    /// `PLANET_ONE_OUT=cartella cargo test write_step_samples -- --ignored`.
+    #[test]
+    #[ignore]
+    fn write_step_samples() {
+        let dir =
+            std::path::PathBuf::from(std::env::var("PLANET_ONE_OUT").unwrap_or("passi".into()));
+        std::fs::create_dir_all(&dir).unwrap();
+        for s in Surface::ALL {
+            let mut all = Vec::new();
+            for v in 1..=4 {
+                all.extend(pcm(&synth_step(s, v)));
+                all.extend(std::iter::repeat_n(0i16, RATE as usize / 3));
+            }
+            let bytes: Vec<u8> = all.iter().flat_map(|v| v.to_le_bytes()).collect();
+            std::fs::write(
+                dir.join(format!("{s:?}.wav").to_lowercase()),
+                crate::ai::tts::pcm_to_wav(&bytes, RATE),
+            )
+            .unwrap();
         }
     }
 
