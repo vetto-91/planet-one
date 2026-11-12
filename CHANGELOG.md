@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.61.0 — Continente del Nord: la Piana delle Brume e i suoi abitanti (2026-11-12)
 
 - **Continente del Nord, primo passo** (ADR 0033): una seconda regione di 1.200 × 1.200 m, la Piana delle Brume dell'Atto I. Approdo delle Brume, bosco di querce e betulle, Grande Lago con isolotto, Rio delle Betulle, collina di Barnaba, Fontebruma (mura, due porte, piazza con la Fonte Grigia, locanda, fabbro, forno, chiesa, case) e i 16 luoghi della trama, con i sentieri che li collegano e i nomi sulla mappa. Nebbia e pioggia sottile di base.
 - **Viaggio**: Gaspare, al porticciolo, porta in barca al continente e riporta indietro dall'approdo; il personaggio conserva inventario, quest, data e ora, e ogni regione ricorda com'era stata lasciata (anche nei salvataggi). Shell: `regione <isola|nord>`.
