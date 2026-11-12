@@ -60,3 +60,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0032 | Audio posizionale | accettato |
 | 0033 | Regioni del mondo e Continente del Nord | accettato |
 | 0034 | Missioni a tappe da file di testo e storia principale del Prologo | accettato |
+| 0035 | I bivi di «Denaro Rubato» | accettato |

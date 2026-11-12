@@ -75,7 +75,56 @@ pub struct QuestState {
     pub thief_killed_at: Option<Vec3>,
     /// Il ladro ha già notato il giocatore (battuta detta una sola volta).
     pub thief_spotted: bool,
+    /// Che fine ha fatto il ladro (ADR 0035).
+    pub fate: Fate,
+    /// Il giocatore ha letto la tavoletta al campo del ladro.
+    pub tablet: bool,
+    /// Monete antiche che il giocatore ha tenuto per sé alla consegna.
+    pub kept: u32,
+    /// Il Viandante gli ha affidato la Moneta Madre.
+    pub mother_coin: bool,
+    /// Il ladro è stato sfidato o colpito: da ora combatte.
+    pub thief_provoked: bool,
+    /// Il ladro è tranquillo adesso: il giocatore è senz'arma in pugno e non l'ha provocato.
+    pub thief_calm: bool,
 }
+
+/// Come è finita con il ladro: conta per il seguito della storia.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Fate {
+    #[default]
+    Unknown,
+    /// Sconfitto con le armi (la via dell'acciaio).
+    Killed,
+    /// Lasciato andare dopo aver riavuto le monete (la via della grazia).
+    Spared,
+    /// Oro diviso a metà in segreto (la via dell'ombra).
+    Pact,
+}
+
+impl Fate {
+    pub fn key(self) -> &'static str {
+        match self {
+            Fate::Unknown => "ignota",
+            Fate::Killed => "sconfitto",
+            Fate::Spared => "risparmiato",
+            Fate::Pact => "patto",
+        }
+    }
+
+    pub fn parse(text: &str) -> Option<Self> {
+        [Fate::Unknown, Fate::Killed, Fate::Spared, Fate::Pact]
+            .into_iter()
+            .find(|f| f.key() == text.trim())
+    }
+}
+
+/// Monete che il giocatore può tenersi alla consegna, e metà del bottino nel patto.
+pub const KEPT_COINS: u32 = 4;
+pub const PACT_COINS: u32 = LOOT_TOTAL / 2;
+/// Entro questa distanza si può parlare al ladro, e si legge la tavoletta al campo.
+const PARLEY_RANGE: f32 = 4.5;
+const CAMP: Vec2 = Vec2::new(29.0, -31.0);
 
 impl Default for QuestState {
     fn default() -> Self {
@@ -90,6 +139,12 @@ impl Default for QuestState {
             thief_hint_parts: None,
             thief_killed_at: None,
             thief_spotted: false,
+            fate: Fate::Unknown,
+            tablet: false,
+            kept: 0,
+            mother_coin: false,
+            thief_provoked: false,
+            thief_calm: false,
         }
     }
 }
@@ -186,12 +241,32 @@ pub fn quest_on_dialog_close(
                 info!("[QUEST] accettata: Denaro Rubato");
             }
             QuestStage::Returning if !quest.final_done => {
-                // Consegna completa: ricompensa in inventario e chiusura.
                 quest.final_done = true;
                 quest.stage = QuestStage::Completed;
-                inventory.add(ItemKind::Coin, REWARD_COINS);
-                show_title(&mut quest, "Missione completata: Denaro recuperato", 4.0);
-                info!("[QUEST] completata, ricompensa +{} monete", REWARD_COINS);
+                let kept = dialog.result == Some(1) && quest.fate != Fate::Pact;
+                if quest.fate == Fate::Pact {
+                    // Patto: le sei monete sono già in tasca, nessuna ricompensa.
+                    show_title(&mut quest, "Missione chiusa: metà del denaro", 4.0);
+                } else if kept {
+                    // La via dell'ombra: quattro monete antiche restano al giocatore.
+                    quest.kept = KEPT_COINS;
+                    inventory.add(ItemKind::Coin, KEPT_COINS);
+                    show_title(&mut quest, "Missione chiusa: otto monete su dodici", 4.0);
+                } else {
+                    inventory.add(ItemKind::Coin, REWARD_COINS);
+                    if quest.fate == Fate::Spared {
+                        quest.mother_coin = true;
+                        show_title(&mut quest, "Il Viandante ti affida la Moneta Madre", 4.0);
+                    } else {
+                        show_title(&mut quest, "Missione completata: Denaro recuperato", 4.0);
+                    }
+                }
+                info!(
+                    "[QUEST] completata: sorte del ladro {}, monete tenute {}, moneta madre {}",
+                    quest.fate.key(),
+                    quest.kept,
+                    quest.mother_coin
+                );
             }
             _ => {}
         }
@@ -242,6 +317,7 @@ pub fn quest_on_thief_death(
         info!("[QUEST] attivata automaticamente: il ladro era già morto");
     }
     quest.stage = QuestStage::Collecting;
+    quest.fate = Fate::Killed;
     quest.coins_collected = 0;
     quest.thief_hint = None;
     if quest.title.is_none() {
@@ -415,11 +491,16 @@ pub fn npc_dialog(quest: &QuestState, d: &Dialogs) -> (Vec<String>, Vec<String>,
         QuestStage::SeekThief if quest.thief_hint.is_some() => "seek_thief",
         QuestStage::SeekThief => "seek_thief_nohint",
         QuestStage::Collecting => "collecting",
+        QuestStage::Returning if quest.fate == Fate::Pact => "returning_patto",
+        QuestStage::Returning if quest.fate == Fate::Spared => "returning_grazia",
         QuestStage::Returning => "returning",
         QuestStage::Completed => "completed",
     };
     let choices = if quest.stage == QuestStage::Idle && !quest.accepted {
         d.choices("idle")
+    } else if quest.stage == QuestStage::Returning && quest.fate != Fate::Pact {
+        // Alla consegna si può dire la verità o tenersi quattro monete.
+        d.choices("returning_scelte")
     } else {
         Vec::new()
     };
@@ -481,9 +562,29 @@ pub fn journal_entry(quest: &QuestState, d: &Dialogs) -> Option<QuestEntry> {
         ("n", quest.coins_collected.to_string()),
         ("total", quest.coins_total.to_string()),
     ];
+    // Come è andata, in fondo al riassunto.
+    let mut summary = d.text("diario_riassunto", &vars);
+    for (on, key) in [
+        (quest.mother_coin, "diario_esito_grazia"),
+        (
+            quest.fate == Fate::Pact && stage == QuestStage::Completed,
+            "diario_esito_patto",
+        ),
+        (quest.kept > 0, "diario_esito_ombra"),
+    ] {
+        if on {
+            summary.push(' ');
+            summary.push_str(&d.text(key, &vars));
+        }
+    }
+    let thief_goal = match quest.fate {
+        Fate::Spared => "obiettivo_ladro_grazia",
+        Fate::Pact => "obiettivo_ladro_patto",
+        _ => "obiettivo_ladro",
+    };
     Some(QuestEntry {
         title: d.text("diario_titolo", &vars),
-        summary: d.text("diario_riassunto", &vars),
+        summary,
         status: if stage == QuestStage::Completed {
             QuestStatus::Completed
         } else {
@@ -492,7 +593,7 @@ pub fn journal_entry(quest: &QuestState, d: &Dialogs) -> Option<QuestEntry> {
         objectives: vec![
             (d.text("obiettivo_parla", &vars), ObjState::Done),
             (
-                d.text("obiettivo_ladro", &vars),
+                d.text(thief_goal, &vars),
                 state(after_thief, stage == QuestStage::SeekThief),
             ),
             (
@@ -527,7 +628,8 @@ pub fn thief_notice_player(
     let (Ok(player), Ok((thief, tt))) = (players.single(), thieves.single()) else {
         return;
     };
-    if player.translation().distance(tt.translation()) <= SPOT_DISTANCE {
+    // Chi arriva senz'arma in pugno non viene apostrofato: gli si può parlare.
+    if !quest.thief_calm && player.translation().distance(tt.translation()) <= SPOT_DISTANCE {
         quest.thief_spotted = true;
         barks.say(
             thief,
@@ -579,4 +681,133 @@ pub fn spawn_thief(
         ))
         .with_children(|c| crate::figure::spawn_character(c, asset_server, "ladro"))
         .id()
+}
+
+/// Sistema: il ladro resta tranquillo finché il giocatore non ha un'arma in pugno e non lo
+/// provoca; al campo si legge la tavoletta; con E gli si parla (ADR 0035).
+#[allow(clippy::too_many_arguments)]
+pub fn thief_parley(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut quest: ResMut<QuestState>,
+    texts: Res<crate::quests::QuestTexts>,
+    equip: Res<crate::inventory::Equipment>,
+    mut dialog: ResMut<DialogState>,
+    mut nearest: ResMut<crate::entities::NearestInteract>,
+    mut barks: ResMut<Barks>,
+    mut session: ResMut<crate::save::Session>,
+    players: Query<&GlobalTransform, With<Player>>,
+    thieves: Query<(Entity, &GlobalTransform, &crate::combat::EnemyHealth), With<QuestThief>>,
+    mut greeted: Local<bool>,
+) {
+    let d = &texts.denaro_rubato;
+    let (Ok(player), true) = (players.single(), quest.stage == QuestStage::SeekThief) else {
+        quest.thief_calm = false;
+        return;
+    };
+    let p = player.translation();
+    // La tavoletta, al campo del ladro.
+    if !quest.tablet && p.xz().distance(CAMP) < 3.0 {
+        quest.tablet = true;
+        session.notify(d.text("tavoletta", &[]));
+        info!("[QUEST] tavoletta del ladro letta");
+    }
+    let Ok((thief, tt, hp)) = thieves.single() else {
+        quest.thief_calm = false;
+        return;
+    };
+    if hp.current < hp.max {
+        quest.thief_provoked = true;
+    }
+    quest.thief_calm = !quest.thief_provoked && equip.weapon.is_none();
+    let close = tt.translation().distance(p) < PARLEY_RANGE;
+    if !quest.thief_calm || !close || dialog.open {
+        return;
+    }
+    if !*greeted {
+        *greeted = true;
+        barks.say(thief, "Ladro", d.text("ladro_calmo", &[]));
+    }
+    if nearest.prompt.is_none() {
+        nearest.prompt = Some("[E] Parla al ladro".to_string());
+    }
+    if keys.just_pressed(KeyCode::KeyE) && !dialog.block_interact {
+        dialog.open = true;
+        dialog.speaker = "Ladro".to_string();
+        dialog.lines = d.lines("ladro_parla", &[]);
+        dialog.voices = vec![Vec::new(); dialog.lines.len()];
+        dialog.choices = d.choices("ladro_parla");
+        dialog.index = 0;
+        dialog.selected = 0;
+        dialog.choosing = false;
+        dialog.result = None;
+        dialog.finished = false;
+        dialog.ai_offer = false;
+        dialog.shop = None;
+        dialog.speaker_entity = Some(thief);
+        info!("dialogo aperto con Ladro");
+    }
+}
+
+/// Sistema: la scelta fatta parlando al ladro (grazia, patto o sfida).
+#[allow(clippy::too_many_arguments)]
+pub fn thief_choice(
+    mut commands: Commands,
+    mut quest: ResMut<QuestState>,
+    texts: Res<crate::quests::QuestTexts>,
+    dialog: Res<DialogState>,
+    character: Res<crate::character::Character>,
+    mut inventory: ResMut<Inventory>,
+    mut session: ResMut<crate::save::Session>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    thieves: Query<(Entity, &GlobalTransform), With<QuestThief>>,
+    mut barks: ResMut<Barks>,
+    mut last_open: Local<bool>,
+) {
+    let was_open = std::mem::replace(&mut *last_open, dialog.open);
+    if !(was_open && !dialog.open && dialog.finished && dialog.speaker == "Ladro") {
+        return;
+    }
+    let d = &texts.denaro_rubato;
+    let Ok((thief, tt)) = thieves.single() else {
+        return;
+    };
+    // Si convince chi ha letto la sua tavoletta, o chi sa parlare (Carisma alto).
+    let persuasive = quest.tablet || character.stats.get(crate::character::Stat::Charisma) >= 7;
+    match dialog.result {
+        Some(0) if persuasive => {
+            quest.fate = Fate::Spared;
+            quest.stage = QuestStage::Collecting;
+            quest.coins_collected = 0;
+            quest.thief_hint = None;
+            let at = tt.translation() - Vec3::Y * THIEF_CENTER_OFFSET;
+            spawn_loot(&mut commands, &mut meshes, &mut materials, at, LOOT_TOTAL);
+            commands.entity(thief).despawn();
+            session.notify(d.text("ladro_grazia", &[]));
+            show_title(&mut quest, "Il ladro se ne va: raccogli il denaro", 3.0);
+            info!("[QUEST] ladro risparmiato: lascia le monete e se ne va");
+        }
+        Some(0) => {
+            quest.thief_provoked = true;
+            barks.say(thief, "Ladro", d.text("ladro_rifiuta", &[]));
+            info!("[QUEST] il ladro non si lascia convincere");
+        }
+        Some(1) => {
+            quest.fate = Fate::Pact;
+            quest.stage = QuestStage::Returning;
+            quest.coins_collected = PACT_COINS;
+            quest.thief_hint = None;
+            inventory.add(ItemKind::Coin, PACT_COINS);
+            commands.entity(thief).despawn();
+            session.notify(d.text("ladro_patto", &[]));
+            show_title(&mut quest, "Patto stretto: torna dal Viandante", 3.0);
+            info!("[QUEST] patto con il ladro: {PACT_COINS} monete a testa");
+        }
+        Some(2) => {
+            quest.thief_provoked = true;
+            barks.say(thief, "Ladro", d.text("ladro_sfida", &[]));
+            info!("[QUEST] ladro sfidato");
+        }
+        _ => {}
+    }
 }

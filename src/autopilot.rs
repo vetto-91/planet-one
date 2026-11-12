@@ -914,6 +914,10 @@ pub fn snapshot(world: &mut World) -> Value {
         "fase": format!("{:?}", quest.stage),
         "monete": quest.coins_collected,
         "accettata": quest.accepted,
+        "sorte": quest.fate.key(),
+        "tavoletta": quest.tablet,
+        "tenute": quest.kept,
+        "moneta_madre": quest.mother_coin,
     });
     // Missioni del Prologo: tappa corrente (da 1) di ognuna, e ciò che hanno sbloccato.
     let missioni = {

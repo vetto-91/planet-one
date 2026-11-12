@@ -385,7 +385,12 @@ fn main() -> AppExit {
         )
         .add_systems(
             Update,
-            quests::missions::track_missions.run_if(in_state(AppState::Playing)),
+            (
+                quests::missions::track_missions,
+                quest::thief_parley.after(entities::interact),
+                quest::thief_choice,
+            )
+                .run_if(in_state(AppState::Playing)),
         )
         .add_systems(Update, debug_place::sync_markers)
         .add_systems(

@@ -1,0 +1,61 @@
+# «Denaro Rubato», la via della grazia (ADR 0035): leggi la tavoletta al campo, avvicinati al
+# ladro senz'arma in pugno, parlagli e fatti ridare le monete; il Viandante affida la Moneta Madre.
+god off
+ia off
+meteo sereno
+ora 11
+quest cerca
+aspetta 2
+# Senz'arma in pugno il ladro non attacca.
+tp 29 3 -31
+aspetta 3
+verifica /quest/tavoletta = true
+foto campo-tavoletta
+tp 30.4 3 -33.6
+aspetta 3
+verifica vita >= 100
+mai dialogo = true 1
+premi e
+aspetta 1
+verifica parla = Ladro
+foto ladro-parla
+avanza
+scegli Ridammi
+attendi quest = Collecting 10
+verifica /quest/sorte = risparmiato
+verifica vita >= 100
+foto ladro-andato
+vai 29 -33
+vai 31 -33
+vai 33 -33
+vai 35 -33
+vai 35 -35
+vai 33 -35
+vai 31 -35
+vai 29 -35
+vai 27 -35
+vai 25 -35
+vai 25 -37
+vai 27 -37
+vai 29 -37
+vai 31 -37
+vai 33 -37
+vai 35 -37
+attendi quest = Returning 20
+verifica monete_quest = 12
+tp viandante
+aspetta 1
+attendi npc:viandante:modo = Ready 120
+tp viandante
+aspetta 1
+guarda viandante
+aspetta 1
+premi e
+aspetta 1
+avanza
+scegli Ecco tutte
+attendi quest = Completed 10
+verifica /quest/moneta_madre = true
+verifica /quest/tenute = 0
+verifica monete >= 35
+esci

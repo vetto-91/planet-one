@@ -123,6 +123,12 @@ pub struct SaveData {
     pub accepted: bool,
     pub final_done: bool,
     pub thief_spotted: bool,
+    /// Bivi di «Denaro Rubato» (ADR 0035).
+    pub fate: crate::quests::denaro_rubato::Fate,
+    pub tablet: bool,
+    pub kept: u32,
+    pub mother_coin: bool,
+    pub thief_provoked: bool,
     pub doors: Vec<(String, bool)>,
     pub containers: Vec<ContainerSave>,
     pub pickups: Vec<PickupSave>,
@@ -325,6 +331,11 @@ impl SaveData {
             accepted: false,
             final_done: false,
             thief_spotted: false,
+            fate: Default::default(),
+            tablet: false,
+            kept: 0,
+            mother_coin: false,
+            thief_provoked: false,
             doors: Vec::new(),
             containers: Vec::new(),
             pickups: Vec::new(),
@@ -422,6 +433,11 @@ impl SaveData {
         line(format!("accettata = {}", yes(self.accepted)));
         line(format!("finale_fatto = {}", yes(self.final_done)));
         line(format!("ladro_avvistato = {}", yes(self.thief_spotted)));
+        line(format!("sorte_ladro = {}", self.fate.key()));
+        line(format!("tavoletta_letta = {}", yes(self.tablet)));
+        line(format!("monete_tenute = {}", self.kept));
+        line(format!("moneta_madre = {}", yes(self.mother_coin)));
+        line(format!("ladro_provocato = {}", yes(self.thief_provoked)));
         line(String::new());
         line("# oggetto = aperto oppure chiuso (acceso/spento per stufa e luce)".into());
         line("[porte]".into());
@@ -672,6 +688,13 @@ impl SaveData {
                     "accettata" => self.accepted = read_bool(v)?,
                     "finale_fatto" => self.final_done = read_bool(v)?,
                     "ladro_avvistato" => self.thief_spotted = read_bool(v)?,
+                    "sorte_ladro" => {
+                        self.fate = crate::quests::denaro_rubato::Fate::parse(v)?;
+                    }
+                    "tavoletta_letta" => self.tablet = read_bool(v)?,
+                    "monete_tenute" => self.kept = v.parse().ok()?,
+                    "moneta_madre" => self.mother_coin = read_bool(v)?,
+                    "ladro_provocato" => self.thief_provoked = read_bool(v)?,
                     _ => return None,
                 }
             }
@@ -1108,6 +1131,11 @@ fn collect(kind: SaveKind, session: &Session, hero: &HeroParams, world: &WorldPa
     d.accepted = world.quest.accepted;
     d.final_done = world.quest.final_done;
     d.thief_spotted = world.quest.thief_spotted;
+    d.fate = world.quest.fate;
+    d.tablet = world.quest.tablet;
+    d.kept = world.quest.kept;
+    d.mother_coin = world.quest.mother_coin;
+    d.thief_provoked = world.quest.thief_provoked;
     d.doors = world
         .props
         .iter()
@@ -1227,6 +1255,11 @@ fn apply(d: &SaveData, hero: &mut HeroParams, world: &mut WorldParams) {
         world.quest.accepted = d.accepted;
         world.quest.final_done = d.final_done;
         world.quest.thief_spotted = d.thief_spotted;
+        world.quest.fate = d.fate;
+        world.quest.tablet = d.tablet;
+        world.quest.kept = d.kept;
+        world.quest.mother_coin = d.mother_coin;
+        world.quest.thief_provoked = d.thief_provoked;
     }
     if has("porte") {
         for (id, mut state) in &mut world.props {

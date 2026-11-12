@@ -1,0 +1,51 @@
+# «Denaro Rubato», la via dell'ombra (ADR 0035): ladro sconfitto, ma al Viandante ne porti otto.
+# Con l'arma in pugno il ladro attacca come prima.
+god on
+ia off
+meteo sereno
+ora 11
+dai spada corta
+premi 1
+aspetta 1
+verifica arma contiene sword
+quest cerca
+aspetta 2
+tp 30 6 -36
+aspetta 2
+verifica /quest/sorte = ignota
+uccidi 15
+attendi quest = Collecting 10
+verifica /quest/sorte = sconfitto
+vai 29 -33
+vai 31 -33
+vai 33 -33
+vai 35 -33
+vai 35 -35
+vai 33 -35
+vai 31 -35
+vai 29 -35
+vai 27 -35
+vai 25 -35
+vai 25 -37
+vai 27 -37
+vai 29 -37
+vai 31 -37
+vai 33 -37
+vai 35 -37
+attendi quest = Returning 20
+tp viandante
+aspetta 1
+attendi npc:viandante:modo = Ready 120
+tp viandante
+aspetta 1
+guarda viandante
+aspetta 1
+premi e
+aspetta 1
+avanza
+scegli solo otto
+attendi quest = Completed 10
+verifica /quest/tenute = 4
+verifica /quest/moneta_madre = false
+verifica monete >= 34
+esci

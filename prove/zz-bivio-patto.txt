@@ -1,0 +1,35 @@
+# «Denaro Rubato», il patto segreto (ADR 0035): sei monete a testa e una bugia al Viandante.
+god off
+ia off
+meteo sereno
+ora 11
+quest cerca
+aspetta 2
+tp 30.4 3 -33.6
+aspetta 3
+premi e
+aspetta 1
+verifica parla = Ladro
+avanza
+scegli Sei a te
+attendi quest = Returning 10
+verifica /quest/sorte = patto
+verifica monete >= 36
+verifica monete_quest = 6
+tp viandante
+aspetta 1
+attendi npc:viandante:modo = Ready 120
+tp viandante
+aspetta 1
+guarda viandante
+aspetta 1
+premi e
+aspetta 1
+foto viandante-patto
+avanza
+scegli Arrivederci
+attendi quest = Completed 10
+verifica /quest/moneta_madre = false
+# Nessuna ricompensa oltre alle sei monete del patto.
+verifica monete < 40
+esci

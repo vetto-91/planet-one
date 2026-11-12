@@ -239,6 +239,11 @@ Dalla shell: `regione nord` e `regione isola`. I dati del continente si rigenera
 
 ## Quest: "Denaro Rubato"
 
+La quest ha più vie (ADR 0035): con un'arma in pugno il ladro combatte; senz'armi gli si può **parlare** (E) e farsi
+ridare le monete — ti ascolta se prima hai letto la **tavoletta** al suo campo — oppure stringere un **patto** e
+dividere l'oro. Al ritorno puoi consegnare tutte e dodici le monete o tenertene quattro.
+
+
 Parla con il **Viandante**, il negoziante nel chiosco della casetta vicino allo spawn: alla fine del dialogo scegli
 "Sì, ti aiuto" per far partire la quest ("Ora non ho tempo" la rimanda).
 Trova il **ladro** (lontano, oltre le colline; il segnalino rosso sulla bussola

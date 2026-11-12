@@ -244,9 +244,17 @@ pub fn update_arrows(
 }
 
 /// Danno da contatto player↔nemico (la morte è in [`player_death`]).
+#[allow(clippy::type_complexity)]
 pub fn contact_damage(
     mut player: Query<(&GlobalTransform, &mut PlayerHealth, &mut CombatState), With<Player>>,
-    enemies: Query<&GlobalTransform, (With<Enemy>, Without<Player>)>,
+    enemies: Query<
+        (
+            &GlobalTransform,
+            Has<crate::quests::denaro_rubato::QuestThief>,
+        ),
+        (With<Enemy>, Without<Player>),
+    >,
+    quest: Res<crate::quests::denaro_rubato::QuestState>,
     mut cd: ResMut<ContactDamageCd>,
     time: Res<Time>,
     equip: Res<crate::inventory::Equipment>,
@@ -268,7 +276,10 @@ pub fn contact_damage(
     }
 
     let p = pt.translation();
-    for et in &enemies {
+    for (et, thief) in &enemies {
+        if thief && quest.thief_calm {
+            continue;
+        }
         if et.translation().distance(p) <= CONTACT_RANGE {
             let factor = if equip.shield {
                 crate::inventory::SHIELD_FACTOR
@@ -479,7 +490,15 @@ pub fn enemy_ai(
     spatial: avian3d::prelude::SpatialQuery,
     solids: Query<(), ArrowSolids>,
     player: Query<&GlobalTransform, (With<Player>, Without<Enemy>)>,
-    mut enemies: Query<(&GlobalTransform, &mut crate::entities::EnemyMind), With<Enemy>>,
+    mut enemies: Query<
+        (
+            &GlobalTransform,
+            &mut crate::entities::EnemyMind,
+            Has<crate::quests::denaro_rubato::QuestThief>,
+        ),
+        With<Enemy>,
+    >,
+    quest: Res<crate::quests::denaro_rubato::QuestState>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut assets: Local<Option<(Handle<Mesh>, Handle<StandardMaterial>)>>,
@@ -498,12 +517,17 @@ pub fn enemy_ai(
             }),
         )
     });
-    for (tf, mut mind) in &mut enemies {
+    for (tf, mut mind, thief) in &mut enemies {
         mind.shot_cd = (mind.shot_cd - dt).max(0.0);
+        // Il ladro non attacca chi gli si avvicina senz'arma in pugno (ADR 0035).
+        let calm = thief && quest.thief_calm;
         let eye = tf.translation() + Vec3::Y * 1.3;
         let dist = (target - eye).length();
         let range = if mind.chase { LOSE_RANGE } else { NOTICE_RANGE };
-        let sees = !cheats.invisible && dist < range && clear_view(&spatial, &solids, eye, target);
+        let sees = !calm
+            && !cheats.invisible
+            && dist < range
+            && clear_view(&spatial, &solids, eye, target);
         if sees != mind.chase {
             mind.chase = sees;
             info!(

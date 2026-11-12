@@ -68,3 +68,72 @@ Recupera le monete {n}/{total}
 
 [obiettivo_ritorno]
 Torna dal Viandante
+
+# --- I bivi (ADR 0035): parlare al ladro, la tavoletta, il ritorno ---
+
+# Pensiero del protagonista quando legge la tavoletta al campo del ladro.
+[tavoletta]
+Una tavoletta incisa: «Qui camminano tutti in tondo, come ombre sul fondo di una caverna. Fingono di non vedere che a nord c'è una terra sconfinata. Ma io non sono un'ombra.»
+
+# Il ladro, quando ti avvicini senz'arma in pugno: non attacca, e gli si può parlare.
+[ladro_calmo]
+Niente ferro in mano? Allora parla, prima che cambi idea.
+
+[ladro_parla]
+Dodici monete. Il pedaggio per il traghettatore: di là dallo Stretto c'è un continente, e io non resto qui a mangiare pane e a suonare campane.
+Tu sei arrivato dal mare come me. Dimmi che cosa vuoi.
+? Ridammi le monete. Il Viandante saprà perché le hai prese
+? Sei a te e sei a me: io non ti ho mai visto
+? Allora difenditi
+
+# Risposte del ladro (fumetti).
+[ladro_grazia]
+Hai letto la mia tavoletta… Tieni. Ma dillo, al vecchio: non sono un'ombra. Ci rivedremo a nord.
+
+[ladro_rifiuta]
+Belle parole. Ma tu di me non sai niente!
+
+[ladro_patto]
+Affare fatto. Sei monete bastano per mezza traversata… l'altra metà la rubo al mare.
+
+[ladro_sfida]
+Come vuoi!
+
+# Il Viandante, al ritorno, quando hai lasciato andare il ladro con le monete in mano.
+[returning_grazia]
+Le mie monete… e lui è vivo? L'hai guardato in faccia, allora.
+Quel povero diavolo credeva che bastasse l'oro dei naufraghi per comprarsi il passaggio. Aveva torto nel modo.
+Ecco {reward} monete per te. E questa tienila: è la Moneta Madre. Un giorno, a nord, parlerà per te.
+? Ecco tutte e dodici
+? Ne ho trovate solo otto
+
+# …quando torni con sei monete dopo il patto.
+[returning_patto]
+Sei monete. Solo sei.
+E il ladro è scappato con il resto, dici. Capisco.
+Il mare restituisce quello che vuole, viaggiatore. Anche le bugie.
+
+# …quando il ladro è stato sconfitto: le scelte della consegna.
+[returning_scelte]
+? Ecco tutte e dodici
+? Ne ho trovate solo otto
+
+# Il Viandante, se gliene porti solo otto.
+[returning_ombra]
+Otto. Ne mancano quattro.
+Non te ne faccio una colpa: l'oro antico pesa in tasca più di quanto sembri.
+
+[obiettivo_ladro_grazia]
+Hai lasciato andare il ladro
+
+[obiettivo_ladro_patto]
+Hai stretto un patto con il ladro
+
+[diario_esito_grazia]
+Hai risparmiato l'uomo vestito di porpora: il Viandante ti ha affidato la Moneta Madre.
+
+[diario_esito_patto]
+Hai diviso l'oro con il ladro e hai mentito al Viandante.
+
+[diario_esito_ombra]
+Hai tenuto per te quattro monete antiche.

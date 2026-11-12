@@ -39,9 +39,9 @@ premi e
 aspetta 1
 avanza
 aspetta 1
-# Dopo la ricompensa il Viandante offre il negozio: «Arrivederci» chiude il dialogo.
-verifica /dialogo/scelte contiene arrivederci
-scegli arrivederci
+# Alla consegna il Viandante chiede quante monete hai trovato (ADR 0035): tutte e dodici.
+verifica /dialogo/scelte contiene dodici
+scegli Ecco tutte
 aspetta 1
 dump fine
 verifica dialogo = false
