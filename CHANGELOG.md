@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.60.0 — Beta test: audio posizionale, passi sull'erba, voci, camera e gronde (2026-11-12)
 
 - **Passi sull'erba**: un fruscio leggero di steli invece di un tonfo sordo più forte dei passi sulla pietra.
 - **Audio posizionale** (ADR 0032): campane, voci, uccelli, gabbiani, pesci e tuoni si sentono dalla parte da cui arrivano; le voci seguono chi parla.
