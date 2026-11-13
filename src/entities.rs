@@ -402,6 +402,7 @@ pub fn interact(
             enemies: Vec::new(),
             weather: None,
             sides_done: 0,
+            counters: Vec::new(),
         };
         let busy_keeper = npc.name == "Viandante" && quest.accepted && !facts.quest_done;
         let mission = if busy_keeper {

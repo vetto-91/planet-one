@@ -85,6 +85,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 - `src/main_menu.rs`, `src/settings_ui.rs`, `src/save.rs`: menu principale, impostazioni e salvataggi di testo (ADR 0025).
 - `src/character.rs`: statistiche, classi, portata ed effetti (ADR 0024).
 - `src/skills.rs`: abilità che crescono con l'uso, livello, Nodi d'Oro e talenti (`train`, `reward`, `rank`; ADR 0038); pannello in `character.rs`.
+- `src/vitals.rs`: vigore e magia (`Vitals`, `spend`); barre in `hud.rs` (ADR 0039). `src/thievery.rs`: scasso dei bauli (`AppState::Lockpick`) e borseggio (`F`/`G` alle spalle).
 - `src/containers.rs`: inventari dei mobili (`AppState::Container`, capienze, contenuto iniziale; ADR 0023).
 - `src/shell.rs`: shell dei trucchi (tasto `\`, `AppState::Shell`, `Cheats` non salvata; ADR 0021).
 - `src/interiors.rs`: arredi, solai e scale degli edifici (ADR 0019), porte e luci in `world_props.rs`, spiazzi in `terrain.rs`, letti in `abitanti.txt` (`casa:`).

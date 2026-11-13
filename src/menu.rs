@@ -84,6 +84,7 @@ pub fn toggle(
         | AppState::Inventory
         | AppState::Shell
         | AppState::Container
+        | AppState::Lockpick
         | AppState::Character
         | AppState::Shop => next.set(AppState::Playing),
         // Durante il reset ESC non fa nulla: è uno stato transitorio.
@@ -115,6 +116,7 @@ pub struct UiQueries<'w, 's> {
     pub cheats: Res<'w, crate::shell::Cheats>,
     pub character: Res<'w, crate::character::Character>,
     pub load: Res<'w, crate::character::Load>,
+    pub vitals: Res<'w, crate::vitals::Vitals>,
     pub health: Query<'w, 's, &'static PlayerHealth, With<crate::player::Player>>,
     pub enemies: Query<
         'w,
@@ -261,7 +263,7 @@ pub fn ui(
 
             // HUD di gioco: barra vita (basso-sx), crosshair, inventario.
             if let Ok(hp) = q.health.single() {
-                hud::draw_hud(ctx, hp, &inventory, &q.equip, q.icons.as_deref());
+                hud::draw_hud(ctx, hp, &q.vitals, &inventory, &q.equip, q.icons.as_deref());
             }
 
             // Barre vita dei nemici sopra le loro teste (proiezione world→screen).
@@ -492,7 +494,7 @@ pub fn ui(
         // Anche la shell ha il suo sistema (`shell::shell_panel`).
         AppState::Shell => {}
         // I mobili aperti hanno il loro sistema (`containers::container_window`).
-        AppState::Container => {}
+        AppState::Container | AppState::Lockpick => {}
         AppState::Character => {}
         // Menu principale e attesa hanno i loro sistemi.
         AppState::MainMenu | AppState::Loading => {}

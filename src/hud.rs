@@ -10,54 +10,92 @@ use crate::player::PlayerHealth;
 use bevy::prelude::*;
 use bevy_egui::egui;
 
-/// Disegna l'HUD in `Playing`: barra vita in alto a sinistra, crosshair al
-/// centro, slot inventario in basso al centro.
+/// Colori delle tre riserve: (pieno, scuro di fondo).
+const HEALTH_COLOR: egui::Color32 = egui::Color32::from_rgb(196, 58, 52);
+const VIGOR_COLOR: egui::Color32 = egui::Color32::from_rgb(98, 172, 84);
+const MAGIC_COLOR: egui::Color32 = egui::Color32::from_rgb(72, 118, 214);
+/// Altezza delle barre e distanza dalla barra degli oggetti.
+const BAR_H: f32 = 20.0;
+const BAR_GAP: f32 = 8.0;
+
+/// Una barra di riserva nello stile dei pannelli: fondo scuro, bordo d'oro, riempimento con un
+/// filo di luce in alto, nome a sinistra e valori a destra. `dim` la spegne (senza fiato).
+fn reserve_bar(
+    painter: &egui::Painter,
+    rect: egui::Rect,
+    name: &str,
+    current: f32,
+    max: f32,
+    color: egui::Color32,
+    dim: bool,
+) {
+    let radius = egui::CornerRadius::same(5);
+    painter.rect_filled(rect, radius, crate::ui_style::PANEL_FILL);
+    let inner = rect.shrink(3.0);
+    painter.rect_filled(
+        inner,
+        egui::CornerRadius::same(3),
+        color.linear_multiply(0.18),
+    );
+    let frac = if max > 0.0 {
+        (current / max).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    if frac > 0.0 {
+        let fill = egui::Rect::from_min_size(
+            inner.min,
+            egui::vec2((inner.width() * frac).max(2.0), inner.height()),
+        );
+        let body = if dim {
+            color.linear_multiply(0.45)
+        } else {
+            color
+        };
+        painter.rect_filled(fill, egui::CornerRadius::same(3), body);
+        // Filo di luce in alto: dà spessore senza sfumature.
+        let shine = egui::Rect::from_min_size(fill.min, egui::vec2(fill.width(), 3.0));
+        painter.rect_filled(
+            shine,
+            egui::CornerRadius::same(3),
+            egui::Color32::from_rgba_unmultiplied(255, 255, 255, 46),
+        );
+    }
+    painter.rect_stroke(
+        rect,
+        radius,
+        egui::Stroke::new(1.0, crate::ui_style::GOLD_EDGE),
+        egui::StrokeKind::Inside,
+    );
+    let font = egui::FontId::proportional(12.5);
+    let shadow = egui::Color32::from_black_alpha(200);
+    let text = |pos: egui::Pos2, align: egui::Align2, s: String| {
+        painter.text(pos + egui::vec2(1.0, 1.0), align, &s, font.clone(), shadow);
+        painter.text(pos, align, s, font.clone(), crate::ui_style::TEXT);
+    };
+    text(
+        egui::pos2(rect.min.x + 9.0, rect.center().y),
+        egui::Align2::LEFT_CENTER,
+        name.to_string(),
+    );
+    text(
+        egui::pos2(rect.max.x - 9.0, rect.center().y),
+        egui::Align2::RIGHT_CENTER,
+        format!("{current:.0}/{max:.0}"),
+    );
+}
+
+/// Disegna l'HUD in `Playing`: crosshair al centro, barra degli oggetti in basso e, subito sopra,
+/// le tre riserve: magia a sinistra, vita al centro, vigore a destra (ADR 0039).
 pub fn draw_hud(
     ctx: &egui::Context,
     health: &PlayerHealth,
+    vitals: &crate::vitals::Vitals,
     inventory: &Inventory,
     equip: &crate::inventory::Equipment,
     icons: Option<&crate::inventory_ui::ItemIcons>,
 ) {
     let size = ctx.viewport_rect().size();
-
-    // --- Barra vita del player: in basso a sinistra, meta' lunghezza ---
-    let bar_w = 110.0;
-    let bar_h = 18.0;
-    let pos = egui::pos2(16.0, size.y - 34.0);
-    egui::Area::new(egui::Id::new("health_bar"))
-        .fixed_pos(pos)
-        .show(ctx, |ui| {
-            let (rect, _resp) =
-                ui.allocate_exact_size(egui::vec2(bar_w, bar_h), egui::Sense::hover());
-            // Sfondo scuro.
-            ui.painter().rect_filled(
-                rect,
-                egui::CornerRadius::same(3),
-                egui::Color32::from_rgba_unmultiplied(20, 20, 25, 220),
-            );
-            // Riempimento proporzionale alla vita.
-            let frac = (health.current / health.max).clamp(0.0, 1.0);
-            let fill_w = bar_w * frac;
-            let fill_rect = egui::Rect::from_min_size(rect.min, egui::vec2(fill_w, bar_h));
-            let color = if frac > 0.5 {
-                egui::Color32::from_rgb(60, 200, 80)
-            } else if frac > 0.25 {
-                egui::Color32::from_rgb(230, 180, 40)
-            } else {
-                egui::Color32::from_rgb(220, 60, 50)
-            };
-            ui.painter()
-                .rect_filled(fill_rect, egui::CornerRadius::same(3), color);
-            // Testo vita sopra la barra.
-            ui.painter().text(
-                rect.center(),
-                egui::Align2::CENTER_CENTER,
-                format!("{:.0}/{:.0}", health.current, health.max),
-                egui::FontId::proportional(12.0),
-                egui::Color32::WHITE,
-            );
-        });
 
     // --- Crosshair al centro ---
     let center = egui::pos2(size.x / 2.0, size.y / 2.0);
@@ -91,6 +129,44 @@ pub fn draw_hud(
     let slot = 44.0_f32;
     let gap = 6.0;
     let total_w = 10.0 * (slot + gap) - gap;
+    let left = size.x / 2.0 - total_w / 2.0;
+    let bars_y = size.y - slot - 16.0 - BAR_GAP - BAR_H;
+    // La vita è più larga delle altre due; insieme sono larghe quanto la barra degli oggetti.
+    let side_w = (total_w - 2.0 * gap) * 0.3;
+    let mid_w = total_w - 2.0 * (side_w + gap);
+    let painter = ctx.layer_painter(egui::LayerId::new(
+        egui::Order::Background,
+        egui::Id::new("reserve_bars"),
+    ));
+    let bar =
+        |x: f32, w: f32| egui::Rect::from_min_size(egui::pos2(x, bars_y), egui::vec2(w, BAR_H));
+    reserve_bar(
+        &painter,
+        bar(left, side_w),
+        "Magia",
+        vitals.magic,
+        vitals.magic_max,
+        MAGIC_COLOR,
+        false,
+    );
+    reserve_bar(
+        &painter,
+        bar(left + side_w + gap, mid_w),
+        "Vita",
+        health.current,
+        health.max,
+        HEALTH_COLOR,
+        false,
+    );
+    reserve_bar(
+        &painter,
+        bar(left + side_w + mid_w + 2.0 * gap, side_w),
+        "Vigore",
+        vitals.vigor,
+        vitals.vigor_max,
+        VIGOR_COLOR,
+        vitals.winded,
+    );
     egui::Area::new(egui::Id::new("inventory_bar"))
         .fixed_pos(egui::pos2(
             size.x / 2.0 - total_w / 2.0,
@@ -98,6 +174,8 @@ pub fn draw_hud(
         ))
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
+                // Solo lo spazio voluto fra i riquadri: la barra resta centrata e larga `total_w`.
+                ui.spacing_mut().item_spacing.x = 0.0;
                 for i in 0..10 {
                     let stack = inventory.hotbar_slot(i);
                     let (rect, resp) =

@@ -39,6 +39,7 @@ pub fn stock(key: &str) -> Vec<ShopItem> {
             i(ItemKind::CanvasPack, 60, 1),
             i(ItemKind::LeatherPack, 140, 1),
             i(ItemKind::ExpeditionPack, 300, 1),
+            i(ItemKind::Lockpick, 6, 1),
         ],
         "arciere" => vec![i(ItemKind::Bow, 80, 1), i(ItemKind::Arrow, 15, 10)],
         _ => Vec::new(),

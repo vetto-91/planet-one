@@ -301,6 +301,8 @@ pub fn parse_key(name: &str) -> Option<PilotKey> {
         "destra" | "right" => K::ArrowRight,
         "f3" => K::F3,
         "f4" => K::F4,
+        "f" => K::KeyF,
+        "g" => K::KeyG,
         "f5" => K::F5,
         "f9" => K::F9,
         "f11" => K::F11,
@@ -1096,6 +1098,14 @@ pub fn snapshot(world: &mut World) -> Value {
         "quest": quest,
         "missioni": missioni,
         "abilita": abilita,
+        "serrature": world.resource::<crate::thievery::Thievery>().picked,
+        "infilate": world
+            .resource::<crate::thievery::Thievery>()
+            .slipped
+            .values()
+            .sum::<u32>(),
+        "vigore": world.resource::<crate::vitals::Vitals>().vigor.round(),
+        "magia": world.resource::<crate::vitals::Vitals>().magic.round(),
         "livello": progress.level,
         "punti_statistica": progress.stat_points,
         "nodi": progress.nodes,

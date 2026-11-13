@@ -143,6 +143,7 @@ pub fn player_attack(
         inventory.consume(crate::inventory::ItemKind::Arrow, 1);
         combat.attack_cd = stats.cooldown;
         swing.0 = SWING_TIME;
+        crate::vitals::spend(crate::vitals::SWING_COST);
         let dir = cam.forward();
         let start = p + Vec3::Y * 0.4 + *dir * 0.8;
         commands.spawn((
@@ -176,6 +177,7 @@ pub fn player_attack(
         hit.truncate(1);
     }
     swing.0 = SWING_TIME;
+    crate::vitals::spend(crate::vitals::SWING_COST);
     if hit.is_empty() {
         return;
     }

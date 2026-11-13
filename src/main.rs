@@ -51,12 +51,14 @@ mod shop;
 mod skills;
 mod sky;
 mod terrain;
+mod thievery;
 mod trees;
 mod ui_style;
 mod version;
 mod village;
 mod village_life;
 mod villagers;
+mod vitals;
 mod voice;
 #[cfg(test)]
 mod walk_test;
@@ -108,6 +110,8 @@ pub enum AppState {
     Character,
     /// Mobile aperto (casse, armadi…): gioco sospeso, cursore libero.
     Container,
+    /// Scasso di una serratura (gioco dei perni): gioco sospeso.
+    Lockpick,
     /// Shell dei trucchi aperta (\\): gioco sospeso, cursore libero.
     Shell,
     /// Negozio aperto (acquisto con le monete): gameplay sospeso, cursore libero.
@@ -224,6 +228,8 @@ fn main() -> AppExit {
         .add_plugins(containers::plugin)
         .add_plugins(character::plugin)
         .add_plugins(skills::plugin)
+        .add_plugins(vitals::plugin)
+        .add_plugins(thievery::plugin)
         .add_plugins(water::plugin)
         .add_plugins(nature::plugin)
         .add_plugins(save::plugin)
@@ -375,6 +381,7 @@ fn main() -> AppExit {
                 inventory_ui::inventory_window.run_if(in_state(AppState::Inventory)),
                 shell::shell_panel.run_if(in_state(AppState::Shell)),
                 containers::container_window.run_if(in_state(AppState::Container)),
+                thievery::lockpick_window.run_if(in_state(AppState::Lockpick)),
                 character::character_window.run_if(in_state(AppState::Character)),
                 main_menu::main_menu_ui.run_if(|s: Res<State<AppState>>| {
                     matches!(s.get(), AppState::MainMenu | AppState::Paused)
@@ -390,6 +397,7 @@ fn main() -> AppExit {
             (
                 quests::missions::track_missions,
                 quest::thief_parley.after(entities::interact),
+                thievery::pickpocket.after(quest::thief_parley),
                 quest::thief_choice,
             )
                 .run_if(in_state(AppState::Playing)),

@@ -28,9 +28,19 @@ verifica app = Playing
 tp 94.5 2 40
 aspetta 3
 mira container
+# Il forziere è chiuso a chiave (ADR 0039): senza grimaldello resta chiuso, poi lo si forza.
 premi e
 aspetta 1
-verifica app = Container
+verifica app = Playing
+dai grimaldello 5
+abilita scassinare 100
+premi e
+aspetta 1
+verifica app = Lockpick
+foto serratura
+scassina
+attendi app = Container 40
+verifica /serrature = 1
 dump forziere
 foto forziere
 prendi

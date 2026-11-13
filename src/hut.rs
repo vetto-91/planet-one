@@ -1526,6 +1526,7 @@ pub fn handle_prop_toggle(
     clock: Res<crate::daynight::GameClock>,
     furniture: Query<&crate::containers::Container>,
     mut containers: ResMut<crate::containers::Containers>,
+    mut picking: crate::thievery::PickParams,
     mut next: ResMut<NextState<crate::AppState>>,
     mut commands: Commands,
     pickups: Query<&crate::inventory::Pickup>,
@@ -1541,8 +1542,10 @@ pub fn handle_prop_toggle(
         }
         // Un mobile non cambia stato: si apre la sua finestra.
         if let Ok(c) = furniture.get(*handle) {
-            containers.open(c);
-            next.set(crate::AppState::Container);
+            // Un baule chiuso a chiave si forza col grimaldello (ADR 0039).
+            if let Some(state) = picking.open(c, &mut containers, &carried) {
+                next.set(state);
+            }
             continue;
         }
         // I bottoni dei cancelli commutano lo stato del cancello.

@@ -34,6 +34,8 @@ pub enum ItemKind {
     CarryBelt,
     /// Passepartout: apre ogni porta (solo dalla shell).
     MasterKey,
+    /// Grimaldello: apre le serrature dei bauli, a volte si spezza (ADR 0039).
+    Lockpick,
 }
 
 /// Categoria dell'inventario.
@@ -71,7 +73,7 @@ impl Category {
 
 impl ItemKind {
     /// Tutti i tipi di oggetto.
-    pub const ALL: [ItemKind; 17] = [
+    pub const ALL: [ItemKind; 18] = [
         ItemKind::HealthPotion,
         ItemKind::Coin,
         ItemKind::ShortSword,
@@ -89,6 +91,7 @@ impl ItemKind {
         ItemKind::MulePotion,
         ItemKind::CarryBelt,
         ItemKind::MasterKey,
+        ItemKind::Lockpick,
     ];
 
     /// Peso reale di un'unità (kg). Monete e munizioni non pesano.
@@ -109,6 +112,7 @@ impl ItemKind {
             ItemKind::MulePotion => Some(0.4),
             ItemKind::CarryBelt => Some(0.3),
             ItemKind::MasterKey => Some(0.05),
+            ItemKind::Lockpick => Some(0.02),
             ItemKind::Coin | ItemKind::Arrow => None,
         }
     }
@@ -128,7 +132,8 @@ impl ItemKind {
             | ItemKind::CanvasPack
             | ItemKind::LeatherPack
             | ItemKind::ExpeditionPack
-            | ItemKind::CarryBelt => Category::Gear,
+            | ItemKind::CarryBelt
+            | ItemKind::Lockpick => Category::Gear,
             ItemKind::Coin | ItemKind::MasterKey => Category::Valuables,
         }
     }
@@ -153,6 +158,7 @@ impl ItemKind {
             ItemKind::MulePotion => "pozione-mulo",
             ItemKind::CarryBelt => "cintura",
             ItemKind::MasterKey => "passepartout",
+            ItemKind::Lockpick => "grimaldello",
         }
     }
 
@@ -181,6 +187,7 @@ impl ItemKind {
             ItemKind::MulePotion => "Pozione del mulo",
             ItemKind::CarryBelt => "Cintura del portatore",
             ItemKind::MasterKey => "Passepartout",
+            ItemKind::Lockpick => "Grimaldello",
         }
     }
 
@@ -204,6 +211,7 @@ impl ItemKind {
             ItemKind::MulePotion => "Per 5 minuti porti 20 kg in più.",
             ItemKind::CarryBelt => "Incantata: porti 10 kg in più finché la indossi.",
             ItemKind::MasterKey => "Apre qualsiasi porta del paese.",
+            ItemKind::Lockpick => "Per forzare la serratura di un baule. Può spezzarsi.",
         }
     }
 
@@ -287,6 +295,7 @@ impl ItemKind {
             ItemKind::MulePotion => Color::srgb(0.3, 0.55, 0.9),
             ItemKind::CarryBelt => Color::srgb(0.7, 0.4, 0.8),
             ItemKind::MasterKey => Color::srgb(0.9, 0.75, 0.3),
+            ItemKind::Lockpick => Color::srgb(0.75, 0.55, 0.3),
         }
     }
 }

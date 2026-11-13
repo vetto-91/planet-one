@@ -49,6 +49,8 @@ pub enum When {
     Weather(crate::weather::Kind),
     /// Almeno `n` missioni secondarie già compiute.
     SidesDone(usize),
+    /// Un contatore del mondo arriva a `n` (`serrature`, `infilate:<nome>`; ADR 0039).
+    Count(String, u32),
 }
 
 /// Oggetto dal nome italiano usato nei file («mela», «pesce», «pozione del mulo»…).
@@ -180,6 +182,9 @@ pub fn parse(text: &str) -> Vec<Mission> {
                     ("ha", _) => item_qty(rest).map(|(k, n)| When::Has(k, n)),
                     ("meteo", _) => crate::weather::Kind::parse(rest).map(When::Weather),
                     ("fatte", [n]) => Some(When::SidesDone(*n as usize)),
+                    ("conta", _) => rest.trim().rsplit_once(' ').and_then(|(key, n)| {
+                        Some(When::Count(key.trim().to_lowercase(), n.parse().ok()?))
+                    }),
                     ("sotto", [y]) => Some(When::Below(*y)),
                     ("sopra", [y]) => Some(When::Above(*y)),
                     ("ora", [a, b]) => Some(When::Hour(*a, *b)),
@@ -255,6 +260,8 @@ pub struct Facts {
     pub weather: Option<crate::weather::Kind>,
     /// Missioni secondarie compiute (lo riempie il motore).
     pub sides_done: usize,
+    /// Contatori del mondo: serrature forzate, monete infilate (`thievery::Thievery::counters`).
+    pub counters: Vec<(String, u32)>,
 }
 
 impl Missions {
@@ -467,6 +474,7 @@ fn holds(w: &When, f: &Facts, talked: &[(String, usize)], mission: usize) -> boo
         When::Clear(p, r) => !f.enemies.iter().any(|e| e.xz().distance(*p) <= *r),
         When::Weather(kind) => f.weather == Some(*kind),
         When::SidesDone(n) => f.sides_done >= *n,
+        When::Count(key, n) => f.counters.iter().any(|(k, v)| k == key && v >= n),
         When::Quest(done) => {
             if *done {
                 f.quest_done
@@ -489,6 +497,7 @@ pub fn track_missions(
     enemies: Query<(&GlobalTransform, &crate::combat::EnemyHealth), With<crate::entities::Enemy>>,
     mut inventory: ResMut<crate::inventory::Inventory>,
     mut session: ResMut<crate::save::Session>,
+    thievery: Res<crate::thievery::Thievery>,
     mut was_open: Local<bool>,
 ) {
     if *was_open && !dialog.open {
@@ -505,6 +514,7 @@ pub fn track_missions(
         quest_done: quest.stage == QuestStage::Completed,
         weather: Some(weather.shown()),
         sides_done: 0,
+        counters: thievery.counters(),
         items: inventory.slots.iter().map(|s| (s.kind, s.qty)).collect(),
         // Solo i vivi: un nemico sconfitto resta un attimo nel mondo prima di sparire.
         enemies: enemies
@@ -574,6 +584,7 @@ mod tests {
             enemies: Vec::new(),
             weather: None,
             sides_done: 0,
+            counters: Vec::new(),
         }
     }
 
@@ -587,7 +598,7 @@ mod tests {
             m.list[4..].iter().all(|x| x.side),
             "le altre sono secondarie"
         );
-        assert_eq!(m.list.iter().filter(|x| x.side && !x.event).count(), 14);
+        assert_eq!(m.list.iter().filter(|x| x.side && !x.event).count(), 15);
         assert_eq!(m.list.iter().filter(|x| x.event).count(), 11);
         for mission in &m.list {
             assert!(!mission.title.is_empty() && !mission.summary.is_empty());
@@ -679,6 +690,40 @@ mod tests {
         m.dialog_closed(true);
         m.advance(&mut f);
         assert_eq!(m.progress, vec![1, 1]);
+    }
+
+    #[test]
+    fn world_counters_close_a_step() {
+        let text = "[missione q]\ntitolo: Q\nsommario: s\ntipo: secondaria\n[tappa]\nobiettivo: apri\n\
+                    quando: conta serrature 3\n[tappa]\nobiettivo: infila\n\
+                    quando: conta infilate:guardia bruno 15\n";
+        let list = parse(text);
+        assert_eq!(
+            list[0].steps[0].when,
+            vec![When::Count("serrature".into(), 3)]
+        );
+        assert_eq!(
+            list[0].steps[1].when,
+            vec![When::Count("infilate:guardia bruno".into(), 15)]
+        );
+        let mut m = Missions {
+            list,
+            progress: vec![0],
+            enabled: true,
+            talking: None,
+            talked: Vec::new(),
+        };
+        let mut f = facts(Vec3::ZERO, 12.0, false, false);
+        f.counters = vec![("serrature".into(), 2)];
+        assert!(m.advance(&mut f).is_empty());
+        f.counters = vec![
+            ("serrature".into(), 3),
+            ("infilate:guardia bruno".into(), 10),
+        ];
+        assert_eq!(m.advance(&mut f).len(), 1);
+        assert!(m.advance(&mut f).is_empty(), "dieci monete non bastano");
+        f.counters[1].1 = 15;
+        assert_eq!(m.advance(&mut f).len(), 1);
     }
 
     #[test]

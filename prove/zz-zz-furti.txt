@@ -1,0 +1,53 @@
+# Vigore, scasso e borseggio (ADR 0039).
+ia off
+meteo sereno
+ora 10
+aspetta 2
+# Il vigore cala correndo e torna da solo; senza fiato non si corre.
+tp 0.5 3 -60
+aspetta 2
+verifica /vigore = 100
+foto barre
+tieni shift 6
+premi w 6
+verifica /vigore < 70
+tieni shift 9
+premi w 9
+verifica /vigore < 25
+foto senza-fiato
+aspetta 8
+verifica /vigore > 80
+god on
+# Borseggio inverso: quindici monete nella tasca di Beppe, alle sue spalle (missione qs16).
+missioni on
+missione qs16 5
+abilita borseggio 100
+dai moneta 40
+aspetta 1
+dietro beppe
+aspetta 0.3
+foto alle-spalle
+premi g
+aspetta 0.3
+dietro beppe
+aspetta 0.3
+premi g
+aspetta 0.3
+dietro beppe
+aspetta 0.3
+premi g
+aspetta 1
+verifica /infilate = 15
+verifica Coin = 55
+verifica /missioni/qs16 = 6
+# Sfilare: qualche moneta, una volta al giorno.
+dietro beppe
+aspetta 0.3
+premi f
+aspetta 1
+verifica Coin > 55
+verifica /abilita/borseggio = 100
+# Di fronte non si arriva alle tasche.
+tp beppe
+aspetta 0.5
+esci

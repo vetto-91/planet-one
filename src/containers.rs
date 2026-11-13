@@ -183,7 +183,7 @@ pub fn put(store: &mut Store, inventory: &mut Inventory, kind: ItemKind, qty: u3
 }
 
 /// Numero pseudo-casuale stabile in 0..1 dalla chiave del mobile.
-fn roll(key: &str, salt: u32) -> f32 {
+pub(crate) fn roll(key: &str, salt: u32) -> f32 {
     let mut h: u32 = 0x811C_9DC5 ^ salt.wrapping_mul(0x9E37_79B1);
     for b in key.bytes() {
         h = (h ^ u32::from(b)).wrapping_mul(0x0100_0193);
@@ -282,6 +282,11 @@ impl Containers {
         });
         self.open = Some((c.key.clone(), c.kind));
         info!("[CONTAINER] aperto {} ({})", c.key, c.kind.name());
+    }
+
+    /// Il mobile è già stato aperto almeno una volta (un baule così non è più chiuso a chiave).
+    pub fn was_opened(&self, key: &str) -> bool {
+        self.stores.contains_key(key)
     }
 
     /// Contenuto del mobile aperto (per lo stato del pilota automatico).

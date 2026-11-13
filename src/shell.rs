@@ -34,6 +34,7 @@ const HELP: &[&str] = &[
     "missioni [on|off] · missione <id> <tappa> (storia del Prologo e secondarie)",
     "veloce [luogo] (viaggio veloce verso un luogo scoperto; senza nome: l'elenco)",
     "abilita [<nome> <grado>] · livello [n] · talento <abilità> (attiva un rango con un Nodo d'Oro)",
+    "dietro <abitante> (alle sue spalle, per il borseggio) · scassina (la serratura aperta si forza da sola)",
 ];
 
 /// Trucchi attivi: non salvati, tutti spenti a ogni avvio.
@@ -135,6 +136,10 @@ pub enum Cmd {
     SetSkill(crate::skills::Skill, u8),
     Level(Option<u32>),
     Perk(crate::skills::Skill),
+    /// Alle spalle di un abitante (per provare il borseggio).
+    Behind(String),
+    /// Durante lo scasso: il perno si spinge da solo quando l'ago è sulla tacca.
+    AutoPick,
     /// Chili e secondi (`None` = senza scadenza).
     CarryEffect(f32, Option<f32>),
     ClearEffects,
@@ -358,6 +363,8 @@ pub fn parse(line: &str) -> Result<Cmd, String> {
                 .ok_or_else(|| "il livello va da 1 a 200".to_string()),
             _ => Err("uso: livello [n]".into()),
         },
+        "dietro" if !args.is_empty() => Ok(Cmd::Behind(args.join(" ").to_lowercase())),
+        "scassina" => Ok(Cmd::AutoPick),
         "talento" => match args {
             [name] => crate::skills::Skill::parse(name)
                 .map(Cmd::Perk)
@@ -465,6 +472,7 @@ pub struct ShellCtx<'w, 's> {
     missions: ResMut<'w, crate::quests::missions::Missions>,
     known: Res<'w, crate::places::Known>,
     progress: ResMut<'w, crate::skills::Progress>,
+    picking: ResMut<'w, crate::thievery::Lockpicking>,
     fast_travel: ResMut<'w, crate::places::FastTravel>,
     diagnostics: Res<'w, bevy::diagnostic::DiagnosticsStore>,
     every: Query<'w, 's, Entity>,
@@ -944,6 +952,26 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
             } else {
                 shell.say("serve un Nodo d'Oro e il grado della soglia (15, 30, 50, 75, 100)");
             }
+        }
+        Cmd::Behind(name) => {
+            let found = ctx
+                .npcs
+                .iter()
+                .max_by_key(|(npc, ..)| name_rank(npc.name, &name))
+                .filter(|(npc, ..)| name_rank(npc.name, &name) > 0)
+                .map(|(_, t, _)| t.translation() - t.rotation() * Vec3::Z * 1.1);
+            match (found, ctx.player.single_mut()) {
+                (Some(dest), Ok((mut t, mut v))) => {
+                    t.translation = dest + Vec3::Y * 0.4;
+                    v.0 = Vec3::ZERO;
+                    shell.say(format!("alle spalle di {name}"));
+                }
+                _ => shell.say(format!("abitante sconosciuto: {name}")),
+            }
+        }
+        Cmd::AutoPick => {
+            ctx.picking.auto = true;
+            shell.say("la serratura si forza da sola");
         }
         Cmd::CarryEffect(carry_kg, remaining) => {
             ctx.effects.add(crate::character::Effect {

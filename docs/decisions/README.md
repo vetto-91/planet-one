@@ -64,3 +64,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0036 | Missioni secondarie del Prologo | accettato |
 | 0037 | Eventi casuali, luoghi scoperti e viaggio veloce | accettato |
 | 0038 | Abilità che crescono con l'uso e livelli | accettato |
+| 0039 | Vigore, magia, scasso e borseggio | accettato |

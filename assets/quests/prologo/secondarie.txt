@@ -438,3 +438,49 @@ quando: parla Gaspare
 dai: pozione di cura 2
 dai: pozione del mulo 1
 monete: 25
+
+[missione qs16]
+titolo: Il Baule Senza Chiave e la Mano Leggera
+sommario: Ferruccio insegna ad ascoltare i perni di una serratura, e Osvaldo a far del bene senza farsi vedere.
+tipo: secondaria
+
+[tappa]
+obiettivo: Parla con Ferruccio dei bauli senza chiave
+quando: parla Ferruccio
+> Le chiavi della guarnigione sono in fondo al mare da anni, {nome}. I bauli no: sono ancora lì, in caserma e nelle case, con dentro le cose di tutti.
+> Tieni: tre grimaldelli di bronzo. Una serratura non si forza, si ascolta. Quando l'ago passa sulla tacca, spingi il perno.
+> Aprine tre, dove vuoi. Poi vai a dirlo a Carlo, a Porta Sud: è lui che tiene il conto dei bauli.
+dai: grimaldello 3
+
+[tappa]
+obiettivo: Apri tre bauli chiusi a chiave con i grimaldelli
+quando: conta serrature 3
+pensiero: Tre serrature hanno ceduto. Guardia Carlo vorrà saperlo.
+
+[tappa]
+obiettivo: Racconta a Guardia Carlo dei bauli aperti
+quando: parla Guardia Carlo
+> Tre? E senza rompere i coperchi? Ferruccio ha trovato un allievo.
+> Dentro quei bauli ci sono le paghe arretrate e i ricordi di chi ha fatto la ronda prima di noi. Prendi questo, per il disturbo.
+> E passa da Osvaldo: mi ha detto che ha bisogno di una mano leggera. Non so cosa intenda, e forse è meglio così.
+monete: 20
+
+[tappa]
+obiettivo: Parla con Osvaldo
+quando: parla Osvaldo
+> Beppe ha il tetto che piove e Pietro va in giro con le scarpe rotte. Ma prova tu a regalargli una moneta: te la tira dietro.
+> Queste sono quindici. Mettigliele in tasca senza che se ne accorga, mentre ti dà le spalle. Che creda di averle sempre avute.
+monete: 15
+
+[tappa]
+obiettivo: Infila di nascosto quindici monete nella tasca di Beppe (alle sue spalle, tasto G)
+quando: conta infilate:beppe 15
+pensiero: Beppe non si è accorto di nulla. Osvaldo sarà contento.
+
+[tappa]
+obiettivo: Torna da Osvaldo
+quando: parla Osvaldo
+> Stamattina Beppe contava le monete e non gli tornavano i conti. Ha detto che deve averle messe via l'inverno scorso. Bravo.
+> Ferruccio ti manda questo astuccio. Dice che una mano così è meglio averla dalla parte giusta.
+dai: grimaldello 5
+monete: 10

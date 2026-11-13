@@ -141,9 +141,9 @@ impl Skill {
             Skill::Herbalism => "bevendo pozioni",
             Skill::Eloquence => "parlando e comprando",
             Skill::Lore => "scoprendo luoghi e frugando nei mobili",
-            Skill::Armor | Skill::Magic | Skill::Pickpocket | Skill::Lockpick | Skill::Building => {
-                ""
-            }
+            Skill::Pickpocket => "sfilando o infilando monete alle spalle di qualcuno",
+            Skill::Lockpick => "forzando le serrature dei bauli",
+            Skill::Armor | Skill::Magic | Skill::Building => "",
         }
     }
 
@@ -164,6 +164,8 @@ impl Skill {
             Skill::Herbalism => ("Infusione Pura", "cura delle pozioni +10%"),
             Skill::Eloquence => ("Mercante di Sidone", "prezzi −3%"),
             Skill::Lore => ("Passo del Viandante", "esperienza di livello +5%"),
+            Skill::Pickpocket => ("Mano di Piuma", "riuscita del borseggio +5%"),
+            Skill::Lockpick => ("Dita Sensibili", "tacca della serratura +10%"),
             _ => return None,
         })
     }

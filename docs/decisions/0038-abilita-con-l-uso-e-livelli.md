@@ -32,6 +32,7 @@ che porta punti statistica e Nodi d'Oro. Finora c'erano solo le sette statistich
   `/abilita/talento_<nome>`, `/livello`, `/nodi`, `/punti_statistica`.
 
 ## Conseguenze
+- Aggiornamento (ADR 0039): Scassinare e Borseggio ora si allenano e hanno un talento; le allenabili sono tredici.
 - Un solo talento per abilità, con ranghi uguali: i talenti con nome della trama (scatto, disarmo, apnea,
   controparata…) chiedono meccaniche nuove e restano da fare.
 - Il grado da solo non cambia nulla nel gioco: contano i ranghi attivati. Le statistiche collegate a ogni

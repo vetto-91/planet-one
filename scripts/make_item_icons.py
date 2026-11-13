@@ -185,6 +185,26 @@ def master_key():
     return im
 
 
+def lockpick():
+    """Due ferri sottili di bronzo incrociati: il grimaldello e il tensore."""
+    im = layer()
+    d = ImageDraw.Draw(im)
+    light, dark, wood = (214, 160, 92, 255), (120, 78, 34, 255), (92, 58, 32, 255)
+    # Tensore: una L piatta.
+    d.line([(120, 400), (392, 128)], fill=dark, width=34)
+    d.line([(120, 400), (392, 128)], fill=light, width=20)
+    d.line([(392, 128), (430, 166)], fill=dark, width=34)
+    d.line([(392, 128), (430, 166)], fill=light, width=20)
+    # Grimaldello: manico di legno e punta a uncino.
+    d.line([(100, 150), (210, 260)], fill=(58, 36, 20, 255), width=56)
+    d.line([(100, 150), (210, 260)], fill=wood, width=40)
+    d.line([(210, 260), (400, 430)], fill=dark, width=26)
+    d.line([(210, 260), (400, 430)], fill=light, width=14)
+    d.line([(400, 430), (428, 396)], fill=dark, width=26)
+    d.line([(400, 430), (428, 396)], fill=light, width=14)
+    return im
+
+
 def pack(body, flap, strap, wide=1.0, tall=1.0):
     im = layer()
     d = ImageDraw.Draw(im)
@@ -244,6 +264,7 @@ ICONS = {
     "zaino-spedizione": lambda: pack((86, 112, 84, 255), (66, 90, 66, 255), (60, 46, 28, 255), 1.08, 1.06),
     "pozione-mulo": lambda: potion_of((70, 130, 230, 255), (34, 70, 140, 255)),
     "cintura": belt,
+    "grimaldello": lockpick,
 }
 
 

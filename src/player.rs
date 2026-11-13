@@ -202,6 +202,7 @@ pub fn update_grounded(
 ///   (così in caduta libera non si ferma a mezz'aria).
 /// - Salto: valido se grounded_now OPPURE coyote_left > 0 OPPURE un hit fisico
 ///   recente (last_ground_hit > 0), e non in forte ascesa (anti double-jump).
+#[allow(clippy::too_many_arguments)]
 pub fn movement(
     keys: Res<ButtonInput<KeyCode>>,
     cameras: Query<&GlobalTransform, With<Camera3d>>,
@@ -218,6 +219,7 @@ pub fn movement(
     cheats: Res<crate::shell::Cheats>,
     load: Res<crate::character::Load>,
     field: Option<Res<crate::terrain::TerrainField>>,
+    vitals: Option<Res<crate::vitals::Vitals>>,
 ) {
     let Ok(camera) = cameras.single() else {
         return;
@@ -238,7 +240,9 @@ pub fn movement(
     }
     let input = input.clamp_length_max(1.0);
 
-    let sprinting = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
+    // Senza fiato non si corre (ADR 0039).
+    let sprinting = (keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight))
+        && vitals.as_ref().is_none_or(|v| v.can_sprint());
     let overloaded = load.overloaded && !cheats.noclip;
     let pace = if overloaded {
         crate::character::OVERLOAD_SPEED
@@ -300,6 +304,9 @@ pub fn movement(
             skills::train(Skill::Swimming, walked * 0.3);
         } else if sprinting && !overloaded {
             skills::train(Skill::Athletics, walked * 0.1);
+            if walked > 0.0 {
+                crate::vitals::spend(crate::vitals::SPRINT_DRAIN * time.delta_secs());
+            }
         }
         if load.weight >= load.capacity * 0.5 {
             skills::train(Skill::Carrying, walked * 0.05);
@@ -338,6 +345,7 @@ pub fn movement(
         if can_jump {
             velocity.y = JUMP_SPEED * (1.0 + 0.04 * skills::rank(Skill::Acrobatics));
             skills::train(Skill::Acrobatics, 1.0);
+            crate::vitals::spend(crate::vitals::JUMP_COST);
             buffer.time_left = 0.0;
             state.coyote_left = 0.0;
             state.last_ground_hit = 0.0;

@@ -111,6 +111,9 @@ pub struct SaveData {
     pub distance: f32,
     pub first_person: bool,
     pub health: f32,
+    /// Vigore e magia (ADR 0039); negativo = non salvato, si parte pieni.
+    pub vigor: f32,
+    pub magic: f32,
     pub inventory: Vec<(ItemKind, u32)>,
     pub hotbar: [Option<ItemKind>; 10],
     pub weapon: Option<ItemKind>,
@@ -144,6 +147,8 @@ pub struct SaveData {
     pub known: Vec<(String, Vec3)>,
     /// Abilità, talenti e livello (ADR 0038).
     pub skills: crate::skills::Progress,
+    /// Serrature forzate e monete infilate (ADR 0039).
+    pub thievery: crate::thievery::Thievery,
     /// Regione in cui si trova il giocatore.
     pub region: Region,
     /// Stato delle altre regioni visitate (porte, contenitori, nemici…), com'erano quando
@@ -164,8 +169,9 @@ const WORLD_SECTIONS: [&str; 8] = [
     "abitanti",
     "viandante",
 ];
-const HERO_SECTIONS: [&str; 11] = [
+const HERO_SECTIONS: [&str; 12] = [
     "abilita",
+    "furti",
     "luoghi",
     "missioni",
     "personaggio",
@@ -325,6 +331,8 @@ impl SaveData {
             distance: 5.0,
             first_person: false,
             health: 100.0,
+            vigor: -1.0,
+            magic: -1.0,
             inventory: Vec::new(),
             hotbar: [None; 10],
             weapon: None,
@@ -354,6 +362,7 @@ impl SaveData {
             missions: Vec::new(),
             known: Vec::new(),
             skills: Default::default(),
+            thievery: Default::default(),
             region: Region::Isola,
             elsewhere: Vec::new(),
             present: HashSet::new(),
@@ -402,6 +411,13 @@ impl SaveData {
             ));
         }
         line(String::new());
+        line("[furti]".into());
+        line(format!("serrature = {}", self.thievery.picked));
+        line(format!("tentativi = {}", self.thievery.attempts));
+        for (name, n) in &self.thievery.slipped {
+            line(format!("infilate:{name} = {n}"));
+        }
+        line(String::new());
         line("[tempo]".into());
         line(format!("anno = {}", self.year));
         line(format!("mese = {}", self.month));
@@ -421,6 +437,10 @@ impl SaveData {
         ));
         line(format!("prima_persona = {}", yes(self.first_person)));
         line(format!("vita = {:.1}", self.health));
+        if self.vigor >= 0.0 {
+            line(format!("vigore = {:.1}", self.vigor));
+            line(format!("magia = {:.1}", self.magic));
+        }
         line(String::new());
         line("# oggetto = quantità".into());
         line("[inventario]".into());
@@ -664,6 +684,19 @@ impl SaveData {
                     }
                 }
             }
+            "furti" => {
+                let (k, v) = pair?;
+                match k {
+                    "serrature" => self.thievery.picked = v.parse().ok()?,
+                    "tentativi" => self.thievery.attempts = v.parse().ok()?,
+                    _ => {
+                        let name = k.strip_prefix("infilate:")?;
+                        self.thievery
+                            .slipped
+                            .insert(name.to_string(), v.parse().ok()?);
+                    }
+                }
+            }
             "tempo" => {
                 let (k, v) = pair?;
                 match k {
@@ -694,6 +727,8 @@ impl SaveData {
                     }
                     "prima_persona" => self.first_person = read_bool(v)?,
                     "vita" => self.health = v.parse().ok()?,
+                    "vigore" => self.vigor = v.parse().ok()?,
+                    "magia" => self.magic = v.parse().ok()?,
                     _ => return None,
                 }
             }
@@ -1059,6 +1094,8 @@ pub struct TravelRequest(pub Option<Region>);
 pub struct HeroParams<'w, 's> {
     character: ResMut<'w, Character>,
     progress: ResMut<'w, crate::skills::Progress>,
+    vitals: ResMut<'w, crate::vitals::Vitals>,
+    thievery: ResMut<'w, crate::thievery::Thievery>,
     effects: ResMut<'w, ActiveEffects>,
     inventory: ResMut<'w, Inventory>,
     equip: ResMut<'w, Equipment>,
@@ -1141,6 +1178,9 @@ fn collect(kind: SaveKind, session: &Session, hero: &HeroParams, world: &WorldPa
     d.missions = world.missions.snapshot();
     d.known = world.known.0.iter().map(|(k, v)| (k.clone(), *v)).collect();
     d.skills = hero.progress.clone();
+    d.thievery = hero.thievery.clone();
+    d.vigor = hero.vitals.vigor;
+    d.magic = hero.vitals.magic;
     d.region = crate::region::current();
     d.elsewhere = world
         .memory
@@ -1252,6 +1292,9 @@ fn apply(d: &SaveData, hero: &mut HeroParams, world: &mut WorldParams) {
     if has("luoghi") {
         world.known.0 = d.known.iter().cloned().collect();
     }
+    if has("furti") {
+        *hero.thievery = d.thievery.clone();
+    }
     if has("abilita") {
         *hero.progress = d.skills.clone();
     }
@@ -1281,6 +1324,12 @@ fn apply(d: &SaveData, hero: &mut HeroParams, world: &mut WorldParams) {
         vel.0 = Vec3::ZERO;
         hp.max = hero.character.stats.max_health();
         hp.current = d.health.clamp(1.0, hp.max);
+        let mut vitals = crate::vitals::Vitals::full(hero.character.stats);
+        if d.vigor >= 0.0 {
+            vitals.vigor = d.vigor.min(vitals.vigor_max);
+            vitals.magic = d.magic.clamp(0.0, vitals.magic_max);
+        }
+        *hero.vitals = vitals;
         hero.orbit.yaw = d.yaw;
         hero.orbit.pitch = d.pitch;
         hero.orbit.distance = d.distance;
@@ -1574,6 +1623,8 @@ pub fn finish_loading(
             world.missions.enabled = true;
             world.known.0.clear();
             *hero.progress = Default::default();
+            *hero.thievery = Default::default();
+            *hero.vitals = crate::vitals::Vitals::full(character.stats);
             *hero.character = character;
             *hero.inventory = Inventory::default();
             *hero.equip = Equipment::default();
@@ -1626,6 +1677,7 @@ pub fn finish_loading(
             world.missions.enabled = true;
             world.known.0.clear();
             *hero.progress = Default::default();
+            *hero.thievery = Default::default();
             world.memory.0 = data
                 .elsewhere
                 .iter()
@@ -1723,9 +1775,16 @@ mod tests {
         d.skills.set_grade(Skill::Athletics, 31);
         d.skills.gain(Skill::Blade, 5.0);
         assert!(d.skills.activate(Skill::Athletics));
+        d.thievery.picked = 2;
+        d.thievery.attempts = 7;
+        d.thievery.slipped.insert("guardia bruno".into(), 15);
+        d.vigor = 42.0;
+        d.magic = 17.0;
         let text = d.to_text();
         let back = SaveData::parse(&text).unwrap();
         assert_eq!(back.skills, d.skills);
+        assert_eq!(back.thievery, d.thievery);
+        assert_eq!((back.vigor, back.magic), (42.0, 17.0));
         assert!(back.present.contains("abilita"));
         // Un salvataggio vecchio, senza la sezione, resta leggibile.
         let start = text.find("[abilita]").unwrap();

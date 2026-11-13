@@ -336,6 +336,10 @@ Gli edifici hanno porte da aprire con E, piani collegati da scale, un **sottotet
 
 Il personaggio cresce **facendo**: correre, saltare, nuotare, combattere, parlare, esplorare allenano sedici **abilità** (grado da 1 a 100). Gradi e missioni fanno salire il **livello**, che dà un punto statistica, un Nodo d'Oro e un po' di vita; con un Nodo d'Oro, ai gradi 15/30/50/75/100, attivi un rango del **talento** dell'abilità. Si vede e si spende tutto nel pannello del personaggio (tasto C). Dalla shell: `abilita`, `livello <n>`, `talento <abilità>`.
 
+Sopra la barra degli oggetti ci sono tre barre: **magia** a sinistra, **vita** al centro, **vigore** a destra. Il vigore cala correndo, saltando e colpendo e torna da solo; a zero resti senza fiato e non corri per qualche secondo.
+
+**Scasso e borseggio**: i bauli sono chiusi a chiave finché non li apri una volta. Con un grimaldello (da Ferruccio) ferma l'ago sulla tacca d'oro con `Spazio`, una volta per perno. Alle spalle di un abitante, `F` gli sfila qualche moneta e `G` gliene infila cinque; se se ne accorge paghi una multa.
+
 Il personaggio ha sette **statistiche** (tasto C) e porta **30 kg** di base: oltre il limite cammina lento e non corre. Il fabbro vende quattro **zaini**, fino a 60 kg; la Pozione del mulo e la Cintura del portatore aggiungono altri chili, per un po' o finché la si indossa.
 
 **Bauli, armadi, botti, casse e scaffali** si aprono con E: si possono prendere e posare oggetti, con un limite di peso legato alla grandezza del mobile. Anche il **faro** si visita: alloggio del guardiano, scala a chiocciola, lanterna e balconata; è chiuso a chiave.
