@@ -149,6 +149,8 @@ pub struct SaveData {
     pub skills: crate::skills::Progress,
     /// Serrature forzate e monete infilate (ADR 0039).
     pub thievery: crate::thievery::Thievery,
+    /// Karma, fiducia degli abitanti e segreti scoperti (ADR 0040).
+    pub karma: crate::karma::Karma,
     /// Regione in cui si trova il giocatore.
     pub region: Region,
     /// Stato delle altre regioni visitate (porte, contenitori, nemici…), com'erano quando
@@ -169,8 +171,9 @@ const WORLD_SECTIONS: [&str; 8] = [
     "abitanti",
     "viandante",
 ];
-const HERO_SECTIONS: [&str; 12] = [
+const HERO_SECTIONS: [&str; 13] = [
     "abilita",
+    "karma",
     "furti",
     "luoghi",
     "missioni",
@@ -363,6 +366,7 @@ impl SaveData {
             known: Vec::new(),
             skills: Default::default(),
             thievery: Default::default(),
+            karma: Default::default(),
             region: Region::Isola,
             elsewhere: Vec::new(),
             present: HashSet::new(),
@@ -408,6 +412,30 @@ impl SaveData {
                 self.skills.grades[i],
                 self.skills.xp[i],
                 self.skills.perks[i]
+            ));
+        }
+        line(String::new());
+        line("# abitante = fiducia, incontrato, segreto scoperto".into());
+        line("[karma]".into());
+        line(format!("globale = {}", self.karma.global));
+        for deed in &self.karma.judged {
+            line(format!("pesato:{deed} = sì"));
+        }
+        let mut people: Vec<&String> = self
+            .karma
+            .trust
+            .keys()
+            .chain(&self.karma.met)
+            .chain(&self.karma.revealed)
+            .collect();
+        people.sort();
+        people.dedup();
+        for name in people {
+            line(format!(
+                "{name} = {} {} {}",
+                self.karma.trust.get(name).copied().unwrap_or(0),
+                yes(self.karma.met.contains(name)),
+                yes(self.karma.revealed.contains(name))
             ));
         }
         line(String::new());
@@ -681,6 +709,26 @@ impl SaveData {
                             .clamp(1, crate::skills::MAX_GRADE);
                         p.xp[i] = parts.next()?.parse().ok()?;
                         p.perks[i] = parts.next()?.parse::<u8>().ok()?.min(5);
+                    }
+                }
+            }
+            "karma" => {
+                let (k, v) = pair?;
+                if k == "globale" {
+                    self.karma.global = v.parse().ok()?;
+                } else if let Some(deed) = k.strip_prefix("pesato:") {
+                    self.karma.judged.insert(deed.to_string());
+                } else {
+                    let mut parts = v.split_whitespace();
+                    let trust: i32 = parts.next()?.parse().ok()?;
+                    if trust != 0 {
+                        self.karma.trust.insert(k.to_string(), trust);
+                    }
+                    if read_bool(parts.next()?)? {
+                        self.karma.met.insert(k.to_string());
+                    }
+                    if read_bool(parts.next()?)? {
+                        self.karma.revealed.insert(k.to_string());
                     }
                 }
             }
@@ -1096,6 +1144,7 @@ pub struct HeroParams<'w, 's> {
     progress: ResMut<'w, crate::skills::Progress>,
     vitals: ResMut<'w, crate::vitals::Vitals>,
     thievery: ResMut<'w, crate::thievery::Thievery>,
+    karma: ResMut<'w, crate::karma::Karma>,
     effects: ResMut<'w, ActiveEffects>,
     inventory: ResMut<'w, Inventory>,
     equip: ResMut<'w, Equipment>,
@@ -1179,6 +1228,7 @@ fn collect(kind: SaveKind, session: &Session, hero: &HeroParams, world: &WorldPa
     d.known = world.known.0.iter().map(|(k, v)| (k.clone(), *v)).collect();
     d.skills = hero.progress.clone();
     d.thievery = hero.thievery.clone();
+    d.karma = hero.karma.clone();
     d.vigor = hero.vitals.vigor;
     d.magic = hero.vitals.magic;
     d.region = crate::region::current();
@@ -1291,6 +1341,9 @@ fn apply(d: &SaveData, hero: &mut HeroParams, world: &mut WorldParams) {
     }
     if has("luoghi") {
         world.known.0 = d.known.iter().cloned().collect();
+    }
+    if has("karma") {
+        *hero.karma = d.karma.clone();
     }
     if has("furti") {
         *hero.thievery = d.thievery.clone();
@@ -1624,6 +1677,7 @@ pub fn finish_loading(
             world.known.0.clear();
             *hero.progress = Default::default();
             *hero.thievery = Default::default();
+            *hero.karma = Default::default();
             *hero.vitals = crate::vitals::Vitals::full(character.stats);
             *hero.character = character;
             *hero.inventory = Inventory::default();
@@ -1678,6 +1732,7 @@ pub fn finish_loading(
             world.known.0.clear();
             *hero.progress = Default::default();
             *hero.thievery = Default::default();
+            *hero.karma = Default::default();
             world.memory.0 = data
                 .elsewhere
                 .iter()
@@ -1780,10 +1835,18 @@ mod tests {
         d.thievery.slipped.insert("guardia bruno".into(), 15);
         d.vigor = 42.0;
         d.magic = 17.0;
+        d.karma.global = -7;
+        d.karma.add_trust("Guardia Mario", 31);
+        d.karma.add_trust("Nina", -15);
+        d.karma.met.insert("guardia mario".into());
+        d.karma.met.insert("rosa".into());
+        d.karma.revealed.insert("guardia mario".into());
+        d.karma.judged.insert("ladro".into());
         let text = d.to_text();
         let back = SaveData::parse(&text).unwrap();
         assert_eq!(back.skills, d.skills);
         assert_eq!(back.thievery, d.thievery);
+        assert_eq!(back.karma, d.karma);
         assert_eq!((back.vigor, back.magic), (42.0, 17.0));
         assert!(back.present.contains("abilita"));
         // Un salvataggio vecchio, senza la sezione, resta leggibile.

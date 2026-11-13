@@ -35,6 +35,7 @@ const HELP: &[&str] = &[
     "veloce [luogo] (viaggio veloce verso un luogo scoperto; senza nome: l'elenco)",
     "abilita [<nome> <grado>] · livello [n] · talento <abilità> (attiva un rango con un Nodo d'Oro)",
     "dietro <abitante> (alle sue spalle, per il borseggio) · scassina (la serratura aperta si forza da sola)",
+    "karma [n] · fiducia <abitante> <n> · davanti <abitante> · volti (diario su «Volti e segreti»)",
 ];
 
 /// Trucchi attivi: non salvati, tutti spenti a ogni avvio.
@@ -136,8 +137,13 @@ pub enum Cmd {
     SetSkill(crate::skills::Skill, u8),
     Level(Option<u32>),
     Perk(crate::skills::Skill),
+    /// Karma: lo mostra o lo imposta; fiducia di un abitante.
+    Karma(Option<i32>),
+    Trust(String, i32),
     /// Alle spalle di un abitante (per provare il borseggio).
-    Behind(String),
+    Behind(String, bool),
+    /// Apre il diario sulla scheda «Volti e segreti».
+    Faces,
     /// Durante lo scasso: il perno si spinge da solo quando l'ago è sulla tacca.
     AutoPick,
     /// Chili e secondi (`None` = senza scadenza).
@@ -363,8 +369,25 @@ pub fn parse(line: &str) -> Result<Cmd, String> {
                 .ok_or_else(|| "il livello va da 1 a 200".to_string()),
             _ => Err("uso: livello [n]".into()),
         },
-        "dietro" if !args.is_empty() => Ok(Cmd::Behind(args.join(" ").to_lowercase())),
+        "dietro" if !args.is_empty() => Ok(Cmd::Behind(args.join(" ").to_lowercase(), true)),
+        "davanti" if !args.is_empty() => Ok(Cmd::Behind(args.join(" ").to_lowercase(), false)),
+        "volti" => Ok(Cmd::Faces),
         "scassina" => Ok(Cmd::AutoPick),
+        "karma" => match args {
+            [] => Ok(Cmd::Karma(None)),
+            [n] => n
+                .parse::<i32>()
+                .ok()
+                .filter(|n| (-100..=100).contains(n))
+                .map(|n| Cmd::Karma(Some(n)))
+                .ok_or_else(|| "il karma va da -100 a 100".to_string()),
+            _ => Err("uso: karma [n]".into()),
+        },
+        "fiducia" if args.len() >= 2 => {
+            let (n, name) = args.split_last().ok_or("uso: fiducia <abitante> <n>")?;
+            let n: i32 = n.parse().map_err(|_| "uso: fiducia <abitante> <n>")?;
+            Ok(Cmd::Trust(name.join(" ").to_lowercase(), n))
+        }
         "talento" => match args {
             [name] => crate::skills::Skill::parse(name)
                 .map(Cmd::Perk)
@@ -473,6 +496,8 @@ pub struct ShellCtx<'w, 's> {
     known: Res<'w, crate::places::Known>,
     progress: ResMut<'w, crate::skills::Progress>,
     picking: ResMut<'w, crate::thievery::Lockpicking>,
+    karma: ResMut<'w, crate::karma::Karma>,
+    journal_tab: ResMut<'w, crate::menu::JournalTab>,
     fast_travel: ResMut<'w, crate::places::FastTravel>,
     diagnostics: Res<'w, bevy::diagnostic::DiagnosticsStore>,
     every: Query<'w, 's, Entity>,
@@ -953,21 +978,74 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
                 shell.say("serve un Nodo d'Oro e il grado della soglia (15, 30, 50, 75, 100)");
             }
         }
-        Cmd::Behind(name) => {
+        Cmd::Behind(name, behind) => {
             let found = ctx
                 .npcs
                 .iter()
                 .max_by_key(|(npc, ..)| name_rank(npc.name, &name))
                 .filter(|(npc, ..)| name_rank(npc.name, &name) > 0)
-                .map(|(_, t, _)| t.translation() - t.rotation() * Vec3::Z * 1.1);
+                .map(|(_, t, _)| {
+                    let side = if behind { -1.1 } else { 1.3 };
+                    t.translation() + t.rotation() * Vec3::Z * side
+                });
             match (found, ctx.player.single_mut()) {
                 (Some(dest), Ok((mut t, mut v))) => {
                     t.translation = dest + Vec3::Y * 0.4;
                     v.0 = Vec3::ZERO;
-                    shell.say(format!("alle spalle di {name}"));
+                    shell.say(format!(
+                        "{} {name}",
+                        if behind {
+                            "alle spalle di"
+                        } else {
+                            "davanti a"
+                        }
+                    ));
                 }
                 _ => shell.say(format!("abitante sconosciuto: {name}")),
             }
+        }
+        Cmd::Karma(None) => {
+            shell.say(format!(
+                "karma {:+} — {}",
+                ctx.karma.global,
+                crate::karma::heart(ctx.karma.global)
+            ));
+            let lines: Vec<String> = ctx
+                .karma
+                .trust
+                .iter()
+                .map(|(name, t)| format!("{name}: {t} ({})", crate::karma::Bond::of(*t).name()))
+                .collect();
+            for line in lines {
+                shell.say(line);
+            }
+        }
+        Cmd::Karma(Some(n)) => {
+            ctx.karma.global = n;
+            shell.say(format!("karma {n:+}"));
+        }
+        Cmd::Trust(name, n) => {
+            let found = ctx
+                .npcs
+                .iter()
+                .max_by_key(|(npc, ..)| name_rank(npc.name, &name))
+                .filter(|(npc, ..)| name_rank(npc.name, &name) > 0)
+                .map(|(npc, ..)| npc.name.to_lowercase());
+            match found {
+                Some(key) => {
+                    let n = n.clamp(crate::karma::TRUST_MIN, crate::karma::TRUST_MAX);
+                    ctx.karma.trust.insert(key.clone(), n);
+                    shell.say(format!(
+                        "fiducia di {key}: {n} ({})",
+                        crate::karma::Bond::of(n).name()
+                    ));
+                }
+                None => shell.say(format!("abitante sconosciuto: {name}")),
+            }
+        }
+        Cmd::Faces => {
+            *ctx.journal_tab = crate::menu::JournalTab::Faces;
+            shell.say("diario sulla scheda «Volti e segreti» (tasto J)");
         }
         Cmd::AutoPick => {
             ctx.picking.auto = true;

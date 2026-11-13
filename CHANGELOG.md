@@ -4,6 +4,10 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **Karma** (ADR 0040), «la Bilancia di Ma'at»: quello che fai pesa. Risparmiare il ladro, restituire le monete, compiere missioni e fare un dono di nascosto alleggeriscono il cuore; rubare, tenersi monete non tue o dividere l'oro col ladro lo appesantiscono. Ogni variazione compare a schermo col suo motivo, e i prezzi dei negozi la seguono.
+- **Fiducia degli abitanti**: ognuno dei 26 abitanti dell'isola ti conosce a modo suo, da Sconosciuto ad Anima affine. Cresce parlandogli ogni giorno, con un regalo gradito (tasto `G`, di fronte a lui), comprando da lui e aiutandolo nelle missioni; crolla se ti coglie a borseggiarlo. Un venditore amico fa lo sconto.
+- **Segreti**: ogni abitante ne custodisce uno e lo confida a chi è diventato suo amico (prima, a chi ha Carisma, Saggezza o Intelligenza alti). Dopo la confidenza può parlarne anche nella chat con l'IA locale. Testi in `assets/world/segreti.txt`.
+- **Diario**: nuova scheda «Volti e segreti» con la bilancia, gli abitanti incontrati, il legame con ciascuno e i segreti scoperti.
 - **Vigore e magia** (ADR 0039): due riserve nuove accanto alla vita. Il vigore cala correndo, saltando e colpendo e torna da solo dopo un attimo di respiro; a zero si resta senza fiato e non si corre finché non se ne recupera un quarto. La magia è la riserva per gli incantesimi che verranno. Costituzione e Agilità alzano il vigore, Intelligenza e Saggezza la magia.
 - **Barre nuove**: magia a sinistra, vita al centro e vigore a destra, subito sopra la barra degli oggetti e nello stile dei pannelli (fondo scuro, bordo d'oro, nome e valori). La vecchia barra della vita nell'angolo non c'è più.
 - **Scasso**: i bauli sono chiusi a chiave finché non li apri una prima volta. Con un **grimaldello** (da Ferruccio, 6 monete) si gioca il gioco dei perni: ferma l'ago sulla tacca d'oro, una volta per perno. Uno sbaglio fa ricadere un perno e può spezzare il grimaldello; con la pratica la tacca si allarga.

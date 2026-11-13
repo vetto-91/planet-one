@@ -265,6 +265,11 @@ pub struct Facts {
 }
 
 impl Missions {
+    /// Il dialogo aperto è una battuta di missione.
+    pub fn in_dialog(&self) -> bool {
+        self.talking.is_some()
+    }
+
     fn index(&self, id: &str) -> Option<usize> {
         self.list.iter().position(|m| m.id == id)
     }
@@ -550,8 +555,24 @@ pub fn track_missions(
             if finished { " (missione compiuta)" } else { "" }
         );
         session.notify(text);
+        // Chi ti ha affidato o chiuso una tappa si fida un po' di più (ADR 0040).
+        for w in &step.when {
+            if let When::Talk(npc) = w {
+                crate::karma::trust(npc, crate::karma::MISSION_TRUST);
+            }
+        }
         if finished {
             let m = &missions.list[i];
+            crate::karma::deed(
+                if m.event {
+                    1
+                } else if m.side {
+                    3
+                } else {
+                    4
+                },
+                format!("{} compiuta", m.title),
+            );
             crate::skills::reward(if m.event {
                 crate::skills::EVENT_XP
             } else if m.side {

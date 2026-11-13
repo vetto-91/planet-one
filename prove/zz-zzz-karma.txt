@@ -1,0 +1,71 @@
+# Karma, fiducia e segreti degli abitanti (ADR 0040).
+god on
+ia off
+meteo sereno
+ora 10
+aspetta 2
+verifica /karma = 0
+# La prima chiacchierata del giorno fa crescere la fiducia.
+tp beppe
+aspetta 1
+attendi npc:beppe:modo = Ready 60
+davanti beppe
+aspetta 0.5
+guarda beppe
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica dialogo = false
+verifica /fiducia/beppe = 3
+# Un regalo gradito, una volta al giorno.
+dai mela 2
+davanti beppe
+aspetta 0.5
+foto regalo
+premi g
+aspetta 1
+verifica /fiducia/beppe = 9
+verifica Apple = 1
+davanti beppe
+aspetta 0.5
+premi g
+aspetta 1
+verifica Apple = 1
+# A un amico l'abitante confida il suo segreto.
+fiducia beppe 30
+davanti beppe
+aspetta 0.5
+guarda beppe
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+verifica /segreti contiene beppe
+foto confidenza
+avanza
+aspetta 1
+verifica dialogo = false
+# Il diario li ricorda.
+volti
+premi j
+aspetta 1
+foto volti-e-segreti
+premi j
+aspetta 1
+# Rubare pesa sulla bilancia.
+abilita borseggio 100
+dietro beppe
+aspetta 0.3
+premi f
+aspetta 1
+verifica /karma < 0
+# Un dono di nascosto la rialza.
+dietro beppe
+aspetta 0.3
+premi g
+aspetta 1
+verifica /karma = -1
+esci

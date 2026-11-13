@@ -117,6 +117,8 @@ pub struct UiQueries<'w, 's> {
     pub character: Res<'w, crate::character::Character>,
     pub load: Res<'w, crate::character::Load>,
     pub vitals: Res<'w, crate::vitals::Vitals>,
+    pub karma: Res<'w, crate::karma::Karma>,
+    pub secrets: Res<'w, crate::karma::Secrets>,
     pub health: Query<'w, 's, &'static PlayerHealth, With<crate::player::Player>>,
     pub enemies: Query<
         'w,
@@ -472,7 +474,7 @@ pub fn ui(
         }
         AppState::Journal => {
             let entries = crate::quests::journal_entries(&quest, &texts, &q.missions);
-            draw_journal(ctx, &entries, &mut tab);
+            draw_journal(ctx, &entries, &mut tab, &q.karma, &q.secrets);
         }
         AppState::Shop => {
             let coins = inventory.qty(crate::inventory::ItemKind::Coin);
@@ -975,10 +977,18 @@ pub enum JournalTab {
     #[default]
     Todo,
     Done,
+    /// «Volti e segreti»: abitanti incontrati, fiducia e segreti scoperti (ADR 0040).
+    Faces,
 }
 
 /// Diario delle quest (tasto J): due tab, ogni quest espandibile.
-fn draw_journal(ctx: &egui::Context, entries: &[QuestEntry], tab: &mut JournalTab) {
+fn draw_journal(
+    ctx: &egui::Context,
+    entries: &[QuestEntry],
+    tab: &mut JournalTab,
+    karma: &crate::karma::Karma,
+    secrets: &crate::karma::Secrets,
+) {
     let todo = entries
         .iter()
         .filter(|e| e.status == QuestStatus::Active)
@@ -993,8 +1003,19 @@ fn draw_journal(ctx: &egui::Context, entries: &[QuestEntry], tab: &mut JournalTa
             ui.horizontal(|ui| {
                 ui.selectable_value(tab, JournalTab::Todo, format!("Da fare ({todo})"));
                 ui.selectable_value(tab, JournalTab::Done, format!("Completate ({done})"));
+                ui.selectable_value(
+                    tab,
+                    JournalTab::Faces,
+                    format!("Volti e segreti ({})", karma.met.len()),
+                );
             });
             ui.separator();
+            if *tab == JournalTab::Faces {
+                draw_faces(ui, karma, secrets);
+                ui.separator();
+                ui.label("J / Esc = chiudi");
+                return;
+            }
             let wanted = if *tab == JournalTab::Todo {
                 QuestStatus::Active
             } else {
@@ -1022,6 +1043,70 @@ fn draw_journal(ctx: &egui::Context, entries: &[QuestEntry], tab: &mut JournalTa
             ui.separator();
             ui.label("J / Esc = chiudi");
         });
+}
+
+/// Scheda «Volti e segreti» del diario: la bilancia del karma e gli abitanti incontrati.
+fn draw_faces(ui: &mut egui::Ui, karma: &crate::karma::Karma, secrets: &crate::karma::Secrets) {
+    let grey = egui::Color32::from_rgb(170, 178, 196);
+    ui.label(
+        egui::RichText::new(format!(
+            "La Bilancia di Ma'at: {} ({:+})",
+            crate::karma::heart(karma.global),
+            karma.global
+        ))
+        .size(18.0)
+        .color(crate::ui_style::GOLD),
+    );
+    ui.add_space(4.0);
+    egui::ScrollArea::vertical().show(ui, |ui| {
+        ui.set_width(560.0);
+        let met: Vec<_> = secrets
+            .0
+            .iter()
+            .filter(|s| karma.met.contains(&s.name.to_lowercase()))
+            .collect();
+        if met.is_empty() {
+            ui.label("Non hai ancora parlato con nessuno.");
+        }
+        for s in met {
+            let trust = karma.trust_of(&s.name);
+            let bond = crate::karma::Bond::of(trust);
+            egui::CollapsingHeader::new(
+                egui::RichText::new(format!("{} — {}", s.name, bond.name()))
+                    .size(18.0)
+                    .color(crate::ui_style::GOLD),
+            )
+            .id_salt(&s.name)
+            .show(ui, |ui| {
+                ui.add(
+                    egui::ProgressBar::new(
+                        (trust.max(0) as f32 / crate::karma::KINDRED as f32).min(1.0),
+                    )
+                    .desired_width(220.0)
+                    .desired_height(8.0),
+                );
+                if bond != crate::karma::Bond::Stranger && bond != crate::karma::Bond::Wary {
+                    ui.label(egui::RichText::new(format!("Gli è caro: {}", s.dear)).color(grey));
+                    if let Some(gift) = s.gift {
+                        ui.label(
+                            egui::RichText::new(format!("Gradisce in dono: {}", gift.name()))
+                                .color(grey),
+                        );
+                    }
+                }
+                ui.add_space(4.0);
+                if karma.knows_secret(&s.name) {
+                    ui.label(&s.summary);
+                } else {
+                    ui.label(
+                        egui::RichText::new("Senti che custodisce ancora un pensiero non detto.")
+                            .italics()
+                            .color(grey),
+                    );
+                }
+            });
+        }
+    });
 }
 
 /// Fumetti sopra la testa di chi parla (proiezione world→screen).

@@ -65,3 +65,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0037 | Eventi casuali, luoghi scoperti e viaggio veloce | accettato |
 | 0038 | Abilità che crescono con l'uso e livelli | accettato |
 | 0039 | Vigore, magia, scasso e borseggio | accettato |
+| 0040 | Karma, fiducia e segreti degli abitanti | accettato |

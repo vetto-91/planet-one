@@ -1,0 +1,215 @@
+# Segreti degli abitanti dell'Isola di Fontevivo (ADR 0040). Modificabile a mano.
+#
+# [Nome]            come in abitanti.txt (più il Viandante)
+# caro: ...         che cosa apprezza (compare nel diario quando lo conosci)
+# dono: <oggetto>   che cosa gradisce in regalo (tasto G, di fronte a lui, una volta al giorno)
+# segreto: ...      riassunto per il diario, mostrato solo dopo la confidenza
+# > battuta         la confidenza, detta quando la fiducia arriva ad «Amico» ({nome} = il giocatore)
+
+[Viandante]
+caro: l'onestà con le monete altrui, la pietà per chi sbaglia, le storie degli anziani
+dono: mela
+segreto: Non approdò sull'isola da solo: con lui c'erano Renzo, il ladro dal mantello rosso, e una donna di nome Cassia, ora sul continente. È rimasto sulla collina per custodire l'interruttore e i fili della Luce Viva.
+> Siediti, {nome}. C'è una cosa che in paese non sa nessuno.
+> Quando il mare mi ha portato qui non ero solo. Eravamo in tre: io, Renzo e una donna di nome Cassia.
+> Renzo è l'uomo dal mantello rosso. Cassia ha passato lo Stretto anni fa. Io sono rimasto a badare alla luce: qualcuno doveva.
+
+[Ettore]
+caro: chi sale a trovarlo di notte e non disturba la quiete del faro
+dono: pesce
+segreto: Da tre anni risponde, lampo su lampo, a una luce che viene dal nord. Dall'altra parte c'è Hanna, guardiana di un faro sul continente: non l'ha mai vista in volto.
+> Tu sai tenere un segreto, {nome}? Allora guarda a nord, stanotte.
+> C'è una luce che mi risponde. Tre lampi lunghi, uno corto. Da tre anni.
+> Si chiama Hanna, tiene un faro dall'altra parte. Non so che faccia abbia. So come scrive con la luce, e mi basta.
+
+[Gaspare]
+caro: il rispetto per il mare, una mano a Nina, la pazienza con le reti
+dono: mela
+segreto: Vent'anni fa provò a passare lo Stretto da solo. Gli Scogli Calamita gli strapparono tutti i chiodi di ferro, ma vide le mura bianche di una città. Sotto il molo tiene nascosto un timone di cedro che non è di quest'isola.
+> Te lo dico perché hai le mani di uno che il mare lo ascolta, {nome}.
+> Vent'anni fa lo Stretto l'ho provato. Da solo. Gli scogli mi hanno tirato via i chiodi uno a uno, come denti.
+> Ma prima di tornare a nuoto ho visto mura bianche, alte. E sotto il molo c'è un timone di cedro che non ho fatto io.
+
+[Gino]
+caro: la strada del nord sicura, la farina portata in orario, chi sa stare zitto ad ascoltare il vento
+dono: mela
+segreto: Nelle notti di tramontana le pale del mulino raccolgono semi dorati e foglie incise con segni che non conosce. E da anni vuole bene a Marta, senza trovare il coraggio di dirglielo.
+> Guarda qua, {nome}. Non l'ho fatto vedere a nessuno.
+> Semi d'oro. Foglie con dei segni sopra. Li porta la tramontana, si fermano nelle pale. Da dove vengono, lo sai tu?
+> E poi c'è Marta. Ma quello non è un segreto del vento: è solo che io, a parlare, non sono capace.
+
+[Ida]
+caro: le bestie trattate bene, chi si alza all'alba, i pascoli difesi
+dono: mela
+segreto: Una delle sue mucche ha dissotterrato vicino al recinto un campanaccio d'oro e rame, vecchio come il santuario. Quando suona, le bestie si calmano e la notte sembra meno scura.
+> Tu con le bestie ci sai fare, {nome}, e allora te lo mostro.
+> L'ha tirato fuori la Bianchina, con il muso, vicino al recinto. Un campanaccio. Oro e rame, guarda.
+> Quando lo suono le mucche smettono di tremare. Viene dal santuario, ne sono sicura. Non dirlo in paese.
+
+[Don Anselmo]
+caro: la misericordia verso i vinti, l'ascolto di chi soffre, le ore di quiete in chiesa
+dono: pozione di cura
+segreto: Le prime pagine del Libro degli Approdi non le ha scritte lui: portano nomi in scritture antichissime, e spiegano come ridare pace a chi ha perduto il proprio Nome.
+> Vieni, {nome}. Questo libro lo conosci: ci ho scritto anche te.
+> Ma le prime pagine non sono mie. Guarda i segni: uccelli, occhi, lettere che non so leggere. Erano già qui.
+> Dicono come si ridà il nome a chi l'ha perso. Io ho provato a capirlo per trent'anni. Forse tocca a te.
+
+[Agnese]
+caro: le erbe colte senza strappare le radici, la cura dei feriti, le domande fatte con la testa
+dono: pozione di cura
+segreto: Non è nata sull'isola. Da ragazza viveva in una città di fiori e di canti sugli altopiani del continente, ed è scesa a Fontevivo dal cunicolo della grotta prima che l'acqua lo chiudesse.
+> Tu fai le domande giuste, {nome}. Allora ti do una risposta vera.
+> Io non sono di qui. Sono nata in alto, in una città piena di fiori, dove si cantava per far crescere il mais.
+> Sono scesa dalla grotta, quando il cunicolo era asciutto. Poi l'acqua è salita. La strada c'è ancora: è solo sotto.
+
+[Ferruccio]
+caro: il lavoro fatto bene, chi combatte con onore, i metalli antichi
+dono: freccia
+segreto: Sotto la forgia tiene il bordo di bronzo di uno scudo antichissimo, trovato vicino alle rovine. Gli manca il disco centrale per ricomporlo.
+> Sposta quella cassa, {nome}. Piano.
+> Bronzo. Un orlo di scudo, largo due braccia, con il mare inciso tutto attorno. L'ho trovato alle rovine, anni fa.
+> Manca il centro. Senza il centro è solo un cerchio. Ma se un giorno lo trovi, io so come si rimette insieme.
+
+[Silvia]
+caro: la mira precisa, i boschi di notte, chi protegge gli animali
+dono: freccia
+segreto: Ha seguito i banditi fin dentro il primo corridoio della grotta. Uno di loro porta al polso il bracciale di un esploratore scomparso anni fa.
+> Tu cammini leggero, {nome}. Ti dico una cosa che ho visto.
+> Ho seguito i banditi fino alla grotta, una notte. Uno dei tre ha un bracciale di rame al polso.
+> Quel bracciale lo conosco. Era di un uomo che è partito per esplorare e non è più tornato. Non l'hanno rubato a un vivo.
+
+[Rosa]
+caro: chi si ferma a parlare senza fretta, le fiabe ascoltate fino in fondo, la cura per Pietro
+dono: mela
+segreto: Il suo primo amore, un marinaio di nome Lauro, partì quarant'anni fa verso nord promettendo di accendere un fuoco sulla torre antica. Ogni sera sale alla panchina del Viandante per guardare da quella parte.
+> Sai perché salgo alla panchina tutte le sere, {nome}?
+> Si chiamava Lauro. È partito verso nord che avevo vent'anni. Mi ha detto: accenderò un fuoco sulla torre, e saprai che sono arrivato.
+> Sono quarant'anni che guardo la torre. Non dirlo a Pietro: crede che io guardi il tramonto.
+
+[Osvaldo]
+caro: un bicchiere offerto a chi è stanco, la pace in locanda, le storie di viaggio
+dono: pesce
+segreto: In cantina tiene un'anfora sigillata con la ceralacca, trovata da suo nonno sulla spiaggia. Dentro, dice, ci sono un vino di cent'anni e una pergamena con le correnti dello Stretto.
+> Scendi con me in cantina, {nome}. Porta la lanterna.
+> Vedi quell'anfora? L'ha trovata mio nonno sulla spiaggia. La ceralacca è ancora intera.
+> Lui giurava che dentro c'è vino dolce e una carta con le correnti dello Stretto. Io non l'ho mai aperta. Aspetto l'occasione giusta.
+
+[Marta]
+caro: la legna secca, la farina di Gino, chi lavora prima dell'alba
+dono: mela
+segreto: Ogni mattina mette nella cesta di Gino un dolce al miele con incisa la rosa dei venti, sperando che lui capisca. E conosce i vecchi condotti di calore che passano sotto il forno.
+> Tu che vai su e giù dal mulino, {nome}: lui i dolci li mangia?
+> Ogni mattina gliene metto uno nella cesta. Miele, e sopra la rosa dei venti. Sono tre anni.
+> Se non l'ha capito con tre anni di dolci, non lo capirà mai. Però tu non dirgli niente. Deve arrivarci da solo.
+
+[Tonio]
+caro: le mele comprate da lui, le rime ricambiate, gli affari onesti
+dono: mela
+segreto: Dietro l'aria da chiacchierone sa leggere e far di conto meglio di tutti: tiene un registro di ogni moneta straniera passata dal mercato negli ultimi dieci anni.
+> Mele rosse, mele belle… lascia stare le rime, {nome}. Guarda qui.
+> Dieci anni di monete forestiere. Ogni pezzo che è passato dal mercato l'ho segnato: peso, conio, chi lo portava.
+> Vengono tutte dalla stessa zecca. E non è una zecca di quest'isola.
+
+[Nina]
+caro: una mano al vecchio Gaspare, il pesce comprato fresco, le risposte a tono
+dono: pesce
+segreto: Sotto il banco tiene una scatola di conchiglie da porpora e perle nere pescate vicino alla grotta. Con quella porpora l'uomo dal mantello rosso tinse il suo mantello.
+> Tu non sei uno che va a raccontare, vero {nome}? Allora guarda sotto il banco.
+> Conchiglie da porpora. Perle nere. Le pesca Gaspare vicino alla grotta, e io le tengo da parte.
+> Il rosso di quel mantello che cercate tutti viene da qui. Me le ha pagate bene, e non ha fatto domande. Nemmeno io.
+
+[Beppe]
+caro: i campi rispettati, chi veglia su Pietro, i proverbi sul tempo ascoltati
+dono: mela
+segreto: La notte in cui i genitori di Pietro scomparvero in mare trovò sulla riva un astrolabio spezzato, con sopra il nome di una famiglia del continente. Lo tiene nascosto perché Pietro non tenti il mare troppo presto.
+> Tu a Pietro vuoi bene, {nome}. Allora devi saperlo.
+> La notte che i suoi non sono tornati, sulla riva c'era un pezzo d'ottone. Un astrolabio, rotto in due.
+> Sopra c'è un nome di famiglia. Gente del nord. L'ho messo via: se il ragazzo lo vede, domani è già in barca.
+
+[Pietro]
+caro: le domande ascoltate con pazienza, i racconti delle esplorazioni, chi non lo tratta da sciocco
+dono: mela
+segreto: Di nascosto da Beppe si arrampica sul tetto della legnaia e vede chi esce di notte dalla porticina. E vicino al pozzo ha trovato una chiave di rame antica.
+> Se te lo dico non lo dici a Beppe, vero {nome}? Giura.
+> Io di notte salgo sul tetto della legnaia. Si vede la porticina. Qualcuno esce, quasi tutte le notti.
+> E vicino al pozzo ho trovato questa. È di rame, è vecchissima. Non so cosa apre. Ancora.
+
+[Guardia Aldo]
+caro: l'onore, la sincerità detta subito, le colline tenute sgombre
+dono: freccia
+segreto: In caserma conserva una spada spezzata di fattura antichissima, lasciatagli dal primo capitano di Fontevivo.
+> Tu hai fatto il tuo dovere senza che te lo chiedessi, {nome}. Vieni a vedere.
+> Questa era del primo capitano. È spezzata a metà, e nessun fabbro di qui saprebbe rifarla: guarda la lama.
+> Chi l'ha forgiata non viveva su un'isola di pescatori. Me lo chiedo ogni volta che la pulisco.
+
+[Guardia Bruno]
+caro: una risata, un bicchiere da Osvaldo, i problemi risolti senza arroganza
+dono: pesce
+segreto: Di pomeriggio lascia passare Gino con i fiori di campo per Marta senza fargli pagare il dazio. E conosce un sentiero fra gli abeti che aggira il campo dell'uomo dal mantello rosso.
+> Ti dico due cose, {nome}, ma la prima non è per il sergente.
+> Il mugnaio passa con i fiori per la fornaia e io guardo dall'altra parte. Il dazio sui fiori è una stupidaggine.
+> La seconda: c'è un sentiero tra gli abeti che gira largo attorno al campo di quel ladro. Lo conosco solo io.
+
+[Guardia Ennio]
+caro: il silenzio, il sangue freddo di notte, una bevanda calda nel turno
+dono: pozione di cura
+segreto: Fra le due e le quattro del mattino ha visto una figura incappucciata arrivare da nord fino alla torre antica e lasciare qualcosa in una fessura del muro.
+> Parla piano, {nome}. Di notte le parole vanno lontano.
+> Tra le due e le quattro, certe notti, arriva uno incappucciato. Viene da nord. Va alla torre antica.
+> Mette qualcosa in una fessura del muro e se ne va. Io non ho mai lasciato il posto per guardare. Tu puoi.
+
+[Guardia Carlo]
+caro: la pazienza, la bontà d'animo, una mela o un pane caldo
+dono: mela
+segreto: Anni fa si addormentò per un'ora durante il turno di notte e al risveglio trovò i lampioni di Porta Sud appena riparati. Conserva un bulbo di Luce Viva lasciato lì da quelle mani.
+> Questa non l'ho mai detta nemmeno ad Aldo, {nome}.
+> Una notte mi sono addormentato. Un'ora. Quando ho aperto gli occhi i lampioni erano aggiustati, tutti e due.
+> Per terra c'era questo: un bulbo di ricambio. Qualcuno bada alle luci del paese, e non siamo noi.
+
+[Guardia Dino]
+caro: una parola d'incoraggiamento, il rispetto per la divisa, un consiglio di scherma
+dono: mela
+segreto: Ha paura del buio e dell'acqua profonda, perché non sa nuotare, e teme di fare brutta figura davanti al sergente Aldo.
+> A te lo posso dire, {nome}, perché non ridi.
+> Io ho paura del buio. E dell'acqua alta. Una guardia. Su un'isola.
+> Ogni notte prima del turno mi dico che è l'ultima. Poi il turno lo faccio. Forse il coraggio è questo, non lo so.
+
+[Guardia Fausto]
+caro: il coraggio sul mare, una mano a Ettore e a Gaspare, la voce bassa di notte
+dono: pesce
+segreto: Prima di fare la guardia era un contrabbandiere. Conosce i segnali dei predoni del mare e sa dove i banditi hanno sepolto la loro cassa di riserva, lungo la scogliera a sud-est.
+> Non sono sempre stato da questa parte del cancello, {nome}.
+> Portavo roba di notte, su una barca senza lume. Conosco i fischi con cui si chiamano quelli del mare.
+> E so dove i banditi tengono la cassa di riserva: scogliera a sud-est, sotto la roccia a forma di sella.
+
+[Guardia Gino]
+caro: chi sale a salutarlo sulle mura, gli spazi aperti, il vento
+dono: mela
+segreto: Dall'alto del muro nord ha disegnato su un pezzo di cuoio il profilo delle montagne del continente, come si vedono nei rari giorni di tramontana limpida.
+> Tu guardi lontano come me, {nome}. Tieni, srotola.
+> Sono le montagne del nord. Le ho disegnate in tre giorni di tramontana, in sei anni. Si vedono solo allora.
+> Quella tacca fra le due cime è un passo. Non so chi ci passa. Ma di notte, lassù, ho visto dei fuochi.
+
+[Guardia Ivo]
+caro: il buonumore, la gentilezza con tutti, le notizie dal porto
+dono: pesce
+segreto: Nella soffitta della caserma costruisce di nascosto il modellino di una barca a doppia chiglia, copiata dai disegni incisi sulle rovine.
+> Sali, {nome}, ma attento alla testa: la soffitta è bassa.
+> Una barca a due chiglie. L'ho copiata dai disegni sulle pietre delle rovine, pezzo per pezzo.
+> Con due chiglie gli scogli dello Stretto fanno meno paura. Se Gaspare non mi ride dietro, glielo faccio vedere.
+
+[Guardia Livio]
+caro: la precisione, chi osserva prima di parlare, le notizie su ruscello e laghetto
+dono: freccia
+segreto: Ha calcolato il ritmo con cui i banditi del campo a est ricompaiono di notte, e ha capito che tornano quando la nebbia sale dalla grotta.
+> Ho tenuto il conto, {nome}. Novantadue notti.
+> I banditi del campo a est non tornano a caso. Tornano quando la nebbia esce dalla grotta. Tutte le volte.
+> O la nebbia li nasconde mentre arrivano, o arrivano con lei. La seconda cosa non mi fa dormire.
+
+[Guardia Mario]
+caro: un tramonto guardato insieme, le stelle, due versi detti bene
+dono: mela
+segreto: Scrive poesie su un taccuino. E ha notato che il giorno dell'equinozio l'ombra del santuario punta dritta al pozzo del paese e all'ingresso della grotta, come una riga tirata attraverso l'isola.
+> Le poesie te le risparmio, {nome}. Ma una cosa che ho visto te la dico.
+> Il ventuno di marzo, al tramonto, l'ombra del tetto del santuario cade sul pozzo. E se continui la riga, arrivi alla grotta.
+> Santuario, pozzo, grotta. In fila. Chi ha costruito quest'isola non metteva le cose a caso.

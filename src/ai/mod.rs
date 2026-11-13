@@ -265,6 +265,26 @@ fn context_line(quest: &QuestState, clock: &GameClock) -> String {
     s
 }
 
+/// Quanto l'abitante si fida del viaggiatore e, se glielo ha confidato, il suo segreto: da quel
+/// momento può parlarne anche nella chat (ADR 0040).
+fn bond_line(name: &str, karma: &crate::karma::Karma, secrets: &crate::karma::Secrets) -> String {
+    use crate::karma::Bond;
+    let mut s = String::from(match karma.bond(name) {
+        Bond::Wary => " Del viaggiatore non ti fidi: ti ha fatto un torto, rispondi asciutto.",
+        Bond::Stranger => " Il viaggiatore per te è uno sconosciuto.",
+        Bond::Acquaintance => " Il viaggiatore lo conosci di vista e ti è simpatico.",
+        Bond::Friend => " Il viaggiatore è un amico: gli parli con confidenza.",
+        Bond::Kindred => " Il viaggiatore è un'anima affine: con lui parli a cuore aperto.",
+    });
+    if karma.knows_secret(name)
+        && let Some(secret) = secrets.of(name)
+    {
+        s.push_str(" Gli hai già confidato il tuo segreto e puoi parlarne con lui: ");
+        s.push_str(&secret.summary);
+    }
+    s
+}
+
 impl AiState {
     /// Anticipa il prossimo controllo (dopo aver cambiato modello).
     pub fn refresh(&mut self) {
@@ -441,11 +461,15 @@ pub fn ai_enter_chat(
     settings: Res<AudioSettings>,
     quest: Res<QuestState>,
     clock: Res<GameClock>,
+    karma: Res<crate::karma::Karma>,
+    secrets: Res<crate::karma::Secrets>,
 ) {
     let p = persona::load(&chat.npc_name);
     chat.voice = p.voice.clone();
     chat.speed = p.speed;
-    chat.system = persona::system_prompt(&p, &context_line(&quest, &clock));
+    let mut context = context_line(&quest, &clock);
+    context.push_str(&bond_line(&chat.npc_name, &karma, &secrets));
+    chat.system = persona::system_prompt(&p, &context);
     request_reply(&mut chat, &ai, &settings);
     info!("[AI] chat con {} avviata", chat.npc_name);
 }

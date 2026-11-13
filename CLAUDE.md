@@ -86,6 +86,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 - `src/character.rs`: statistiche, classi, portata ed effetti (ADR 0024).
 - `src/skills.rs`: abilità che crescono con l'uso, livello, Nodi d'Oro e talenti (`train`, `reward`, `rank`; ADR 0038); pannello in `character.rs`.
 - `src/vitals.rs`: vigore e magia (`Vitals`, `spend`); barre in `hud.rs` (ADR 0039). `src/thievery.rs`: scasso dei bauli (`AppState::Lockpick`) e borseggio (`F`/`G` alle spalle).
+- `src/karma.rs` + `assets/world/segreti.txt`: karma, fiducia per abitante, regali e segreti confidati (`deed`, `trust`; ADR 0040); scheda «Volti e segreti» in `menu.rs`.
 - `src/containers.rs`: inventari dei mobili (`AppState::Container`, capienze, contenuto iniziale; ADR 0023).
 - `src/shell.rs`: shell dei trucchi (tasto `\`, `AppState::Shell`, `Cheats` non salvata; ADR 0021).
 - `src/interiors.rs`: arredi, solai e scale degli edifici (ADR 0019), porte e luci in `world_props.rs`, spiazzi in `terrain.rs`, letti in `abitanti.txt` (`casa:`).

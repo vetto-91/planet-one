@@ -340,6 +340,8 @@ Sopra la barra degli oggetti ci sono tre barre: **magia** a sinistra, **vita** a
 
 **Scasso e borseggio**: i bauli sono chiusi a chiave finché non li apri una volta. Con un grimaldello (da Ferruccio) ferma l'ago sulla tacca d'oro con `Spazio`, una volta per perno. Alle spalle di un abitante, `F` gli sfila qualche moneta e `G` gliene infila cinque; se se ne accorge paghi una multa.
 
+**Karma e segreti**: quello che fai pesa sulla Bilancia di Ma'at e cambia i prezzi. Ogni abitante si fida di te a modo suo: parlagli ogni giorno, portagli il regalo che gradisce (`G`, di fronte a lui), aiutalo. A un amico confida il suo segreto. Nel diario (`J`) la scheda «Volti e segreti» tiene il conto.
+
 Il personaggio ha sette **statistiche** (tasto C) e porta **30 kg** di base: oltre il limite cammina lento e non corre. Il fabbro vende quattro **zaini**, fino a 60 kg; la Pozione del mulo e la Cintura del portatore aggiungono altri chili, per un po' o finché la si indossa.
 
 **Bauli, armadi, botti, casse e scaffali** si aprono con E: si possono prendere e posare oggetti, con un limite di peso legato alla grandezza del mobile. Anche il **faro** si visita: alloggio del guardiano, scala a chiocciola, lanterna e balconata; è chiuso a chiave.

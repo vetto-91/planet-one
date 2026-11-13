@@ -479,6 +479,8 @@ pub fn pickpocket(
         inventory.consume(ItemKind::Coin, fine);
         thievery.wary.insert(name.clone(), day);
         skills::train(Skill::Pickpocket, 3.0);
+        crate::karma::trust(npc.name, -15);
+        crate::karma::deed(-4, format!("{} ti ha colto con le mani in tasca", npc.name));
         barks.say(
             entity,
             npc.name,
@@ -496,6 +498,7 @@ pub fn pickpocket(
         inventory.consume(ItemKind::Coin, SLIP_COINS);
         *thievery.slipped.entry(name).or_default() += SLIP_COINS;
         skills::train(Skill::Pickpocket, 10.0);
+        crate::karma::deed(2, "un dono fatto di nascosto");
         session.notify(format!(
             "Infili {SLIP_COINS} monete nella tasca di {}",
             npc.name
@@ -509,6 +512,7 @@ pub fn pickpocket(
         inventory.add(ItemKind::Coin, loot);
         thievery.emptied.insert(name, day);
         skills::train(Skill::Pickpocket, 12.0);
+        crate::karma::deed(-3, format!("hai derubato {}", npc.name));
         session.notify(format!("Sfili {loot} monete a {}", npc.name));
         info!("[BORSEGGIO] {}: sfilate {loot} monete", npc.name);
     }

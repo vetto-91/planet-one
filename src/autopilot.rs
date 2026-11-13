@@ -1098,6 +1098,19 @@ pub fn snapshot(world: &mut World) -> Value {
         "quest": quest,
         "missioni": missioni,
         "abilita": abilita,
+        "karma": world.resource::<crate::karma::Karma>().global,
+        "fiducia": world
+            .resource::<crate::karma::Karma>()
+            .trust
+            .iter()
+            .map(|(k, v)| (k.replace(' ', "_"), json!(v)))
+            .collect::<serde_json::Map<String, Value>>(),
+        "segreti": world
+            .resource::<crate::karma::Karma>()
+            .revealed
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>(),
         "serrature": world.resource::<crate::thievery::Thievery>().picked,
         "infilate": world
             .resource::<crate::thievery::Thievery>()

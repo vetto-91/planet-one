@@ -31,6 +31,7 @@ mod hut;
 mod interiors;
 mod inventory;
 mod inventory_ui;
+mod karma;
 mod localtime;
 mod main_menu;
 mod map;
@@ -230,6 +231,7 @@ fn main() -> AppExit {
         .add_plugins(skills::plugin)
         .add_plugins(vitals::plugin)
         .add_plugins(thievery::plugin)
+        .add_plugins(karma::plugin)
         .add_plugins(water::plugin)
         .add_plugins(nature::plugin)
         .add_plugins(save::plugin)
@@ -398,6 +400,9 @@ fn main() -> AppExit {
                 quests::missions::track_missions,
                 quest::thief_parley.after(entities::interact),
                 thievery::pickpocket.after(quest::thief_parley),
+                karma::give_gift.after(thievery::pickpocket),
+                karma::meet_and_confide.after(entities::interact),
+                karma::judge_quest,
                 quest::thief_choice,
             )
                 .run_if(in_state(AppState::Playing)),
