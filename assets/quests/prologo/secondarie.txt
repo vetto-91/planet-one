@@ -109,7 +109,7 @@ quando: parla Don Anselmo
 
 [tappa]
 obiettivo: Libera il campo dei banditi, a est
-quando: vicino 76 40 9
+quando: vicino 76 40 14
 quando: libero 76 40 14
 pensiero: Nella cassa, tre piastrine di legno e rame mangiate dal sale. Tre nomi, quasi illeggibili.
 
