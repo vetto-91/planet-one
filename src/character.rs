@@ -450,6 +450,29 @@ pub fn character_window(
                                 None => format!("  • {}", e.source),
                             });
                         }
+                        ui.separator();
+                        ui.label(
+                            egui::RichText::new("Incantesimi — [Z] scegli · [Q] lancia").strong(),
+                        );
+                        let magic_grade = progress.grade(crate::skills::Skill::Magic);
+                        for spell in crate::magic::Spell::ALL {
+                            let known = magic_grade >= spell.grade();
+                            let text = if known {
+                                format!(
+                                    "  {} ({:.0}): {}",
+                                    spell.name(),
+                                    spell.cost(),
+                                    spell.effect()
+                                )
+                            } else {
+                                format!("  {} — al grado {} di Magie", spell.name(), spell.grade())
+                            };
+                            ui.label(egui::RichText::new(text).size(14.0).color(if known {
+                                crate::ui_style::TEXT
+                            } else {
+                                grey
+                            }));
+                        }
                     }
                     {
                         let ui = &mut cols[1];

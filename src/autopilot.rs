@@ -301,6 +301,8 @@ pub fn parse_key(name: &str) -> Option<PilotKey> {
         "destra" | "right" => K::ArrowRight,
         "f3" => K::F3,
         "f4" => K::F4,
+        "q" => K::KeyQ,
+        "z" => K::KeyZ,
         "f" => K::KeyF,
         "g" => K::KeyG,
         "f5" => K::F5,
@@ -1098,6 +1100,9 @@ pub fn snapshot(world: &mut World) -> Value {
         "quest": quest,
         "missioni": missioni,
         "abilita": abilita,
+        "incantesimo": world.resource::<crate::magic::Magic>().selected.key(),
+        "scudo_etereo": world.resource::<crate::magic::Magic>().ward > 0.0,
+        "sfera_di_luce": world.resource::<crate::magic::Magic>().light > 0.0,
         "karma": world.resource::<crate::karma::Karma>().global,
         "fiducia": world
             .resource::<crate::karma::Karma>()

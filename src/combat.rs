@@ -73,7 +73,7 @@ pub struct Arrow {
 }
 
 /// Cose contro cui si ferma una freccia: terreno ed edifici.
-type ArrowSolids = Or<(
+pub(crate) type ArrowSolids = Or<(
     With<crate::scene::Ground>,
     With<crate::camera::BlocksCamera>,
 )>;
@@ -296,7 +296,7 @@ pub fn contact_damage(
             } else {
                 1.0
             };
-            hp.current -= CONTACT_DAMAGE * factor;
+            hp.current -= CONTACT_DAMAGE * factor * crate::magic::ward_factor();
             combat.iframe = PLAYER_IFRAME;
             cd.left = CONTACT_DAMAGE_COOLDOWN;
             info!("colpito: player vita {:.0}", hp.current);
@@ -628,7 +628,7 @@ pub fn update_enemy_arrows(
                 } else {
                     1.0
                 };
-                hp.current -= ENEMY_ARROW_DAMAGE * factor;
+                hp.current -= ENEMY_ARROW_DAMAGE * factor * crate::magic::ward_factor();
                 combat.iframe = PLAYER_IFRAME;
                 info!("[NEMICI] freccia: vita {:.0}", hp.current);
             }

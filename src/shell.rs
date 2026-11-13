@@ -36,6 +36,7 @@ const HELP: &[&str] = &[
     "abilita [<nome> <grado>] · livello [n] · talento <abilità> (attiva un rango con un Nodo d'Oro)",
     "dietro <abitante> (alle sue spalle, per il borseggio) · scassina (la serratura aperta si forza da sola)",
     "karma [n] · fiducia <abitante> <n> · davanti <abitante> · volti (diario su «Volti e segreti»)",
+    "incantesimo <luce|dardo|cura|passo|scudo> · magia <n> (riserva di magia)",
 ];
 
 /// Trucchi attivi: non salvati, tutti spenti a ogni avvio.
@@ -137,6 +138,9 @@ pub enum Cmd {
     SetSkill(crate::skills::Skill, u8),
     Level(Option<u32>),
     Perk(crate::skills::Skill),
+    /// Lancia un incantesimo; riempie o imposta la riserva di magia.
+    Cast(crate::magic::Spell),
+    SetMagic(f32),
     /// Karma: lo mostra o lo imposta; fiducia di un abitante.
     Karma(Option<i32>),
     Trust(String, i32),
@@ -373,6 +377,15 @@ pub fn parse(line: &str) -> Result<Cmd, String> {
         "davanti" if !args.is_empty() => Ok(Cmd::Behind(args.join(" ").to_lowercase(), false)),
         "volti" => Ok(Cmd::Faces),
         "scassina" => Ok(Cmd::AutoPick),
+        "incantesimo" if !args.is_empty() => crate::magic::Spell::parse(&args.join(" "))
+            .map(Cmd::Cast)
+            .ok_or_else(|| "incantesimi: luce, dardo, cura, passo, scudo".to_string()),
+        "magia" => args
+            .first()
+            .and_then(|a| a.parse::<f32>().ok())
+            .filter(|n| (0.0..=999.0).contains(n))
+            .map(Cmd::SetMagic)
+            .ok_or_else(|| "uso: magia <0-999>".to_string()),
         "karma" => match args {
             [] => Ok(Cmd::Karma(None)),
             [n] => n
@@ -497,6 +510,8 @@ pub struct ShellCtx<'w, 's> {
     progress: ResMut<'w, crate::skills::Progress>,
     picking: ResMut<'w, crate::thievery::Lockpicking>,
     karma: ResMut<'w, crate::karma::Karma>,
+    magic: ResMut<'w, crate::magic::Magic>,
+    vitals: ResMut<'w, crate::vitals::Vitals>,
     journal_tab: ResMut<'w, crate::menu::JournalTab>,
     fast_travel: ResMut<'w, crate::places::FastTravel>,
     diagnostics: Res<'w, bevy::diagnostic::DiagnosticsStore>,
@@ -1046,6 +1061,17 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
         Cmd::Faces => {
             *ctx.journal_tab = crate::menu::JournalTab::Faces;
             shell.say("diario sulla scheda «Volti e segreti» (tasto J)");
+        }
+        Cmd::Cast(spell) => {
+            ctx.magic.request = Some(spell);
+            shell.say(format!("incantesimo: {}", spell.name()));
+        }
+        Cmd::SetMagic(n) => {
+            ctx.vitals.magic = n.min(ctx.vitals.magic_max);
+            shell.say(format!(
+                "magia {:.0}/{:.0}",
+                ctx.vitals.magic, ctx.vitals.magic_max
+            ));
         }
         Cmd::AutoPick => {
             ctx.picking.auto = true;

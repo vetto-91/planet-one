@@ -338,6 +338,8 @@ Il personaggio cresce **facendo**: correre, saltare, nuotare, combattere, parlar
 
 Sopra la barra degli oggetti ci sono tre barre: **magia** a sinistra, **vita** al centro, **vigore** a destra. Il vigore cala correndo, saltando e colpendo e torna da solo; a zero resti senza fiato e non corri per qualche secondo.
 
+**Incantesimi**: `Z` sceglie, `Q` lancia. Da subito hai la Sfera di luce e il Dardo di Luce Viva; con la pratica arrivano il Soffio di cura, il Passo leggero e lo Scudo etereo. Sopra la barra della magia leggi quello scelto e quanto costa.
+
 **Scasso e borseggio**: i bauli sono chiusi a chiave finché non li apri una volta. Con un grimaldello (da Ferruccio) ferma l'ago sulla tacca d'oro con `Spazio`, una volta per perno. Alle spalle di un abitante, `F` gli sfila qualche moneta e `G` gliene infila cinque; se se ne accorge paghi una multa.
 
 **Karma e segreti**: quello che fai pesa sulla Bilancia di Ma'at e cambia i prezzi. Ogni abitante si fida di te a modo suo: parlagli ogni giorno, portagli il regalo che gradisce (`G`, di fronte a lui), aiutalo. A un amico confida il suo segreto. Nel diario (`J`) la scheda «Volti e segreti» tiene il conto.

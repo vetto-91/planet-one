@@ -1,0 +1,53 @@
+# Incantesimi dell'Accordo (ADR 0041): luce, dardo, cura, passo leggero, scudo.
+ia off
+meteo sereno
+ora 22
+aspetta 2
+tp 0.5 3 -60
+aspetta 2
+verifica /magia = 50
+verifica /incantesimo = luce
+foto buio
+# Sfera di luce: un lume che segue.
+premi q
+aspetta 1.5
+verifica /sfera_di_luce = true
+verifica /magia < 45
+foto sfera-di-luce
+# Z passa al dardo; al grado 1 se ne conoscono solo due.
+premi z
+aspetta 1
+verifica /incantesimo = dardo
+premi q
+aspetta 0.3
+foto dardo
+aspetta 1
+verifica /magia < 36
+premi q
+aspetta 1.5
+verifica /abilita/magie > 1
+premi z
+aspetta 1
+verifica /incantesimo = luce
+# Gli altri si imparano col grado.
+incantesimo scudo
+aspetta 1
+verifica /scudo_etereo = false
+abilita magie 15
+magia 50
+incantesimo scudo
+aspetta 1.5
+verifica /scudo_etereo = true
+verifica /magia < 30
+# Senza magia non si lancia.
+incantesimo passo
+aspetta 1.5
+incantesimo scudo
+aspetta 1.5
+verifica /magia < 14
+magia 5
+incantesimo passo
+aspetta 1.5
+verifica /magia > 4
+verifica /magia < 9
+esci

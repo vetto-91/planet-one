@@ -143,7 +143,8 @@ impl Skill {
             Skill::Lore => "scoprendo luoghi e frugando nei mobili",
             Skill::Pickpocket => "sfilando o infilando monete alle spalle di qualcuno",
             Skill::Lockpick => "forzando le serrature dei bauli",
-            Skill::Armor | Skill::Magic | Skill::Building => "",
+            Skill::Magic => "lanciando incantesimi",
+            Skill::Armor | Skill::Building => "",
         }
     }
 
@@ -166,6 +167,7 @@ impl Skill {
             Skill::Lore => ("Passo del Viandante", "esperienza di livello +5%"),
             Skill::Pickpocket => ("Mano di Piuma", "riuscita del borseggio +5%"),
             Skill::Lockpick => ("Dita Sensibili", "tacca della serratura +10%"),
+            Skill::Magic => ("Maestro dell'Accordo", "costo degli incantesimi −8%"),
             _ => return None,
         })
     }
@@ -441,8 +443,8 @@ mod tests {
             "il secondo rango vuole il grado 30"
         );
         assert_eq!((p.perk_rank(Skill::Athletics), p.nodes), (1, 1));
-        p.set_grade(Skill::Magic, 100);
-        assert!(!p.activate(Skill::Magic), "abilità non ancora nel gioco");
+        p.set_grade(Skill::Armor, 100);
+        assert!(!p.activate(Skill::Armor), "abilità non ancora nel gioco");
     }
 
     #[test]

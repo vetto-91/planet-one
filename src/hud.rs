@@ -91,6 +91,7 @@ pub fn draw_hud(
     ctx: &egui::Context,
     health: &PlayerHealth,
     vitals: &crate::vitals::Vitals,
+    spell: Option<(&str, f32)>,
     inventory: &Inventory,
     equip: &crate::inventory::Equipment,
     icons: Option<&crate::inventory_ui::ItemIcons>,
@@ -149,6 +150,30 @@ pub fn draw_hud(
         MAGIC_COLOR,
         false,
     );
+    // Sopra la magia: l'incantesimo scelto, il tasto e quanto costa.
+    if let Some((name, price)) = spell {
+        let font = egui::FontId::proportional(13.0);
+        let at = egui::pos2(left + 2.0, bars_y - 4.0);
+        let enough = vitals.magic >= price;
+        let key = painter.text(
+            at,
+            egui::Align2::LEFT_BOTTOM,
+            "[Q] ",
+            font.clone(),
+            crate::ui_style::GOLD,
+        );
+        painter.text(
+            egui::pos2(key.max.x, at.y),
+            egui::Align2::LEFT_BOTTOM,
+            format!("{name} · {price:.0}"),
+            font,
+            if enough {
+                crate::ui_style::TEXT
+            } else {
+                egui::Color32::from_rgb(150, 156, 172)
+            },
+        );
+    }
     reserve_bar(
         &painter,
         bar(left + side_w + gap, mid_w),

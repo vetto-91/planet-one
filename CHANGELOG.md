@@ -4,6 +4,7 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **Incantesimi** (ADR 0041): la magia ora si spende. `Z` sceglie l'incantesimo, `Q` lo lancia. Sfera di luce (un lume che ti segue), Dardo di Luce Viva (un colpo verso il mirino), Soffio di cura, Passo leggero (15 kg in più per due minuti), Scudo etereo (metà danno per venti secondi). I primi due si conoscono da subito, gli altri arrivano ai gradi 5, 10 e 15 di Magie, che cresce lanciandoli. Intelligenza rafforza il dardo, Saggezza la cura.
 - **Karma** (ADR 0040), «la Bilancia di Ma'at»: quello che fai pesa. Risparmiare il ladro, restituire le monete, compiere missioni e fare un dono di nascosto alleggeriscono il cuore; rubare, tenersi monete non tue o dividere l'oro col ladro lo appesantiscono. Ogni variazione compare a schermo col suo motivo, e i prezzi dei negozi la seguono.
 - **Fiducia degli abitanti**: ognuno dei 26 abitanti dell'isola ti conosce a modo suo, da Sconosciuto ad Anima affine. Cresce parlandogli ogni giorno, con un regalo gradito (tasto `G`, di fronte a lui), comprando da lui e aiutandolo nelle missioni; crolla se ti coglie a borseggiarlo. Un venditore amico fa lo sconto.
 - **Segreti**: ogni abitante ne custodisce uno e lo confida a chi è diventato suo amico (prima, a chi ha Carisma, Saggezza o Intelligenza alti). Dopo la confidenza può parlarne anche nella chat con l'IA locale. Testi in `assets/world/segreti.txt`.

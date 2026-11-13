@@ -118,6 +118,7 @@ pub struct UiQueries<'w, 's> {
     pub load: Res<'w, crate::character::Load>,
     pub vitals: Res<'w, crate::vitals::Vitals>,
     pub karma: Res<'w, crate::karma::Karma>,
+    pub magic: Res<'w, crate::magic::Magic>,
     pub secrets: Res<'w, crate::karma::Secrets>,
     pub health: Query<'w, 's, &'static PlayerHealth, With<crate::player::Player>>,
     pub enemies: Query<
@@ -265,7 +266,18 @@ pub fn ui(
 
             // HUD di gioco: barra vita (basso-sx), crosshair, inventario.
             if let Ok(hp) = q.health.single() {
-                hud::draw_hud(ctx, hp, &q.vitals, &inventory, &q.equip, q.icons.as_deref());
+                let spell = q.magic.selected;
+                let price =
+                    crate::magic::cost(spell, crate::skills::rank(crate::skills::Skill::Magic));
+                hud::draw_hud(
+                    ctx,
+                    hp,
+                    &q.vitals,
+                    Some((spell.name(), price)),
+                    &inventory,
+                    &q.equip,
+                    q.icons.as_deref(),
+                );
             }
 
             // Barre vita dei nemici sopra le loro teste (proiezione world→screen).

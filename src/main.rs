@@ -33,6 +33,7 @@ mod inventory;
 mod inventory_ui;
 mod karma;
 mod localtime;
+mod magic;
 mod main_menu;
 mod map;
 mod menu;
@@ -232,6 +233,7 @@ fn main() -> AppExit {
         .add_plugins(vitals::plugin)
         .add_plugins(thievery::plugin)
         .add_plugins(karma::plugin)
+        .add_plugins(magic::plugin)
         .add_plugins(water::plugin)
         .add_plugins(nature::plugin)
         .add_plugins(save::plugin)
