@@ -12,7 +12,7 @@ use bevy::prelude::*;
 /// Semi-lati dell'impronta degli edifici visitabili (`None` per gli altri).
 pub fn interior_half(kind: &str) -> Option<Vec2> {
     Some(match kind {
-        "casa-piccola" => Vec2::new(2.5, 2.0),
+        "casa-piccola" | "casa-naufrago" => Vec2::new(2.5, 2.0),
         "casa-grande" => Vec2::new(3.5, 3.0),
         "locanda" => Vec2::new(5.0, 3.25),
         "caserma" => Vec2::new(4.0, 3.0),
@@ -42,6 +42,7 @@ pub fn is_building(kind: &str) -> bool {
         kind,
         "casa"
             | "casa-piccola"
+            | "casa-naufrago"
             | "casa-media"
             | "casa-grande"
             | "locanda"
@@ -1878,8 +1879,20 @@ pub fn model(kind: &str, seed: u32) -> Building {
     }
     let mut int = Interior::default();
     let (w, d, colliders): (f32, f32, Vec<(Vec3, Vec3)>) = match kind {
-        "casa-piccola" => {
-            house(&mut b, &mut r, &mut int, kind, 5.0, 4.0, 2, false, 1, seed);
+        // La casa del giocatore è una casa piccola come le altre (ADR 0042).
+        "casa-piccola" | "casa-naufrago" => {
+            house(
+                &mut b,
+                &mut r,
+                &mut int,
+                "casa-piccola",
+                5.0,
+                4.0,
+                2,
+                false,
+                1,
+                seed,
+            );
             (5.0, 4.0, Vec::new())
         }
         "casa-grande" => {

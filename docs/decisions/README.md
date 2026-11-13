@@ -67,3 +67,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0039 | Vigore, magia, scasso e borseggio | accettato |
 | 0040 | Karma, fiducia e segreti degli abitanti | accettato |
 | 0041 | Incantesimi dell'Accordo | accettato |
+| 0042 | La casa del giocatore sul Poggio del Naufrago | accettato |

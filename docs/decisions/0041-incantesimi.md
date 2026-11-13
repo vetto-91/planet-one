@@ -26,6 +26,7 @@ d'attacco, di cura, di protezione e di utilità (luce, carico più leggero).
   `/sfera_di_luce`, tasti `q` e `z`.
 
 ## Conseguenze
+- Aggiornamento (ADR 0042): l'etichetta dell'incantesimo scelto sta a sinistra della barra della magia.
 - Gli incantesimi si imparano da soli col grado: nessun maestro, libro o altare li insegna ancora.
 - Non c'è un'animazione di lancio né un suono; il dardo è una sfera luminosa.
 - Scudo e sfera di luce non si salvano: caricando una partita sono spenti (la magia spesa resta spesa).

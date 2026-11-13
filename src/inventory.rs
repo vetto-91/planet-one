@@ -36,6 +36,9 @@ pub enum ItemKind {
     MasterKey,
     /// Grimaldello: apre le serrature dei bauli, a volte si spezza (ADR 0039).
     Lockpick,
+    /// Materiali da costruzione (ADR 0042).
+    Wood,
+    Stone,
 }
 
 /// Categoria dell'inventario.
@@ -73,7 +76,7 @@ impl Category {
 
 impl ItemKind {
     /// Tutti i tipi di oggetto.
-    pub const ALL: [ItemKind; 18] = [
+    pub const ALL: [ItemKind; 20] = [
         ItemKind::HealthPotion,
         ItemKind::Coin,
         ItemKind::ShortSword,
@@ -92,6 +95,8 @@ impl ItemKind {
         ItemKind::CarryBelt,
         ItemKind::MasterKey,
         ItemKind::Lockpick,
+        ItemKind::Wood,
+        ItemKind::Stone,
     ];
 
     /// Peso reale di un'unità (kg). Monete e munizioni non pesano.
@@ -113,6 +118,8 @@ impl ItemKind {
             ItemKind::CarryBelt => Some(0.3),
             ItemKind::MasterKey => Some(0.05),
             ItemKind::Lockpick => Some(0.02),
+            ItemKind::Wood => Some(2.5),
+            ItemKind::Stone => Some(4.0),
             ItemKind::Coin | ItemKind::Arrow => None,
         }
     }
@@ -133,7 +140,9 @@ impl ItemKind {
             | ItemKind::LeatherPack
             | ItemKind::ExpeditionPack
             | ItemKind::CarryBelt
-            | ItemKind::Lockpick => Category::Gear,
+            | ItemKind::Lockpick
+            | ItemKind::Wood
+            | ItemKind::Stone => Category::Gear,
             ItemKind::Coin | ItemKind::MasterKey => Category::Valuables,
         }
     }
@@ -159,12 +168,17 @@ impl ItemKind {
             ItemKind::CarryBelt => "cintura",
             ItemKind::MasterKey => "passepartout",
             ItemKind::Lockpick => "grimaldello",
+            ItemKind::Wood => "legname",
+            ItemKind::Stone => "pietra",
         }
     }
 
     /// Le monete hanno il loro contatore: nella barra non vanno mai.
     pub fn can_go_in_hotbar(self) -> bool {
-        !matches!(self, ItemKind::Coin | ItemKind::MasterKey)
+        !matches!(
+            self,
+            ItemKind::Coin | ItemKind::MasterKey | ItemKind::Wood | ItemKind::Stone
+        )
     }
 
     /// Nome mostrato nell'inventario.
@@ -188,6 +202,8 @@ impl ItemKind {
             ItemKind::CarryBelt => "Cintura del portatore",
             ItemKind::MasterKey => "Passepartout",
             ItemKind::Lockpick => "Grimaldello",
+            ItemKind::Wood => "Legname",
+            ItemKind::Stone => "Pietra",
         }
     }
 
@@ -212,6 +228,8 @@ impl ItemKind {
             ItemKind::CarryBelt => "Incantata: porti 10 kg in più finché la indossi.",
             ItemKind::MasterKey => "Apre qualsiasi porta del paese.",
             ItemKind::Lockpick => "Per forzare la serratura di un baule. Può spezzarsi.",
+            ItemKind::Wood => "Un tronco squadrato, per costruire.",
+            ItemKind::Stone => "Un blocco di pietra, per costruire.",
         }
     }
 
@@ -296,6 +314,8 @@ impl ItemKind {
             ItemKind::CarryBelt => Color::srgb(0.7, 0.4, 0.8),
             ItemKind::MasterKey => Color::srgb(0.9, 0.75, 0.3),
             ItemKind::Lockpick => Color::srgb(0.75, 0.55, 0.3),
+            ItemKind::Wood => Color::srgb(0.55, 0.38, 0.2),
+            ItemKind::Stone => Color::srgb(0.6, 0.6, 0.62),
         }
     }
 }

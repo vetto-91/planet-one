@@ -198,7 +198,8 @@ pub(crate) fn roll(key: &str, salt: u32) -> f32 {
 pub fn starting_items(kind: ContainerKind, building: &str, key: &str) -> Vec<(ItemKind, u32)> {
     use ContainerKind as K;
     use ItemKind::*;
-    if roll(key, 0) < 0.2 {
+    // I mobili della casa che ti sei costruito sono vuoti: li riempi tu.
+    if building == crate::house::KIND || roll(key, 0) < 0.2 {
         return Vec::new();
     }
     let n = |salt: u32, lo: u32, hi: u32| lo + (roll(key, salt) * (hi - lo + 1) as f32) as u32;

@@ -150,28 +150,36 @@ pub fn draw_hud(
         MAGIC_COLOR,
         false,
     );
-    // Sopra la magia: l'incantesimo scelto, il tasto e quanto costa.
+    // A sinistra della magia: tasto, incantesimo scelto e quanto costa (grigio se non basta).
     if let Some((name, price)) = spell {
         let font = egui::FontId::proportional(13.0);
-        let at = egui::pos2(left + 2.0, bars_y - 4.0);
-        let enough = vitals.magic >= price;
-        let key = painter.text(
-            at,
-            egui::Align2::LEFT_BOTTOM,
-            "[Q] ",
-            font.clone(),
-            crate::ui_style::GOLD,
-        );
+        let at = egui::pos2(left - 10.0, bars_y + BAR_H / 2.0);
+        let shadow = egui::Color32::from_black_alpha(200);
+        let text = format!("{name} · {price:.0}");
         painter.text(
-            egui::pos2(key.max.x, at.y),
-            egui::Align2::LEFT_BOTTOM,
-            format!("{name} · {price:.0}"),
-            font,
-            if enough {
+            at + egui::vec2(1.0, 1.0),
+            egui::Align2::RIGHT_CENTER,
+            &text,
+            font.clone(),
+            shadow,
+        );
+        let body = painter.text(
+            at,
+            egui::Align2::RIGHT_CENTER,
+            &text,
+            font.clone(),
+            if vitals.magic >= price {
                 crate::ui_style::TEXT
             } else {
                 egui::Color32::from_rgb(150, 156, 172)
             },
+        );
+        painter.text(
+            egui::pos2(body.min.x - 4.0, at.y),
+            egui::Align2::RIGHT_CENTER,
+            "[Q]",
+            font,
+            crate::ui_style::GOLD,
         );
     }
     reserve_bar(

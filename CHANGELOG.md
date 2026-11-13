@@ -4,6 +4,9 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **La tua casa** (ADR 0042): a sud-ovest del paese, fuori dalle mura, c'è un terreno segnato da quattro paletti, il Poggio del Naufrago. Con il tasto `R` spacchi la pietra all'affioramento e tagli il legname alla catasta al margine del bosco (serve un'ascia); sempre con `R`, sul terreno, posi prima le fondamenta (10 pietre) e poi alzi la casa (16 tronchi e 6 pietre). La casa finita è un edificio vero: ci entri, e i suoi mobili vuoti sono il tuo deposito. Si salva con la partita.
+- **Missione secondaria nuova**: Un Tetto tra gli Ulivi e il Mare (Beppe e il Viandante). In tutto sono 16.
+- L'incantesimo scelto ora si legge a sinistra della barra della magia.
 - **Incantesimi** (ADR 0041): la magia ora si spende. `Z` sceglie l'incantesimo, `Q` lo lancia. Sfera di luce (un lume che ti segue), Dardo di Luce Viva (un colpo verso il mirino), Soffio di cura, Passo leggero (15 kg in più per due minuti), Scudo etereo (metà danno per venti secondi). I primi due si conoscono da subito, gli altri arrivano ai gradi 5, 10 e 15 di Magie, che cresce lanciandoli. Intelligenza rafforza il dardo, Saggezza la cura.
 - **Karma** (ADR 0040), «la Bilancia di Ma'at»: quello che fai pesa. Risparmiare il ladro, restituire le monete, compiere missioni e fare un dono di nascosto alleggeriscono il cuore; rubare, tenersi monete non tue o dividere l'oro col ladro lo appesantiscono. Ogni variazione compare a schermo col suo motivo, e i prezzi dei negozi la seguono.
 - **Fiducia degli abitanti**: ognuno dei 26 abitanti dell'isola ti conosce a modo suo, da Sconosciuto ad Anima affine. Cresce parlandogli ogni giorno, con un regalo gradito (tasto `G`, di fronte a lui), comprando da lui e aiutandolo nelle missioni; crolla se ti coglie a borseggiarlo. Un venditore amico fa lo sconto.

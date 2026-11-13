@@ -1,0 +1,62 @@
+# La casa del giocatore sul Poggio del Naufrago (ADR 0042).
+ia off
+meteo sereno
+ora 10
+aspetta 2
+verifica /casa = 0
+tp -40 4 47
+aspetta 2
+camera 0 25 12
+aspetta 1
+foto terreno
+# La pietra si spacca all'affioramento; ogni colpo costa vigore.
+tp -31 4 32
+aspetta 2
+premi r
+aspetta 1
+premi r
+aspetta 1
+verifica Stone = 2
+verifica /vigore < 100
+# Il legname vuole un'ascia.
+tp -51 4 48
+aspetta 2
+premi r
+aspetta 1
+dai ascia
+premi r
+aspetta 1
+verifica Wood = 1
+# Fondamenta: dieci pietre.
+god on
+dai pietra 8
+tp -40 4 44.5
+aspetta 2
+foto cantiere
+premi r
+aspetta 1.5
+verifica /casa = 1
+verifica /abilita/costruire > 1
+tp -40 4 47
+aspetta 2
+camera 0 25 12
+aspetta 1
+foto fondamenta
+# La casa: sedici tronchi e sei pietre. Con metà del materiale resta a metà.
+dai legname 9
+tp -40 4 44.5
+aspetta 1
+premi r
+aspetta 1.5
+verifica /casa = 1
+dai legname 6
+dai pietra 6
+premi r
+aspetta 3
+verifica /casa = 2
+tp -40 4 49
+aspetta 3
+camera 0 18 13
+aspetta 1
+foto casa
+esci

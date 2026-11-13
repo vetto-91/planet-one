@@ -348,6 +348,30 @@ impl DebugPlace {
         self.revision
     }
 
+    /// Aggiunge o toglie un piazzamento che vive solo in memoria (la casa del giocatore): sta in
+    /// fondo all'elenco, così non sposta le case degli abitanti, e non finisce nel file.
+    pub fn set_runtime(&mut self, kind: &str, at: Option<Vec2>) {
+        self.items.retain(|p| p.kind != kind);
+        if let Some(at) = at {
+            self.items.push(Placement {
+                id: 9000,
+                kind: kind.to_string(),
+                mode: PlaceMode::Single,
+                a: at,
+                b: at,
+                radius: 0.0,
+                poly: Vec::new(),
+                yaws: vec![0.0],
+                seed: 1,
+                note: String::new(),
+                when: String::new(),
+                points: vec![at],
+            });
+        }
+        self.markers_dirty = true;
+        self.revision += 1;
+    }
+
     fn kind(&self) -> String {
         if KINDS[self.kind_idx] == "altro" && !self.custom_kind.trim().is_empty() {
             self.custom_kind.trim().to_string()
@@ -592,7 +616,8 @@ const HEADER: &str = "\
 
 fn write_file(items: &[Placement]) {
     let mut out = String::from(HEADER);
-    for p in items {
+    // La casa del giocatore appartiene alla partita, non al mondo.
+    for p in items.iter().filter(|p| p.kind != crate::house::KIND) {
         let _ = writeln!(
             out,
             "\n[P-{:04}] tipo: {} | modalità: {}",

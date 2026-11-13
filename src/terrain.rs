@@ -306,6 +306,16 @@ pub fn update_terrain(
                         yaw: p.yaw(j),
                     })
                 })
+                // Il terreno della casa del giocatore è piano fin dall'inizio (ADR 0042).
+                .chain(
+                    (crate::region::current() == crate::region::Region::Isola).then_some(
+                        BuildingPad {
+                            center: crate::house::PLOT,
+                            half: crate::house::HALF,
+                            yaw: 0.0,
+                        },
+                    ),
+                )
                 .collect()
         })
         .unwrap_or_default();

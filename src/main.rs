@@ -26,6 +26,7 @@ mod entities;
 mod equipment;
 mod figure;
 mod graphics;
+mod house;
 mod hud;
 mod hut;
 mod interiors;
@@ -234,6 +235,7 @@ fn main() -> AppExit {
         .add_plugins(thievery::plugin)
         .add_plugins(karma::plugin)
         .add_plugins(magic::plugin)
+        .add_plugins(house::plugin)
         .add_plugins(water::plugin)
         .add_plugins(nature::plugin)
         .add_plugins(save::plugin)

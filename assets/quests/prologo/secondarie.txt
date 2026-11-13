@@ -484,3 +484,40 @@ quando: parla Osvaldo
 > Ferruccio ti manda questo astuccio. Dice che una mano così è meglio averla dalla parte giusta.
 dai: grimaldello 5
 monete: 10
+
+[missione qs17]
+titolo: Un Tetto tra gli Ulivi e il Mare
+sommario: Il paese ti lascia un terreno fuori dalle mura, a sud-ovest: il Poggio del Naufrago. La casa, però, te la fai tu.
+tipo: secondaria
+dopo: mp01
+
+[tappa]
+obiettivo: Parla con Beppe del terreno fuori dalle mura
+quando: parla Beppe
+> Chi arriva dal mare e resta, prima o poi vuole un tetto suo. È giusto così.
+> A sud-ovest, tra il bosco e la vista del mare, c'è un poggio che non è di nessuno. Quattro paletti li ho piantati io stamattina.
+> La pietra la trovi all'affioramento lì accanto. Il legname al margine del bosco, ma ti serve un'ascia.
+
+[tappa]
+obiettivo: Raggiungi il Poggio del Naufrago, a sud-ovest del paese
+quando: vicino -40 40 8
+pensiero: Quattro paletti nell'erba, e il mare là in fondo. Qui può stare una casa.
+
+[tappa]
+obiettivo: Posa le fondamenta: dieci pietre (tasto R sul terreno)
+quando: conta casa 1
+pensiero: Le fondamenta tengono. Ora servono il legname e altra pietra per i muri.
+
+[tappa]
+obiettivo: Alza la casa: sedici tronchi e sei pietre
+quando: conta casa 2
+pensiero: Ha una porta, un tetto e un focolare. È casa mia.
+
+[tappa]
+obiettivo: Racconta al Viandante della casa
+quando: parla Viandante
+> Una casa fatta con le proprie mani. C'era un re, in una storia che conosco, che il suo letto se l'era costruito attorno a un ulivo.
+> Quando sarai lontano, {nome}, saprai che c'è un posto che ti aspetta. È più di quanto abbia io.
+> Tieni: per il primo inverno.
+dai: pozione di cura 2
+monete: 15

@@ -177,7 +177,7 @@ fn lock_for(
 ) -> crate::hut::Lock {
     use crate::hut::Lock;
     match kind {
-        "locanda" | "chiesa" => Lock::Public,
+        "locanda" | "chiesa" | "casa-naufrago" => Lock::Public,
         "forno" | "fabbro" | "arcere" => {
             let owner = defs.iter().find(|d| {
                 d.home

@@ -503,6 +503,7 @@ pub fn track_missions(
     mut inventory: ResMut<crate::inventory::Inventory>,
     mut session: ResMut<crate::save::Session>,
     thievery: Res<crate::thievery::Thievery>,
+    house: Res<crate::house::House>,
     mut was_open: Local<bool>,
 ) {
     if *was_open && !dialog.open {
@@ -519,7 +520,11 @@ pub fn track_missions(
         quest_done: quest.stage == QuestStage::Completed,
         weather: Some(weather.shown()),
         sides_done: 0,
-        counters: thievery.counters(),
+        counters: thievery
+            .counters()
+            .into_iter()
+            .chain([("casa".to_string(), u32::from(house.stage))])
+            .collect(),
         items: inventory.slots.iter().map(|s| (s.kind, s.qty)).collect(),
         // Solo i vivi: un nemico sconfitto resta un attimo nel mondo prima di sparire.
         enemies: enemies
@@ -619,7 +624,7 @@ mod tests {
             m.list[4..].iter().all(|x| x.side),
             "le altre sono secondarie"
         );
-        assert_eq!(m.list.iter().filter(|x| x.side && !x.event).count(), 15);
+        assert_eq!(m.list.iter().filter(|x| x.side && !x.event).count(), 16);
         assert_eq!(m.list.iter().filter(|x| x.event).count(), 11);
         for mission in &m.list {
             assert!(!mission.title.is_empty() && !mission.summary.is_empty());

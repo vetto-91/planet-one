@@ -1100,6 +1100,7 @@ pub fn snapshot(world: &mut World) -> Value {
         "quest": quest,
         "missioni": missioni,
         "abilita": abilita,
+        "casa": world.resource::<crate::house::House>().stage,
         "incantesimo": world.resource::<crate::magic::Magic>().selected.key(),
         "scudo_etereo": world.resource::<crate::magic::Magic>().ward > 0.0,
         "sfera_di_luce": world.resource::<crate::magic::Magic>().light > 0.0,

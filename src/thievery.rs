@@ -68,7 +68,7 @@ pub fn lock_grade(kind: ContainerKind, building: &str) -> u8 {
     }
     match building {
         // Il baule del Viandante è quello di casa: lo tiene aperto per l'ospite.
-        "casetta" => 0,
+        "casetta" | crate::house::KIND => 0,
         "caserma" => 2,
         "grotta" => 3,
         _ => 1,

@@ -205,6 +205,32 @@ def lockpick():
     return im
 
 
+def wood():
+    """Tre tronchi accatastati, con gli anelli sulla testa."""
+    im = layer()
+    d = ImageDraw.Draw(im)
+    bark, dark, heart = (132, 90, 52, 255), (78, 50, 26, 255), (214, 176, 120, 255)
+    for cx, cy in [(190, 330), (330, 330), (260, 215)]:
+        d.rounded_rectangle([cx - 150, cy - 62, cx + 110, cy + 62], 60, fill=bark, outline=dark, width=8)
+        d.ellipse([cx + 48, cy - 62, cx + 172, cy + 62], fill=heart, outline=dark, width=8)
+        d.ellipse([cx + 78, cy - 32, cx + 142, cy + 32], outline=(170, 128, 78, 255), width=6)
+        d.line([(cx - 110, cy - 20), (cx + 30, cy - 20)], fill=dark, width=5)
+    return im
+
+
+def stone():
+    """Un blocco di pietra squadrato, a tre facce."""
+    im = layer()
+    d = ImageDraw.Draw(im)
+    top, left, right, edge = (196, 198, 204, 255), (150, 152, 160, 255), (112, 114, 124, 255), (70, 72, 82, 255)
+    d.polygon([(256, 110), (430, 190), (256, 270), (82, 190)], fill=top, outline=edge)
+    d.polygon([(82, 190), (256, 270), (256, 420), (82, 340)], fill=left, outline=edge)
+    d.polygon([(430, 190), (256, 270), (256, 420), (430, 340)], fill=right, outline=edge)
+    d.line([(150, 250), (190, 330)], fill=edge, width=5)
+    d.line([(330, 300), (380, 270)], fill=edge, width=5)
+    return im
+
+
 def pack(body, flap, strap, wide=1.0, tall=1.0):
     im = layer()
     d = ImageDraw.Draw(im)
@@ -265,6 +291,8 @@ ICONS = {
     "pozione-mulo": lambda: potion_of((70, 130, 230, 255), (34, 70, 140, 255)),
     "cintura": belt,
     "grimaldello": lockpick,
+    "legname": wood,
+    "pietra": stone,
 }
 
 

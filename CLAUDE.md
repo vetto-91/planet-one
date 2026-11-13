@@ -87,6 +87,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 - `src/skills.rs`: abilità che crescono con l'uso, livello, Nodi d'Oro e talenti (`train`, `reward`, `rank`; ADR 0038); pannello in `character.rs`.
 - `src/vitals.rs`: vigore e magia (`Vitals`, `spend`); barre in `hud.rs` (ADR 0039). `src/thievery.rs`: scasso dei bauli (`AppState::Lockpick`) e borseggio (`F`/`G` alle spalle).
 - `src/magic.rs`: cinque incantesimi (`Z` sceglie, `Q` lancia), dardi, lume, scudo (`ward_factor`; ADR 0041).
+- `src/house.rs`: la casa del giocatore sul Poggio del Naufrago (terreno fisso, legname e pietra col tasto `R`, due tappe, piazzamento `casa-naufrago` in memoria; ADR 0042).
 - `src/karma.rs` + `assets/world/segreti.txt`: karma, fiducia per abitante, regali e segreti confidati (`deed`, `trust`; ADR 0040); scheda «Volti e segreti» in `menu.rs`.
 - `src/containers.rs`: inventari dei mobili (`AppState::Container`, capienze, contenuto iniziale; ADR 0023).
 - `src/shell.rs`: shell dei trucchi (tasto `\`, `AppState::Shell`, `Cheats` non salvata; ADR 0021).

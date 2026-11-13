@@ -151,6 +151,8 @@ pub struct SaveData {
     pub thievery: crate::thievery::Thievery,
     /// Karma, fiducia degli abitanti e segreti scoperti (ADR 0040).
     pub karma: crate::karma::Karma,
+    /// La casa del giocatore sull'isola (ADR 0042).
+    pub house: crate::house::House,
     /// Regione in cui si trova il giocatore.
     pub region: Region,
     /// Stato delle altre regioni visitate (porte, contenitori, nemici…), com'erano quando
@@ -171,8 +173,9 @@ const WORLD_SECTIONS: [&str; 8] = [
     "abitanti",
     "viandante",
 ];
-const HERO_SECTIONS: [&str; 13] = [
+const HERO_SECTIONS: [&str; 14] = [
     "abilita",
+    "casa",
     "karma",
     "furti",
     "luoghi",
@@ -367,6 +370,7 @@ impl SaveData {
             skills: Default::default(),
             thievery: Default::default(),
             karma: Default::default(),
+            house: Default::default(),
             region: Region::Isola,
             elsewhere: Vec::new(),
             present: HashSet::new(),
@@ -438,6 +442,12 @@ impl SaveData {
                 yes(self.karma.revealed.contains(name))
             ));
         }
+        line(String::new());
+        line("# casa sul Poggio del Naufrago: 0 terreno, 1 fondamenta, 2 finita".into());
+        line("[casa]".into());
+        line(format!("stadio = {}", self.house.stage));
+        line(format!("legname = {}", self.house.wood));
+        line(format!("pietra = {}", self.house.stone));
         line(String::new());
         line("[furti]".into());
         line(format!("serrature = {}", self.thievery.picked));
@@ -730,6 +740,15 @@ impl SaveData {
                     if read_bool(parts.next()?)? {
                         self.karma.revealed.insert(k.to_string());
                     }
+                }
+            }
+            "casa" => {
+                let (k, v) = pair?;
+                match k {
+                    "stadio" => self.house.stage = v.parse::<u8>().ok()?.min(crate::house::BUILT),
+                    "legname" => self.house.wood = v.parse().ok()?,
+                    "pietra" => self.house.stone = v.parse().ok()?,
+                    _ => return None,
                 }
             }
             "furti" => {
@@ -1145,6 +1164,7 @@ pub struct HeroParams<'w, 's> {
     vitals: ResMut<'w, crate::vitals::Vitals>,
     thievery: ResMut<'w, crate::thievery::Thievery>,
     karma: ResMut<'w, crate::karma::Karma>,
+    house: ResMut<'w, crate::house::House>,
     effects: ResMut<'w, ActiveEffects>,
     inventory: ResMut<'w, Inventory>,
     equip: ResMut<'w, Equipment>,
@@ -1229,6 +1249,7 @@ fn collect(kind: SaveKind, session: &Session, hero: &HeroParams, world: &WorldPa
     d.skills = hero.progress.clone();
     d.thievery = hero.thievery.clone();
     d.karma = hero.karma.clone();
+    d.house = *hero.house;
     d.vigor = hero.vitals.vigor;
     d.magic = hero.vitals.magic;
     d.region = crate::region::current();
@@ -1341,6 +1362,9 @@ fn apply(d: &SaveData, hero: &mut HeroParams, world: &mut WorldParams) {
     }
     if has("luoghi") {
         world.known.0 = d.known.iter().cloned().collect();
+    }
+    if has("casa") {
+        *hero.house = d.house;
     }
     if has("karma") {
         *hero.karma = d.karma.clone();
@@ -1678,6 +1702,7 @@ pub fn finish_loading(
             *hero.progress = Default::default();
             *hero.thievery = Default::default();
             *hero.karma = Default::default();
+            *hero.house = Default::default();
             *hero.vitals = crate::vitals::Vitals::full(character.stats);
             *hero.character = character;
             *hero.inventory = Inventory::default();
@@ -1733,6 +1758,7 @@ pub fn finish_loading(
             *hero.progress = Default::default();
             *hero.thievery = Default::default();
             *hero.karma = Default::default();
+            *hero.house = Default::default();
             world.memory.0 = data
                 .elsewhere
                 .iter()
@@ -1835,6 +1861,11 @@ mod tests {
         d.thievery.slipped.insert("guardia bruno".into(), 15);
         d.vigor = 42.0;
         d.magic = 17.0;
+        d.house = crate::house::House {
+            stage: 1,
+            wood: 7,
+            stone: 2,
+        };
         d.karma.global = -7;
         d.karma.add_trust("Guardia Mario", 31);
         d.karma.add_trust("Nina", -15);
@@ -1847,6 +1878,7 @@ mod tests {
         assert_eq!(back.skills, d.skills);
         assert_eq!(back.thievery, d.thievery);
         assert_eq!(back.karma, d.karma);
+        assert_eq!(back.house, d.house);
         assert_eq!((back.vigor, back.magic), (42.0, 17.0));
         assert!(back.present.contains("abilita"));
         // Un salvataggio vecchio, senza la sezione, resta leggibile.
