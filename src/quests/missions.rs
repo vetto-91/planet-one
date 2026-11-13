@@ -540,6 +540,16 @@ pub fn track_missions(
             if finished { " (missione compiuta)" } else { "" }
         );
         session.notify(text);
+        if finished {
+            let m = &missions.list[i];
+            crate::skills::reward(if m.event {
+                crate::skills::EVENT_XP
+            } else if m.side {
+                crate::skills::SIDE_XP
+            } else {
+                crate::skills::MAIN_XP
+            });
+        }
     }
 }
 

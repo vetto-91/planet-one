@@ -737,6 +737,7 @@ pub fn discover_places(
         if p.xz().distance(at) <= DISCOVER_RANGE && !known.0.contains_key(&key) {
             known.0.insert(key, p);
             info!("[LUOGHI] scoperto: {name}");
+            crate::skills::train(crate::skills::Skill::Lore, 25.0);
             // Nelle prove automatiche (nessuna partita attiva) niente avvisi a schermo.
             if session.active {
                 session.notify(format!("Luogo scoperto: {name}"));

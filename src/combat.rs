@@ -12,6 +12,7 @@
 
 use crate::entities::{Enemy, PatrolState};
 use crate::player::{Player, PlayerHealth};
+use crate::skills::{self, Skill};
 use bevy::prelude::*;
 
 /// Vita del nemico.
@@ -181,7 +182,11 @@ pub fn player_attack(
     combat.attack_cd = stats.cooldown;
     for (_, entity) in hit {
         if let Ok((_, mut hp, _)) = enemies.get_mut(entity) {
-            hp.current = (hp.current - stats.damage * character.stats.melee_factor()).max(0.0);
+            let damage = stats.damage
+                * character.stats.melee_factor()
+                * (1.0 + 0.06 * skills::rank(Skill::Blade));
+            hp.current = (hp.current - damage).max(0.0);
+            skills::train(Skill::Blade, 4.0);
             info!("attacco su enemy {entity:?}: vita -> {:.0}", hp.current);
         }
     }
@@ -231,7 +236,9 @@ pub fn update_arrows(
         let mut hit = false;
         for (et, mut hp) in &mut enemies {
             if et.translation().distance(mid) < 1.1 {
-                hp.current = (hp.current - ARROW_DAMAGE).max(0.0);
+                let damage = ARROW_DAMAGE * (1.0 + 0.08 * skills::rank(Skill::Archery));
+                hp.current = (hp.current - damage).max(0.0);
+                skills::train(Skill::Archery, 6.0);
                 info!("freccia su nemico: vita -> {:.0}", hp.current);
                 hit = true;
                 break;
@@ -282,7 +289,8 @@ pub fn contact_damage(
         }
         if et.translation().distance(p) <= CONTACT_RANGE {
             let factor = if equip.shield {
-                crate::inventory::SHIELD_FACTOR
+                skills::train(Skill::Defense, 5.0);
+                crate::inventory::SHIELD_FACTOR * (1.0 - 0.1 * skills::rank(Skill::Defense))
             } else {
                 1.0
             };
@@ -523,11 +531,19 @@ pub fn enemy_ai(
         let calm = thief && quest.thief_calm;
         let eye = tf.translation() + Vec3::Y * 1.3;
         let dist = (target - eye).length();
-        let range = if mind.chase { LOSE_RANGE } else { NOTICE_RANGE };
+        let range = if mind.chase {
+            LOSE_RANGE
+        } else {
+            NOTICE_RANGE * (1.0 - 0.08 * skills::rank(Skill::Stealth))
+        };
         let sees = !calm
             && !cheats.invisible
             && dist < range
             && clear_view(&spatial, &solids, eye, target);
+        // Passare vicino a un nemico senza farsi notare allena la furtività.
+        if !sees && !mind.chase && !calm && !cheats.invisible && dist < NOTICE_RANGE * 1.6 {
+            skills::train(Skill::Stealth, dt * 0.5);
+        }
         if sees != mind.chase {
             mind.chase = sees;
             info!(

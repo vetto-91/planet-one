@@ -250,6 +250,8 @@ pub struct Carry {
     pub strength: f32,
     pub enchanted: f32,
     pub effects: f32,
+    /// Talento «Spalle d'Atlante» (ADR 0038).
+    pub skill: f32,
 }
 
 impl Carry {
@@ -260,11 +262,12 @@ impl Carry {
             strength: stats.strength_carry(),
             enchanted: equip.charm.and_then(|c| c.charm_kg()).unwrap_or(0.0),
             effects: effects.carry_kg(),
+            skill: 3.0 * crate::skills::rank(crate::skills::Skill::Carrying),
         }
     }
 
     pub fn total(self) -> f32 {
-        (self.base + self.backpack + self.strength + self.enchanted + self.effects)
+        (self.base + self.backpack + self.strength + self.enchanted + self.effects + self.skill)
             .max(MIN_CARRY_KG)
     }
 }
@@ -312,8 +315,12 @@ pub fn update_load(
 }
 
 /// Sistema: la vita massima segue la costituzione.
-pub fn apply_stats(character: Res<Character>, mut players: Query<&mut PlayerHealth, With<Player>>) {
-    let max = character.stats.max_health();
+pub fn apply_stats(
+    character: Res<Character>,
+    progress: Res<crate::skills::Progress>,
+    mut players: Query<&mut PlayerHealth, With<Player>>,
+) {
+    let max = character.stats.max_health() + progress.health_bonus();
     for mut hp in &mut players {
         if hp.max != max {
             hp.max = max;
@@ -329,10 +336,12 @@ pub fn tick_effects(time: Res<Time>, mut effects: ResMut<ActiveEffects>) {
     }
 }
 
-/// Sistema (egui): pannello del personaggio, tasto C.
+/// Sistema (egui): pannello del personaggio, tasto C. A sinistra statistiche e peso, a destra
+/// livello, abilità e talenti (ADR 0038).
 pub fn character_window(
     mut contexts: EguiContexts,
-    character: Res<Character>,
+    mut character: ResMut<Character>,
+    mut progress: ResMut<crate::skills::Progress>,
     load: Res<Load>,
     effects: Res<ActiveEffects>,
     players: Query<&PlayerHealth, With<Player>>,
@@ -346,80 +355,189 @@ pub fn character_window(
         .stroke(egui::Stroke::new(2.0, crate::ui_style::GOLD))
         .inner_margin(egui::Margin::symmetric(24, 16))
         .corner_radius(egui::CornerRadius::same(10));
+    let grey = egui::Color32::from_rgb(170, 178, 196);
+    let view = ctx.viewport_rect();
     let mut close = false;
+    let mut raise: Option<Stat> = None;
+    let mut activate: Option<crate::skills::Skill> = None;
     egui::Area::new(egui::Id::new("character_panel"))
         .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
         .show(ctx, |ui| {
             frame.show(ui, |ui| {
-                ui.set_width(520.0_f32.min(ctx.viewport_rect().width() - 80.0));
-                ui.label(
-                    egui::RichText::new(&character.name)
-                        .strong()
-                        .size(26.0)
-                        .color(crate::ui_style::GOLD),
-                );
-                ui.label(character.class.name());
+                ui.set_width(1000.0_f32.min(view.width() - 80.0));
+                ui.horizontal(|ui| {
+                    ui.label(
+                        egui::RichText::new(&character.name)
+                            .strong()
+                            .size(26.0)
+                            .color(crate::ui_style::GOLD),
+                    );
+                    ui.label(format!(
+                        "{} · livello {}",
+                        character.class.name(),
+                        progress.level
+                    ));
+                    ui.add(
+                        egui::ProgressBar::new(progress.level_fraction())
+                            .desired_width(160.0)
+                            .desired_height(10.0),
+                    );
+                });
                 if let Ok(hp) = players.single() {
                     ui.label(format!("Vita: {:.0} / {:.0}", hp.current, hp.max));
                 }
                 ui.separator();
-                for stat in Stat::ALL {
-                    ui.horizontal(|ui| {
-                        ui.add_sized(
-                            [130.0, 22.0],
-                            egui::Label::new(egui::RichText::new(stat.name()).strong()),
-                        );
-                        ui.add_sized(
-                            [34.0, 22.0],
-                            egui::Label::new(character.stats.get(stat).to_string()),
-                        );
-                        ui.label(
-                            egui::RichText::new(stat.effect())
-                                .size(14.0)
-                                .color(egui::Color32::from_rgb(170, 178, 196)),
-                        );
-                    });
-                }
-                ui.separator();
-                ui.label(
-                    egui::RichText::new(format!(
-                        "Peso: {:.1} / {:.1} kg{}",
-                        load.weight,
-                        load.capacity,
-                        if load.overloaded {
-                            " — sovraccarico"
-                        } else {
-                            ""
+                ui.columns(2, |cols| {
+                    {
+                        let ui = &mut cols[0];
+                        if progress.stat_points > 0 {
+                            ui.label(
+                                egui::RichText::new(format!(
+                                    "Punti statistica da spendere: {}",
+                                    progress.stat_points
+                                ))
+                                .color(crate::ui_style::GOLD),
+                            );
                         }
-                    ))
-                    .strong(),
-                );
-                let c = load.carry;
-                let mut part = |name: &str, kg: f32| {
-                    if kg != 0.0 {
-                        ui.label(format!("  {name}: {kg:+.1} kg"));
+                        for stat in Stat::ALL {
+                            ui.horizontal(|ui| {
+                                ui.add_sized(
+                                    [120.0, 22.0],
+                                    egui::Label::new(egui::RichText::new(stat.name()).strong()),
+                                );
+                                ui.add_sized(
+                                    [30.0, 22.0],
+                                    egui::Label::new(character.stats.get(stat).to_string()),
+                                );
+                                if progress.stat_points > 0
+                                    && character.stats.get(stat) < STAT_MAX
+                                    && ui.small_button("+").clicked()
+                                {
+                                    raise = Some(stat);
+                                }
+                                ui.label(egui::RichText::new(stat.effect()).size(14.0).color(grey));
+                            });
+                        }
+                        ui.separator();
+                        ui.label(
+                            egui::RichText::new(format!(
+                                "Peso: {:.1} / {:.1} kg{}",
+                                load.weight,
+                                load.capacity,
+                                if load.overloaded {
+                                    " — sovraccarico"
+                                } else {
+                                    ""
+                                }
+                            ))
+                            .strong(),
+                        );
+                        let c = load.carry;
+                        let mut part = |name: &str, kg: f32| {
+                            if kg != 0.0 {
+                                ui.label(format!("  {name}: {kg:+.1} kg"));
+                            }
+                        };
+                        part("Base", c.base);
+                        part("Zaino", c.backpack);
+                        part("Forza", c.strength);
+                        part("Oggetti incantati", c.enchanted);
+                        part("Effetti", c.effects);
+                        part("Tempra", c.skill);
+                        for e in &effects.0 {
+                            ui.label(match e.remaining {
+                                Some(t) => format!("  • {} ({t:.0} s)", e.source),
+                                None => format!("  • {}", e.source),
+                            });
+                        }
                     }
-                };
-                part("Base", c.base);
-                part("Zaino", c.backpack);
-                part("Forza", c.strength);
-                part("Oggetti incantati", c.enchanted);
-                part("Effetti", c.effects);
-                for e in &effects.0 {
-                    ui.label(match e.remaining {
-                        Some(t) => format!("  • {} ({t:.0} s)", e.source),
-                        None => format!("  • {}", e.source),
-                    });
-                }
+                    {
+                        let ui = &mut cols[1];
+                        ui.label(
+                            egui::RichText::new(format!(
+                                "Abilità — Nodi d'Oro: {}",
+                                progress.nodes
+                            ))
+                            .strong()
+                            .color(crate::ui_style::GOLD),
+                        );
+                        egui::ScrollArea::vertical()
+                            .max_height((view.height() - 260.0).max(200.0))
+                            .show(ui, |ui| {
+                                for skill in crate::skills::Skill::ALL {
+                                    skill_row(ui, skill, &progress, grey, &mut activate);
+                                }
+                            });
+                    }
+                });
                 ui.add_space(8.0);
                 if ui.button("Chiudi").clicked() {
                     close = true;
                 }
             });
         });
+    if let Some(stat) = raise {
+        let value = character.stats.get(stat);
+        character.stats.set(stat, value + 1);
+        progress.stat_points -= 1;
+        info!("[ABILITA] {} sale a {}", stat.name(), value + 1);
+    }
+    if let Some(skill) = activate
+        && progress.activate(skill)
+    {
+        info!(
+            "[ABILITA] talento di {}: rango {}",
+            skill.name(),
+            progress.perk_rank(skill)
+        );
+    }
     if close {
         next.set(AppState::Playing);
     }
+}
+
+/// Una riga del pannello: abilità, grado, avanzamento e talento.
+fn skill_row(
+    ui: &mut egui::Ui,
+    skill: crate::skills::Skill,
+    progress: &crate::skills::Progress,
+    grey: egui::Color32,
+    activate: &mut Option<crate::skills::Skill>,
+) {
+    ui.horizontal(|ui| {
+        ui.add_sized(
+            [200.0, 20.0],
+            egui::Label::new(egui::RichText::new(skill.name()).strong()),
+        );
+        ui.add_sized(
+            [30.0, 20.0],
+            egui::Label::new(progress.grade(skill).to_string()),
+        );
+        ui.add(
+            egui::ProgressBar::new(progress.grade_fraction(skill))
+                .desired_width(90.0)
+                .desired_height(8.0),
+        );
+        if let Some((_, name)) = progress.next_rank(skill)
+            && ui.small_button(format!("Attiva {name}")).clicked()
+        {
+            *activate = Some(skill);
+        }
+    });
+    let detail = match skill.perk() {
+        Some((name, effect)) => {
+            let rank = progress.perk_rank(skill);
+            let next = crate::skills::RANKS
+                .get(usize::from(rank))
+                .map_or(String::new(), |(g, _)| format!(" · prossimo al grado {g}"));
+            format!(
+                "   {name} {rank}/5 ({effect} per rango){next} — cresce {}",
+                skill.how()
+            )
+        }
+        None => "   non ancora nel gioco".to_string(),
+    };
+    ui.label(egui::RichText::new(detail).size(13.0).color(grey));
 }
 
 pub fn plugin(app: &mut App) {

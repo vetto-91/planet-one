@@ -1,0 +1,71 @@
+# Abilità che crescono con l'uso, livello e talenti (ADR 0038).
+god on
+ia off
+meteo sereno
+ora 10
+aspetta 2
+verifica /livello = 1
+verifica /abilita/atletica = 1
+verifica /abilita/acrobazia = 1
+# Correre allena l'atletica (un grado ogni decina di secondi all'inizio).
+tp 0.5 3 -60
+aspetta 2
+tieni shift 24
+premi w 24
+verifica /abilita/atletica > 1
+# Ogni salto allena l'acrobazia: dodici per il primo grado.
+premi spazio 0.1
+aspetta 1
+premi spazio 0.1
+aspetta 1
+premi spazio 0.1
+aspetta 1
+premi spazio 0.1
+aspetta 1
+premi spazio 0.1
+aspetta 1
+premi spazio 0.1
+aspetta 1
+premi spazio 0.1
+aspetta 1
+premi spazio 0.1
+aspetta 1
+premi spazio 0.1
+aspetta 1
+premi spazio 0.1
+aspetta 1
+premi spazio 0.1
+aspetta 1
+premi spazio 0.1
+aspetta 1
+premi spazio 0.1
+aspetta 1
+premi spazio 0.1
+aspetta 1
+verifica /abilita/acrobazia > 1
+# Le pozioni allenano l'erboristeria; scoprire un luogo la sapienza.
+verifica /abilita/sapienza > 1
+# Livelli e talenti: un Nodo d'Oro attiva un rango solo se il grado arriva alla soglia.
+livello 3
+verifica /livello = 3
+verifica /nodi = 2
+verifica /punti_statistica = 2
+talento lama
+verifica /abilita/talento_lama = 0
+abilita lama 15
+talento lama
+verifica /abilita/talento_lama = 1
+verifica /nodi = 1
+abilita atletica 30
+talento atletica
+verifica /abilita/talento_atletica = 1
+verifica /nodi = 0
+talento atletica
+verifica /abilita/talento_atletica = 1
+# Il pannello del personaggio (C) mostra livello, abilità e talenti.
+premi c
+aspetta 1
+foto pannello-abilita
+chiudi
+aspetta 1
+esci

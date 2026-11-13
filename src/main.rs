@@ -48,6 +48,7 @@ mod seasons;
 mod settings_ui;
 mod shell;
 mod shop;
+mod skills;
 mod sky;
 mod terrain;
 mod trees;
@@ -222,6 +223,7 @@ fn main() -> AppExit {
         .add_systems(Update, bugreport::report_bug)
         .add_plugins(containers::plugin)
         .add_plugins(character::plugin)
+        .add_plugins(skills::plugin)
         .add_plugins(water::plugin)
         .add_plugins(nature::plugin)
         .add_plugins(save::plugin)

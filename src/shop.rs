@@ -76,13 +76,14 @@ pub fn shop_buy(
     let Some(item) = stock(&shop.key).get(idx).copied() else {
         return;
     };
-    let price = character.stats.price(item.price);
+    let price = crate::skills::price(character.stats, item.price);
     if inv.qty(ItemKind::Coin) < price {
         shop.message = "Non hai abbastanza monete.".into();
         return;
     }
     inv.consume(ItemKind::Coin, price);
     inv.add(item.kind, item.qty);
+    crate::skills::train(crate::skills::Skill::Eloquence, 3.0);
     shop.message = format!("Hai comprato: {}", item.kind.name());
     info!(
         "[SHOP] {} comprato da {} per {}",
@@ -155,7 +156,7 @@ pub fn shop_panel(
                             );
                         });
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            let price = stats.price(item.price);
+                            let price = crate::skills::price(stats, item.price);
                             let ok = coins >= price;
                             if ui
                                 .add_enabled(

@@ -493,6 +493,7 @@ pub fn use_item(
             remaining: Some(seconds),
         });
         inventory.consume(kind, 1);
+        crate::skills::train(crate::skills::Skill::Herbalism, 8.0);
         info!("[INVENTORY] {} bevuta", kind.name());
     } else if kind.backpack_kg().is_some() {
         equip.backpack = if equip.backpack == Some(kind) {
@@ -516,6 +517,12 @@ pub fn use_item(
             info!("[INVENTORY] {} non usato: vita già piena", kind.name());
             return;
         }
+        let heal = if kind == ItemKind::HealthPotion {
+            crate::skills::train(crate::skills::Skill::Herbalism, 8.0);
+            heal * (1.0 + 0.1 * crate::skills::rank(crate::skills::Skill::Herbalism))
+        } else {
+            heal
+        };
         hp.current = (hp.current + heal).min(hp.max);
         inventory.consume(kind, 1);
         info!(

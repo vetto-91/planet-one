@@ -334,6 +334,8 @@ iniziale (edifici, lampioni, cartelli e stradine; `--preview` salva un'anteprima
 
 Gli edifici hanno porte da aprire con E, piani collegati da scale, un **sottotetto** e mobili per ogni tipo di edificio; il campanile si sale fino alla cella delle campane. **Locanda e chiesa** sono sempre aperte, **forno, fabbro e arciere** negli orari di lavoro, **case e caserma** sono chiuse a chiave: ogni abitante ha la sua chiave. Di sera gli abitanti rientrano, salgono le scale e dormono nel loro letto; le guardie fuori turno dormono in caserma.
 
+Il personaggio cresce **facendo**: correre, saltare, nuotare, combattere, parlare, esplorare allenano sedici **abilità** (grado da 1 a 100). Gradi e missioni fanno salire il **livello**, che dà un punto statistica, un Nodo d'Oro e un po' di vita; con un Nodo d'Oro, ai gradi 15/30/50/75/100, attivi un rango del **talento** dell'abilità. Si vede e si spende tutto nel pannello del personaggio (tasto C). Dalla shell: `abilita`, `livello <n>`, `talento <abilità>`.
+
 Il personaggio ha sette **statistiche** (tasto C) e porta **30 kg** di base: oltre il limite cammina lento e non corre. Il fabbro vende quattro **zaini**, fino a 60 kg; la Pozione del mulo e la Cintura del portatore aggiungono altri chili, per un po' o finché la si indossa.
 
 **Bauli, armadi, botti, casse e scaffali** si aprono con E: si possono prendere e posare oggetti, con un limite di peso legato alla grandezza del mobile. Anche il **faro** si visita: alloggio del guardiano, scala a chiocciola, lanterna e balconata; è chiuso a chiave.

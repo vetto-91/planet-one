@@ -73,6 +73,7 @@ Strategia: **vertical slice prima**. Una demo giocabile (1 quest, 1 NPC, 1 nemic
 | 14.3 — Isola: storia principale del Prologo | Motore di missioni a tappe da file (ADR 0034); Il Nome sulla Sabbia, Le Voci delle Pietre Antiche, Sotto l'Arco dei Sei Gradoni, Oltre il Velo del Nord; il continente si apre con la storia | in corso |
 | 14.4 — Isola: bivi e missioni secondarie | Bivi di «Denaro Rubato» (ADR 0035); undici missioni secondarie degli abitanti (ADR 0036); restano sei secondarie che chiedono sistemi nuovi | in corso |
 | 14.5 — Isola: eventi, luoghi e viaggio veloce | Undici eventi casuali, altre tre secondarie (14 in tutto), luoghi scoperti sulla mappa e viaggio veloce (ADR 0037) | in corso |
+| 14.6 — Isola: abilità e livelli | Sedici abilità che crescono con l'uso (undici allenabili), livello del personaggio, punti statistica, Nodi d'Oro e talenti a ranghi (ADR 0038) | in corso |
 | 5.y — Mondo vivo | Colonna sonora con volume, casetta-chiosco esplorabile (porta, interni, stufa con fumo), routine giorno/notte del Viandante, voci dei personaggi, versione nel menu | `v0.0.7.0` |
 | 5.z — Mondo vivo, rifiniture | Interazione col mirino, casetta con serranda/interruttore/finestre e luci con ombre, routine del Viandante v2, voci normalizzate con ducking della musica | `v0.0.8.0` |
 | 5.w — Mappa e strumenti | Mappa dall'alto (M) con bussola e zoom, modalità debug piazzamenti (F4) con file `debug/placements.txt`, vetri e scuri spessi, il Viandante chiude porta e finestre | `v0.0.9.0` |

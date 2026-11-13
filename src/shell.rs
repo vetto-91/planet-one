@@ -33,6 +33,7 @@ const HELP: &[&str] = &[
     "regione <isola|nord> (viaggio fra l'Isola di Fontevivo e il Continente del Nord)",
     "missioni [on|off] · missione <id> <tappa> (storia del Prologo e secondarie)",
     "veloce [luogo] (viaggio veloce verso un luogo scoperto; senza nome: l'elenco)",
+    "abilita [<nome> <grado>] · livello [n] · talento <abilità> (attiva un rango con un Nodo d'Oro)",
 ];
 
 /// Trucchi attivi: non salvati, tutti spenti a ogni avvio.
@@ -130,6 +131,10 @@ pub enum Cmd {
     Stt(SttCmd),
     Stats,
     SetStat(crate::character::Stat, u8),
+    Skills,
+    SetSkill(crate::skills::Skill, u8),
+    Level(Option<u32>),
+    Perk(crate::skills::Skill),
     /// Chili e secondi (`None` = senza scadenza).
     CarryEffect(f32, Option<f32>),
     ClearEffects,
@@ -329,6 +334,36 @@ pub fn parse(line: &str) -> Result<Cmd, String> {
                 .ok_or_else(|| "uso: stt on|off".to_string()),
             _ => Err("uso: stt [on|off] · stt modelli · stt modello <nome>".into()),
         },
+        "abilita" | "abilità" => match args {
+            [] => Ok(Cmd::Skills),
+            [name, grade] => {
+                let skill = crate::skills::Skill::parse(name)
+                    .ok_or_else(|| format!("abilità sconosciuta: {name}"))?;
+                let grade: u8 = grade.parse().map_err(|_| "il grado va da 1 a 100")?;
+                if (1..=crate::skills::MAX_GRADE).contains(&grade) {
+                    Ok(Cmd::SetSkill(skill, grade))
+                } else {
+                    Err("il grado va da 1 a 100".into())
+                }
+            }
+            _ => Err("uso: abilita [<nome> <grado>]".into()),
+        },
+        "livello" => match args {
+            [] => Ok(Cmd::Level(None)),
+            [n] => n
+                .parse::<u32>()
+                .ok()
+                .filter(|n| (1..=200).contains(n))
+                .map(|n| Cmd::Level(Some(n)))
+                .ok_or_else(|| "il livello va da 1 a 200".to_string()),
+            _ => Err("uso: livello [n]".into()),
+        },
+        "talento" => match args {
+            [name] => crate::skills::Skill::parse(name)
+                .map(Cmd::Perk)
+                .ok_or_else(|| format!("abilità sconosciuta: {name}")),
+            _ => Err("uso: talento <abilità>".into()),
+        },
         "stat" | "statistiche" => match args {
             [] => Ok(Cmd::Stats),
             [name, value] => {
@@ -429,6 +464,7 @@ pub struct ShellCtx<'w, 's> {
     quest: ResMut<'w, crate::quests::denaro_rubato::QuestState>,
     missions: ResMut<'w, crate::quests::missions::Missions>,
     known: Res<'w, crate::places::Known>,
+    progress: ResMut<'w, crate::skills::Progress>,
     fast_travel: ResMut<'w, crate::places::FastTravel>,
     diagnostics: Res<'w, bevy::diagnostic::DiagnosticsStore>,
     every: Query<'w, 's, Entity>,
@@ -868,6 +904,47 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
             ctx.character.stats.set(stat, value);
             shell.say(format!("{}: {value}", stat.name()));
         }
+        Cmd::Skills => {
+            let p = &ctx.progress;
+            shell.say(format!(
+                "livello {} ({:.0}%) · punti statistica {} · Nodi d'Oro {}",
+                p.level,
+                p.level_fraction() * 100.0,
+                p.stat_points,
+                p.nodes
+            ));
+            for skill in crate::skills::Skill::ALL {
+                shell.say(format!(
+                    "{}: grado {} · talento {}/5",
+                    skill.key(),
+                    p.grade(skill),
+                    p.perk_rank(skill)
+                ));
+            }
+        }
+        Cmd::SetSkill(skill, grade) => {
+            ctx.progress.set_grade(skill, grade);
+            shell.say(format!("{}: grado {grade}", skill.name()));
+        }
+        Cmd::Level(None) => shell.say(format!("livello {}", ctx.progress.level)),
+        Cmd::Level(Some(n)) => {
+            ctx.progress.set_level(n);
+            shell.say(format!(
+                "livello {n} · punti statistica {} · Nodi d'Oro {}",
+                ctx.progress.stat_points, ctx.progress.nodes
+            ));
+        }
+        Cmd::Perk(skill) => {
+            if ctx.progress.activate(skill) {
+                shell.say(format!(
+                    "{}: talento al rango {}",
+                    skill.name(),
+                    ctx.progress.perk_rank(skill)
+                ));
+            } else {
+                shell.say("serve un Nodo d'Oro e il grado della soglia (15, 30, 50, 75, 100)");
+            }
+        }
         Cmd::CarryEffect(carry_kg, remaining) => {
             ctx.effects.add(crate::character::Effect {
                 source: "Magia di prova".to_string(),
@@ -1218,6 +1295,15 @@ mod tests {
         assert_eq!(parse("stat"), Ok(Cmd::Stats));
         assert_eq!(parse("stat forza 15"), Ok(Cmd::SetStat(Stat::Strength, 15)));
         assert!(parse("stat forza 40").is_err());
+        use crate::skills::Skill;
+        assert_eq!(parse("abilita"), Ok(Cmd::Skills));
+        assert_eq!(
+            parse("abilita arco 30"),
+            Ok(Cmd::SetSkill(Skill::Archery, 30))
+        );
+        assert!(parse("abilita arco 300").is_err());
+        assert_eq!(parse("livello 5"), Ok(Cmd::Level(Some(5))));
+        assert_eq!(parse("talento furtivita"), Ok(Cmd::Perk(Skill::Stealth)));
         assert_eq!(
             parse("effetto peso 20 60"),
             Ok(Cmd::CarryEffect(20.0, Some(60.0)))

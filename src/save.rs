@@ -142,6 +142,8 @@ pub struct SaveData {
     pub missions: Vec<(String, usize)>,
     /// Luoghi scoperti: chiave «regione|nome» e punto d'arrivo del viaggio veloce.
     pub known: Vec<(String, Vec3)>,
+    /// Abilità, talenti e livello (ADR 0038).
+    pub skills: crate::skills::Progress,
     /// Regione in cui si trova il giocatore.
     pub region: Region,
     /// Stato delle altre regioni visitate (porte, contenitori, nemici…), com'erano quando
@@ -162,7 +164,8 @@ const WORLD_SECTIONS: [&str; 8] = [
     "abitanti",
     "viandante",
 ];
-const HERO_SECTIONS: [&str; 10] = [
+const HERO_SECTIONS: [&str; 11] = [
+    "abilita",
     "luoghi",
     "missioni",
     "personaggio",
@@ -350,6 +353,7 @@ impl SaveData {
             keeper_stove_manual: false,
             missions: Vec::new(),
             known: Vec::new(),
+            skills: Default::default(),
             region: Region::Isola,
             elsewhere: Vec::new(),
             present: HashSet::new(),
@@ -380,6 +384,22 @@ impl SaveData {
         line(format!("classe = {}", self.class.name()));
         for stat in Stat::ALL {
             line(format!("{} = {}", stat.name(), self.stats.get(stat)));
+        }
+        line(String::new());
+        line("# abilità = grado, esperienza verso il prossimo, ranghi del talento attivati".into());
+        line("[abilita]".into());
+        line(format!("livello = {}", self.skills.level));
+        line(format!("esperienza = {:.2}", self.skills.level_xp));
+        line(format!("punti_statistica = {}", self.skills.stat_points));
+        line(format!("nodi = {}", self.skills.nodes));
+        for (i, skill) in crate::skills::Skill::ALL.into_iter().enumerate() {
+            line(format!(
+                "{} = {} {:.2} {}",
+                skill.key(),
+                self.skills.grades[i],
+                self.skills.xp[i],
+                self.skills.perks[i]
+            ));
         }
         line(String::new());
         line("[tempo]".into());
@@ -621,6 +641,27 @@ impl SaveData {
                         self.class = Class::ALL.into_iter().find(|c| c.name() == v)?;
                     }
                     _ => self.stats.set(Stat::parse(k)?, v.parse().ok()?),
+                }
+            }
+            "abilita" => {
+                let (k, v) = pair?;
+                let p = &mut self.skills;
+                match k {
+                    "livello" => p.level = v.parse::<u32>().ok()?.max(1),
+                    "esperienza" => p.level_xp = v.parse().ok()?,
+                    "punti_statistica" => p.stat_points = v.parse().ok()?,
+                    "nodi" => p.nodes = v.parse().ok()?,
+                    _ => {
+                        let i = crate::skills::Skill::parse(k)?.index();
+                        let mut parts = v.split_whitespace();
+                        p.grades[i] = parts
+                            .next()?
+                            .parse::<u8>()
+                            .ok()?
+                            .clamp(1, crate::skills::MAX_GRADE);
+                        p.xp[i] = parts.next()?.parse().ok()?;
+                        p.perks[i] = parts.next()?.parse::<u8>().ok()?.min(5);
+                    }
                 }
             }
             "tempo" => {
@@ -1017,6 +1058,7 @@ pub struct TravelRequest(pub Option<Region>);
 #[derive(SystemParam)]
 pub struct HeroParams<'w, 's> {
     character: ResMut<'w, Character>,
+    progress: ResMut<'w, crate::skills::Progress>,
     effects: ResMut<'w, ActiveEffects>,
     inventory: ResMut<'w, Inventory>,
     equip: ResMut<'w, Equipment>,
@@ -1098,6 +1140,7 @@ fn collect(kind: SaveKind, session: &Session, hero: &HeroParams, world: &WorldPa
     d.kind = kind;
     d.missions = world.missions.snapshot();
     d.known = world.known.0.iter().map(|(k, v)| (k.clone(), *v)).collect();
+    d.skills = hero.progress.clone();
     d.region = crate::region::current();
     d.elsewhere = world
         .memory
@@ -1208,6 +1251,9 @@ fn apply(d: &SaveData, hero: &mut HeroParams, world: &mut WorldParams) {
     }
     if has("luoghi") {
         world.known.0 = d.known.iter().cloned().collect();
+    }
+    if has("abilita") {
+        *hero.progress = d.skills.clone();
     }
     if has("personaggio") {
         *hero.character = Character {
@@ -1527,6 +1573,7 @@ pub fn finish_loading(
             world.missions.reset();
             world.missions.enabled = true;
             world.known.0.clear();
+            *hero.progress = Default::default();
             *hero.character = character;
             *hero.inventory = Inventory::default();
             *hero.equip = Equipment::default();
@@ -1578,6 +1625,7 @@ pub fn finish_loading(
             world.missions.reset();
             world.missions.enabled = true;
             world.known.0.clear();
+            *hero.progress = Default::default();
             world.memory.0 = data
                 .elsewhere
                 .iter()
@@ -1666,6 +1714,27 @@ pub fn plugin(app: &mut App) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn skills_perks_and_level_survive_a_save() {
+        use crate::skills::Skill;
+        let mut d = sample();
+        d.skills.set_level(4);
+        d.skills.set_grade(Skill::Athletics, 31);
+        d.skills.gain(Skill::Blade, 5.0);
+        assert!(d.skills.activate(Skill::Athletics));
+        let text = d.to_text();
+        let back = SaveData::parse(&text).unwrap();
+        assert_eq!(back.skills, d.skills);
+        assert!(back.present.contains("abilita"));
+        // Un salvataggio vecchio, senza la sezione, resta leggibile.
+        let start = text.find("[abilita]").unwrap();
+        let end = text.find("[tempo]").unwrap();
+        let old = format!("{}{}", &text[..start], &text[end..]);
+        let back = SaveData::parse(&old).unwrap();
+        assert!(!back.present.contains("abilita"));
+        assert_eq!(back.skills, crate::skills::Progress::default());
+    }
 
     #[test]
     fn the_region_and_the_other_regions_survive_a_save() {

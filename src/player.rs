@@ -15,6 +15,7 @@
 
 use crate::combat::CombatState;
 use crate::scene::{Ground, SceneNode};
+use crate::skills::{self, Skill};
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
@@ -242,7 +243,7 @@ pub fn movement(
     let pace = if overloaded {
         crate::character::OVERLOAD_SPEED
     } else if sprinting {
-        SPRINT_FACTOR
+        SPRINT_FACTOR * (1.0 + 0.05 * skills::rank(Skill::Athletics))
     } else {
         1.0
     };
@@ -285,9 +286,24 @@ pub fn movement(
             .as_ref()
             .and_then(|f| water_depth(f, transform.translation))
             .map_or((1.0, None), |(depth, level)| swim_factors(depth, level));
+        let drag = if swim_target.is_some() {
+            drag * (1.0 + 0.08 * skills::rank(Skill::Swimming))
+        } else {
+            drag
+        };
         velocity.x = direction.x * speed * drag;
         velocity.z = direction.z * speed * drag;
         state.swimming = swim_target.is_some();
+        // Fai e diventa (ADR 0038): la strada fatta allena corsa, nuoto e tempra.
+        let walked = direction.length() * speed * drag * time.delta_secs();
+        if swim_target.is_some() {
+            skills::train(Skill::Swimming, walked * 0.3);
+        } else if sprinting && !overloaded {
+            skills::train(Skill::Athletics, walked * 0.1);
+        }
+        if load.weight >= load.capacity * 0.5 {
+            skills::train(Skill::Carrying, walked * 0.05);
+        }
         if let Some(target) = swim_target {
             let stroke = if keys.pressed(KeyCode::Space) {
                 0.5
@@ -320,7 +336,8 @@ pub fn movement(
             && (state.grounded_now || state.coyote_left > 0.0 || state.last_ground_hit > 0.0)
             && velocity.y <= MAX_RISE_FOR_JUMP;
         if can_jump {
-            velocity.y = JUMP_SPEED;
+            velocity.y = JUMP_SPEED * (1.0 + 0.04 * skills::rank(Skill::Acrobatics));
+            skills::train(Skill::Acrobatics, 1.0);
             buffer.time_left = 0.0;
             state.coyote_left = 0.0;
             state.last_ground_hit = 0.0;
@@ -532,7 +549,7 @@ pub fn apply_fall_damage(
     }
     if state.grounded_now {
         if let Some(top) = peak.take() {
-            let damage = fall_damage(top - y);
+            let damage = fall_damage(top - y - 0.5 * skills::rank(Skill::Acrobatics));
             if damage > 0.0 && !cheats.god {
                 hp.current -= damage;
                 info!(

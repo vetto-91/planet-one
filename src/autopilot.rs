@@ -1065,6 +1065,16 @@ pub fn snapshot(world: &mut World) -> Value {
     }
     near.sort_by(|a, b| a.0.total_cmp(&b.0));
     let terrain = ground(world, pos);
+    let progress = world.resource::<crate::skills::Progress>().clone();
+    let abilita: serde_json::Map<String, serde_json::Value> = crate::skills::Skill::ALL
+        .into_iter()
+        .flat_map(|s| {
+            [
+                (s.key().to_string(), json!(progress.grade(s))),
+                (format!("talento_{}", s.key()), json!(progress.perk_rank(s))),
+            ]
+        })
+        .collect();
     json!({
         "app": app,
         "ora": (hour * 100.0).round() / 100.0,
@@ -1085,6 +1095,10 @@ pub fn snapshot(world: &mut World) -> Value {
         "arma": arma,
         "quest": quest,
         "missioni": missioni,
+        "abilita": abilita,
+        "livello": progress.level,
+        "punti_statistica": progress.stat_points,
+        "nodi": progress.nodes,
         "luoghi": world
             .resource::<crate::places::Known>()
             .0
