@@ -31,7 +31,8 @@ const HELP: &[&str] = &[
     "quest <inizio|cerca|raccogli|torna|completata> · uccidi [raggio] · vicino [raggio] · fps · entita",
     "volume <musica|ambiente|voci> <0-100> (solo per questa partita)",
     "regione <isola|nord> (viaggio fra l'Isola di Fontevivo e il Continente del Nord)",
-    "missioni [on|off] · missione <mp01|mp03|mp04|mp05> <tappa> (storia del Prologo)",
+    "missioni [on|off] · missione <id> <tappa> (storia del Prologo e secondarie)",
+    "veloce [luogo] (viaggio veloce verso un luogo scoperto; senza nome: l'elenco)",
 ];
 
 /// Trucchi attivi: non salvati, tutti spenti a ogni avvio.
@@ -104,6 +105,8 @@ pub enum Cmd {
     Status,
     Clear,
     Reset,
+    /// Viaggio veloce verso un luogo scoperto (senza nome: l'elenco).
+    Fast(String),
     /// Missioni del Prologo: accese/spente, o salto a una tappa.
     Missions(Option<bool>),
     Mission(String, usize),
@@ -230,6 +233,7 @@ pub fn parse(line: &str) -> Result<Cmd, String> {
                 _ => Err("uso: quest <inizio|cerca|raccogli|torna|completata>".into()),
             }
         }
+        "veloce" | "fast" => Ok(Cmd::Fast(args.join(" ").to_lowercase())),
         "missioni" => Ok(Cmd::Missions(match args.first().copied() {
             Some("on" | "si" | "sì") => Some(true),
             Some("off" | "no") => Some(false),
@@ -424,6 +428,8 @@ pub struct ShellCtx<'w, 's> {
     pilot: ResMut<'w, crate::autopilot::Autopilot>,
     quest: ResMut<'w, crate::quests::denaro_rubato::QuestState>,
     missions: ResMut<'w, crate::quests::missions::Missions>,
+    known: Res<'w, crate::places::Known>,
+    fast_travel: ResMut<'w, crate::places::FastTravel>,
     diagnostics: Res<'w, bevy::diagnostic::DiagnosticsStore>,
     every: Query<'w, 's, Entity>,
     enemies: Query<'w, 's, EnemyData, EnemyFilter>,
@@ -662,6 +668,26 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
             };
             ctx.pilot.dump = Some(Some(dir.join(format!("stato-{name}.json"))));
             shell.say(format!("stato in {}", dir.display()));
+        }
+        Cmd::Fast(name) => {
+            if name.is_empty() {
+                let prefix = format!("{}|", crate::region::current().key());
+                let names: Vec<&str> = ctx
+                    .known
+                    .0
+                    .keys()
+                    .filter_map(|k| k.strip_prefix(&prefix))
+                    .collect();
+                shell.say(format!("luoghi scoperti: {}", names.join(", ")));
+            } else {
+                match ctx.known.find(&name) {
+                    Some(place) => {
+                        shell.say(format!("viaggio veloce verso {}", place.0));
+                        ctx.fast_travel.0 = Some(place);
+                    }
+                    None => shell.say(format!("luogo non ancora scoperto: {name}")),
+                }
+            }
         }
         Cmd::Missions(on) => {
             if let Some(on) = on {

@@ -393,19 +393,21 @@ pub fn interact(
         // Solo il Viandante parla di quest; gli altri abitanti usano il loro saluto.
         // Una tappa di missione che chiede di parlare con lui ha la precedenza (il Viandante
         // solo quando «Denaro Rubato» non ha niente in sospeso da dirgli).
-        let facts = crate::quests::missions::Facts {
+        let mut facts = crate::quests::missions::Facts {
             pos: p,
             hour: clock.hour,
             quest_accepted: quest.accepted,
             quest_done: quest.stage == crate::quests::denaro_rubato::QuestStage::Completed,
             items: inventory.slots.iter().map(|s| (s.kind, s.qty)).collect(),
             enemies: Vec::new(),
+            weather: None,
+            sides_done: 0,
         };
         let busy_keeper = npc.name == "Viandante" && quest.accepted && !facts.quest_done;
         let mission = if busy_keeper {
             None
         } else {
-            missions.dialog_for(npc.name, &facts, &character.name)
+            missions.dialog_for(npc.name, &mut facts, &character.name)
         };
         let (lines, choices, voices) = if let Some(lines) = mission {
             let n = lines.len();

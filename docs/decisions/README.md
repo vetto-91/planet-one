@@ -62,3 +62,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0034 | Missioni a tappe da file di testo e storia principale del Prologo | accettato |
 | 0035 | I bivi di «Denaro Rubato» | accettato |
 | 0036 | Missioni secondarie del Prologo | accettato |
+| 0037 | Eventi casuali, luoghi scoperti e viaggio veloce | accettato |

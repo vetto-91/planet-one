@@ -153,6 +153,8 @@ pub struct UiQueries<'w, 's> {
     pub occluded: Res<'w, hud::Occluded>,
     pub map_view: Res<'w, map::MapView>,
     pub missions: Res<'w, crate::quests::missions::Missions>,
+    pub known: Res<'w, crate::places::Known>,
+    pub fast_travel: ResMut<'w, crate::places::FastTravel>,
     pub clock: ResMut<'w, crate::daynight::GameClock>,
     pub wait: ResMut<'w, crate::daynight::WaitUi>,
     pub player_pos: Query<'w, 's, &'static GlobalTransform, With<crate::player::Player>>,
@@ -445,7 +447,7 @@ pub fn ui(
         AppState::Map => {
             let heading = (-orbit.yaw).to_degrees().rem_euclid(360.0);
             if let Ok(pp) = q.player_pos.single() {
-                map::draw_map_overlay(
+                let picked = map::draw_map_overlay(
                     ctx,
                     q.cameras.single().ok(),
                     pp.translation(),
@@ -459,7 +461,11 @@ pub fn ui(
                         )
                     }),
                     q.map_view.zoom,
+                    &q.known,
                 );
+                if picked.is_some() {
+                    q.fast_travel.0 = picked;
+                }
             }
         }
         AppState::Journal => {

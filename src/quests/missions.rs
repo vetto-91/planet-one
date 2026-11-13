@@ -11,7 +11,7 @@ use super::{ObjState, QuestEntry, QuestStatus};
 use bevy::prelude::*;
 
 /// File delle missioni: la storia principale, poi le secondarie (ADR 0036).
-const FILES: [(&str, &str); 2] = [
+const FILES: [(&str, &str); 3] = [
     (
         "assets/quests/prologo/missioni.txt",
         include_str!("../../assets/quests/prologo/missioni.txt"),
@@ -19,6 +19,10 @@ const FILES: [(&str, &str); 2] = [
     (
         "assets/quests/prologo/secondarie.txt",
         include_str!("../../assets/quests/prologo/secondarie.txt"),
+    ),
+    (
+        "assets/quests/prologo/eventi.txt",
+        include_str!("../../assets/quests/prologo/eventi.txt"),
     ),
 ];
 
@@ -41,6 +45,10 @@ pub enum When {
     Has(crate::inventory::ItemKind, u32),
     /// Nessun nemico vivo entro `r` metri dal punto (un campo liberato).
     Clear(Vec2, f32),
+    /// Il meteo in corso è questo.
+    Weather(crate::weather::Kind),
+    /// Almeno `n` missioni secondarie già compiute.
+    SidesDone(usize),
 }
 
 /// Oggetto dal nome italiano usato nei file («mela», «pesce», «pozione del mulo»…).
@@ -89,6 +97,8 @@ pub struct Mission {
     pub after_quest: bool,
     /// Missione secondaria: compare nel diario solo dopo la prima tappa (chi la propone).
     pub side: bool,
+    /// Evento casuale: un incontro legato a luogo, ora e meteo (conta come secondaria nel diario).
+    pub event: bool,
     pub steps: Vec<Step>,
 }
 
@@ -138,7 +148,10 @@ pub fn parse(text: &str) -> Vec<Mission> {
         match (key, m.steps.last_mut()) {
             ("titolo", None) => m.title = value.to_string(),
             ("sommario", None) => m.summary = value.to_string(),
-            ("tipo", None) => m.side = value == "secondaria",
+            ("tipo", None) => {
+                m.event = value == "evento";
+                m.side = value == "secondaria" || m.event;
+            }
             ("dopo", None) => {
                 if value == "denaro_rubato" {
                     m.after_quest = true;
@@ -165,6 +178,8 @@ pub fn parse(text: &str) -> Vec<Mission> {
                     ("vicino", [x, z, r]) => Some(When::Near(Vec2::new(*x, *z), *r)),
                     ("libero", [x, z, r]) => Some(When::Clear(Vec2::new(*x, *z), *r)),
                     ("ha", _) => item_qty(rest).map(|(k, n)| When::Has(k, n)),
+                    ("meteo", _) => crate::weather::Kind::parse(rest).map(When::Weather),
+                    ("fatte", [n]) => Some(When::SidesDone(*n as usize)),
                     ("sotto", [y]) => Some(When::Below(*y)),
                     ("sopra", [y]) => Some(When::Above(*y)),
                     ("ora", [a, b]) => Some(When::Hour(*a, *b)),
@@ -236,11 +251,24 @@ pub struct Facts {
     /// Oggetti nell'inventario e nemici vivi (posizioni).
     pub items: Vec<(crate::inventory::ItemKind, u32)>,
     pub enemies: Vec<Vec3>,
+    /// Meteo in corso (`None` dove non serve saperlo).
+    pub weather: Option<crate::weather::Kind>,
+    /// Missioni secondarie compiute (lo riempie il motore).
+    pub sides_done: usize,
 }
 
 impl Missions {
     fn index(&self, id: &str) -> Option<usize> {
         self.list.iter().position(|m| m.id == id)
+    }
+
+    /// Quante missioni secondarie (non gli eventi) sono compiute.
+    pub fn sides_done(&self) -> usize {
+        self.list
+            .iter()
+            .zip(&self.progress)
+            .filter(|(m, p)| m.side && !m.event && **p >= m.steps.len())
+            .count()
     }
 
     pub fn done(&self, id: &str) -> bool {
@@ -273,10 +301,17 @@ impl Missions {
 
     /// Battute che `npc` deve dire adesso per una tappa `parla` (le altre condizioni della
     /// tappa devono già valere). Apre il dialogo di missione.
-    pub fn dialog_for(&mut self, npc: &str, facts: &Facts, player: &str) -> Option<Vec<String>> {
+    pub fn dialog_for(
+        &mut self,
+        npc: &str,
+        facts: &mut Facts,
+        player: &str,
+    ) -> Option<Vec<String>> {
         if !self.enabled {
             return None;
         }
+        facts.sides_done = self.sides_done();
+        let facts = &*facts;
         let (mission, lines) = self.current(facts.quest_done).find_map(|(i, step)| {
             let mine = step
                 .when
@@ -305,11 +340,13 @@ impl Missions {
     }
 
     /// Avanza le tappe le cui condizioni valgono; restituisce quelle appena completate.
-    pub fn advance(&mut self, facts: &Facts) -> Vec<(usize, Step, bool)> {
+    pub fn advance(&mut self, facts: &mut Facts) -> Vec<(usize, Step, bool)> {
         let mut done = Vec::new();
         if !self.enabled {
             return done;
         }
+        facts.sides_done = self.sides_done();
+        let facts = &*facts;
         for i in 0..self.list.len() {
             let Some(step) = self.list[i].steps.get(self.progress[i]) else {
                 continue;
@@ -428,6 +465,8 @@ fn holds(w: &When, f: &Facts, talked: &[(String, usize)], mission: usize) -> boo
         When::Talk(npc) => talked.iter().any(|(t, i)| t == npc && *i == mission),
         When::Has(kind, n) => f.items.iter().any(|(k, q)| k == kind && q >= n),
         When::Clear(p, r) => !f.enemies.iter().any(|e| e.xz().distance(*p) <= *r),
+        When::Weather(kind) => f.weather == Some(*kind),
+        When::SidesDone(n) => f.sides_done >= *n,
         When::Quest(done) => {
             if *done {
                 f.quest_done
@@ -444,6 +483,7 @@ pub fn track_missions(
     mut missions: ResMut<Missions>,
     quest: Res<QuestState>,
     clock: Res<crate::daynight::GameClock>,
+    weather: Res<crate::weather::WeatherState>,
     dialog: Res<crate::entities::DialogState>,
     players: Query<&GlobalTransform, With<crate::player::Player>>,
     enemies: Query<(&GlobalTransform, &crate::combat::EnemyHealth), With<crate::entities::Enemy>>,
@@ -458,11 +498,13 @@ pub fn track_missions(
     let Ok(player) = players.single() else {
         return;
     };
-    let facts = Facts {
+    let mut facts = Facts {
         pos: player.translation(),
         hour: clock.hour,
         quest_accepted: quest.accepted,
         quest_done: quest.stage == QuestStage::Completed,
+        weather: Some(weather.shown()),
+        sides_done: 0,
         items: inventory.slots.iter().map(|s| (s.kind, s.qty)).collect(),
         // Solo i vivi: un nemico sconfitto resta un attimo nel mondo prima di sparire.
         enemies: enemies
@@ -471,7 +513,7 @@ pub fn track_missions(
             .map(|(t, _)| t.translation())
             .collect(),
     };
-    for (i, step, finished) in missions.advance(&facts) {
+    for (i, step, finished) in missions.advance(&mut facts) {
         let title = missions.list[i].title.clone();
         if step.coins > 0 {
             inventory.add(crate::inventory::ItemKind::Coin, step.coins);
@@ -520,6 +562,8 @@ mod tests {
             quest_done: done,
             items: Vec::new(),
             enemies: Vec::new(),
+            weather: None,
+            sides_done: 0,
         }
     }
 
@@ -533,9 +577,13 @@ mod tests {
             m.list[4..].iter().all(|x| x.side),
             "le altre sono secondarie"
         );
+        assert_eq!(m.list.iter().filter(|x| x.side && !x.event).count(), 14);
+        assert_eq!(m.list.iter().filter(|x| x.event).count(), 11);
         for mission in &m.list {
             assert!(!mission.title.is_empty() && !mission.summary.is_empty());
-            assert!(mission.steps.len() >= 3, "{}", mission.id);
+            // Un evento è un incontro: una tappa o due. Le missioni vere ne hanno almeno tre.
+            let least = if mission.event { 1 } else { 3 };
+            assert!(mission.steps.len() >= least, "{}", mission.id);
             for s in &mission.steps {
                 assert!(!s.goal.is_empty() && !s.when.is_empty(), "{}", mission.id);
                 // Chi deve parlare ha qualcosa da dire.
@@ -565,30 +613,30 @@ mod tests {
         };
         // Posto giusto, ora sbagliata.
         assert!(
-            m.advance(&facts(Vec3::new(10.0, 0.0, 11.0), 12.0, false, false))
+            m.advance(&mut facts(Vec3::new(10.0, 0.0, 11.0), 12.0, false, false))
                 .is_empty()
         );
         // Ora giusta (a cavallo della mezzanotte), posto sbagliato.
         assert!(
-            m.advance(&facts(Vec3::new(50.0, 0.0, 11.0), 23.0, false, false))
+            m.advance(&mut facts(Vec3::new(50.0, 0.0, 11.0), 23.0, false, false))
                 .is_empty()
         );
-        let done = m.advance(&facts(Vec3::new(10.0, 0.0, 11.0), 2.0, false, false));
+        let done = m.advance(&mut facts(Vec3::new(10.0, 0.0, 11.0), 2.0, false, false));
         assert_eq!(done.len(), 1);
         assert_eq!(done[0].1.coins, 5);
         assert!(!done[0].2);
         // Il dialogo vale solo se letto fino in fondo.
-        let f = facts(Vec3::ZERO, 12.0, false, false);
-        assert_eq!(m.dialog_for("Marta", &f, "Ada"), None);
+        let mut f = facts(Vec3::ZERO, 12.0, false, false);
+        assert_eq!(m.dialog_for("Marta", &mut f, "Ada"), None);
         assert_eq!(
-            m.dialog_for("Gino", &f, "Ada"),
+            m.dialog_for("Gino", &mut f, "Ada"),
             Some(vec!["Ciao Ada.".to_string()])
         );
         m.dialog_closed(false);
-        assert!(m.advance(&f).is_empty());
-        m.dialog_for("Gino", &f, "Ada");
+        assert!(m.advance(&mut f).is_empty());
+        m.dialog_for("Gino", &mut f, "Ada");
         m.dialog_closed(true);
-        let done = m.advance(&f);
+        let done = m.advance(&mut f);
         assert!(done[0].2, "missione finita");
         assert!(m.done("a") && m.unlocked("x"));
     }
@@ -605,21 +653,21 @@ mod tests {
             talking: None,
             talked: Vec::new(),
         };
-        let f = facts(Vec3::ZERO, 12.0, false, false);
+        let mut f = facts(Vec3::ZERO, 12.0, false, false);
         assert_eq!(
-            m.dialog_for("Gino", &f, "x"),
+            m.dialog_for("Gino", &mut f, "x"),
             Some(vec!["Uno.".to_string()])
         );
         m.dialog_closed(true);
-        assert_eq!(m.advance(&f).len(), 1);
+        assert_eq!(m.advance(&mut f).len(), 1);
         assert_eq!(m.progress, vec![1, 0]);
         // La seconda volta Gino propone l'altro incarico.
         assert_eq!(
-            m.dialog_for("Gino", &f, "x"),
+            m.dialog_for("Gino", &mut f, "x"),
             Some(vec!["Due.".to_string()])
         );
         m.dialog_closed(true);
-        m.advance(&f);
+        m.advance(&mut f);
         assert_eq!(m.progress, vec![1, 1]);
     }
 
@@ -642,13 +690,16 @@ mod tests {
         };
         let mut f = facts(Vec3::ZERO, 12.0, false, false);
         f.items = vec![(ItemKind::Fish, 1), (ItemKind::Apple, 3)];
-        assert!(m.advance(&f).is_empty(), "un pesce solo non basta");
+        assert!(m.advance(&mut f).is_empty(), "un pesce solo non basta");
         f.items[0].1 = 2;
         f.enemies = vec![Vec3::new(12.0, 0.0, 11.0)];
-        assert_eq!(m.advance(&f).len(), 1);
-        assert!(m.advance(&f).is_empty(), "c'è ancora un nemico nel campo");
+        assert_eq!(m.advance(&mut f).len(), 1);
+        assert!(
+            m.advance(&mut f).is_empty(),
+            "c'è ancora un nemico nel campo"
+        );
         f.enemies.clear();
-        assert!(m.advance(&f)[0].2);
+        assert!(m.advance(&mut f)[0].2);
     }
 
     #[test]

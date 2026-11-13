@@ -218,16 +218,20 @@ impl Default for WeatherState {
 }
 
 impl WeatherState {
-    /// "Pioggia, 9 °C" (sereno/nuvoloso se non c'è un fenomeno in corso).
-    pub fn label(&self) -> String {
-        let kind = if self.active || self.kind == Kind::Cloudy {
+    /// Il tempo che si vede adesso (sereno o nuvoloso se non c'è un fenomeno in corso).
+    pub fn shown(&self) -> Kind {
+        if self.active || self.kind == Kind::Cloudy {
             self.kind
         } else if self.cloud > 0.35 {
             Kind::Cloudy
         } else {
             Kind::Clear
-        };
-        format!("{}, {:.0} °C", kind.name(), self.temp)
+        }
+    }
+
+    /// "Pioggia, 9 °C".
+    pub fn label(&self) -> String {
+        format!("{}, {:.0} °C", self.shown().name(), self.temp)
     }
 }
 

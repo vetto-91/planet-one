@@ -673,11 +673,126 @@ fn keep_bandits(
     }
 }
 
+/// Distanza (m) a cui un luogo si considera scoperto.
+const DISCOVER_RANGE: f32 = 16.0;
+
+/// Luoghi scoperti dal giocatore (ADR 0037): chiave «regione|nome» e il punto in cui stava
+/// quando li ha scoperti, che è dove arriva il viaggio veloce (di sicuro si può stare lì).
+#[derive(Resource, Default)]
+pub struct Known(pub std::collections::BTreeMap<String, Vec3>);
+
+impl Known {
+    fn key(name: &str) -> String {
+        format!("{}|{name}", crate::region::current().key())
+    }
+
+    /// Punto d'arrivo del luogo `name` nella regione corrente, se è stato scoperto.
+    pub fn arrival(&self, name: &str) -> Option<Vec3> {
+        self.0.get(&Self::key(name)).copied()
+    }
+
+    /// Il luogo scoperto della regione corrente il cui nome contiene `wanted` (minuscolo).
+    pub fn find(&self, wanted: &str) -> Option<(String, Vec3)> {
+        let prefix = format!("{}|", crate::region::current().key());
+        self.0
+            .iter()
+            .filter_map(|(k, v)| Some((k.strip_prefix(&prefix)?.to_string(), *v)))
+            .find(|(name, _)| name.to_lowercase().contains(wanted))
+    }
+}
+
+/// Richiesta di viaggio veloce verso un luogo scoperto (mappa o shell): nome e punto d'arrivo.
+#[derive(Resource, Default)]
+pub struct FastTravel(pub Option<(String, Vec3)>);
+
+/// I luoghi della regione corrente che si possono scoprire: quelli di `isola.txt` e il paese.
+pub fn all_places(village: &crate::village::VillageInfo) -> Vec<(String, Vec2)> {
+    let mut places = crate::water::load_spec_cached().places.clone();
+    if village.poly.len() >= 3 {
+        places.push((village.spec.name.clone(), village.spec.plaza));
+    }
+    places
+}
+
+/// Sistema: avvicinandosi a un luogo lo si scopre (nome sulla mappa e viaggio veloce).
+pub fn discover_places(
+    time: Res<Time>,
+    mut timer: Local<f32>,
+    village: Res<crate::village::VillageInfo>,
+    mut known: ResMut<Known>,
+    mut session: ResMut<crate::save::Session>,
+    players: Query<&GlobalTransform, With<crate::player::Player>>,
+) {
+    *timer -= time.delta_secs();
+    if *timer > 0.0 {
+        return;
+    }
+    *timer = 0.5;
+    let Ok(player) = players.single() else {
+        return;
+    };
+    let p = player.translation();
+    for (name, at) in all_places(&village) {
+        let key = Known::key(&name);
+        if p.xz().distance(at) <= DISCOVER_RANGE && !known.0.contains_key(&key) {
+            known.0.insert(key, p);
+            info!("[LUOGHI] scoperto: {name}");
+            // Nelle prove automatiche (nessuna partita attiva) niente avvisi a schermo.
+            if session.active {
+                session.notify(format!("Luogo scoperto: {name}"));
+            }
+        }
+    }
+}
+
+/// Sistema: esegue il viaggio veloce. Non si parte con un nemico alle calcagna.
+#[allow(clippy::type_complexity)]
+pub fn fast_travel(
+    mut travel: ResMut<FastTravel>,
+    mut session: ResMut<crate::save::Session>,
+    state: Res<State<crate::AppState>>,
+    mut next: ResMut<NextState<crate::AppState>>,
+    minds: Query<(&GlobalTransform, &crate::entities::EnemyMind), With<Enemy>>,
+    mut players: Query<
+        (&mut Transform, &mut avian3d::prelude::LinearVelocity),
+        With<crate::player::Player>,
+    >,
+) {
+    let Some((name, to)) = travel.0.take() else {
+        return;
+    };
+    let Ok((mut t, mut v)) = players.single_mut() else {
+        return;
+    };
+    let here = t.translation;
+    if minds
+        .iter()
+        .any(|(g, m)| m.chase && g.translation().distance(here) < 40.0)
+    {
+        session.notify("Non puoi viaggiare con un nemico alle calcagna");
+        info!("[LUOGHI] viaggio veloce rifiutato: nemico vicino");
+        return;
+    }
+    t.translation = to + Vec3::Y * 0.3;
+    v.0 = Vec3::ZERO;
+    if *state.get() == crate::AppState::Map {
+        next.set(crate::AppState::Playing);
+    }
+    info!("[LUOGHI] viaggio veloce: {name}");
+    session.notify(name);
+}
+
 pub fn plugin(app: &mut App) {
-    app.add_systems(
-        Update,
-        keep_bandits.run_if(in_state(crate::AppState::Playing)),
-    );
+    app.init_resource::<Known>()
+        .init_resource::<FastTravel>()
+        .add_systems(
+            Update,
+            (
+                keep_bandits.run_if(in_state(crate::AppState::Playing)),
+                discover_places.run_if(in_state(crate::AppState::Playing)),
+                fast_travel,
+            ),
+        );
 }
 
 #[cfg(test)]

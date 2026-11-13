@@ -328,3 +328,113 @@ quando: parla Viandante
 > Tieni: non è una ricompensa, è una provvista. Quando sarai di là, guarda dove arrivano i fili.
 dai: pozione di cura 2
 monete: 15
+
+[missione qs09]
+titolo: L'Armatura Lucida di Guardia Dino
+sommario: Dino è la guardia più giovane di Porta Sud. Ha paura di deludere il sergente, e ancora di più dell'acqua profonda.
+tipo: secondaria
+
+[tappa]
+obiettivo: Parla con la Guardia Dino, a Porta Sud nel pomeriggio
+quando: parla Guardia Dino
+> Posso chiederti una cosa? Ma non dirla ad Aldo. Io fuori dalle mura non ho mai combattuto davvero.
+> E non so nuotare. Una guardia di un'isola che non sa nuotare. Tu sei arrivato dal mare… com'è, l'acqua alta?
+> Vai a vedere la spiaggia bassa accanto al molo, e dimmi se lì si tocca. Se si tocca, ci provo.
+
+[tappa]
+obiettivo: Prova l'acqua bassa accanto al molo
+quando: vicino 16 100 6
+pensiero: Qui il fondo scende piano: l'acqua arriva al petto per venti passi buoni. Per imparare a galleggiare va benissimo.
+
+[tappa]
+obiettivo: Torna da Dino con la risposta
+quando: parla Guardia Dino
+> Si tocca? Per venti passi? … Allora domattina, prima del turno, ci vado. Senza corazza.
+> Grazie. Quando ci sarà bisogno, sulla porta, di te mi ricordo. Tieni: sono le mie, ma a te servono di più.
+dai: frecce 10
+monete: 8
+
+[missione qs12]
+titolo: La Croce delle Quattro Ronde
+sommario: Le guardie di ronda hanno annotato, ognuna dal suo lato delle mura, qualcosa di strano. Nessuna ne ha mai parlato con le altre.
+tipo: secondaria
+
+[tappa]
+obiettivo: Chiedi al sergente, la Guardia Aldo, delle ronde
+quando: parla Guardia Aldo
+> Le ronde? Quattro lati, quattro uomini, e ognuno giura di vedere una cosa strana dal suo.
+> Io ho una porta da tenere. Sali tu sulle mura, dalle scale, un lato alla volta, e dimmi se sono fantasie.
+
+[tappa]
+obiettivo: Sali sulle mura a nord
+quando: vicino -9.6 -8.7 5
+quando: sopra 2.8
+pensiero: Da qui la torre antica sta dritta a nord-est. Sul parapetto qualcuno ha inciso una tacca: a mezzogiorno la sua ombra punta verso il paese come un dito.
+
+[tappa]
+obiettivo: Sali sulle mura a est
+quando: vicino 24.7 13.6 5
+quando: sopra 2.8
+pensiero: A est, oltre il bosco, la grotta. Un'altra tacca, e una riga graffiata: «all'equinozio il sole esce da lì, e la luce corre fino alla piazza».
+
+[tappa]
+obiettivo: Sali sulle mura a sud
+quando: vicino 10.8 24.3 5
+quando: sopra 2.8
+pensiero: A sud il faro. La tacca qui dice: «il fascio passa sopra il campanile. Mai un palmo più in là».
+
+[tappa]
+obiettivo: Sali sulle mura a ovest
+quando: vicino -26.9 10 5
+quando: sopra 2.8
+pensiero: A ovest il santuario: al tramonto il suo tetto getta un'ombra a punta fin sotto le mura. Due linee, allora: torre e faro, santuario e grotta. Dove si incrociano?
+
+[tappa]
+obiettivo: A mezzogiorno, mettiti accanto al pozzo della piazza
+quando: vicino -1.2 10 3
+quando: ora 11.5 13
+pensiero: Le due linee si incrociano qui, sul pozzo. Chi ha costruito Fontevivo ha messo l'acqua esattamente al centro di una croce. E sotto, il pozzo risuona.
+monete: 20
+
+[missione qs15]
+titolo: Il Cantiere di Fontevivo
+sommario: Gaspare vuole che la barca per il nord sia la barca di tutti: ognuno, in paese, ci mette qualcosa di suo.
+tipo: secondaria
+dopo: mp04
+
+[tappa]
+obiettivo: Parla con Gaspare del cantiere (dopo aver aiutato almeno quattro abitanti)
+quando: parla Gaspare
+quando: fatte 4
+> Hai dato una mano a mezzo paese, {nome}. Adesso il paese la dà a te.
+> Una barca da traversata non la fa un uomo solo. Passa da Ferruccio per i perni, da Gino per la vela, da Marta per le provviste.
+> E fai benedire la prua a Don Anselmo. Poi torna qui.
+
+[tappa]
+obiettivo: Chiedi a Ferruccio i perni di bronzo
+quando: parla Ferruccio
+> Perni di bronzo, niente ferro: gli scogli dello Stretto tirano il ferro come una calamita. Li ho già fusi, sai? Speravo che qualcuno me li chiedesse.
+
+[tappa]
+obiettivo: Chiedi a Gino la vela
+quando: parla Gino
+> La vela è la stessa tela delle mie pale, cucita doppia. Tiene la tramontana meglio di qualunque straccio di mare.
+
+[tappa]
+obiettivo: Chiedi a Marta le provviste
+quando: parla Marta
+> Pane biscottato, che dura un mese. E Ida manda formaggio, Tonio le mele, Nina il pesce sotto sale. Osvaldo ci mette una botticella, ma non dirlo a nessuno.
+
+[tappa]
+obiettivo: Fai benedire la prua a Don Anselmo
+quando: parla Don Anselmo
+> Che nome avrà, la barca? … Il tuo. Quello che hai scelto sulla sabbia. Non ce n'è uno più giusto.
+
+[tappa]
+obiettivo: Torna da Gaspare, al molo
+quando: parla Gaspare
+> Perni, vela, provviste, e un nome. Adesso sì che è una barca.
+> Il giorno che salpi scenderanno tutti al molo. Tieni: questa era per il viaggio, ma è meglio che la porti tu.
+dai: pozione di cura 2
+dai: pozione del mulo 1
+monete: 25

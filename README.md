@@ -220,8 +220,13 @@ Una partita nuova comincia sulla **spiaggia a est del molo**, tra i rottami. La 
 4. **Sotto l'Arco dei Sei Gradoni** — Don Anselmo, poi la grotta a est fino al laghetto e in fondo al cunicolo.
 5. **Oltre il Velo del Nord** — Gaspare, la Sera delle Lanterne in piazza (dopo le 20), la partenza prima dell'alba.
 
-Gli abitanti propongono anche **undici missioni secondarie** quando ci parli (Marta, Ettore, Ferruccio, Don Anselmo,
-Ida, Osvaldo, Pietro, Agnese, Rosa, Nina): si fanno in qualsiasi ordine (`assets/quests/prologo/secondarie.txt`, ADR 0036).
+Gli abitanti propongono anche **14 missioni secondarie** quando ci parli (Marta, Ettore, Ferruccio, Don Anselmo, Ida,
+Osvaldo, Pietro, Agnese, Rosa, Nina, la Guardia Dino, la Guardia Aldo, Gaspare): si fanno in qualsiasi ordine
+(`assets/quests/prologo/secondarie.txt`, ADR 0036). Girando per l'isola capitano **undici eventi** legati a luogo, ora
+e meteo (`eventi.txt`, ADR 0037).
+
+**Mappa e viaggio veloce**: un luogo compare sulla mappa (`M`) quando ci arrivi; da allora un clic sul suo nome ti ci
+riporta. Dalla shell: `veloce` (elenco) e `veloce <luogo>`.
 
 Finita l'ultima missione principale, Gaspare ti porta al Continente del Nord. I testi e le condizioni delle missioni sono in
 `assets/quests/prologo/missioni.txt` (ADR 0034). Shell: `missioni` (stato), `missione mp03 2` (salta a una tappa).

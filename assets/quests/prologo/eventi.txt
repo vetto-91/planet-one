@@ -1,0 +1,155 @@
+# Eventi casuali dell'isola (ADR 0037): incontri legati a luogo, ora e meteo. Stesso formato delle
+# missioni, con `tipo: evento`; in più `quando: meteo <sereno|nuvoloso|pioggia|temporale|nebbia|neve>`.
+# Capitano una volta sola, quando passi di lì nel momento giusto; entrano nel diario a cose fatte.
+# Fonte: Trama-Planet-One/09, sezione 4 (EC-01…EC-12; manca EC-05, il pedaggio del ponte).
+
+[missione ec01]
+titolo: Il Relitto della Mareggiata
+sommario: Una cassa portata a riva dalla notte.
+tipo: evento
+dopo: mp01
+
+[tappa]
+obiettivo: La spiaggia a est del molo, al mattino presto
+quando: vicino 38 86 8
+quando: ora 5 8.5
+pensiero: Tra i gabbiani, una cassa sigillata che ieri non c'era. Dentro, monete bagnate e una boccetta intatta. Il mare ogni tanto restituisce.
+dai: pozione di cura 1
+monete: 8
+
+[missione ec02]
+titolo: Il Carretto nella Nebbia
+sommario: Una ruota nel fango, sulla strada del nord.
+tipo: evento
+
+[tappa]
+obiettivo: La strada del nord, al crepuscolo
+quando: vicino 0.2 -24 7
+quando: ora 18 20.5
+pensiero: Un carretto con la ruota nel fango, e nessuno attorno. La sollevi di spalla: sotto il telo c'è un cesto di mele, e un biglietto: «Per chi mi ha tolto dal guaio».
+dai: mela 4
+
+[missione ec03]
+titolo: Fuoco Notturno sulla Torre
+sommario: Una scintilla azzurra in cima alla torre antica.
+tipo: evento
+
+[tappa]
+obiettivo: L'altura della torre antica, a notte fonda e col cielo sereno
+quando: vicino 58.5 -58.5 26
+quando: ora 0 3.5
+quando: meteo sereno
+pensiero: In cima alla torre si accende una scintilla azzurra: tre lampi, una pausa, tre lampi. Qualcuno, lassù, sta parlando col nord. Quando arrivi sotto le mura, non c'è più nessuno.
+
+[missione ec04]
+titolo: La Pecora Smarrita
+sommario: Un belato nel bosco, lontano dal gregge.
+tipo: evento
+
+[tappa]
+obiettivo: Il bosco a est del pascolo, di giorno
+quando: vicino 46 28 8
+quando: ora 8 18
+pensiero: Una pecora impigliata nei rovi. La liberi con le mani, piano, e lei ti segue per un tratto. Sa dov'è il gregge meglio di te.
+
+[tappa]
+obiettivo: Riportala al pascolo
+quando: vicino 34 38 6
+pensiero: Rientra tra le altre senza voltarsi. Sul recinto qualcuno ha lasciato un fagotto per chi riporta le bestie.
+dai: mela 2
+monete: 6
+
+[missione ec06]
+titolo: Il Serpente di Luce
+sommario: L'alba sui gradoni della grotta.
+tipo: evento
+
+[tappa]
+obiettivo: La rampa della grotta, all'alba col cielo sereno
+quando: vicino 91 20 9
+quando: ora 5.5 7.5
+quando: meteo sereno
+pensiero: Il sole esce dal mare e accende i sei gradoni uno dopo l'altro: un serpente di luce che scende verso l'ingresso. Dura il tempo di dieci respiri. Chi ha tagliato questa pietra sapeva dove sorge il sole.
+monete: 10
+
+[missione ec07]
+titolo: Il Ronzio del Lampione
+sommario: Sotto la pioggia, un lampione brilla d'azzurro.
+tipo: evento
+
+[tappa]
+obiettivo: La strada fuori da Porta Sud, sotto la pioggia
+quando: vicino 0.4 52 6
+quando: meteo pioggia
+pensiero: Un lampione ronza e brilla azzurro, più forte degli altri. Avvicini la mano: il vetro è tiepido, e batte piano, come un polso. La Luce Viva sente la pioggia.
+
+[missione ec08]
+titolo: La Disputa del Mercato
+sommario: Tonio e Nina litigano, a voce altissima.
+tipo: evento
+
+[tappa]
+obiettivo: La piazza, al mattino tardi
+quando: parla Tonio
+quando: ora 10 13
+> Ah, tu! Fai da giudice. Nina dice di aver salvato più marinai lei col suo pesce che io con le mie mele.
+> Un uomo in mare tre giorni: gli dai una mela o un'acciuga? … Ecco. Vedi? Nemmeno tu lo sai. Tieni una mela, e non dirle che te l'ho data.
+dai: mela 1
+
+[tappa]
+obiettivo: Senti anche Nina
+quando: parla Nina
+> Ti ha dato una mela, vero? Lo fa con tutti. Tieni un pesce: così siamo pari, e il giudice resta onesto.
+dai: pesce 1
+
+[missione ec09]
+titolo: Il Sentiero delle Farfalle
+sommario: Tre farfalle che volano insieme, sempre nello stesso verso.
+tipo: evento
+
+[tappa]
+obiettivo: Il margine del bosco vicino al laghetto, col sole
+quando: vicino 62 -8 8
+quando: ora 9 17
+quando: meteo sereno
+pensiero: Tre farfalle volano insieme verso un tronco cavo. Dentro, asciutto, un sacchetto di tela: qualcuno lo nascose qui molto tempo fa, e non tornò a prenderlo.
+monete: 12
+
+[missione ec10]
+titolo: La Nave Fantasma
+sommario: Remi nella nebbia, a nord.
+tipo: evento
+
+[tappa]
+obiettivo: La costa nord dietro il mulino, di notte con la nebbia
+quando: vicino 0.5 -78 12
+quando: ora 21 4
+quando: meteo nebbia
+pensiero: Dal mare, nella nebbia, un battere di remi lento e regolare. E un canto, senza parole. Passa da ovest a est e si perde. Nessuna barca dell'isola ha tanti remi.
+
+[missione ec11]
+titolo: La Ronda Infreddolita
+sommario: Una guardia batte i denti accanto alla lanterna.
+tipo: evento
+
+[tappa]
+obiettivo: Porta Nord, in una notte di neve, con qualcosa da mangiare
+quando: vicino 0.2 -7.6 6
+quando: ora 20 6
+quando: meteo neve
+quando: ha mela 1
+pensiero: La guardia di turno batte i denti. Le lasci una mela sul parapetto, senza dire niente. Fa un cenno col mento: da queste parti vuol dire grazie.
+prendi: mela 1
+monete: 5
+
+[missione ec12]
+titolo: Il Messaggio nella Bottiglia
+sommario: Vetro verde tra la schiuma, all'alba.
+tipo: evento
+
+[tappa]
+obiettivo: La riva accanto al molo, all'alba
+quando: vicino 14 99 5
+quando: ora 5 7
+pensiero: Una bottiglia di vetro verde, sigillata. Dentro, un foglio con una riga sola, in una scrittura che non conosci, e sotto un disegno: un'isola piccola, uno stretto, una terra grande. E una freccia.
+monete: 5

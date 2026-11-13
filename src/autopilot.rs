@@ -373,7 +373,8 @@ pub fn field<'a>(state: &'a Value, name: &str) -> Option<&'a Value> {
         }
         p if p.starts_with("npc:") => {
             let mut parts = p[4..].splitn(2, ':');
-            let who = parts.next()?.to_lowercase();
+            // Nei nomi di due parole il trattino basso sta per lo spazio («guardia_gino»).
+            let who = parts.next()?.to_lowercase().replace('_', " ");
             let what = parts.next().unwrap_or("dist");
             // Il nome esatto vince su quello che lo contiene (Gino, non la Guardia Gino).
             let rank = |v: &Value| {
@@ -1084,6 +1085,12 @@ pub fn snapshot(world: &mut World) -> Value {
         "arma": arma,
         "quest": quest,
         "missioni": missioni,
+        "luoghi": world
+            .resource::<crate::places::Known>()
+            .0
+            .keys()
+            .cloned()
+            .collect::<Vec<_>>(),
         "inventario": items,
         "dialogo": dialog,
         "negozio": negozio,

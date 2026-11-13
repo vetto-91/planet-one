@@ -1,0 +1,246 @@
+# Il resto dell'isola (ADR 0037): luoghi scoperti e viaggio veloce, eventi casuali legati a luogo,
+# ora e meteo, e le ultime tre missioni secondarie (Guardia Dino, le quattro ronde, il cantiere).
+god on
+ia off
+meteo sereno
+ora 10
+missioni on
+aspetta 2
+# Viaggio veloce: solo verso i luoghi già scoperti.
+tp 0.5 3 -60
+aspetta 2
+tp -1.2 3 10
+aspetta 2
+veloce mulino
+aspetta 2
+verifica z < -50
+veloce torre
+aspetta 2
+verifica z < -50
+veloce fontevivo
+aspetta 2
+verifica z > -5
+# Eventi: capitano passando di lì nel momento giusto.
+missione mp01 5
+aspetta 1
+ora 6
+aspetta 1
+tp 38 3 86
+aspetta 2
+verifica /missioni/ec01 = 2
+tp 14 3 99
+aspetta 2
+verifica /missioni/ec12 = 2
+# Fuori orario non succede nulla: il carretto c'è solo al crepuscolo.
+tp 0.2 3 -24
+aspetta 2
+verifica /missioni/ec02 = 1
+ora 19
+aspetta 1
+tp 0.2 3 -24
+aspetta 2
+verifica /missioni/ec02 = 2
+ora 10
+aspetta 1
+tp 46 4 28
+aspetta 2
+verifica /missioni/ec04 = 2
+tp 34 3 38
+aspetta 2
+verifica /missioni/ec04 = 3
+tp 62 4 -8
+aspetta 2
+verifica /missioni/ec09 = 2
+# Il lampione ronza solo con la pioggia.
+tp 0.4 3 52
+aspetta 2
+verifica /missioni/ec07 = 1
+meteo pioggia
+aspetta 3
+tp 0.4 3 52
+aspetta 2
+verifica /missioni/ec07 = 2
+foto lampione-pioggia
+meteo sereno
+ora 6.5
+aspetta 3
+tp 91 4 20
+aspetta 2
+verifica /missioni/ec06 = 2
+ora 1
+aspetta 1
+tp 50 18 -45
+aspetta 2
+verifica /missioni/ec03 = 2
+meteo nebbia
+ora 23
+aspetta 3
+tp 0.5 4 -78
+aspetta 2
+verifica /missioni/ec10 = 2
+meteo neve
+aspetta 3
+dai mela 1
+tp 0.2 3 -7.6
+aspetta 2
+verifica /missioni/ec11 = 2
+meteo sereno
+ora 11
+aspetta 3
+tp tonio
+aspetta 1
+attendi npc:tonio:modo = Ready 120
+tp tonio
+aspetta 1
+guarda tonio
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+scegli Arrivederci
+aspetta 1
+verifica /missioni/ec08 = 2
+tp nina
+aspetta 1
+attendi npc:nina:modo = Ready 120
+tp nina
+aspetta 1
+guarda nina
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+scegli Arrivederci
+aspetta 1
+# Nina prima propone la sua missione (la porpora), poi dice la sua sulla disputa.
+verifica /missioni/qs11 = 2
+tp nina
+aspetta 1
+attendi npc:nina:modo = Ready 120
+tp nina
+aspetta 1
+guarda nina
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+scegli Arrivederci
+aspetta 1
+verifica /missioni/ec08 = 3
+# qs09 L'Armatura Lucida di Guardia Dino
+ora 15
+# Un'ora di gioco dura un minuto: gli si lascia il tempo di arrivare a Porta Sud dalla caserma.
+aspetta 55
+tp dino
+aspetta 1
+attendi npc:dino:modo = Ready 60
+tp dino
+aspetta 1
+guarda dino
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs09 = 2
+tp 16 2 100
+aspetta 2
+verifica /missioni/qs09 = 3
+tp dino
+aspetta 1
+attendi npc:dino:modo = Ready 480
+tp dino
+aspetta 1
+guarda dino
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs09 = 4
+# qs12 La Croce delle Quattro Ronde: il sergente, i quattro lati delle mura, il pozzo a mezzogiorno
+ora 10
+aspetta 2
+tp guardia aldo
+aspetta 1
+attendi npc:guardia_aldo:modo = Ready 240
+tp guardia aldo
+aspetta 1
+guarda guardia aldo
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs12 = 2
+# A terra, sotto le mura, non basta: bisogna salire.
+tp -9.6 1.5 -4
+aspetta 2
+verifica /missioni/qs12 = 2
+tp -9.6 6 -8.7
+aspetta 2
+dump mura-nord
+verifica /missioni/qs12 = 3
+tp 24.7 8 13.6
+aspetta 2
+verifica /missioni/qs12 = 4
+tp 10.8 6 24.3
+aspetta 2
+verifica /missioni/qs12 = 5
+tp -26.9 6 10
+aspetta 2
+verifica /missioni/qs12 = 6
+foto mura-ovest
+ora 12
+aspetta 1
+tp -1.2 3 10
+aspetta 2
+verifica /missioni/qs12 = 7
+# qs15 Il Cantiere: Gaspare lo propone a chi ha aiutato almeno quattro abitanti, dopo la grotta.
+missione mp04 9
+missione mp05 9
+ora 10
+aspetta 2
+tp gaspare
+aspetta 1
+attendi npc:gaspare:modo = Ready 240
+tp gaspare
+aspetta 1
+guarda gaspare
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+scegli Arrivederci
+aspetta 1
+# Due sole secondarie compiute: Gaspare non parla ancora del cantiere.
+verifica /missioni/qs15 = 1
+missione qs01 9
+missione qs03 9
+aspetta 1
+tp gaspare
+aspetta 1
+attendi npc:gaspare:modo = Ready 240
+tp gaspare
+aspetta 1
+guarda gaspare
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+scegli Arrivederci
+aspetta 1
+verifica /missioni/qs15 = 2
+premi j
+aspetta 1
+foto diario
+chiudi
+esci

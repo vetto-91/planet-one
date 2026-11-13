@@ -232,6 +232,7 @@ pub fn plugin(app: &mut App) {
 
 /// Overlay egui della mappa: titolo, bussola in alto a sinistra, segnalino del
 /// giocatore, etichetta della casetta e legenda.
+#[allow(clippy::too_many_arguments)]
 pub fn draw_map_overlay(
     ctx: &egui::Context,
     camera: Option<(&Camera, &GlobalTransform)>,
@@ -240,7 +241,16 @@ pub fn draw_map_overlay(
     hut_pos: Option<Vec3>,
     village: Option<(&str, Vec3)>,
     zoom: f32,
-) {
+    known: &crate::places::Known,
+) -> Option<(String, Vec3)> {
+    // Luogo scoperto su cui si è fatto clic: lì porta il viaggio veloce.
+    let mut picked = None;
+    let click = ctx.input(|i| {
+        i.pointer
+            .primary_clicked()
+            .then(|| i.pointer.interact_pos())
+            .flatten()
+    });
     let size = ctx.viewport_rect().size();
     let painter = ctx.layer_painter(egui::LayerId::new(
         egui::Order::Foreground,
@@ -342,28 +352,26 @@ pub fn draw_map_overlay(
                 egui::Color32::WHITE,
             );
         }
-        if let Some((name, at)) = village
-            && let Ok(p) = cam.world_to_viewport(cam_t, at + Vec3::Y * 6.0)
-        {
-            crate::ui_style::plate(
-                &painter,
-                crate::ui_style::screen_to_ui(ctx, p),
-                name,
-                28.0,
-                gold,
-            );
+        // Il paese si vede sempre; gli altri luoghi solo dopo averli scoperti (ADR 0037).
+        let mut label = |name: &str, world: Vec3, size: f32| {
+            let Ok(p) = cam.world_to_viewport(cam_t, world) else {
+                return;
+            };
+            let at = crate::ui_style::screen_to_ui(ctx, p);
+            crate::ui_style::plate(&painter, at, name, size, gold);
+            if let (Some(c), Some(to)) = (click, known.arrival(name))
+                && crate::ui_style::plate_rect(&painter, at, name, size).contains(c)
+            {
+                picked = Some((name.to_string(), to));
+            }
+        };
+        if let Some((name, at)) = village {
+            label(name, at + Vec3::Y * 6.0, 28.0);
         }
         let spec = crate::water::load_spec_cached();
         for (name, at) in &spec.places {
-            let world = Vec3::new(at.x, 6.0, at.y);
-            if let Ok(p) = cam.world_to_viewport(cam_t, world) {
-                crate::ui_style::plate(
-                    &painter,
-                    crate::ui_style::screen_to_ui(ctx, p),
-                    name,
-                    16.0,
-                    gold,
-                );
+            if known.arrival(name).is_some() {
+                label(name, Vec3::new(at.x, 6.0, at.y), 16.0);
             }
         }
         if let Some(h) = hut_pos
@@ -384,11 +392,12 @@ pub fn draw_map_overlay(
         egui::pos2(size.x / 2.0, size.y - 22.0),
         egui::Align2::CENTER_CENTER,
         format!(
-            "M / Esc = chiudi   •   Rotella o +/- = zoom ({zoom:.0} m)   •   Frecce/WASD o trascina = sposta   •   C = su di te   •   F4 = debug piazzamenti"
+            "M / Esc = chiudi   •   Rotella o +/- = zoom ({zoom:.0} m)   •   Frecce/WASD o trascina = sposta   •   C = su di te   •   Clic su un luogo scoperto = viaggio veloce   •   F4 = debug piazzamenti"
         ),
         egui::FontId::proportional(16.0),
         egui::Color32::from_rgb(220, 226, 240),
     );
+    picked
 }
 
 /// Aspetto del mare prima di aprire la mappa.

@@ -140,6 +140,8 @@ pub struct SaveData {
     pub keeper_stove_manual: bool,
     /// Missioni del Prologo: (id, tappa corrente).
     pub missions: Vec<(String, usize)>,
+    /// Luoghi scoperti: chiave «regione|nome» e punto d'arrivo del viaggio veloce.
+    pub known: Vec<(String, Vec3)>,
     /// Regione in cui si trova il giocatore.
     pub region: Region,
     /// Stato delle altre regioni visitate (porte, contenitori, nemici…), com'erano quando
@@ -160,7 +162,8 @@ const WORLD_SECTIONS: [&str; 8] = [
     "abitanti",
     "viandante",
 ];
-const HERO_SECTIONS: [&str; 9] = [
+const HERO_SECTIONS: [&str; 10] = [
+    "luoghi",
     "missioni",
     "personaggio",
     "tempo",
@@ -346,6 +349,7 @@ impl SaveData {
             keeper_asleep: false,
             keeper_stove_manual: false,
             missions: Vec::new(),
+            known: Vec::new(),
             region: Region::Isola,
             elsewhere: Vec::new(),
             present: HashSet::new(),
@@ -526,6 +530,12 @@ impl SaveData {
         for (id, step) in &self.missions {
             line(format!("{id} = {step}"));
         }
+        line(String::new());
+        line("# luogo scoperto = punto d'arrivo del viaggio veloce".into());
+        line("[luoghi]".into());
+        for (key, at) in &self.known {
+            line(format!("{key} = {}", v3(*at)));
+        }
         // Le altre regioni visitate: un salvataggio dentro l'altro, righe che iniziano con «>».
         for (region, inner) in &self.elsewhere {
             let mut copy = (**inner).clone();
@@ -697,6 +707,10 @@ impl SaveData {
                     "ladro_provocato" => self.thief_provoked = read_bool(v)?,
                     _ => return None,
                 }
+            }
+            "luoghi" => {
+                let (k, v) = pair?;
+                self.known.push((k.to_string(), read_v3(v)?));
             }
             "missioni" => {
                 let (k, v) = pair?;
@@ -1044,6 +1058,7 @@ pub struct WorldParams<'w, 's> {
     weather: ResMut<'w, WeatherState>,
     quest: ResMut<'w, QuestState>,
     missions: ResMut<'w, crate::quests::missions::Missions>,
+    known: ResMut<'w, crate::places::Known>,
     containers: ResMut<'w, Containers>,
     village: Res<'w, crate::village::VillageInfo>,
     memory: ResMut<'w, RegionMemory>,
@@ -1082,6 +1097,7 @@ fn collect(kind: SaveKind, session: &Session, hero: &HeroParams, world: &WorldPa
     let mut d = SaveData::blank();
     d.kind = kind;
     d.missions = world.missions.snapshot();
+    d.known = world.known.0.iter().map(|(k, v)| (k.clone(), *v)).collect();
     d.region = crate::region::current();
     d.elsewhere = world
         .memory
@@ -1189,6 +1205,9 @@ fn apply(d: &SaveData, hero: &mut HeroParams, world: &mut WorldParams) {
     let has = |s: &str| d.present.contains(s);
     if has("missioni") {
         world.missions.restore(&d.missions);
+    }
+    if has("luoghi") {
+        world.known.0 = d.known.iter().cloned().collect();
     }
     if has("personaggio") {
         *hero.character = Character {
@@ -1507,6 +1526,7 @@ pub fn finish_loading(
             // La storia comincia sulla spiaggia a est del molo, tra i rottami (missione mp01).
             world.missions.reset();
             world.missions.enabled = true;
+            world.known.0.clear();
             *hero.character = character;
             *hero.inventory = Inventory::default();
             *hero.equip = Equipment::default();
@@ -1557,6 +1577,7 @@ pub fn finish_loading(
             // vecchio, senza la sezione, riparte dalla prima tappa di ogni missione).
             world.missions.reset();
             world.missions.enabled = true;
+            world.known.0.clear();
             world.memory.0 = data
                 .elsewhere
                 .iter()

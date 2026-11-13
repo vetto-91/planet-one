@@ -53,7 +53,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 - `src/combat.rs`, `src/inventory.rs`, `src/hud.rs`: combattimento, inventario, HUD.
 - `src/quests/mod.rs`: parser dei dialoghi, voci del diario, fumetti (barks), registro quest.
 - `src/quests/<quest>/mod.rs` + `assets/quests/<quest>/dialoghi.txt`: logica e testi (modificabili a mano) di ogni quest. Vedi ADR 0003.
-- `src/quests/missions.rs` + `assets/quests/prologo/missioni.txt` e `secondarie.txt`: missioni a tappe guidate dai file di testo (storia principale del Prologo, ADR 0034; secondarie, ADR 0036).
+- `src/quests/missions.rs` + `assets/quests/prologo/missioni.txt` e `secondarie.txt`: missioni a tappe guidate dai file di testo (storia principale del Prologo, ADR 0034; secondarie, ADR 0036; `eventi.txt`, ADR 0037).
 - `src/sky.rs`: cielo da `assets/textures/sky.png` convertito in cubemap a runtime.
 - `src/weather.rs`: meteo deterministico per data (sereno, nuvoloso, pioggia, temporale, nebbia, neve), temperatura, vento, nebbia di distanza, particelle di pioggia/neve, neve a terra, suoni sintetizzati in locale (ADR 0014).
 - `src/seasons.rs`: stagioni visibili (tinte erba/chiome, fiori, neve a terra e sui tetti, foglie che cadono) da `look(giorno)`, ADR 0012.
@@ -66,7 +66,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 - `src/ambience.rs`: suoni d'ambiente e passi per superficie, sintetizzati in locale (ADR 0028); `src/animals.rs`: mucche, pecore, galline, gabbiani, uccelli, pesci, farfalle, dati in `assets/world/isola.txt`; modelli da `scripts/build_animals_trees.py` (Blender) partendo da `assets_src/`.
 - `src/walk_test.rs`: prova di camminata con fisica vera (solo test) per scale e torri (ADR 0030).
 - `src/village_life.rs`: fumo dei camini del paese e torce sulle mura; carretti, botti, casse, panni e reti sono piazzamenti (`buildings::model`, `scripts/gen_paese.py`).
-- `src/places.rs`: luoghi da scoprire e banditi che ricompaiono (ADR 0029), posizioni da `scripts/gen_luoghi.py`, nomi in `isola.txt` (`luogo:`).
+- `src/places.rs`: luoghi da scoprire e banditi che ricompaiono (ADR 0029), posizioni da `scripts/gen_luoghi.py`, nomi in `isola.txt` (`luogo:`); luoghi scoperti (`Known`) e viaggio veloce dalla mappa (ADR 0037).
 - `src/world_props.rs`: alberi, fiori, panchine, lampioni veri creati da `debug/placements.txt`.
 - `src/audio.rs`: musica di sottofondo giorno/notte con dissolvenza (OGG in `assets/audio/music/`), volume musiche salvato in `~/.config/planet-one/settings.txt`; audio posizionale (ascoltatore sulla camera, `spatial_once`, ADR 0032).
 - `src/hut.rs`: casetta-chiosco del Viandante (mesh con UV dalla foto `assets/textures/capanna.png`, fondamenta e scale di pietra, interni, oggetti con stato `PropState`: porta, finestre, stufa con fumo, luce, serranda) e routine giornaliera del negoziante (`Keeper`). Gli oggetti si usano col mirino (`Interactable.aim`, vedi `entities::interact`).
