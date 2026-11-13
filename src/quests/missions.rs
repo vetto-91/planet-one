@@ -10,8 +10,17 @@ use super::denaro_rubato::{QuestStage, QuestState};
 use super::{ObjState, QuestEntry, QuestStatus};
 use bevy::prelude::*;
 
-const FILE: &str = "assets/quests/prologo/missioni.txt";
-const EMBEDDED: &str = include_str!("../../assets/quests/prologo/missioni.txt");
+/// File delle missioni: la storia principale, poi le secondarie (ADR 0036).
+const FILES: [(&str, &str); 2] = [
+    (
+        "assets/quests/prologo/missioni.txt",
+        include_str!("../../assets/quests/prologo/missioni.txt"),
+    ),
+    (
+        "assets/quests/prologo/secondarie.txt",
+        include_str!("../../assets/quests/prologo/secondarie.txt"),
+    ),
+];
 
 /// Condizione di una tappa: tutte quelle elencate devono valere insieme.
 #[derive(Clone, Debug, PartialEq)]
@@ -28,6 +37,27 @@ pub enum When {
     Talk(String),
     /// «Denaro Rubato»: accettata o completata.
     Quest(bool),
+    /// Il giocatore ha almeno `n` di questo oggetto.
+    Has(crate::inventory::ItemKind, u32),
+    /// Nessun nemico vivo entro `r` metri dal punto (un campo liberato).
+    Clear(Vec2, f32),
+}
+
+/// Oggetto dal nome italiano usato nei file («mela», «pesce», «pozione del mulo»…).
+fn item(name: &str) -> Option<crate::inventory::ItemKind> {
+    let wanted = name.trim().to_lowercase();
+    crate::inventory::ItemKind::ALL
+        .into_iter()
+        .find(|k| k.name().to_lowercase() == wanted)
+}
+
+/// «<oggetto> <n>» (n = 1 se manca).
+fn item_qty(text: &str) -> Option<(crate::inventory::ItemKind, u32)> {
+    let text = text.trim();
+    match text.rsplit_once(' ') {
+        Some((name, n)) if n.parse::<u32>().is_ok() => Some((item(name)?, n.parse().ok()?)),
+        _ => Some((item(text)?, 1)),
+    }
 }
 
 /// Una tappa di una missione.
@@ -40,6 +70,9 @@ pub struct Step {
     /// Pensiero del protagonista mostrato al completamento.
     pub note: String,
     pub coins: u32,
+    /// Oggetti consegnati (tolti dall'inventario) e ricevuti a tappa fatta.
+    pub takes: Vec<(crate::inventory::ItemKind, u32)>,
+    pub gives: Vec<(crate::inventory::ItemKind, u32)>,
     /// Cose sbloccate nel mondo (per esempio `continente`).
     pub unlocks: Vec<String>,
 }
@@ -54,6 +87,8 @@ pub struct Mission {
     pub after: String,
     /// Serve «Denaro Rubato» completata.
     pub after_quest: bool,
+    /// Missione secondaria: compare nel diario solo dopo la prima tappa (chi la propone).
+    pub side: bool,
     pub steps: Vec<Step>,
 }
 
@@ -103,6 +138,7 @@ pub fn parse(text: &str) -> Vec<Mission> {
         match (key, m.steps.last_mut()) {
             ("titolo", None) => m.title = value.to_string(),
             ("sommario", None) => m.summary = value.to_string(),
+            ("tipo", None) => m.side = value == "secondaria",
             ("dopo", None) => {
                 if value == "denaro_rubato" {
                     m.after_quest = true;
@@ -114,11 +150,21 @@ pub fn parse(text: &str) -> Vec<Mission> {
             ("pensiero", Some(s)) => s.note = value.to_string(),
             ("monete", Some(s)) => s.coins = value.parse().unwrap_or(0),
             ("sblocca", Some(s)) => s.unlocks.push(value.to_string()),
+            ("prendi", Some(s)) => match item_qty(value) {
+                Some(x) => s.takes.push(x),
+                None => warn!("[MISSIONI] oggetto sconosciuto: {line}"),
+            },
+            ("dai", Some(s)) => match item_qty(value) {
+                Some(x) => s.gives.push(x),
+                None => warn!("[MISSIONI] oggetto sconosciuto: {line}"),
+            },
             ("quando", Some(s)) => {
                 let (kind, rest) = value.split_once(' ').unwrap_or((value, ""));
                 let n = nums(rest);
                 let cond = match (kind, n.as_slice()) {
                     ("vicino", [x, z, r]) => Some(When::Near(Vec2::new(*x, *z), *r)),
+                    ("libero", [x, z, r]) => Some(When::Clear(Vec2::new(*x, *z), *r)),
+                    ("ha", _) => item_qty(rest).map(|(k, n)| When::Has(k, n)),
                     ("sotto", [y]) => Some(When::Below(*y)),
                     ("sopra", [y]) => Some(When::Above(*y)),
                     ("ora", [a, b]) => Some(When::Hour(*a, *b)),
@@ -153,21 +199,24 @@ pub struct Missions {
     /// (e il passaggio di Gaspare è libero) finché il copione non scrive `missioni on`.
     pub enabled: bool,
     /// Abitante il cui dialogo di missione è aperto: si completa leggendolo fino in fondo.
-    talking: Option<String>,
+    talking: Option<(String, usize)>,
     /// Dialoghi di missione letti fino in fondo (nome dell'abitante), in attesa di essere contati.
-    talked: Vec<String>,
+    talked: Vec<(String, usize)>,
 }
 
 impl Default for Missions {
     fn default() -> Self {
-        let text = [
-            std::path::PathBuf::from(FILE),
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(FILE),
-        ]
-        .iter()
-        .find_map(|p| std::fs::read_to_string(p).ok())
-        .unwrap_or_else(|| EMBEDDED.to_string());
-        let list = parse(&text);
+        let mut list = Vec::new();
+        for (file, embedded) in FILES {
+            let text = [
+                std::path::PathBuf::from(file),
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(file),
+            ]
+            .iter()
+            .find_map(|p| std::fs::read_to_string(p).ok())
+            .unwrap_or_else(|| embedded.to_string());
+            list.extend(parse(&text));
+        }
         Self {
             progress: vec![0; list.len()],
             list,
@@ -184,6 +233,9 @@ pub struct Facts {
     pub hour: f32,
     pub quest_accepted: bool,
     pub quest_done: bool,
+    /// Oggetti nell'inventario e nemici vivi (posizioni).
+    pub items: Vec<(crate::inventory::ItemKind, u32)>,
+    pub enemies: Vec<Vec3>,
 }
 
 impl Missions {
@@ -225,7 +277,7 @@ impl Missions {
         if !self.enabled {
             return None;
         }
-        let lines = self.current(facts.quest_done).find_map(|(_, step)| {
+        let (mission, lines) = self.current(facts.quest_done).find_map(|(i, step)| {
             let mine = step
                 .when
                 .iter()
@@ -234,10 +286,12 @@ impl Missions {
                 .when
                 .iter()
                 .filter(|w| !matches!(w, When::Talk(_)))
-                .all(|w| holds(w, facts, &[]));
-            (mine && rest && !step.lines.is_empty()).then(|| step.lines.clone())
+                .all(|w| holds(w, facts, &[], i));
+            (mine && rest && !step.lines.is_empty()).then(|| (i, step.lines.clone()))
         })?;
-        self.talking = Some(npc.to_string());
+        // Il dialogo vale per questa missione sola: un altro incarico dello stesso abitante
+        // aspetta la prossima volta che gli si parla.
+        self.talking = Some((npc.to_string(), mission));
         Some(lines.iter().map(|l| l.replace("{nome}", player)).collect())
     }
 
@@ -263,7 +317,7 @@ impl Missions {
             if !self.started(i, facts.quest_done) || step.when.is_empty() {
                 continue;
             }
-            if step.when.iter().all(|w| holds(w, facts, &self.talked)) {
+            if step.when.iter().all(|w| holds(w, facts, &self.talked, i)) {
                 let step = step.clone();
                 self.progress[i] += 1;
                 let finished = self.progress[i] >= self.list[i].steps.len();
@@ -281,6 +335,8 @@ impl Missions {
         }
         (0..self.list.len())
             .filter(|i| self.started(*i, quest_done))
+            // Una secondaria esiste per il giocatore solo dopo che gliel'hanno proposta.
+            .filter(|i| !self.list[*i].side || self.progress[*i] > 0)
             .map(|i| {
                 let (m, p) = (&self.list[i], self.progress[i]);
                 let finished = p >= m.steps.len();
@@ -357,7 +413,7 @@ impl Missions {
     }
 }
 
-fn holds(w: &When, f: &Facts, talked: &[String]) -> bool {
+fn holds(w: &When, f: &Facts, talked: &[(String, usize)], mission: usize) -> bool {
     match w {
         When::Near(p, r) => f.pos.xz().distance(*p) <= *r,
         When::Below(y) => f.pos.y < *y,
@@ -369,7 +425,9 @@ fn holds(w: &When, f: &Facts, talked: &[String]) -> bool {
                 f.hour >= *a || f.hour < *b
             }
         }
-        When::Talk(npc) => talked.iter().any(|t| t == npc),
+        When::Talk(npc) => talked.iter().any(|(t, i)| t == npc && *i == mission),
+        When::Has(kind, n) => f.items.iter().any(|(k, q)| k == kind && q >= n),
+        When::Clear(p, r) => !f.enemies.iter().any(|e| e.xz().distance(*p) <= *r),
         When::Quest(done) => {
             if *done {
                 f.quest_done
@@ -388,6 +446,7 @@ pub fn track_missions(
     clock: Res<crate::daynight::GameClock>,
     dialog: Res<crate::entities::DialogState>,
     players: Query<&GlobalTransform, With<crate::player::Player>>,
+    enemies: Query<(&GlobalTransform, &crate::combat::EnemyHealth), With<crate::entities::Enemy>>,
     mut inventory: ResMut<crate::inventory::Inventory>,
     mut session: ResMut<crate::save::Session>,
     mut was_open: Local<bool>,
@@ -404,11 +463,24 @@ pub fn track_missions(
         hour: clock.hour,
         quest_accepted: quest.accepted,
         quest_done: quest.stage == QuestStage::Completed,
+        items: inventory.slots.iter().map(|s| (s.kind, s.qty)).collect(),
+        // Solo i vivi: un nemico sconfitto resta un attimo nel mondo prima di sparire.
+        enemies: enemies
+            .iter()
+            .filter(|(_, hp)| hp.current > 0.0)
+            .map(|(t, _)| t.translation())
+            .collect(),
     };
     for (i, step, finished) in missions.advance(&facts) {
         let title = missions.list[i].title.clone();
         if step.coins > 0 {
             inventory.add(crate::inventory::ItemKind::Coin, step.coins);
+        }
+        for (kind, n) in &step.takes {
+            inventory.consume(*kind, *n);
+        }
+        for (kind, n) in &step.gives {
+            inventory.add(*kind, *n);
         }
         let next = missions.list[i]
             .steps
@@ -446,6 +518,8 @@ mod tests {
             hour,
             quest_accepted: accepted,
             quest_done: done,
+            items: Vec::new(),
+            enemies: Vec::new(),
         }
     }
 
@@ -453,7 +527,12 @@ mod tests {
     fn the_prologue_file_has_the_four_new_main_missions_in_a_chain() {
         let m = all();
         let ids: Vec<&str> = m.list.iter().map(|x| x.id.as_str()).collect();
-        assert_eq!(ids, ["mp01", "mp03", "mp04", "mp05"]);
+        assert_eq!(ids[..4], ["mp01", "mp03", "mp04", "mp05"]);
+        assert!(m.list[..4].iter().all(|x| !x.side));
+        assert!(
+            m.list[4..].iter().all(|x| x.side),
+            "le altre sono secondarie"
+        );
         for mission in &m.list {
             assert!(!mission.title.is_empty() && !mission.summary.is_empty());
             assert!(mission.steps.len() >= 3, "{}", mission.id);
@@ -515,9 +594,68 @@ mod tests {
     }
 
     #[test]
+    fn one_talk_advances_one_mission_even_with_the_same_villager() {
+        let text = "[missione a]\ntitolo: A\nsommario: s\n[tappa]\nobiettivo: g\nquando: parla Gino\n> Uno.\n\
+                    [missione b]\ntitolo: B\nsommario: s\ntipo: secondaria\n[tappa]\nobiettivo: g\n\
+                    quando: parla Gino\n> Due.\n";
+        let mut m = Missions {
+            list: parse(text),
+            progress: vec![0, 0],
+            enabled: true,
+            talking: None,
+            talked: Vec::new(),
+        };
+        let f = facts(Vec3::ZERO, 12.0, false, false);
+        assert_eq!(
+            m.dialog_for("Gino", &f, "x"),
+            Some(vec!["Uno.".to_string()])
+        );
+        m.dialog_closed(true);
+        assert_eq!(m.advance(&f).len(), 1);
+        assert_eq!(m.progress, vec![1, 0]);
+        // La seconda volta Gino propone l'altro incarico.
+        assert_eq!(
+            m.dialog_for("Gino", &f, "x"),
+            Some(vec!["Due.".to_string()])
+        );
+        m.dialog_closed(true);
+        m.advance(&f);
+        assert_eq!(m.progress, vec![1, 1]);
+    }
+
+    #[test]
+    fn items_are_handed_over_and_camps_must_be_cleared() {
+        use crate::inventory::ItemKind;
+        let text = "[missione q]\ntitolo: Q\nsommario: s\ntipo: secondaria\n[tappa]\nobiettivo: porta\n\
+                    quando: ha pesce 2\nquando: ha mela\nprendi: pesce 2\ndai: pozione del mulo\n\
+                    [tappa]\nobiettivo: libera\nquando: libero 10 10 8\n";
+        let list = parse(text);
+        assert!(list[0].side);
+        assert_eq!(list[0].steps[0].takes, vec![(ItemKind::Fish, 2)]);
+        assert_eq!(list[0].steps[0].gives, vec![(ItemKind::MulePotion, 1)]);
+        let mut m = Missions {
+            list,
+            progress: vec![0],
+            enabled: true,
+            talking: None,
+            talked: Vec::new(),
+        };
+        let mut f = facts(Vec3::ZERO, 12.0, false, false);
+        f.items = vec![(ItemKind::Fish, 1), (ItemKind::Apple, 3)];
+        assert!(m.advance(&f).is_empty(), "un pesce solo non basta");
+        f.items[0].1 = 2;
+        f.enemies = vec![Vec3::new(12.0, 0.0, 11.0)];
+        assert_eq!(m.advance(&f).len(), 1);
+        assert!(m.advance(&f).is_empty(), "c'è ancora un nemico nel campo");
+        f.enemies.clear();
+        assert!(m.advance(&f)[0].2);
+    }
+
+    #[test]
     fn progress_survives_a_save_and_the_chain_waits_for_the_stolen_money() {
         let mut m = all();
-        // mp03 non comincia finché Denaro Rubato non è completata.
+        // mp03 non comincia finché Denaro Rubato non è completata; le secondarie non ancora
+        // proposte non stanno nel diario.
         assert_eq!(m.journal(false).len(), 1);
         m.jump("mp04", 1).unwrap();
         assert!(m.done("mp03"));
@@ -526,6 +664,10 @@ mod tests {
         again.restore(&saved);
         assert_eq!(again.progress, m.progress);
         assert_eq!(again.journal(true).len(), 3);
+        // Una secondaria entra nel diario quando chi la propone ha parlato.
+        let side = again.list.iter().position(|x| x.side).unwrap();
+        again.progress[side] = 1;
+        assert_eq!(again.journal(true).len(), 4);
         again.reset();
         assert!(!again.done("mp03"));
     }

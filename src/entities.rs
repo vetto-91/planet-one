@@ -275,6 +275,7 @@ pub fn interact(
     mut missions: ResMut<crate::quests::missions::Missions>,
     clock: Res<crate::daynight::GameClock>,
     character: Res<crate::character::Character>,
+    inventory: Res<crate::inventory::Inventory>,
     cameras: Query<&GlobalTransform, With<Camera3d>>,
     spatial: SpatialQuery,
     blockers: Query<(), With<crate::camera::BlocksCamera>>,
@@ -397,6 +398,8 @@ pub fn interact(
             hour: clock.hour,
             quest_accepted: quest.accepted,
             quest_done: quest.stage == crate::quests::denaro_rubato::QuestStage::Completed,
+            items: inventory.slots.iter().map(|s| (s.kind, s.qty)).collect(),
+            enemies: Vec::new(),
         };
         let busy_keeper = npc.name == "Viandante" && quest.accepted && !facts.quest_done;
         let mission = if busy_keeper {

@@ -1,0 +1,330 @@
+# Missioni secondarie del Prologo (ADR 0036). Stesso formato di missioni.txt, più:
+#   tipo: secondaria      compare nel diario solo dopo la prima tappa (chi la propone)
+#   quando: ha <oggetto> <n> | libero <x> <z> <raggio>  (nessun nemico vivo lì attorno)
+#   prendi: <oggetto> <n>   oggetto consegnato        dai: <oggetto> <n>   oggetto ricevuto
+# Fonte: Trama-Planet-One/09, sezione 3 (QS-01…QS-13). Si fanno in qualsiasi ordine.
+
+[missione qs01]
+titolo: Il Pane del Vento
+sommario: Marta ha finito la farina buona e Gino, al mulino, non può lasciare le pale. Fai da tramite tra i due.
+tipo: secondaria
+
+[tappa]
+obiettivo: Parla con Marta, la fornaia
+quando: parla Marta
+> Ah, capiti a proposito! Ho finito la farina buona, e domattina il paese vuole il pane.
+> Gino non si muove dal mulino: dice che il vento gli ha inceppato una pala. Ci andresti tu? In fondo alla strada nord.
+
+[tappa]
+obiettivo: Vai da Gino al mulino, in fondo alla strada nord
+quando: parla Gino
+> La farina per Marta? È pronta da ieri. È il ramo nella pala che mi ha tenuto qui… l'ho tolto stamattina.
+> Tieni il sacco: pesa, ma tu hai buone spalle. E guarda qua, in confidenza: semi dorati e foglie incise. Li porta il vento del nord.
+> Dille che il pane di domani sa già di tramontana.
+
+[tappa]
+obiettivo: Riporta la farina a Marta
+quando: parla Marta
+> La farina! E pure in fretta. Aspetta, non andare via a mani vuote…
+> Questa è per te, e questa focaccia al miele… portala a Gino, ma non dirgli che ci ho inciso sopra una rosa dei venti. Se ne accorge da solo.
+dai: pozione di cura 1
+
+[tappa]
+obiettivo: Porta la focaccia di Marta a Gino
+quando: parla Gino
+> Una focaccia? Da Marta? … Una rosa dei venti. Eh.
+> Non dire niente a nessuno, forestiero. Ma grazie. Il vento oggi gira bene.
+monete: 12
+
+[missione qs02]
+titolo: La Luce che Risponde nella Nebbia
+sommario: Di notte Ettore vede, a nord, una luce color ambra che risponde ai giri del faro. Ma il bulbo di segnalazione è bruciato.
+tipo: secondaria
+
+[tappa]
+obiettivo: Parla con Ettore, il guardiano del faro, di notte
+quando: parla Ettore
+quando: ora 17 7
+> Tu vedi lontano? Guarda a nord, oltre la nebbia. Certe notti c'è un punto color ambra che risponde ai giri del mio faro.
+> Vorrei rispondergli, ma il bulbo piccolo, quello dei segnali, si è bruciato. In caserma ne tenevano uno di scorta: chiedi alla Guardia Carlo.
+
+[tappa]
+obiettivo: Chiedi alla Guardia Carlo il bulbo di scorta
+quando: parla Guardia Carlo
+> Il bulbo di Luce Viva? Lo tengo io, in fondo all'armadio. Nessuno sa più a cosa serva.
+> Per Ettore lo do volentieri. Ma il supporto è di rame vecchio: fallo saldare da Ferruccio, prima.
+
+[tappa]
+obiettivo: Fai saldare il supporto da Ferruccio, il fabbro
+quando: parla Ferruccio
+> Rame antico… guarda che giunture. Chi l'ha fatto sapeva il mestiere meglio di me.
+> Ecco, tiene. Portalo su al faro, e dimmi poi se quella luce esiste davvero.
+
+[tappa]
+obiettivo: Dopo le dieci di sera, torna da Ettore al faro
+quando: parla Ettore
+quando: ora 22 5
+> L'hai portato! Dammi… ecco. Uno, due, tre giri.
+> … Hai visto? Tre lampi. Tre! C'è qualcuno, di là. Qualcuno che conta come noi.
+> Tieni: le pozioni di chi veglia. A me non servono più, stanotte non dormo.
+dai: pozione del mulo 1
+monete: 10
+
+[missione qs03]
+titolo: Lo Scudo dell'Orlo Spezzato
+sommario: Ferruccio conserva l'orlo di uno scudo antichissimo. Il disco centrale, dicono, sta tra le rovine a sud-ovest.
+tipo: secondaria
+
+[tappa]
+obiettivo: Parla con Ferruccio, il fabbro
+quando: parla Ferruccio
+> Quei ferri della spiaggia… vieni, ti faccio vedere una cosa. Sotto il pavimento tengo l'orlo di uno scudo: bronzo, e un ferro caduto dal cielo.
+> Ci sono sbalzate due città, le stagioni, il fiume che gira attorno al mondo. Manca il centro.
+> Rosa dice che i vecchi lo cercavano alle rovine, a sud-ovest. Io non lascio la fucina. Tu?
+
+[tappa]
+obiettivo: Cerca il disco tra le rovine antiche
+quando: vicino -56 62 6
+pensiero: Sotto un rocchio di colonna, un disco di bronzo fitto di puntini: costellazioni. Sta in una mano, e pesa come una promessa.
+
+[tappa]
+obiettivo: Riporta il disco a Ferruccio
+quando: parla Ferruccio
+> È lui. Guarda come combacia… Dammi un giorno d'incudine.
+> No: dammi un'ora. Ecco. Lo scudo è tuo: l'hai rimesso insieme tu, io ho solo battuto.
+dai: scudo 1
+
+[missione qs04]
+titolo: Tre Nomi per le Ombre
+sommario: Perché i banditi del campo a est tornano sempre, di notte? Don Anselmo dice che hanno perso il nome.
+tipo: secondaria
+dopo: mp01
+
+[tappa]
+obiettivo: Chiedi a Don Anselmo dei banditi che ritornano
+quando: parla Don Anselmo
+> Li chiamano gli Insonni. Tre naufraghi, arrivati anni fa. Sulla riva non vollero scegliere un nome.
+> Chi resta Nessuno non riposa: torna, ogni notte. Nel loro campo, a est, devono esserci ancora le piastrine con i nomi veri.
+> Portamele. Di giorno il campo è più quieto… ma non contarci troppo.
+
+[tappa]
+obiettivo: Libera il campo dei banditi, a est
+quando: vicino 76 40 9
+quando: libero 76 40 14
+pensiero: Nella cassa, tre piastrine di legno e rame mangiate dal sale. Tre nomi, quasi illeggibili.
+
+[tappa]
+obiettivo: Porta le piastrine a Don Anselmo
+quando: parla Don Anselmo
+> Dammele… Qui c'è una T. Qui forse «Ari». E questo… questo lo conoscevo.
+> All'alba sali alla scogliera a est, vicino alla grotta, e dilli ad alta voce verso il mare. Io li scrivo nel Libro degli Approdi.
+
+[tappa]
+obiettivo: All'alba, pronuncia i tre nomi sulla scogliera a est
+quando: vicino 91 20 8
+quando: ora 5 8
+pensiero: Tre nomi detti al mare, uno alla volta. Il vento li porta via, e per un momento l'acqua sotto la scogliera è perfettamente ferma.
+monete: 20
+
+[missione qs05]
+titolo: Il Pascolo del Sole
+sommario: La mucca più vecchia di Ida, ogni sera, lascia il gregge e va a fissare il santuario.
+tipo: secondaria
+
+[tappa]
+obiettivo: Parla con Ida, alla fattoria
+quando: parla Ida
+> Bianchina, la più vecchia. Ogni sera, verso il tramonto, smette di brucare e se ne va a sud-ovest.
+> La ritrovo ferma davanti al santuario, a guardare il tetto. Vacci tu, una sera. Ma senza ferro in mano: si spaventa.
+
+[tappa]
+obiettivo: Verso il tramonto, vai al santuario
+quando: vicino -66 22 6
+quando: ora 17 20.5
+pensiero: Alla base di una colonna la terra è smossa. Sotto, un campanaccio d'oro e rame: un occhio inciso, e un nodo. Quando lo sfiori, l'altare risponde con una nota limpida.
+
+[tappa]
+obiettivo: Riporta il campanaccio a Ida
+quando: parla Ida
+> Un campanaccio? D'oro? … Lo metto a Bianchina. Se l'è guadagnato, a forza di aspettare.
+> Tieni, per il disturbo. E grazie di non averla spaventata.
+dai: mela 3
+monete: 10
+
+[missione qs06]
+titolo: L'Anfora dei Cent'Anni
+sommario: Osvaldo vuole aprire l'anfora trovata da suo nonno e offrire una cena ai più stanchi del paese. Mancano il modo e gli ingredienti.
+tipo: secondaria
+
+[tappa]
+obiettivo: Parla con Osvaldo, il locandiere
+quando: parla Osvaldo
+> Mio nonno la trovò sulla spiaggia: un'anfora sigillata, vecchia di cent'anni almeno. Voglio aprirla per una cena come si deve.
+> Ma il tappo è pietra, ormai. Agnese sa sciogliere la resina senza rompere il collo. Chiedile tu, che a me dice sempre «domani».
+
+[tappa]
+obiettivo: Chiedi ad Agnese come sciogliere il sigillo
+quando: parla Agnese
+> Resina di mare e terracotta… ci vuole l'ambra sciolta, e pazienza. La preparo io: dillo a Osvaldo.
+> E digli anche che una cena senza pesce e senza mele non è una cena.
+
+[tappa]
+obiettivo: Porta a Osvaldo due pesci e tre mele (da Nina e da Tonio)
+quando: parla Osvaldo
+quando: ha pesce 2
+quando: ha mela 3
+> Pesce di Nina e mele di Tonio! Adesso sì. Stasera, dopo le otto, vieni anche tu: si apre l'anfora.
+prendi: pesce 2
+prendi: mela 3
+
+[tappa]
+obiettivo: Dopo le otto di sera, torna alla locanda
+quando: parla Osvaldo
+quando: ora 20 24
+> Eccola. Piano… piano… aperta! Senti che profumo: cent'anni, e sa ancora di sole.
+> Guarda dentro il sigillo: una lamina d'argento. Secche, correnti… è una carta dello Stretto. Tienila tu, che vai lontano.
+monete: 15
+
+[missione qs07]
+titolo: Il Compleanno di Pietro
+sommario: Pietro ha trovato una chiave di rame. Lo zio Beppe nasconde sotto il letto una scatola dei suoi genitori, scomparsi in mare.
+tipo: secondaria
+
+[tappa]
+obiettivo: Ascolta Pietro, vicino al pozzo
+quando: parla Pietro
+> Ehi! Tu sai tenere un segreto? Ho trovato una chiave. Di rame, piccola così.
+> Lo zio Beppe ha una scatola sotto il letto. Era della mamma e del papà. Non me la fa aprire. Glielo chiedi tu, perché?
+
+[tappa]
+obiettivo: Parla con Beppe, nei campi
+quando: parla Beppe
+> Te l'ha detto, eh. … Dentro c'è mezzo astrolabio. Roba di mare, del continente.
+> Se lo vede vorrà partire. E finirà tra le onde, come mio fratello. Ho torto ad avere paura?
+> Parlane col Viandante. Lui queste cose le sa dire meglio di me.
+
+[tappa]
+obiettivo: Chiedi consiglio al Viandante
+quando: parla Viandante
+> Beppe ha paura del mare, e ha ragione. Pietro ha fame di mare, e ha ragione anche lui.
+> Digli così: la scatola si apre insieme, qui da me. E tu prometti al ragazzo una rotta sicura, prima che salga su una barca.
+
+[tappa]
+obiettivo: Torna da Beppe con il consiglio
+quando: parla Beppe
+> Insieme, dal Viandante. … Sì. Così ce la faccio.
+> Sei una brava persona, forestiero. Il ragazzo non lo dimentica, e nemmeno io.
+monete: 10
+
+[missione qs08]
+titolo: Il Sogno della Farfalla
+sommario: Agnese vuole prepararti un infuso, ma serve la rugiada del laghetto a est, quando le farfalle danzano sull'acqua.
+tipo: secondaria
+
+[tappa]
+obiettivo: Parla con Agnese, l'erborista
+quando: parla Agnese
+> Hai la testa piena di sale, tu. Ti preparo l'infuso della mente quieta.
+> Ma serve la rugiada del laghetto a est, dove volano le farfalle. Vacci col sole. E prima passa da Rosa: ha una storia per te.
+
+[tappa]
+obiettivo: Ascolta la storia di Rosa
+quando: parla Rosa
+> Un sapiente sognò di essere una farfalla. Volava contento, e non sapeva di essere un uomo.
+> Poi si svegliò. E non seppe più: era un uomo che aveva sognato una farfalla, o una farfalla che sognava di essere un uomo?
+> Vai al laghetto, e non avere fretta.
+
+[tappa]
+obiettivo: Di giorno, raggiungi il laghetto a est
+quando: vicino 68 -18 9
+quando: ora 8 18
+pensiero: L'acqua si fa liscia come uno specchio. Sul fondo basso brilla una gemma color ambra: qualcuno l'ha persa molto tempo fa.
+
+[tappa]
+obiettivo: Porta la gemma ad Agnese
+quando: parla Agnese
+> … Dove l'hai trovata? Mi cadde il giorno in cui arrivai. Dal nord. Non lo sa nessuno.
+> Ecco l'infuso. E tieni la bocca chiusa, viaggiatore: certe cose si dicono a tempo.
+dai: pozione del mulo 1
+monete: 10
+
+[missione qs10]
+titolo: La Promessa sulla Torre Antica
+sommario: Quarant'anni fa un marinaio promise a Rosa un segno in cima alla torre antica, se avesse trovato il passaggio a nord.
+tipo: secondaria
+
+[tappa]
+obiettivo: Parla con Rosa
+quando: parla Rosa
+> Guardi anche tu a nord-est, la sera? Io da quarant'anni.
+> Si chiamava Lauro. Disse: se trovo il passaggio, lascio un segno in cima alla torre antica. Io lassù non sono mai salita. Le ginocchia.
+> Ci andresti tu?
+
+[tappa]
+obiettivo: Sali in cima alla torre antica
+quando: vicino 58.5 -58.5 5
+quando: sopra 18
+pensiero: Dietro un merlo spezzato, rivolto a nord: una bussola di bronzo con due nomi incisi, Rosa e Lauro, e una perlina di vetro azzurro.
+
+[tappa]
+obiettivo: Porta la bussola a Rosa
+quando: parla Rosa
+> … Ce l'ha fatta. Ce l'ha fatta davvero.
+> Tienila tu, la bussola. A me basta sapere. E se lassù, a nord, trovi qualcuno che porta una perlina così… digli che Rosa ha aspettato.
+monete: 15
+
+[missione qs11]
+titolo: Il Segreto della Porpora
+sommario: Nina ha notato che la stoffa rossa del ladro è tinta con la porpora di mare, la stessa delle conchiglie che pesca Gaspare.
+tipo: secondaria
+dopo: mp01
+
+[tappa]
+obiettivo: Parla con Nina, la pescivendola
+quando: parla Nina
+> Hai visto il rosso di quel ladro? Quello non è robbia. È porpora di mare: costa più dell'oro.
+> Gaspare pesca quelle conchiglie agli scogli a est. Chiedigli dove, e guarda bene tra i sassi.
+
+[tappa]
+obiettivo: Cerca tra gli scogli a est del porticciolo
+quando: vicino 52 88 9
+pensiero: Nell'acqua bassa, una cassa mercantile incrostata. Dentro, rotoli di stoffa color porpora e un registro: il sigillo è di un porto che qui non esiste.
+
+[tappa]
+obiettivo: Porta il registro a Tonio, il fruttivendolo
+quando: parla Tonio
+> Fammi vedere… Io i registri li so leggere, prima delle mele facevo altro. Questo è un porto del nord. Tiro-Scheria.
+> Qualcuno, dall'isola, mandava e riceveva. E non erano mele. Tieni, per la fatica: e la bocca cucita.
+dai: mela 2
+monete: 18
+
+[missione qs13]
+titolo: I Fili Sotto le Pietre
+sommario: Perché a Fontevivo i lampioni si accendono da soli? Il Viandante e Ferruccio sanno solo che i fili scendono sotto la piazza.
+tipo: secondaria
+dopo: mp03
+
+[tappa]
+obiettivo: Chiedi a Ferruccio della Luce Viva
+quando: parla Ferruccio
+> I lampioni? Io li riparo, ma non li ho fatti. Dentro c'è rame, e una cosa che non è fuoco.
+> I fili partono tutti dal pozzo della piazza. Alla base c'è una grata: guarda da che parte va il cavo grosso.
+
+[tappa]
+obiettivo: Guarda la grata alla base del pozzo, in piazza
+quando: vicino -1.2 10 3
+pensiero: Sotto la grata, un cavo di rame grosso come un polso. Corre dritto verso est, sotto le case, verso la costa.
+
+[tappa]
+obiettivo: Segui il cavo fino in fondo alla grotta a est
+quando: vicino 87 38.4 4
+quando: sotto 2.2
+pensiero: Eccolo: esce dalla roccia e si tuffa sotto il mare, a nord. La Luce Viva dell'isola arriva dal continente.
+
+[tappa]
+obiettivo: Racconta al Viandante dove finisce il cavo
+quando: parla Viandante
+> Sotto il mare, a nord. Lo sospettavo. Chi ha acceso i nostri lampioni non abita qui.
+> Tieni: non è una ricompensa, è una provvista. Quando sarai di là, guarda dove arrivano i fili.
+dai: pozione di cura 2
+monete: 15

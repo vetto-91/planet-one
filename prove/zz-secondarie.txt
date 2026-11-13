@@ -1,0 +1,253 @@
+# Missioni secondarie del Prologo (ADR 0036): cinque giocate per intero. Catena di dialoghi (qs01),
+# premio in oggetti (qs03), oggetti da consegnare e orari (qs06), un luogo da raggiungere (qs10),
+# un campo da liberare e un'ora precisa (qs04).
+god on
+ia off
+meteo sereno
+ora 10
+missioni on
+aspetta 2
+# qs01 Il Pane del Vento: Marta, Gino, Marta, Gino
+tp marta
+aspetta 1
+attendi npc:marta:modo = Ready 90
+tp marta
+aspetta 1
+guarda marta
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs01 = 2
+tp gino
+aspetta 1
+attendi npc:gino:modo = Ready 90
+tp gino
+aspetta 1
+guarda gino
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs01 = 3
+tp marta
+aspetta 1
+attendi npc:marta:modo = Ready 90
+tp marta
+aspetta 1
+guarda marta
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs01 = 4
+verifica HealthPotion >= 1
+tp gino
+aspetta 1
+attendi npc:gino:modo = Ready 90
+tp gino
+aspetta 1
+guarda gino
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs01 = 5
+verifica monete >= 42
+# qs03 Lo Scudo dell'Orlo Spezzato: Ferruccio, le rovine, Ferruccio
+tp ferruccio
+aspetta 1
+attendi npc:ferruccio:modo = Ready 90
+tp ferruccio
+aspetta 1
+guarda ferruccio
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+scegli Arrivederci
+aspetta 1
+verifica /missioni/qs03 = 2
+tp -56 4 62
+aspetta 2
+verifica /missioni/qs03 = 3
+tp ferruccio
+aspetta 1
+attendi npc:ferruccio:modo = Ready 90
+tp ferruccio
+aspetta 1
+guarda ferruccio
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+scegli Arrivederci
+aspetta 1
+verifica /missioni/qs03 = 4
+verifica Shield >= 1
+# qs06 L'Anfora dei Cent'Anni: Osvaldo, Agnese, pesci e mele, la sera alla locanda
+tp osvaldo
+aspetta 1
+attendi npc:osvaldo:modo = Ready 90
+tp osvaldo
+aspetta 1
+guarda osvaldo
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs06 = 2
+tp agnese
+aspetta 1
+attendi npc:agnese:modo = Ready 90
+tp agnese
+aspetta 1
+guarda agnese
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+scegli Arrivederci
+aspetta 1
+verifica /missioni/qs06 = 3
+tp osvaldo
+aspetta 1
+attendi npc:osvaldo:modo = Ready 90
+tp osvaldo
+aspetta 1
+guarda osvaldo
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs06 = 3
+dai pesce 2
+dai mela 3
+aspetta 1
+tp osvaldo
+aspetta 1
+attendi npc:osvaldo:modo = Ready 90
+tp osvaldo
+aspetta 1
+guarda osvaldo
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs06 = 4
+foto osvaldo-ingredienti
+ora 20.5
+aspetta 2
+tp osvaldo
+aspetta 1
+attendi npc:osvaldo:modo = Ready 90
+tp osvaldo
+aspetta 1
+guarda osvaldo
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs06 = 5
+# qs10 La Promessa sulla Torre Antica: Rosa, la cima della torre, Rosa
+ora 10
+aspetta 2
+tp rosa
+aspetta 1
+attendi npc:rosa:modo = Ready 90
+tp rosa
+aspetta 1
+guarda rosa
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs10 = 2
+tp 58.5 27 -58.5
+aspetta 3
+verifica /missioni/qs10 = 3
+tp rosa
+aspetta 1
+attendi npc:rosa:modo = Ready 90
+tp rosa
+aspetta 1
+guarda rosa
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs10 = 4
+# qs04 Tre Nomi per le Ombre (dopo la prima missione): Don Anselmo, il campo dei banditi, l'alba sulla scogliera
+missione mp01 5
+aspetta 1
+tp anselmo
+aspetta 1
+attendi npc:anselmo:modo = Ready 90
+tp anselmo
+aspetta 1
+guarda anselmo
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs04 = 2
+tp 76 6 40
+aspetta 2
+# Con i banditi vivi il campo non è libero.
+verifica /missioni/qs04 = 2
+uccidi 20
+aspetta 1
+uccidi 20
+aspetta 1
+verifica /missioni/qs04 = 2
+uccidi 20
+aspetta 3
+verifica /missioni/qs04 = 3
+tp anselmo
+aspetta 1
+attendi npc:anselmo:modo = Ready 90
+tp anselmo
+aspetta 1
+guarda anselmo
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs04 = 4
+ora 6
+tp 91 4 20
+aspetta 3
+verifica /missioni/qs04 = 5
+premi j
+aspetta 1
+verifica app = Journal
+foto diario
+chiudi
+esci
