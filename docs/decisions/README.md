@@ -70,3 +70,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0042 | La casa del giocatore sul Poggio del Naufrago | accettato |
 | 0043 | La Prova dell'Arco | accettato |
 | 0044 | Oggetti di trama e scelte nelle missioni | accettato |
+| 0045 | Ciò che sbloccano i segreti, la via degli indizi e i valori degli abitanti | accettato |

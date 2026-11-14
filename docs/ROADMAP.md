@@ -80,6 +80,7 @@ Strategia: **vertical slice prima**. Una demo giocabile (1 quest, 1 NPC, 1 nemic
 | 14.10 — Isola: la casa del giocatore | Terreno fuori dalle mura, legname e pietra da raccogliere, fondamenta e casa visitabile con deposito, missione QS-17 (ADR 0042) | `v0.0.62.0` |
 | 14.11 — Isola: la Prova dell'Arco | Tre anelli lungo il ruscello da centrare in fila, missione QS-14 di Silvia (ADR 0043) | `v0.0.62.0` |
 | 15.1 — Prologo: oggetti di trama e scelte | Quattordici oggetti di trama («Ricordi»), scelte con effetti nelle missioni secondarie, rito che ferma i banditi (ADR 0044) | in corso |
+| 15.2 — Prologo: segreti, indizi e valori | Sblocchi dei 26 segreti, quattro indizi nei mobili, valori personali degli abitanti, guardie che vedono i furti, fama nei saluti (ADR 0045) | in corso |
 | 5.y — Mondo vivo | Colonna sonora con volume, casetta-chiosco esplorabile (porta, interni, stufa con fumo), routine giorno/notte del Viandante, voci dei personaggi, versione nel menu | `v0.0.7.0` |
 | 5.z — Mondo vivo, rifiniture | Interazione col mirino, casetta con serranda/interruttore/finestre e luci con ombre, routine del Viandante v2, voci normalizzate con ducking della musica | `v0.0.8.0` |
 | 5.w — Mappa e strumenti | Mappa dall'alto (M) con bussola e zoom, modalità debug piazzamenti (F4) con file `debug/placements.txt`, vetri e scuri spessi, il Viandante chiude porta e finestre | `v0.0.9.0` |

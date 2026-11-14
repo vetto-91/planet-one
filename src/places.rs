@@ -741,6 +741,7 @@ pub fn discover_places(
             known.0.insert(key, p);
             info!("[LUOGHI] scoperto: {name}");
             crate::skills::train(crate::skills::Skill::Lore, 25.0);
+            crate::karma::praise("esplorazione", 2);
             // Nelle prove automatiche (nessuna partita attiva) niente avvisi a schermo.
             if session.active {
                 session.notify(format!("Luogo scoperto: {name}"));

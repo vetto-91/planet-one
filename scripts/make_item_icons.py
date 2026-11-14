@@ -350,6 +350,34 @@ def relic_feather():
     return im
 
 
+def relic_book(cover, band):
+    im = layer(); d = ImageDraw.Draw(im)
+    d.rounded_rectangle([110, 80, 402, 432], 18, fill=cover, outline=(60, 40, 24, 255), width=10)
+    d.rectangle([110, 80, 150, 432], fill=band)
+    d.line([(190, 180), (360, 180)], fill=(230, 210, 170, 255), width=10)
+    d.line([(190, 230), (330, 230)], fill=(230, 210, 170, 255), width=10)
+    return im
+
+
+def relic_seedbox():
+    im = layer(); d = ImageDraw.Draw(im)
+    d.rectangle([100, 200, 412, 400], fill=(150, 104, 60, 255), outline=(80, 52, 28, 255), width=10)
+    d.polygon([(100, 200), (160, 130), (452, 130), (412, 200)], fill=(176, 126, 76, 255), outline=(80, 52, 28, 255))
+    for x, y in [(170, 260), (230, 300), (300, 250), (350, 330), (250, 360)]:
+        d.ellipse([x - 16, y - 10, x + 16, y + 10], fill=(232, 196, 70, 255))
+    return im
+
+
+def relic_letter():
+    im = layer(); d = ImageDraw.Draw(im)
+    d.polygon([(100, 140), (412, 120), (420, 380), (110, 400)], fill=(236, 220, 180, 255), outline=(150, 120, 80, 255))
+    for k in range(5):
+        y = 180 + k * 40
+        d.line([(140, y), (380 - (k % 2) * 50, y - 4)], fill=(90, 70, 50, 255), width=6)
+    d.ellipse([330, 320, 390, 380], fill=(170, 40, 40, 255))
+    return im
+
+
 def pack(body, flap, strap, wide=1.0, tall=1.0):
     im = layer()
     d = ImageDraw.Draw(im)
@@ -426,6 +454,10 @@ ICONS = {
     "mappa-secche": lambda: relic_map((40, 120, 120, 255)),
     "focaccia": relic_focaccia,
     "amuleto": relic_feather,
+    "registro": lambda: relic_book((70, 80, 110, 255), (200, 170, 90, 255)),
+    "scatola-semi": relic_seedbox,
+    "lettera": relic_letter,
+    "taccuino": lambda: relic_book((110, 80, 50, 255), (60, 110, 60, 255)),
 }
 
 

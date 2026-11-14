@@ -24,6 +24,9 @@ use crate::skills::{self, Skill};
 /// Monete infilate a ogni pressione di `G` e multa quando si è scoperti.
 pub const SLIP_COINS: u32 = 5;
 pub const FINE: u32 = 10;
+/// Le guardie entro questa distanza vedono un borseggio scoperto, e la multa che aggiungono.
+const GUARD_SIGHT: f32 = 18.0;
+const GUARD_FINE: u32 = 10;
 /// Distanza (m) entro cui si arriva alle tasche di qualcuno.
 const POCKET_RANGE: f32 = 1.7;
 
@@ -488,7 +491,32 @@ pub fn pickpocket(
         thievery.wary.insert(name.clone(), day);
         skills::train(Skill::Pickpocket, 3.0);
         crate::karma::trust(npc.name, -15);
-        crate::karma::deed(-4, format!("{} ti ha colto con le mani in tasca", npc.name));
+        crate::karma::deed_as(
+            "onesta",
+            -4,
+            format!("{} ti ha colto con le mani in tasca", npc.name),
+        );
+        // Le guardie vicine hanno visto tutto: altra multa e niente più fiducia (ADR 0045).
+        let p_here = p;
+        for (guard_entity, gt, guard) in npcs.iter().filter(|(e, t, n)| {
+            *e != entity
+                && n.name.starts_with("Guardia")
+                && t.translation().distance(p_here) <= GUARD_SIGHT
+        }) {
+            let _ = gt;
+            let extra = GUARD_FINE.min(inventory.qty(ItemKind::Coin));
+            inventory.consume(ItemKind::Coin, extra);
+            crate::karma::trust(guard.name, -10);
+            barks.say(
+                guard_entity,
+                guard.name,
+                format!("Ti ho visto! Sono altre {extra} monete."),
+            );
+            info!(
+                "[BORSEGGIO] {} ha visto il furto (multa {extra})",
+                guard.name
+            );
+        }
         barks.say(
             entity,
             npc.name,
@@ -506,7 +534,7 @@ pub fn pickpocket(
         inventory.consume(ItemKind::Coin, SLIP_COINS);
         *thievery.slipped.entry(name).or_default() += SLIP_COINS;
         skills::train(Skill::Pickpocket, 10.0);
-        crate::karma::deed(2, "un dono fatto di nascosto");
+        crate::karma::deed_as("pieta", 2, "un dono fatto di nascosto");
         session.notify(format!(
             "Infili {SLIP_COINS} monete nella tasca di {}",
             npc.name
@@ -520,7 +548,7 @@ pub fn pickpocket(
         inventory.add(ItemKind::Coin, loot);
         thievery.emptied.insert(name, day);
         skills::train(Skill::Pickpocket, 12.0);
-        crate::karma::deed(-3, format!("hai derubato {}", npc.name));
+        crate::karma::deed_as("onesta", -3, format!("hai derubato {}", npc.name));
         session.notify(format!("Sfili {loot} monete a {}", npc.name));
         info!("[BORSEGGIO] {}: sfilate {loot} monete", npc.name);
     }

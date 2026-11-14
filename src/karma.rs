@@ -86,6 +86,10 @@ pub struct Secret {
     pub summary: String,
     /// La confidenza (segnaposto `{nome}`).
     pub lines: Vec<String>,
+    /// Ciò che la confidenza sblocca (stessa sintassi degli effetti delle missioni; ADR 0045).
+    pub unlocks: Vec<crate::quests::missions::Effect>,
+    /// Azioni che l'abitante apprezza (`pieta`, `onesta`, `lavoro`, `coraggio`, `studio`, `aiuto`…).
+    pub values: Vec<String>,
 }
 
 pub fn parse(text: &str) -> Vec<Secret> {
@@ -118,6 +122,21 @@ pub fn parse(text: &str) -> Vec<Secret> {
                         warn!("[KARMA] dono sconosciuto per {}: {value}", s.name);
                     }
                 }
+                "sblocca" => {
+                    for e in value.split(';').filter(|e| !e.trim().is_empty()) {
+                        match crate::quests::missions::Effect::parse(e) {
+                            Some(effect) => s.unlocks.push(effect),
+                            None => warn!("[KARMA] sblocco non valido per {}: {e}", s.name),
+                        }
+                    }
+                }
+                "ama" => {
+                    s.values = value
+                        .split(',')
+                        .map(|v| v.trim().to_lowercase())
+                        .filter(|v| !v.is_empty())
+                        .collect();
+                }
                 _ => warn!("[KARMA] riga ignorata: {line}"),
             }
         }
@@ -139,6 +158,34 @@ impl Secrets {
     pub fn of(&self, name: &str) -> Option<&Secret> {
         self.0.iter().find(|s| s.name.eq_ignore_ascii_case(name))
     }
+
+    /// Abitanti che apprezzano (o detestano) le azioni di questo tipo.
+    pub fn lovers(&self, value: &str) -> impl Iterator<Item = &Secret> {
+        self.0
+            .iter()
+            .filter(move |s| s.values.iter().any(|v| v == value))
+    }
+}
+
+/// Indizi: oggetti che, letti, rivelano il segreto di qualcuno senza la sua confidenza
+/// (la «via degli indizi», ADR 0045). Chi è il proprietario del segreto, e in quale edificio si trova.
+pub const CLUES: [(crate::inventory::Relic, &str, &str); 4] = [
+    (crate::inventory::Relic::NightLog, "Ettore", "faro"),
+    (crate::inventory::Relic::SeedBox, "Gino", "mulino"),
+    (
+        crate::inventory::Relic::GrandfatherLetter,
+        "Osvaldo",
+        "locanda",
+    ),
+    (crate::inventory::Relic::HuntingNotes, "Silvia", "arcere"),
+];
+
+/// L'indizio che sta nel primo mobile di un edificio (se ce n'è uno).
+pub fn clue_in(building: &str) -> Option<crate::inventory::Relic> {
+    CLUES
+        .iter()
+        .find(|(_, _, b)| *b == building)
+        .map(|(r, ..)| *r)
 }
 
 /// Karma del personaggio, fiducia degli abitanti e segreti scoperti.
@@ -152,6 +199,8 @@ pub struct Karma {
     pub revealed: BTreeSet<String>,
     /// Azioni già pesate una volta per tutte (la sorte del ladro, la consegna delle monete).
     pub judged: BTreeSet<String>,
+    /// Ciò che i segreti hanno sbloccato (`gaspare-timoniere`, `silvia-compagna`…; ADR 0045).
+    pub unlocks: BTreeSet<String>,
     /// Giorno dell'ultima chiacchierata e dell'ultimo regalo (non salvati).
     talked: HashMap<String, u32>,
     gifted: HashMap<String, u32>,
@@ -205,6 +254,8 @@ impl Karma {
 enum Deed {
     Global(i32, String),
     Trust(String, i32),
+    /// Un'azione di un certo tipo: chi la apprezza (o la detesta) cambia idea su di te.
+    Praise(String, i32),
 }
 
 static QUEUE: Mutex<Vec<Deed>> = Mutex::new(Vec::new());
@@ -216,6 +267,22 @@ pub fn deed(amount: i32, why: impl Into<String>) {
         && let Ok(mut q) = QUEUE.lock()
     {
         q.push(Deed::Global(amount, why.into()));
+    }
+}
+
+/// Un'azione che pesa sulla bilancia e piace (o dispiace) a chi tiene a quel valore.
+pub fn deed_as(value: &str, amount: i32, why: impl Into<String>) {
+    deed(amount, why);
+    praise(value, amount);
+}
+
+/// Un'azione di un certo tipo (`pieta`, `onesta`, `lavoro`…): la fiducia di chi tiene a quel valore
+/// cambia della metà (almeno di uno), senza toccare la bilancia.
+pub fn praise(value: &str, amount: i32) {
+    if amount != 0
+        && let Ok(mut q) = QUEUE.lock()
+    {
+        q.push(Deed::Praise(value.to_string(), amount));
     }
 }
 
@@ -239,7 +306,11 @@ pub fn price(stats: crate::character::Stats, base: u32, vendor: &str) -> u32 {
 }
 
 /// Sistema: applica le azioni del frame e avvisa quando la bilancia si muove.
-pub fn apply_deeds(mut karma: ResMut<Karma>, mut session: ResMut<crate::save::Session>) {
+pub fn apply_deeds(
+    mut karma: ResMut<Karma>,
+    secrets: Res<Secrets>,
+    mut session: ResMut<crate::save::Session>,
+) {
     let pending = QUEUE
         .lock()
         .map(|mut q| std::mem::take(&mut *q))
@@ -250,6 +321,14 @@ pub fn apply_deeds(mut karma: ResMut<Karma>, mut session: ResMut<crate::save::Se
                 karma.global = (karma.global + amount).clamp(-100, 100);
                 info!("[KARMA] {amount:+} ({why}) → {}", karma.global);
                 session.notify(format!("Karma {amount:+}: {why}"));
+            }
+            Deed::Praise(value, amount) => {
+                let change = (amount / 2).abs().max(1) * amount.signum();
+                let names: Vec<String> = secrets.lovers(&value).map(|s| s.name.clone()).collect();
+                for name in names {
+                    karma.add_trust(&name, change);
+                }
+                info!("[KARMA] chi tiene a «{value}»: fiducia {change:+}");
             }
             Deed::Trust(name, amount) => {
                 let before = karma.bond(&name);
@@ -279,11 +358,13 @@ pub fn judge_quest(quest: Res<crate::quests::denaro_rubato::QuestState>, mut kar
         karma.judged.insert("ladro".into());
         match quest.fate {
             Fate::Spared => {
-                deed(10, "hai risparmiato il ladro");
+                deed_as("pieta", 10, "hai risparmiato il ladro");
                 trust("Don Anselmo", 10);
             }
-            Fate::Pact => deed(-10, "hai diviso l'oro col ladro"),
-            Fate::Killed if quest.thief_calm => deed(-6, "hai colpito chi ti stava ascoltando"),
+            Fate::Pact => deed_as("onesta", -10, "hai diviso l'oro col ladro"),
+            Fate::Killed if quest.thief_calm => {
+                deed_as("pieta", -6, "hai colpito chi ti stava ascoltando");
+            }
             _ => {}
         }
     }
@@ -292,10 +373,10 @@ pub fn judge_quest(quest: Res<crate::quests::denaro_rubato::QuestState>, mut kar
         if quest.fate == Fate::Pact {
             trust("Viandante", -10);
         } else if quest.kept > 0 {
-            deed(-8, "hai tenuto monete non tue");
+            deed_as("onesta", -8, "hai tenuto monete non tue");
             trust("Viandante", -10);
         } else {
-            deed(5, "hai restituito tutte le monete");
+            deed_as("onesta", 5, "hai restituito tutte le monete");
             trust("Viandante", 12);
         }
     }
@@ -337,6 +418,11 @@ pub fn meet_and_confide(
     let Some(secret) = secrets.of(&name) else {
         return;
     };
+    // Il saluto cambia con la fama: il paese sa che cosa hai fatto (ADR 0045).
+    if let Some(line) = reputation_line(karma.global, karma.bond(&name)) {
+        dialog.lines.insert(0, line.to_string());
+        dialog.voices.insert(0, Vec::new());
+    }
     use crate::character::Stat;
     let insight = [Stat::Charisma, Stat::Wisdom, Stat::Intelligence]
         .into_iter()
@@ -351,10 +437,74 @@ pub fn meet_and_confide(
         .collect();
     dialog.voices = vec![Vec::new(); dialog.lines.len()];
     dialog.index = 0;
-    karma.revealed.insert(key);
+    reveal(&mut karma, secret);
     crate::skills::train(crate::skills::Skill::Eloquence, 15.0);
     session.notify(format!("{name} ti confida il suo segreto"));
-    info!("[KARMA] segreto di {name} scoperto");
+}
+
+/// Prima battuta del saluto secondo la fama del giocatore (solo se è netta, e mai con gli amici).
+pub fn reputation_line(global: i32, bond: Bond) -> Option<&'static str> {
+    if matches!(bond, Bond::Friend | Bond::Kindred) {
+        return None;
+    }
+    match global {
+        g if g >= 25 => Some("Ah, sei tu. In paese si parla bene di te, sai?"),
+        g if g <= -25 => Some("Tieni le mani dove posso vederle, forestiero."),
+        _ => None,
+    }
+}
+
+/// Il segreto di un abitante è scoperto: si segna, e si sblocca ciò che porta con sé.
+pub fn reveal(karma: &mut Karma, secret: &Secret) {
+    let key = secret.name.to_lowercase();
+    if !karma.revealed.insert(key) {
+        return;
+    }
+    use crate::quests::missions::Effect;
+    for effect in &secret.unlocks {
+        match effect {
+            Effect::Give(kind, n) => crate::inventory::grant(*kind, *n),
+            Effect::Coins(n) => crate::inventory::grant(ItemKind::Coin, *n),
+            Effect::Unlock(what) => {
+                karma.unlocks.insert(what.clone());
+            }
+            Effect::Karma(n, why) => deed(*n, why.clone()),
+            Effect::Trust(name, n) => trust(name, *n),
+            Effect::Take(..) | Effect::Stat(..) | Effect::End => {
+                warn!("[KARMA] sblocco non usato per {}: {effect:?}", secret.name)
+            }
+        }
+    }
+    info!("[KARMA] segreto di {} scoperto", secret.name);
+}
+
+/// Sistema: un indizio nell'inventario si legge da solo e rivela il segreto del suo proprietario.
+pub fn read_clues(
+    inventory: Res<crate::inventory::Inventory>,
+    secrets: Res<Secrets>,
+    mut karma: ResMut<Karma>,
+    mut session: ResMut<crate::save::Session>,
+) {
+    if !inventory.is_changed() {
+        return;
+    }
+    for (relic, owner, _) in CLUES {
+        if inventory.qty(ItemKind::Relic(relic)) == 0
+            || karma.knows_secret(owner)
+            || secrets.of(owner).is_none()
+        {
+            continue;
+        }
+        if let Some(secret) = secrets.of(owner) {
+            reveal(&mut karma, secret);
+        }
+        crate::skills::train(crate::skills::Skill::Lore, 20.0);
+        praise("studio", 4);
+        session.notify(format!(
+            "{}: ora conosci il segreto di {owner}",
+            ItemKind::Relic(relic).name()
+        ));
+    }
 }
 
 /// Sistema: un regalo gradito, di fronte all'abitante, una volta al giorno (tasto G).
@@ -427,7 +577,7 @@ pub fn give_gift(
 pub fn plugin(app: &mut App) {
     app.init_resource::<Karma>()
         .init_resource::<Secrets>()
-        .add_systems(Update, apply_deeds);
+        .add_systems(Update, (apply_deeds, read_clues));
 }
 
 #[cfg(test)]
@@ -455,6 +605,47 @@ mod tests {
                 s.name
             );
         }
+    }
+
+    #[test]
+    fn secrets_unlock_things_and_villagers_have_values() {
+        let secrets = Secrets::default();
+        for s in &secrets.0 {
+            assert!(!s.unlocks.is_empty(), "{}: niente da sbloccare", s.name);
+            assert!(!s.values.is_empty(), "{}: nessun valore", s.name);
+        }
+        assert!(secrets.lovers("pieta").any(|s| s.name == "Don Anselmo"));
+        assert!(!secrets.lovers("pieta").any(|s| s.name == "Ferruccio"));
+        let mut k = Karma::default();
+        reveal(&mut k, secrets.of("Gaspare").unwrap());
+        assert!(k.knows_secret("gaspare"));
+        assert!(k.unlocks.contains("gaspare-timoniere"));
+        // Un segreto si rivela una volta sola.
+        let before = k.unlocks.len();
+        reveal(&mut k, secrets.of("Gaspare").unwrap());
+        assert_eq!(k.unlocks.len(), before);
+    }
+
+    #[test]
+    fn clues_lie_in_the_first_furniture_of_their_building() {
+        use crate::containers::{ContainerKind, starting_items};
+        for (relic, owner, building) in CLUES {
+            assert!(Secrets::default().of(owner).is_some(), "{owner}");
+            assert_eq!(clue_in(building), Some(relic));
+            let first = starting_items(ContainerKind::Chest, building, "12:0:0");
+            assert!(first.contains(&(ItemKind::Relic(relic), 1)), "{building}");
+            let other = starting_items(ContainerKind::Chest, building, "12:0:1");
+            assert!(!other.contains(&(ItemKind::Relic(relic), 1)));
+        }
+        assert_eq!(clue_in("casetta"), None);
+    }
+
+    #[test]
+    fn the_greeting_follows_the_reputation_but_not_with_friends() {
+        assert!(reputation_line(30, Bond::Stranger).is_some());
+        assert!(reputation_line(-30, Bond::Acquaintance).is_some());
+        assert!(reputation_line(30, Bond::Friend).is_none());
+        assert!(reputation_line(5, Bond::Stranger).is_none());
     }
 
     #[test]

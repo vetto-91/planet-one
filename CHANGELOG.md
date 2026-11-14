@@ -4,6 +4,12 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **I segreti sbloccano qualcosa** (ADR 0045): chi ti confida il suo segreto ti dà anche un oggetto (la Mappa delle Secche di Gaspare, le focacce di Marta, il bulbo di Luce Viva di Carlo, la chiave di rame di Pietro…) o un aiuto che servirà più avanti (Gaspare timoniere, Silvia compagna, il Rito del Nome di Don Anselmo…).
+- **La via degli indizi**: al faro, al mulino, alla locanda e dall'arciera, nel primo mobile, c'è un quaderno o una lettera. Leggerlo ti fa conoscere il segreto del suo proprietario anche se non siete ancora amici.
+- **Ognuno ha i suoi valori**: Don Anselmo apprezza la pietà, Ferruccio il lavoro e il coraggio, Tonio l'onestà, Silvia il coraggio e l'esplorazione… Quello che fai cambia la fiducia di chi ci tiene, nel bene e nel male.
+- **Le guardie vedono**: se ti colgono a borseggiare vicino a una guardia, anche lei ti multa e si fida meno.
+- **La fama nei saluti**: con il cuore molto leggero (o molto pesante) chi non ti conosce bene ti saluta di conseguenza.
+
 - **Oggetti di trama** (ADR 0044): la tavoletta del ladro, la Moneta Madre, il campanaccio, la bussola di Lauro, le piastrine dei banditi, la chiave di rame, le mappe e gli altri ricordi del Prologo sono oggetti veri, nella nuova categoria «Ricordi» dell'inventario. L'Amuleto Piuma si indossa (+5 kg), la Focaccia del Navigante si mangia.
 - **Scelte nelle missioni secondarie**: lo scudo di Ferruccio si tiene o si appende sopra Porta Nord; le piastrine dei banditi si portano al rito di Don Anselmo (e da allora i banditi non tornano più) o si vendono ad Aldo per la taglia; Agnese prepara l'infuso del sogno (+1 Saggezza) o della memoria (+1 Intelligenza); per la scatola di Beppe ci sono tre risposte; la bussola si rende a Rosa o si porta a nord. Ogni scelta pesa su karma e fiducia.
 - Lo scasso per Guardia Carlo vale solo per i tre bauli della caserma.

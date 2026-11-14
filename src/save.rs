@@ -431,6 +431,9 @@ impl SaveData {
         for deed in &self.karma.judged {
             line(format!("pesato:{deed} = sì"));
         }
+        for what in &self.karma.unlocks {
+            line(format!("sbloccato:{what} = sì"));
+        }
         let mut people: Vec<&String> = self
             .karma
             .trust
@@ -741,6 +744,8 @@ impl SaveData {
                     self.karma.global = v.parse().ok()?;
                 } else if let Some(deed) = k.strip_prefix("pesato:") {
                     self.karma.judged.insert(deed.to_string());
+                } else if let Some(what) = k.strip_prefix("sbloccato:") {
+                    self.karma.unlocks.insert(what.to_string());
                 } else {
                     let mut parts = v.split_whitespace();
                     let trust: i32 = parts.next()?.parse().ok()?;

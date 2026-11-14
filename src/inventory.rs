@@ -74,12 +74,17 @@ pub enum Relic {
     Focaccia,
     /// Amuleto di Ida: si porta qualche chilo in più.
     FeatherAmulet,
+    /// Indizi (ADR 0045): letti, rivelano il segreto di chi li ha scritti.
+    NightLog,
+    SeedBox,
+    GrandfatherLetter,
+    HuntingNotes,
 }
 
 impl Relic {
     /// Tutti gli oggetti di trama (serve ai test).
     #[cfg(test)]
-    pub const ALL: [Relic; 14] = [
+    pub const ALL: [Relic; 18] = [
         Relic::Tablet,
         Relic::MotherCoin,
         Relic::Quipu,
@@ -94,6 +99,10 @@ impl Relic {
         Relic::ShoalsMap,
         Relic::Focaccia,
         Relic::FeatherAmulet,
+        Relic::NightLog,
+        Relic::SeedBox,
+        Relic::GrandfatherLetter,
+        Relic::HuntingNotes,
     ];
 
     fn name(self) -> &'static str {
@@ -112,6 +121,10 @@ impl Relic {
             Relic::ShoalsMap => "Mappa delle Secche",
             Relic::Focaccia => "Focaccia del Navigante",
             Relic::FeatherAmulet => "Amuleto Piuma",
+            Relic::NightLog => "Registro delle Notti",
+            Relic::SeedBox => "Scatola dei semi",
+            Relic::GrandfatherLetter => "Lettera del nonno di Osvaldo",
+            Relic::HuntingNotes => "Taccuino di caccia",
         }
     }
 
@@ -131,6 +144,10 @@ impl Relic {
             Relic::ShoalsMap => "mappa-secche",
             Relic::Focaccia => "focaccia",
             Relic::FeatherAmulet => "amuleto",
+            Relic::NightLog => "registro",
+            Relic::SeedBox => "scatola-semi",
+            Relic::GrandfatherLetter => "lettera",
+            Relic::HuntingNotes => "taccuino",
         }
     }
 
@@ -150,6 +167,12 @@ impl Relic {
             Relic::ShoalsMap => "Dove l'acqua è bassa e dove morde: la carta di Gaspare.",
             Relic::Focaccia => "Cura 30 punti vita e ridà fiato.",
             Relic::FeatherAmulet => "Leggero come una piuma: porti 5 kg in più finché lo indossi.",
+            Relic::NightLog => "Le notti di Ettore al faro: lampi, risposte, un nome di donna.",
+            Relic::SeedBox => "Semi dorati e foglie incise, raccolti dalle pale del mulino.",
+            Relic::GrandfatherLetter => {
+                "Una lettera ingiallita: parla di un'anfora e di una carta."
+            }
+            Relic::HuntingNotes => "Appunti di Silvia sulle tracce dei banditi fino alla grotta.",
         }
     }
 
@@ -202,7 +225,7 @@ impl Category {
 
 impl ItemKind {
     /// Tutti i tipi di oggetto.
-    pub const ALL: [ItemKind; 34] = [
+    pub const ALL: [ItemKind; 38] = [
         ItemKind::HealthPotion,
         ItemKind::Coin,
         ItemKind::ShortSword,
@@ -237,6 +260,10 @@ impl ItemKind {
         ItemKind::Relic(Relic::ShoalsMap),
         ItemKind::Relic(Relic::Focaccia),
         ItemKind::Relic(Relic::FeatherAmulet),
+        ItemKind::Relic(Relic::NightLog),
+        ItemKind::Relic(Relic::SeedBox),
+        ItemKind::Relic(Relic::GrandfatherLetter),
+        ItemKind::Relic(Relic::HuntingNotes),
     ];
 
     /// Peso reale di un'unità (kg). Monete e munizioni non pesano.

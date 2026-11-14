@@ -175,7 +175,7 @@ pub fn build(
     skills::train(Skill::Building, 5.0 * (wood + stone) as f32);
     if done {
         skills::train(Skill::Building, 40.0);
-        crate::karma::deed(2, format!("hai costruito: {next}"));
+        crate::karma::deed_as("lavoro", 2, format!("hai costruito: {next}"));
         info!("[CASA] tappa compiuta: {next}");
     } else {
         session.notify(format!("Messi in opera {wood} legname e {stone} pietra"));

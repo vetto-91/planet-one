@@ -1,0 +1,59 @@
+# Segreti che sbloccano, indizi nei mobili, fama nei saluti (ADR 0045).
+god on
+ia off
+meteo sereno
+ora 10
+aspetta 2
+# La fama si sente nel saluto di chi non ti conosce ancora.
+karma 30
+tp nina
+aspetta 1
+attendi npc:nina:modo = Ready 90
+davanti nina
+aspetta 0.5
+guarda nina
+aspetta 1
+premi e
+aspetta 1
+verifica /dialogo/riga contiene parla bene
+foto saluto-fama
+premi esc
+aspetta 1
+karma 0
+# Gaspare confida il segreto e consegna la Mappa delle Secche: sarà il timoniere.
+fiducia gaspare 30
+tp gaspare
+aspetta 1
+attendi npc:gaspare:modo = Ready 90
+davanti gaspare
+aspetta 0.5
+guarda gaspare
+aspetta 1
+premi e
+aspetta 1
+verifica /segreti contiene gaspare
+avanza
+scegli Arrivederci
+aspetta 1
+verifica Relic(ShoalsMap) = 1
+# Via degli indizi: il registro di Ettore, nel primo mobile del faro.
+tp -14.4 3 94.6
+aspetta 2
+mira container
+premi e
+aspetta 1
+verifica app = Container
+prendi
+aspetta 0.5
+chiudi
+aspetta 1
+verifica Relic(NightLog) = 1
+verifica /segreti contiene ettore
+premi j
+aspetta 1
+volti
+aspetta 1
+foto volti
+premi j
+aspetta 1
+esci

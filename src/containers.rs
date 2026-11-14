@@ -199,8 +199,16 @@ pub fn starting_items(kind: ContainerKind, building: &str, key: &str) -> Vec<(It
     use ContainerKind as K;
     use ItemKind::*;
     // I mobili della casa che ti sei costruito sono vuoti: li riempi tu.
-    if building == crate::house::KIND || roll(key, 0) < 0.2 {
+    if building == crate::house::KIND {
         return Vec::new();
+    }
+    // Indizi: nel primo mobile di certi edifici c'è un quaderno o una lettera (ADR 0045).
+    let first = key.ends_with(":0") && key.matches(':').count() == 2;
+    let clue = crate::karma::clue_in(building)
+        .filter(|_| first)
+        .map(|r| (ItemKind::Relic(r), 1));
+    if roll(key, 0) < 0.2 {
+        return clue.into_iter().collect();
     }
     let n = |salt: u32, lo: u32, hi: u32| lo + (roll(key, salt) * (hi - lo + 1) as f32) as u32;
     let chance = |salt: u32, p: f32| roll(key, salt) < p;
@@ -259,6 +267,7 @@ pub fn starting_items(kind: ContainerKind, building: &str, key: &str) -> Vec<(It
             }
         }
     }
+    out.extend(clue);
     out
 }
 

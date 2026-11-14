@@ -1018,7 +1018,10 @@ fn draw_journal(
                 ui.selectable_value(
                     tab,
                     JournalTab::Faces,
-                    format!("Volti e segreti ({})", karma.met.len()),
+                    format!(
+                        "Volti e segreti ({})",
+                        karma.met.union(&karma.revealed).count()
+                    ),
                 );
             });
             ui.separator();
@@ -1075,7 +1078,8 @@ fn draw_faces(ui: &mut egui::Ui, karma: &crate::karma::Karma, secrets: &crate::k
         let met: Vec<_> = secrets
             .0
             .iter()
-            .filter(|s| karma.met.contains(&s.name.to_lowercase()))
+            // Chi hai conosciuto, e chi conosci solo per un indizio letto (ADR 0045).
+            .filter(|s| karma.met.contains(&s.name.to_lowercase()) || karma.knows_secret(&s.name))
             .collect();
         if met.is_empty() {
             ui.label("Non hai ancora parlato con nessuno.");

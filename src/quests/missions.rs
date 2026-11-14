@@ -479,7 +479,7 @@ impl Missions {
             return None;
         }
         facts.sides_done = self.sides_done();
-        facts.unlocked = self.unlocked_all();
+        facts.unlocked.extend(self.unlocked_all());
         if facts.counters.is_empty() {
             facts.counters = self.counters.clone();
         }
@@ -528,7 +528,7 @@ impl Missions {
             return done;
         }
         facts.sides_done = self.sides_done();
-        facts.unlocked = self.unlocked_all();
+        facts.unlocked.extend(self.unlocked_all());
         self.counters = facts.counters.clone();
         let facts = &*facts;
         for i in 0..self.list.len() {
@@ -709,14 +709,23 @@ fn apply_effect(
             inventory.consume(*kind, *n);
         }
         Effect::Coins(n) => inventory.add(crate::inventory::ItemKind::Coin, *n),
-        Effect::Karma(n, why) => crate::karma::deed(
-            *n,
-            if why.is_empty() {
+        Effect::Karma(n, why) => {
+            // «karma 3 #pieta motivo»: il valore toccato fa cambiare idea a chi ci tiene.
+            let (value, why) = match why.strip_prefix('#') {
+                Some(rest) => rest.split_once(' ').unwrap_or((rest, "")),
+                None => ("", why.as_str()),
+            };
+            let why = if why.is_empty() {
                 "una scelta".to_string()
             } else {
-                why.clone()
-            },
-        ),
+                why.to_string()
+            };
+            if value.is_empty() {
+                crate::karma::deed(*n, why);
+            } else {
+                crate::karma::deed_as(value, *n, why);
+            }
+        }
         Effect::Trust(name, n) => crate::karma::trust(name, *n),
         Effect::Stat(stat, n) => {
             let value = i16::from(character.stats.get(*stat)) + i16::from(*n);
@@ -774,7 +783,8 @@ pub fn track_missions(
             // Segreti confidati: `quando: conta segreto:beppe 1` (ADR 0044).
             .chain(karma.revealed.iter().map(|n| (format!("segreto:{n}"), 1)))
             .collect(),
-        unlocked: Vec::new(),
+        // Ciò che i segreti hanno sbloccato vale anche per le missioni (ADR 0045).
+        unlocked: karma.unlocks.iter().cloned().collect(),
         items: inventory.slots.iter().map(|s| (s.kind, s.qty)).collect(),
         // Solo i vivi: un nemico sconfitto resta un attimo nel mondo prima di sparire.
         enemies: enemies
@@ -823,7 +833,8 @@ pub fn track_missions(
         // compiuta per la bilancia: pesa solo la scelta.
         if finished && !step.effects.contains(&Effect::End) {
             let m = &missions.list[i];
-            crate::karma::deed(
+            crate::karma::deed_as(
+                "aiuto",
                 if m.event {
                     1
                 } else if m.side {

@@ -411,7 +411,8 @@ pub fn handle_enemy_death(
                 .first()
                 .is_some_and(|w| crate::places::is_camp_patrol(&dbg, w.xz()));
             if is_thief.is_none() {
-                // I nemici comuni lasciano qualche moneta.
+                // I nemici comuni lasciano qualche moneta; chi ama il coraggio lo apprezza.
+                crate::karma::praise("coraggio", 1);
                 crate::inventory::spawn_pickup(
                     &mut commands,
                     &mut meshes,
