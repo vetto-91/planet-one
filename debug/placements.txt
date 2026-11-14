@@ -195,7 +195,7 @@ quando: generato da gen_villaggio.py
 punto: x -17.50, z -4.20
 quantità: 1   seed: 1
 nota: villaggio
-punti: (-17.50,-4.20)
+punti: (-20.22,-4.17)
 rotazioni: 0
 
 [P-0207] tipo: casa-piccola | modalità: singolo
@@ -704,8 +704,8 @@ quando: generato da gen_paese.py
 punto: x -13.00, z 24.80
 quantità: 1   seed: 1
 nota: paese
-punti: (-13.00,24.80)
-rotazioni: 0
+punti: (-25.42,9.02)
+rotazioni: 103
 
 [P-1255] tipo: panni | modalità: singolo
 quando: generato da gen_paese.py
@@ -930,3 +930,24 @@ quantità: 1   seed: 39742
 nota: rottami
 punti: (31.00,83.00)
 rotazioni: 140
+
+[P-1283] tipo: lampione | modalità: singolo
+quando: 2026-11-14 21:06 (ora di gioco 22:59)
+punto: x -2.98, z 41.85
+quantità: 1   seed: 71462
+punti: (-2.98,41.85)
+rotazioni: 0
+
+[P-1284] tipo: lampione | modalità: singolo
+quando: 2026-11-14 21:07 (ora di gioco 23:08)
+punto: x 2.77, z 32.84
+quantità: 1   seed: 353596
+punti: (2.77,32.84)
+rotazioni: 0
+
+[P-1285] tipo: carretto | modalità: singolo
+quando: 2026-11-14 21:16 (ora di gioco 05:29)
+punto: x -14.35, z 1.38
+quantità: 1   seed: 355981
+punti: (-14.34,1.49)
+rotazioni: 4
