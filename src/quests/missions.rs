@@ -113,6 +113,8 @@ impl Effect {
 pub struct Choice {
     pub text: String,
     pub effects: Vec<Effect>,
+    /// La risposta compare solo se la statistica arriva a tanto (`scegli: [carisma 12] testo`).
+    pub requires: Option<(crate::character::Stat, u8)>,
 }
 
 /// Oggetto dal nome italiano usato nei file («mela», «pesce», «pozione del mulo»…).
@@ -239,6 +241,23 @@ pub fn parse(text: &str) -> Vec<Mission> {
             }
             ("scegli", Some(s)) => {
                 let (text, effects) = value.split_once("=>").unwrap_or((value, ""));
+                // «[carisma 12] testo»: la risposta chiede una statistica.
+                let (requires, text) = match text
+                    .trim()
+                    .strip_prefix('[')
+                    .and_then(|t| t.split_once(']'))
+                {
+                    Some((need, rest)) => {
+                        let need = need.trim().rsplit_once(' ').and_then(|(stat, n)| {
+                            Some((crate::character::Stat::parse(stat)?, n.parse().ok()?))
+                        });
+                        if need.is_none() {
+                            warn!("[MISSIONI] requisito non valido: {line}");
+                        }
+                        (need, rest)
+                    }
+                    None => (None, text),
+                };
                 let effects: Vec<Effect> = effects
                     .split(';')
                     .filter(|e| !e.trim().is_empty())
@@ -253,6 +272,7 @@ pub fn parse(text: &str) -> Vec<Mission> {
                 s.choices.push(Choice {
                     text: text.trim().to_string(),
                     effects,
+                    requires,
                 });
             }
             ("prendi", Some(s)) => match item_qty(value) {
@@ -313,6 +333,8 @@ pub struct Missions {
     pub enabled: bool,
     /// Abitante il cui dialogo di missione è aperto: si completa leggendolo fino in fondo.
     talking: Option<(String, usize)>,
+    /// Risposte mostrate nel dialogo aperto: indice nella tappa (alcune possono essere nascoste).
+    shown: Vec<usize>,
     /// Dialoghi di missione letti fino in fondo (nome dell'abitante), in attesa di essere contati.
     talked: Vec<(String, usize)>,
     /// Risposta scelta alla fine di un dialogo di missione (missione, risposta), in attesa.
@@ -341,6 +363,7 @@ impl Default for Missions {
             list,
             enabled: false,
             talking: None,
+            shown: Vec::new(),
             talked: Vec::new(),
             picked: Vec::new(),
             chosen: Default::default(),
@@ -366,6 +389,8 @@ pub struct Facts {
     pub counters: Vec<(String, u32)>,
     /// Cose sbloccate (lo riempie il motore).
     pub unlocked: Vec<String>,
+    /// Statistiche del personaggio (per le risposte che le chiedono; `None` = tutte valide).
+    pub stats: Option<crate::character::Stats>,
 }
 
 impl Missions {
@@ -495,10 +520,22 @@ impl Missions {
                 .filter(|w| !matches!(w, When::Talk(_)))
                 .all(|w| holds(w, facts, &[], i));
             (mine && rest && !step.lines.is_empty()).then(|| {
-                let choices = step.choices.iter().map(|c| c.text.clone()).collect();
+                // Le risposte che chiedono una statistica troppo alta non si vedono.
+                let choices: Vec<(usize, String)> = step
+                    .choices
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, c)| {
+                        c.requires
+                            .is_none_or(|(stat, n)| facts.stats.is_none_or(|s| s.get(stat) >= n))
+                    })
+                    .map(|(k, c)| (k, c.text.clone()))
+                    .collect();
                 (i, step.lines.clone(), choices)
             })
         })?;
+        self.shown = choices.iter().map(|(k, _)| *k).collect();
+        let choices: Vec<String> = choices.into_iter().map(|(_, t)| t).collect();
         // Il dialogo vale per questa missione sola: un altro incarico dello stesso abitante
         // aspetta la prossima volta che gli si parla.
         self.talking = Some((npc.to_string(), mission));
@@ -515,6 +552,8 @@ impl Missions {
             && finished
         {
             if let Some(c) = choice {
+                // Dall'indice mostrato a quello della tappa.
+                let c = self.shown.get(c).copied().unwrap_or(c);
                 self.picked.push((mission, c));
             }
             self.talked.push((npc, mission));
@@ -785,6 +824,7 @@ pub fn track_missions(
             .collect(),
         // Ciò che i segreti hanno sbloccato vale anche per le missioni (ADR 0045).
         unlocked: karma.unlocks.iter().cloned().collect(),
+        stats: Some(character.stats),
         items: inventory.slots.iter().map(|s| (s.kind, s.qty)).collect(),
         // Solo i vivi: un nemico sconfitto resta un attimo nel mondo prima di sparire.
         enemies: enemies
@@ -878,6 +918,7 @@ mod tests {
             sides_done: 0,
             counters: Vec::new(),
             unlocked: Vec::new(),
+            stats: None,
         }
     }
 
@@ -892,7 +933,7 @@ mod tests {
             "le altre sono secondarie"
         );
         assert_eq!(m.list.iter().filter(|x| x.side && !x.event).count(), 17);
-        assert_eq!(m.list.iter().filter(|x| x.event).count(), 11);
+        assert_eq!(m.list.iter().filter(|x| x.event).count(), 12);
         for mission in &m.list {
             assert!(!mission.title.is_empty() && !mission.summary.is_empty());
             // Un evento è un incontro: una tappa o due. Le missioni vere ne hanno almeno tre.
@@ -1037,6 +1078,39 @@ mod tests {
         m.reset();
         m.restore_choices(&saved);
         assert_eq!(m.chosen.get(&(0, 0)), Some(&0));
+    }
+
+    #[test]
+    fn an_answer_that_needs_a_stat_hides_when_the_stat_is_low() {
+        use crate::character::{Stat, Stats};
+        let text = "[missione t]\ntitolo: T\nsommario: s\ntipo: evento\n[tappa]\nobiettivo: g\n\
+                    quando: parla Bandito\n> Alt.\nscegli: Pago => monete 0; sblocca pagato\n\
+                    scegli: [carisma 12] Sparite => sblocca sventato\nscegli: Combatto => sblocca lotta\n";
+        let mut m = Missions {
+            list: parse(text),
+            progress: vec![0],
+            enabled: true,
+            ..Default::default()
+        };
+        assert_eq!(
+            m.list[0].steps[0].choices[1].requires,
+            Some((Stat::Charisma, 12))
+        );
+        let mut f = facts(Vec3::ZERO, 12.0, false, false);
+        f.stats = Some(Stats::default());
+        let (_, choices) = m.dialog_for("Bandito", &mut f, "Ada").unwrap();
+        assert_eq!(choices, vec!["Pago".to_string(), "Combatto".to_string()]);
+        // «Combatto» è la seconda mostrata ma la terza della tappa.
+        m.dialog_closed(true, Some(1));
+        m.advance(&mut f);
+        assert!(m.unlocked("lotta") && !m.unlocked("sventato"));
+        // Con Carisma alto la risposta c'è.
+        m.reset();
+        let mut stats = Stats::default();
+        stats.set(Stat::Charisma, 13);
+        f.stats = Some(stats);
+        let (_, choices) = m.dialog_for("Bandito", &mut f, "Ada").unwrap();
+        assert_eq!(choices.len(), 3);
     }
 
     #[test]

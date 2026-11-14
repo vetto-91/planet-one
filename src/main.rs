@@ -33,6 +33,7 @@ mod hut;
 mod interiors;
 mod inventory;
 mod inventory_ui;
+mod island_life;
 mod karma;
 mod localtime;
 mod magic;
@@ -238,6 +239,7 @@ fn main() -> AppExit {
         .add_plugins(magic::plugin)
         .add_plugins(house::plugin)
         .add_plugins(archery::plugin)
+        .add_plugins(island_life::plugin)
         .add_plugins(water::plugin)
         .add_plugins(nature::plugin)
         .add_plugins(save::plugin)

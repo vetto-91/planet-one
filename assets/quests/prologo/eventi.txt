@@ -1,7 +1,8 @@
 # Eventi casuali dell'isola (ADR 0037): incontri legati a luogo, ora e meteo. Stesso formato delle
 # missioni, con `tipo: evento`; in più `quando: meteo <sereno|nuvoloso|pioggia|temporale|nebbia|neve>`.
 # Capitano una volta sola, quando passi di lì nel momento giusto; entrano nel diario a cose fatte.
-# Fonte: Trama-Planet-One/09, sezione 4 (EC-01…EC-12; manca EC-05, il pedaggio del ponte).
+# Fonte: Trama-Planet-One/09, sezione 4 (EC-01…EC-12). EC-05, il pedaggio del ponte, mette in scena due
+# banditi veri (`src/island_life.rs`): la scelta è nel dialogo, qui sotto.
 
 [missione ec01]
 titolo: Il Relitto della Mareggiata
@@ -153,3 +154,18 @@ quando: vicino 14 99 5
 quando: ora 5 7
 pensiero: Una bottiglia di vetro verde, sigillata. Dentro, un foglio con una riga sola, in una scrittura che non conosci, e sotto un disegno: un'isola piccola, uno stretto, una terra grande. E una freccia.
 monete: 5
+
+
+[missione ec05]
+titolo: Il Pedaggio del Ponte
+sommario: Al tramonto, sul ponte di legno del ruscello, due figure col mantello chiedono un pedaggio a chi passa.
+tipo: evento
+
+[tappa]
+obiettivo: Al tramonto o di notte, il ponte di legno sul ruscello a est
+quando: parla Bandito del ponte
+> Alt, forestiero. Stanotte il ponte è nostro: dieci monete e passi.
+> Niente monete? Allora torni da dove sei venuto. O provi a passare lo stesso.
+scegli: Pago le dieci monete => prendi moneta 10; sblocca pedaggio-pagato
+scegli: [carisma 12] L'uomo dal mantello rosso è un mio amico. Sparite. => karma 1 #coraggio li hai mandati via con le parole; sblocca pedaggio-sventato
+scegli: Fatevi da parte, o passo io => sblocca pedaggio-lotta

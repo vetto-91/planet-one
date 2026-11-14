@@ -89,6 +89,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 - `src/magic.rs`: cinque incantesimi (`Z` sceglie, `Q` lancia), dardi, lume, scudo (`ward_factor`; ADR 0041).
 - `src/house.rs`: la casa del giocatore sul Poggio del Naufrago (terreno fisso, legname e pietra col tasto `R`, due tappe, piazzamento `casa-naufrago` in memoria; ADR 0042).
 - `src/archery.rs`: la Prova dell'Arco, tre anelli lungo il ruscello da centrare in fila (`Trial`; ADR 0043).
+- `src/island_life.rs`: casse delle mareggiate, bottino che torna, banditi del pedaggio (ADR 0046); voci e luoghi esplorati in `places.rs`.
 - `src/karma.rs` + `assets/world/segreti.txt`: karma, fiducia per abitante, regali e segreti confidati (`deed`, `trust`; ADR 0040); sblocchi, indizi (`CLUES`) e valori (`deed_as`, `praise`; ADR 0045); scheda «Volti e segreti» in `menu.rs`.
 - `src/containers.rs`: inventari dei mobili (`AppState::Container`, capienze, contenuto iniziale; ADR 0023).
 - `src/shell.rs`: shell dei trucchi (tasto `\`, `AppState::Shell`, `Cheats` non salvata; ADR 0021).

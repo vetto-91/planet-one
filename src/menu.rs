@@ -118,6 +118,7 @@ pub struct UiQueries<'w, 's> {
     pub load: Res<'w, crate::character::Load>,
     pub vitals: Res<'w, crate::vitals::Vitals>,
     pub karma: Res<'w, crate::karma::Karma>,
+    pub exploration: Res<'w, crate::places::Exploration>,
     pub magic: Res<'w, crate::magic::Magic>,
     pub secrets: Res<'w, crate::karma::Secrets>,
     pub health: Query<'w, 's, &'static PlayerHealth, With<crate::player::Player>>,
@@ -478,6 +479,7 @@ pub fn ui(
                     }),
                     q.map_view.zoom,
                     &q.known,
+                    &q.exploration,
                 );
                 if picked.is_some() {
                     q.fast_travel.0 = picked;

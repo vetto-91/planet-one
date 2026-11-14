@@ -1100,6 +1100,12 @@ pub fn snapshot(world: &mut World) -> Value {
         "quest": quest,
         "missioni": missioni,
         "abilita": abilita,
+        "esplorati": world
+            .resource::<crate::places::Exploration>()
+            .0
+            .iter()
+            .map(|(k, e)| (k.clone(), json!(e.label())))
+            .collect::<serde_json::Map<String, Value>>(),
         "vista": {
             "yaw": (world.resource::<OrbitCamera>().yaw.to_degrees() * 10.0).round() / 10.0,
             "pitch": (world.resource::<OrbitCamera>().pitch.to_degrees() * 10.0).round() / 10.0,

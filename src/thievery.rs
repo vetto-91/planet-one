@@ -287,6 +287,10 @@ pub fn lockpick_window(
             Push::Open => {
                 skills::train(Skill::Lockpick, 10.0 * lock);
                 thievery.picked += 1;
+                // Forzare il baule di una casa è un furto; le casse senza padrone no (ADR 0046).
+                if pick.building.starts_with("casa") && pick.building != crate::house::KIND {
+                    crate::karma::deed_as("onesta", -2, "hai forzato un baule in una casa");
+                }
                 *thievery.picked_in.entry(pick.building.clone()).or_default() += 1;
                 info!("[SCASSO] {}: aperta", pick.key);
                 containers.open(&Container {

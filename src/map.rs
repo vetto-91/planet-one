@@ -242,6 +242,7 @@ pub fn draw_map_overlay(
     village: Option<(&str, Vec3)>,
     zoom: f32,
     known: &crate::places::Known,
+    exploration: &crate::places::Exploration,
 ) -> Option<(String, Vec3)> {
     // Luogo scoperto su cui si è fatto clic: lì porta il viaggio veloce.
     let mut picked = None;
@@ -353,25 +354,34 @@ pub fn draw_map_overlay(
             );
         }
         // Il paese si vede sempre; gli altri luoghi solo dopo averli scoperti (ADR 0037).
-        let mut label = |name: &str, world: Vec3, size: f32| {
+        let mut label = |name: &str, text: &str, world: Vec3, size: f32, color| {
             let Ok(p) = cam.world_to_viewport(cam_t, world) else {
                 return;
             };
             let at = crate::ui_style::screen_to_ui(ctx, p);
-            crate::ui_style::plate(&painter, at, name, size, gold);
+            crate::ui_style::plate(&painter, at, text, size, color);
             if let (Some(c), Some(to)) = (click, known.arrival(name))
-                && crate::ui_style::plate_rect(&painter, at, name, size).contains(c)
+                && crate::ui_style::plate_rect(&painter, at, text, size).contains(c)
             {
                 picked = Some((name.to_string(), to));
             }
         };
         if let Some((name, at)) = village {
-            label(name, at + Vec3::Y * 6.0, 28.0);
+            label(name, name, at + Vec3::Y * 6.0, 28.0, gold);
         }
+        // Scoperti (con lo stato di esplorazione) e annotati con un «?» dalle voci (ADR 0046).
         let spec = crate::water::load_spec_cached();
+        let grey = egui::Color32::from_rgb(170, 178, 196);
         for (name, at) in &spec.places {
+            let world = Vec3::new(at.x, 6.0, at.y);
             if known.arrival(name).is_some() {
-                label(name, Vec3::new(at.x, 6.0, at.y), 16.0);
+                let text = match exploration.0.get(name) {
+                    Some(e) if e.complete() => format!("{name} ✓"),
+                    _ => name.clone(),
+                };
+                label(name, &text, world, 16.0, gold);
+            } else if known.rumored(name) {
+                label(name, &format!("? {name}"), world, 15.0, grey);
             }
         }
         if let Some(h) = hut_pos
@@ -392,7 +402,7 @@ pub fn draw_map_overlay(
         egui::pos2(size.x / 2.0, size.y - 22.0),
         egui::Align2::CENTER_CENTER,
         format!(
-            "M / Esc = chiudi   •   Rotella o +/- = zoom ({zoom:.0} m)   •   Frecce/WASD o trascina = sposta   •   C = su di te   •   Clic su un luogo scoperto = viaggio veloce   •   F4 = debug piazzamenti"
+            "M / Esc = chiudi   •   Rotella o +/- = zoom ({zoom:.0} m)   •   Frecce/WASD o trascina = sposta   •   C = su di te   •   Clic su un luogo scoperto = viaggio veloce   •   ? = sentito nominare   •   ✓ = esplorato   •   F4 = debug piazzamenti"
         ),
         egui::FontId::proportional(16.0),
         egui::Color32::from_rgb(220, 226, 240),

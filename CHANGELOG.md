@@ -4,6 +4,12 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **Voci sui luoghi** (ADR 0046): alcuni abitanti, la prima volta che ci parli, nominano un luogo che non conosci; sulla mappa compare con un «?» finché non ci arrivi.
+- **Luoghi esplorati**: sulla mappa un luogo scoperto prende la spunta ✓ quando hai aperto ogni mobile e non ci sono più nemici.
+- **Il bottino torna**: nei luoghi fuori dalle mura, una notte a caso, i mobili svuotati si riempiono di nuovo.
+- **Casse delle mareggiate**: quattro bauli col lucchetto di bronzo sulle spiagge, senza padrone: si scassinano senza pesare sul karma (forzare un baule in una casa invece pesa).
+- **Il pedaggio del ponte**: al tramonto e di notte, due banditi sbarrano il ponte sul ruscello. Puoi pagare, sfidarli o, con molto Carisma, mandarli via con le parole.
+
 - **I segreti sbloccano qualcosa** (ADR 0045): chi ti confida il suo segreto ti dà anche un oggetto (la Mappa delle Secche di Gaspare, le focacce di Marta, il bulbo di Luce Viva di Carlo, la chiave di rame di Pietro…) o un aiuto che servirà più avanti (Gaspare timoniere, Silvia compagna, il Rito del Nome di Don Anselmo…).
 - **La via degli indizi**: al faro, al mulino, alla locanda e dall'arciera, nel primo mobile, c'è un quaderno o una lettera. Leggerlo ti fa conoscere il segreto del suo proprietario anche se non siete ancora amici.
 - **Ognuno ha i suoi valori**: Don Anselmo apprezza la pietà, Ferruccio il lavoro e il coraggio, Tonio l'onestà, Silvia il coraggio e l'esplorazione… Quello che fai cambia la fiducia di chi ci tiene, nel bene e nel male.

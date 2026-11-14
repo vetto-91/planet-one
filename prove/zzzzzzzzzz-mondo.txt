@@ -1,0 +1,75 @@
+# Mondo vivo dell'isola (ADR 0046): voci sui luoghi, esplorazione, casse delle mareggiate, il pedaggio.
+god on
+ia off
+meteo sereno
+ora 10
+missioni on
+aspetta 3
+# Ida parla del santuario: sulla mappa compare un «?».
+tp ida
+aspetta 1
+attendi npc:ida:modo = Ready 90
+davanti ida
+aspetta 0.5
+guarda ida
+aspetta 1
+premi e
+aspetta 1
+verifica /luoghi contiene ?isola|Santuario
+premi esc
+aspetta 1
+premi m
+aspetta 2
+foto mappa-voce
+premi m
+aspetta 1
+# Arrivati al santuario il «?» diventa un luogo scoperto.
+tp -66 4 30
+aspetta 3
+verifica /luoghi contiene isola|Santuario
+# Una cassa delle mareggiate: si forza senza toccare il karma.
+dai grimaldello 3
+abilita scassinare 100
+tp -32.5 3 87
+aspetta 2
+camera 120 25 6
+aspetta 1
+foto cassa-mareggiata
+mira container
+premi e
+aspetta 1
+verifica app = Lockpick
+scassina
+attendi app = Container 40
+prendi
+aspetta 0.5
+chiudi
+aspetta 1
+verifica /serrature = 1
+verifica /karma = 0
+verifica monete > 30
+# Il pedaggio del ponte: al tramonto due banditi sbarrano il passo.
+ora 19
+tp 75 3 -2
+aspetta 4
+verifica /vicini contiene Bandito del ponte
+tp bandito
+aspetta 1
+davanti bandito
+aspetta 0.5
+guarda bandito
+aspetta 1
+foto pedaggio
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+verifica /dialogo/scelte contiene Pago
+scegli passo io
+aspetta 2
+verifica /missioni/ec05 = 2
+uccidi 20
+aspetta 1
+uccidi 20
+aspetta 1
+esci

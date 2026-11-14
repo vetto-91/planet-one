@@ -694,6 +694,21 @@ impl Known {
         self.0.get(&Self::key(name)).copied()
     }
 
+    /// Un abitante ti ha parlato di questo luogo: sulla mappa compare con un «?» (ADR 0046).
+    /// Le voci stanno nella stessa tabella, con la chiave «?regione|nome».
+    pub fn rumored(&self, name: &str) -> bool {
+        self.0.contains_key(&format!("?{}", Self::key(name)))
+    }
+
+    /// Annota un luogo sentito nominare; `false` se era già noto o già annotato.
+    pub fn rumor(&mut self, name: &str) -> bool {
+        if self.arrival(name).is_some() || self.rumored(name) {
+            return false;
+        }
+        self.0.insert(format!("?{}", Self::key(name)), Vec3::ZERO);
+        true
+    }
+
     /// Il luogo scoperto della regione corrente il cui nome contiene `wanted` (minuscolo).
     pub fn find(&self, wanted: &str) -> Option<(String, Vec3)> {
         let prefix = format!("{}|", crate::region::current().key());
@@ -717,6 +732,107 @@ pub fn all_places(village: &crate::village::VillageInfo) -> Vec<(String, Vec2)> 
     places
 }
 
+/// Chi parla di quale luogo: alla prima chiacchierata l'abitante lo annota sulla tua mappa.
+pub const RUMORS: [(&str, &str); 9] = [
+    ("Viandante", "Campo del ladro"),
+    ("Gino", "Torre antica"),
+    ("Rosa", "Torre antica"),
+    ("Ida", "Santuario"),
+    ("Silvia", "Campo dei banditi"),
+    ("Nina", "Grotta"),
+    ("Ferruccio", "Rovine antiche"),
+    ("Pietro", "Mulino"),
+    ("Beppe", "Fattoria"),
+];
+
+/// Stato di esplorazione di un luogo scoperto: mobili aperti, mobili in tutto, nemici vivi.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Explored {
+    pub opened: u32,
+    pub furniture: u32,
+    pub enemies: u32,
+}
+
+impl Explored {
+    /// Esplorato del tutto: niente nemici e ogni mobile aperto.
+    pub fn complete(self) -> bool {
+        self.enemies == 0 && self.opened >= self.furniture
+    }
+
+    pub fn label(self) -> &'static str {
+        if self.complete() {
+            "esplorato"
+        } else {
+            "in parte"
+        }
+    }
+}
+
+/// Stato di esplorazione dei luoghi scoperti della regione (ricalcolato, non salvato).
+#[derive(Resource, Default, Debug)]
+pub struct Exploration(pub std::collections::BTreeMap<String, Explored>);
+
+/// Raggio (m) entro cui mobili e nemici appartengono a un luogo.
+const PLACE_REACH: f32 = 18.0;
+
+/// Sistema: un abitante nomina un luogo che non conosci ancora e lo annota sulla mappa.
+pub fn hear_rumors(
+    dialog: Res<crate::entities::DialogState>,
+    mut known: ResMut<Known>,
+    mut session: ResMut<crate::save::Session>,
+    mut was_open: Local<bool>,
+) {
+    let opened = dialog.open && !*was_open;
+    *was_open = dialog.open;
+    if !opened || crate::region::current() != crate::region::Region::Isola {
+        return;
+    }
+    for (who, place) in RUMORS {
+        if who == dialog.speaker && known.rumor(place) {
+            info!("[LUOGHI] {who} parla di: {place}");
+            session.notify(format!("Nuovo luogo annotato: {place}"));
+        }
+    }
+}
+
+/// Sistema: quanto è esplorato ogni luogo scoperto (mobili aperti e nemici rimasti).
+#[allow(clippy::too_many_arguments)]
+pub fn update_exploration(
+    time: Res<Time>,
+    mut timer: Local<f32>,
+    village: Res<crate::village::VillageInfo>,
+    known: Res<Known>,
+    containers: Res<crate::containers::Containers>,
+    furniture: Query<(&GlobalTransform, &crate::containers::Container)>,
+    enemies: Query<(&GlobalTransform, &crate::combat::EnemyHealth), With<Enemy>>,
+    mut exploration: ResMut<Exploration>,
+) {
+    *timer -= time.delta_secs();
+    if *timer > 0.0 {
+        return;
+    }
+    *timer = 1.0;
+    exploration.0.clear();
+    for (name, at) in all_places(&village) {
+        if known.arrival(&name).is_none() || name == village.spec.name {
+            continue;
+        }
+        let near = |t: &GlobalTransform| t.translation().xz().distance(at) <= PLACE_REACH;
+        let mut e = Explored::default();
+        for (t, c) in &furniture {
+            if near(t) {
+                e.furniture += 1;
+                e.opened += u32::from(containers.was_opened(&c.key));
+            }
+        }
+        e.enemies = enemies
+            .iter()
+            .filter(|(t, hp)| hp.current > 0.0 && near(t))
+            .count() as u32;
+        exploration.0.insert(name, e);
+    }
+}
+
 /// Sistema: avvicinandosi a un luogo lo si scopre (nome sulla mappa e viaggio veloce).
 pub fn discover_places(
     time: Res<Time>,
@@ -738,6 +854,7 @@ pub fn discover_places(
     for (name, at) in all_places(&village) {
         let key = Known::key(&name);
         if p.xz().distance(at) <= DISCOVER_RANGE && !known.0.contains_key(&key) {
+            known.0.remove(&format!("?{key}"));
             known.0.insert(key, p);
             info!("[LUOGHI] scoperto: {name}");
             crate::skills::train(crate::skills::Skill::Lore, 25.0);
@@ -790,6 +907,8 @@ pub fn fast_travel(
 pub fn plugin(app: &mut App) {
     app.init_resource::<Known>()
         .init_resource::<FastTravel>()
+        .init_resource::<Exploration>()
+        .add_systems(Update, (hear_rumors, update_exploration))
         .add_systems(
             Update,
             (

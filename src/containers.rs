@@ -237,6 +237,19 @@ pub fn starting_items(kind: ContainerKind, building: &str, key: &str) -> Vec<(It
                 out.push((Shield, 1));
             }
         }
+        // Casse delle mareggiate: lucchetto di bronzo, nessun padrone (ADR 0046).
+        (K::Chest, "mareggiata") => {
+            out.push((Coin, n(1, 8, 24)));
+            if chance(2, 0.5) {
+                out.push((HealthPotion, 1));
+            }
+            if chance(3, 0.35) {
+                out.push((Arrow, n(4, 5, 12)));
+            }
+            if chance(5, 0.25) {
+                out.push((Lockpick, 1));
+            }
+        }
         (K::Chest, "grotta") => {
             out.push((Coin, n(1, 25, 70)));
             if chance(2, 0.6) {
@@ -292,6 +305,24 @@ impl Containers {
         });
         self.open = Some((c.key.clone(), c.kind));
         info!("[CONTAINER] aperto {} ({})", c.key, c.kind.name());
+    }
+
+    /// Mobili aperti almeno una volta e ormai vuoti (chiave e tipo): il bottino può tornare.
+    pub fn emptied(&self) -> Vec<(String, ContainerKind)> {
+        self.stores
+            .iter()
+            .filter(|(_, s)| s.items.is_empty())
+            .filter_map(|(k, _)| Some((k.clone(), *self.kinds.get(k)?)))
+            .collect()
+    }
+
+    /// Rimette qualcosa in un mobile (bottino che si rigenera, ADR 0046).
+    pub fn refill(&mut self, key: &str, items: &[(ItemKind, u32)]) {
+        if let Some(store) = self.stores.get_mut(key) {
+            for (item, qty) in items {
+                store.add(*item, *qty);
+            }
+        }
     }
 
     /// Il mobile è già stato aperto almeno una volta (un baule così non è più chiuso a chiave).
