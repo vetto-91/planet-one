@@ -181,6 +181,7 @@ pub fn judge(
         for ring in &rings {
             if !scored && through(before, now, ring.1, n) {
                 scored = true;
+                crate::sfx::play(crate::sfx::Sfx::Ring);
                 if trial.ring(ring.0) {
                     skills::train(Skill::Archery, 8.0);
                     if trial.hits >= 3 {

@@ -1089,7 +1089,13 @@ pub fn snapshot(world: &mut World) -> Value {
         .next()
         .map_or("", |n| n.name);
     let who = world.resource::<crate::character::Character>();
+    let prompt = world
+        .resource::<crate::entities::NearestInteract>()
+        .prompt
+        .clone()
+        .unwrap_or_default();
     let personaggio = json!({
+        "prompt": prompt,
         "armatura": armatura,
         "compagno": compagno,
         "risveglio": who.awakening,

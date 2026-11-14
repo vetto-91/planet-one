@@ -4,6 +4,10 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **Le voci del Prologo** (ADR 0050): tutte le battute delle missioni, delle secondarie, degli eventi e delle confidenze degli abitanti ora si sentono, ognuna con la voce del suo personaggio (221 battute, generate in locale con Piper).
+- **Suoni**: gli incantesimi, l'anello di ferro centrato nella Prova dell'Arco, i perni e la serratura che cede.
+- **Correzione: alle guardie di ronda si può parlare.** Continuavano a camminare e uscivano subito dalla portata del dialogo; ora si fermano e si voltano quando ti avvicini.
+
 - **Armature** (ADR 0049): dal fabbro l'armatura di cuoio, la cotta di maglia e l'armatura a piastre (meno danno subito, più peso; quella a piastre rallenta un poco). Si indossano dalla barra o dall'inventario, e incassare colpi con l'armatura allena l'abilità Armatura.
 - **Talenti attivi**, dal grado 30: lo **Scatto di Ermes** (Atletica, tasto `X`, un balzo rapido in avanti) e il **Disarmo di Grazia** (Lama: un nemico ferito gravemente in mischia si arrende e se ne va).
 - **Compagni**: Silvia (dopo la Prova dell'Arco) e Guardia Dino (dopo la sua missione), o chi dei due ti ha confidato il suo segreto, possono venire con te: ti seguono e colpiscono i nemici vicini. Nel dialogo, «Vieni con me» e «Torna pure a casa».

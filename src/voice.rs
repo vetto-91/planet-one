@@ -47,6 +47,48 @@ pub fn farewell_clip(voice: &str, salt: u32) -> String {
     )
 }
 
+/// FNV-1a a 64 bit: lo stesso hash di `scripts/gen_voci_prologo.py`.
+pub fn fnv1a(text: &str) -> u64 {
+    let mut h: u64 = 0xCBF2_9CE4_8422_2325;
+    for b in text.as_bytes() {
+        h ^= u64::from(*b);
+        h = h.wrapping_mul(0x0100_0000_01B3);
+    }
+    h
+}
+
+/// Clip della battuta `line` (testo del file, con `{nome}`) detta da `speaker`:
+/// `prologo/<abitante>-<hash>` (ADR 0050). Vuota se la clip non è stata generata.
+pub fn line_clip(speaker: &str, line: &str) -> Vec<String> {
+    let name = format!(
+        "prologo/{}-{:016x}",
+        speaker.to_lowercase().replace(' ', "-"),
+        fnv1a(line.trim())
+    );
+    if clip_exists(&name) {
+        vec![name]
+    } else {
+        Vec::new()
+    }
+}
+
+/// La clip c'è fra gli asset? (radice di Bevy, accanto all'eseguibile o nei sorgenti)
+fn clip_exists(name: &str) -> bool {
+    let rel = format!("assets/audio/voci/{name}.ogg");
+    let mut roots: Vec<std::path::PathBuf> = Vec::new();
+    if let Some(r) = std::env::var_os("BEVY_ASSET_ROOT") {
+        roots.push(r.into());
+    }
+    if let Ok(exe) = std::env::current_exe()
+        && let Some(dir) = exe.parent()
+    {
+        roots.push(dir.to_path_buf());
+    }
+    roots.push(env!("CARGO_MANIFEST_DIR").into());
+    roots.push(".".into());
+    roots.iter().any(|r| r.join(&rel).is_file())
+}
+
 /// Quanti congedi diversi ci sono per sesso.
 const FAREWELLS: u32 = 6;
 
@@ -172,6 +214,14 @@ mod tests {
             greeting_clips("Don Anselmo", 2)[1],
             vec!["abitanti/don-anselmo-2"]
         );
+    }
+
+    #[test]
+    fn mission_lines_find_their_generated_clip() {
+        // Stesso hash dello script Python (FNV-1a 64).
+        assert_eq!(fnv1a(""), 0xcbf2_9ce4_8422_2325);
+        assert_eq!(fnv1a("a"), 0xaf63_dc4c_8601_ec8c);
+        assert!(line_clip("Nessuno", "battuta che non esiste").is_empty());
     }
 
     #[test]

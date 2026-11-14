@@ -380,6 +380,7 @@ pub fn cast(
         vitals.magic = (vitals.magic - price).max(0.0);
     }
     magic.cooldown = CAST_COOLDOWN;
+    crate::sfx::play(crate::sfx::Sfx::Spell);
     // Nel laghetto sotto la grotta la magia fa risuonare le quattro stele (MP-04, ADR 0048).
     if p.xz().distance(CENOTE) <= CENOTE_REACH && p.y < 2.2 {
         crate::karma::flag("stele-risonanti");

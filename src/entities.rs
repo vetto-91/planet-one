@@ -416,8 +416,7 @@ pub fn interact(
             missions.dialog_for(npc.name, &mut facts, &character.name)
         };
         let (lines, choices, voices) = if let Some((lines, choices)) = mission {
-            let n = lines.len();
-            (lines, choices, vec![Vec::new(); n])
+            (lines, choices, missions.voices(npc.name))
         } else if npc.name == "Viandante" {
             crate::quests::npc_dialog(&quest, &texts)
         } else {

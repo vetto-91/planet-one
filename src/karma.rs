@@ -449,7 +449,11 @@ pub fn meet_and_confide(
         .iter()
         .map(|l| l.replace("{nome}", &character.name))
         .collect();
-    dialog.voices = vec![Vec::new(); dialog.lines.len()];
+    dialog.voices = secret
+        .lines
+        .iter()
+        .map(|l| crate::voice::line_clip(&secret.name, l))
+        .collect();
     dialog.index = 0;
     reveal(&mut karma, secret);
     crate::skills::train(crate::skills::Skill::Eloquence, 15.0);
@@ -623,6 +627,19 @@ mod tests {
                 "{} non è un abitante",
                 s.name
             );
+        }
+    }
+
+    #[test]
+    fn every_confidence_has_its_voice() {
+        for s in &Secrets::default().0 {
+            for line in &s.lines {
+                assert!(
+                    !crate::voice::line_clip(&s.name, line).is_empty(),
+                    "manca la voce di {} per «{line}»",
+                    s.name
+                );
+            }
         }
     }
 

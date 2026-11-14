@@ -1,0 +1,18 @@
+# Le guardie di ronda si fermano quando ti avvicini, e si può parlare con loro (ADR 0050).
+god on
+ia off
+meteo sereno
+ora 10
+aspetta 3
+attendi npc:guardia_gino:modo = Ready 60
+tp guardia gino
+aspetta 1
+guarda guardia gino
+aspetta 0.5
+verifica /personaggio/prompt contiene Parla
+foto ronda-ferma
+premi e
+aspetta 1
+verifica dialogo = true
+verifica parla = Guardia Gino
+esci

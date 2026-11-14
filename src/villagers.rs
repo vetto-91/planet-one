@@ -20,6 +20,8 @@ const SPEC: &str = include_str!("../assets/world/abitanti.txt");
 const WALK_SPEED: f32 = 1.3;
 /// Passo di ronda sulle mura (m/s).
 const PATROL_SPEED: f32 = 1.3;
+/// Entro questa distanza dal giocatore una guardia di ronda si ferma (per parlarle).
+const PATROL_STOP: f32 = 2.8;
 const CENTER_Y: f32 = 0.85;
 
 /// Dati di un abitante letti da `abitanti.txt`.
@@ -835,12 +837,19 @@ pub fn villager_routine(
             // Si ferma anche mentre si chiacchiera con la IA (stato Chat), non solo nel dialogo scritto.
             let chatting = *app_state.get() == crate::AppState::Chat && chat.npc_name == v.def.name;
             let talking = (dialog.open && dialog.speaker_entity == Some(entity)) || chatting;
-            if !talking {
+            // Chi si avvicina fa fermare la ronda: la guardia si volta e aspetta che le si parli
+            // (prima continuava a camminare e usciva subito dalla portata del dialogo).
+            let greeted = player.filter(|pp| pp.distance(tf.translation) < PATROL_STOP);
+            if !talking && greeted.is_none() {
                 v.patrol = (v.patrol + PATROL_SPEED * dt).rem_euclid(length);
             }
             let (p, dir) = crate::village::point_on_loop(&info.patrol, v.patrol);
             tf.translation = p + Vec3::Y * CENTER_Y;
-            if !talking {
+            if let Some(pp) = greeted.filter(|_| !talking) {
+                let to = (pp - tf.translation).xz();
+                let want_rot = Quat::from_rotation_y(yaw_towards(to));
+                tf.rotation = tf.rotation.slerp(want_rot, (6.0 * dt).clamp(0.0, 1.0));
+            } else if !talking {
                 let want_rot = Quat::from_rotation_y(yaw_towards(dir));
                 tf.rotation = tf.rotation.slerp(want_rot, (6.0 * dt).clamp(0.0, 1.0));
             }

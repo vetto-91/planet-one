@@ -1,8 +1,14 @@
-# Missioni secondarie del Prologo (ADR 0036). Stesso formato di missioni.txt, più:
+# Missioni secondarie del Prologo (ADR 0036, 0037, 0039, 0042, 0043, 0044, 0049). Stesso formato di
+# missioni.txt, più:
 #   tipo: secondaria      compare nel diario solo dopo la prima tappa (chi la propone)
 #   quando: ha <oggetto> <n> | libero <x> <z> <raggio>  (nessun nemico vivo lì attorno)
+#   quando: conta <contatore> <n> | sbloccato <cosa> | fatte <n>
 #   prendi: <oggetto> <n>   oggetto consegnato        dai: <oggetto> <n>   oggetto ricevuto
-# Fonte: Trama-Planet-One/09, sezione 3 (QS-01…QS-13). Si fanno in qualsiasi ordine.
+#   karma: <n> [#valore] <motivo> · fiducia: <abitante> <n> · stat: <statistica> <n> · tempo: <ora> [giorni] [meteo]
+#   scegli: [requisito] testo => effetto; effetto   risposta a fine dialogo (requisito: «carisma 12»,
+#                                                   «sbloccato porta-sommersa»; effetto «fine» chiude la missione)
+# Fonte: Trama-Planet-One/09, sezione 3 (QS-01…QS-17) e la missione dell'Accordo (qs18). Si fanno in
+# qualsiasi ordine. Dopo aver cambiato le battute, rigenerare le voci: scripts/gen_voci_prologo.py
 
 [missione qs01]
 titolo: Il Pane del Vento

@@ -22,6 +22,9 @@ missioni a tappe (ADR 0034) reggeva solo la storia principale.
 - Copione `zz-secondarie`: cinque missioni giocate per intero (qs01, qs03, qs04, qs06, qs10).
 
 ## Conseguenze
+- Aggiornamento (14/11): le sei missioni rimaste sono state fatte (qs09, qs12, qs15 con l'ADR 0037; qs16 con
+  l'ADR 0039; qs17 con l'ADR 0042; qs14 con l'ADR 0043). Scelte, oggetti di trama e premi veri sono arrivati
+  con l'ADR 0044, e le voci delle battute con l'ADR 0050. I punti qui sotto descrivono lo stato di allora.
 - **Sei missioni restano da fare** perché chiedono sistemi che non esistono: il duello d'allenamento e il
   nuoto di Guardia Dino (qs09), le quattro ronde sulle mura e il campanile (qs12), la prova dell'arco con i
   bersagli (qs14), il cantiere della nave di tutti (qs15), scasso e borseggio (qs16), la costruzione della

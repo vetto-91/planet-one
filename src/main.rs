@@ -54,6 +54,7 @@ mod save;
 mod scene;
 mod seasons;
 mod settings_ui;
+mod sfx;
 mod shell;
 mod shop;
 mod skills;
@@ -248,6 +249,7 @@ fn main() -> AppExit {
         .add_plugins(awakening::plugin)
         .add_plugins(cutscene::plugin)
         .add_plugins(companions::plugin)
+        .add_plugins(sfx::plugin)
         .add_plugins(water::plugin)
         .add_plugins(nature::plugin)
         .add_plugins(save::plugin)

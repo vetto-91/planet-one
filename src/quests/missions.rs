@@ -369,6 +369,8 @@ pub struct Missions {
     talking: Option<(String, usize)>,
     /// Risposte mostrate nel dialogo aperto: indice nella tappa (alcune possono essere nascoste).
     shown: Vec<usize>,
+    /// Battute del dialogo aperto così come sono nel file (per trovare le voci).
+    templates: Vec<String>,
     /// Dialoghi di missione letti fino in fondo (nome dell'abitante), in attesa di essere contati.
     talked: Vec<(String, usize)>,
     /// Risposta scelta alla fine di un dialogo di missione (missione, risposta), in attesa.
@@ -398,6 +400,7 @@ impl Default for Missions {
             enabled: false,
             talking: None,
             shown: Vec::new(),
+            templates: Vec::new(),
             talked: Vec::new(),
             picked: Vec::new(),
             chosen: Default::default(),
@@ -577,6 +580,7 @@ impl Missions {
             })
         })?;
         self.shown = choices.iter().map(|(k, _)| *k).collect();
+        self.templates = lines.clone();
         let choices: Vec<String> = choices.into_iter().map(|(_, t)| t).collect();
         // Il dialogo vale per questa missione sola: un altro incarico dello stesso abitante
         // aspetta la prossima volta che gli si parla.
@@ -585,6 +589,14 @@ impl Missions {
             lines.iter().map(|l| l.replace("{nome}", player)).collect(),
             choices,
         ))
+    }
+
+    /// Le voci delle battute dell'ultimo dialogo aperto da `dialog_for` (ADR 0050).
+    pub fn voices(&self, npc: &str) -> Vec<Vec<String>> {
+        self.templates
+            .iter()
+            .map(|l| crate::voice::line_clip(npc, l))
+            .collect()
     }
 
     /// Il dialogo si è chiuso: se era di missione ed è stato letto tutto, vale come «parlato».
@@ -1235,6 +1247,29 @@ mod tests {
         let qs04 = find("qs04");
         assert!(qs04.steps[2].choices[1].effects.contains(&Effect::End));
         assert!(qs04.steps[3].unlocks.contains(&"rito-banditi".to_string()));
+    }
+
+    #[test]
+    fn every_spoken_mission_line_has_its_voice() {
+        // Le voci si generano con `scripts/gen_voci_prologo.py` (ADR 0050).
+        let m = all();
+        for mission in &m.list {
+            for step in &mission.steps {
+                let Some(npc) = step.when.iter().find_map(|w| match w {
+                    When::Talk(n) => Some(n.clone()),
+                    _ => None,
+                }) else {
+                    continue;
+                };
+                for line in &step.lines {
+                    assert!(
+                        !crate::voice::line_clip(&npc, line).is_empty(),
+                        "{}: manca la voce di {npc} per «{line}»",
+                        mission.id
+                    );
+                }
+            }
+        }
     }
 
     #[test]

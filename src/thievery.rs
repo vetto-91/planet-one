@@ -281,10 +281,12 @@ pub fn lockpick_window(
         let lock = f32::from(pick.lock);
         match pick.push(grade, luck) {
             Push::Pin => {
+                crate::sfx::play(crate::sfx::Sfx::Pin);
                 skills::train(Skill::Lockpick, 3.0 * lock);
                 pick.message = "Un perno è a posto.".into();
             }
             Push::Open => {
+                crate::sfx::play(crate::sfx::Sfx::Unlock);
                 skills::train(Skill::Lockpick, 10.0 * lock);
                 thievery.picked += 1;
                 // Forzare il baule di una casa è un furto; le casse senza padrone no (ADR 0046).
