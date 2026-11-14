@@ -1079,8 +1079,19 @@ pub fn snapshot(world: &mut World) -> Value {
             ]
         })
         .collect();
+    let armatura = world
+        .resource::<crate::inventory::Equipment>()
+        .armor
+        .map_or("nessuna", crate::inventory::ItemKind::name);
+    let compagno = world
+        .query_filtered::<&crate::entities::Npc, With<crate::companions::Companion>>()
+        .iter(world)
+        .next()
+        .map_or("", |n| n.name);
     let who = world.resource::<crate::character::Character>();
     let personaggio = json!({
+        "armatura": armatura,
+        "compagno": compagno,
         "risveglio": who.awakening,
         "eta": who.age.key(),
         "classe": who.class.name(),

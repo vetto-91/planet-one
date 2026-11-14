@@ -402,7 +402,13 @@ pub fn update_load(
         capacity,
         weight,
         overloaded: weight > capacity + 1e-3,
-        speed_factor: character.stats.speed_factor(),
+        // L'armatura a piastre pesa anche sul passo (ADR 0049).
+        speed_factor: character.stats.speed_factor()
+            * if equip.armor == Some(crate::inventory::ItemKind::PlateArmor) {
+                0.9
+            } else {
+                1.0
+            },
     };
 }
 
@@ -548,7 +554,8 @@ pub fn character_window(
                         );
                         let magic_grade = progress.grade(crate::skills::Skill::Magic);
                         for spell in crate::magic::Spell::ALL {
-                            let known = magic_grade >= spell.grade();
+                            let known = magic_grade >= spell.grade()
+                                && (spell.basic() || crate::magic::taught());
                             let text = if known {
                                 format!(
                                     "  {} ({:.0}): {}",
@@ -557,7 +564,16 @@ pub fn character_window(
                                     spell.effect()
                                 )
                             } else {
-                                format!("  {} — al grado {} di Magie", spell.name(), spell.grade())
+                                format!(
+                                    "  {} — al grado {} di Magie{}",
+                                    spell.name(),
+                                    spell.grade(),
+                                    if spell.basic() {
+                                        ""
+                                    } else {
+                                        ", insegnato da Agnese"
+                                    }
+                                )
                             };
                             ui.label(egui::RichText::new(text).size(14.0).color(if known {
                                 crate::ui_style::TEXT
@@ -653,6 +669,22 @@ fn skill_row(
         None => "   non ancora nel gioco".to_string(),
     };
     ui.label(egui::RichText::new(detail).size(13.0).color(grey));
+    // Talenti attivi (ADR 0049): sbloccati dal grado di Apprendista.
+    for (owner, name, what) in crate::skills::ACTIVE_TALENTS {
+        if owner == skill {
+            let open = progress.grade(skill) >= crate::skills::ACTIVE_TALENT;
+            let text = if open {
+                format!("   ★ {name}: {what}")
+            } else {
+                format!("   {name} — al grado {}", crate::skills::ACTIVE_TALENT)
+            };
+            ui.label(egui::RichText::new(text).size(13.0).color(if open {
+                crate::ui_style::GOLD
+            } else {
+                grey
+            }));
+        }
+    }
 }
 
 pub fn plugin(app: &mut App) {

@@ -572,3 +572,30 @@ quando: parla Silvia
 > Tieni: frecce buone, e qualche moneta per l'incomodo.
 dai: freccia 20
 monete: 25
+
+
+[missione qs18]
+titolo: L'Accordo
+sommario: Agnese ha capito che la Luce Viva e la magia sono la stessa cosa. Sugli altopiani la chiamavano «il canto che pesa»: vuole insegnartelo.
+tipo: secondaria
+dopo: mp03
+
+[tappa]
+obiettivo: Parla con Agnese dell'Accordo
+quando: parla Agnese
+> Il dardo e la sfera li sai già fare: sono il primo verso. Ma un canto ha più strofe, {nome}.
+> Sugli altopiani dove sono nata si diceva «fiore e canto»: la cosa bella e la cosa vera insieme. La cura, il passo leggero, lo scudo, la calma: sono strofe di quel canto.
+> Va' al santuario quando il sole tramonta, e ascolta la pietra d'ambra. Poi torna da me.
+
+[tappa]
+obiettivo: Al tramonto, ascolta la pietra del santuario
+quando: vicino -66 22 6
+quando: ora 17 21
+pensiero: La luce del tramonto attraversa la pietra e si divide in sette colori. Per un momento, il canto lo senti anche tu.
+
+[tappa]
+obiettivo: Torna da Agnese
+quando: parla Agnese
+> L'hai sentito, vero? Allora le altre strofe sono tue: la cura, il passo leggero, lo scudo, la calma. Crescono con la pratica.
+> Non sprecarle. La magia pesa: chi la usa male se ne accorge.
+sblocca: accordo

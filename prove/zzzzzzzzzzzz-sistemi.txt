@@ -1,0 +1,54 @@
+# Sistemi del Prologo (ADR 0049): armatura, scatto, Calma, compagni.
+god on
+ia off
+meteo sereno
+ora 10
+aspetta 2
+# L'armatura si indossa dalla barra (primo riquadro libero).
+dai cotta di maglia
+aspetta 1
+premi 1
+aspetta 1
+verifica /personaggio/armatura = Cotta di maglia
+# Lo Scatto di Ermes: col grado 30 di Atletica, X fa balzare avanti e costa vigore.
+god off
+tp 0.5 3 -60
+aspetta 2
+camera 90 15
+abilita atletica 30
+aspetta 1
+premi x
+aspetta 1
+verifica /vigore < 90
+# «Calma»: si lancia (Agnese la insegna; nelle prove senza missioni è già nota).
+abilita magie 20
+magia 50
+incantesimo calma
+aspetta 1.5
+verifica /magia < 35
+god on
+# Silvia diventa compagna dopo la Prova dell'Arco.
+missioni on
+missione qs14 5
+aspetta 1
+tp silvia
+aspetta 1
+attendi npc:silvia:modo = Ready 90
+davanti silvia
+aspetta 0.5
+guarda silvia
+aspetta 1
+premi e
+aspetta 1
+avanza
+verifica /dialogo/scelte contiene Vieni con me
+scegli Vieni con me
+aspetta 1
+verifica /personaggio/compagno = Silvia
+tp 30 3 -20
+aspetta 6
+verifica npc:silvia:dist < 6
+camera 200 20 8
+aspetta 1
+foto compagna
+esci

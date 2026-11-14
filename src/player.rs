@@ -86,6 +86,38 @@ const WALK_SPEED: f32 = 5.0;
 const SPRINT_FACTOR: f32 = 1.55;
 /// Impulso verticale del salto (m/s).
 const JUMP_SPEED: f32 = 7.5;
+/// Scatto: quanto più veloce della camminata, per quanto, e quanto vigore costa.
+const DASH_FACTOR: f32 = 4.2;
+const DASH_SECS: f32 = 0.28;
+const DASH_VIGOR: f32 = 20.0;
+
+/// Scatto in corso (secondi rimasti).
+#[derive(Resource, Default)]
+pub struct Dash {
+    pub left: f32,
+}
+
+/// Sistema: X fa scattare in avanti chi ha il talento, se ha vigore.
+pub fn trigger_dash(
+    keys: Res<ButtonInput<KeyCode>>,
+    dialog: Res<crate::entities::DialogState>,
+    vitals: Res<crate::vitals::Vitals>,
+    debug: Res<crate::debug_place::DebugPlace>,
+    mut dash: ResMut<Dash>,
+) {
+    if !keys.just_pressed(KeyCode::KeyX)
+        || dialog.open
+        || debug.on
+        || dash.left > 0.0
+        || !crate::skills::active_talent(crate::skills::Skill::Athletics)
+        || vitals.vigor < DASH_VIGOR
+    {
+        return;
+    }
+    dash.left = DASH_SECS;
+    crate::vitals::spend(DASH_VIGOR);
+    info!("[GIOCATORE] scatto");
+}
 /// Accelerazione di gravità (m/s²), manuale perché il corpo è kinematico.
 const GRAVITY: f32 = 20.0;
 /// Quanto si va più veloci in noclip.
@@ -219,7 +251,7 @@ pub fn movement(
     cheats: Res<crate::shell::Cheats>,
     load: Res<crate::character::Load>,
     field: Option<Res<crate::terrain::TerrainField>>,
-    vitals: Option<Res<crate::vitals::Vitals>>,
+    (vitals, mut dash): (Option<Res<crate::vitals::Vitals>>, Option<ResMut<Dash>>),
 ) {
     let Ok(camera) = cameras.single() else {
         return;
@@ -251,6 +283,12 @@ pub fn movement(
     } else {
         1.0
     };
+    // Scatto di Ermes (talento attivo dell'Atletica, ADR 0049): un balzo breve e veloce.
+    let dashing = dash.as_mut().is_some_and(|d| {
+        d.left = (d.left - time.delta_secs()).max(0.0);
+        d.left > 0.0
+    });
+    let pace = if dashing { DASH_FACTOR } else { pace };
     let speed = WALK_SPEED * pace * load.speed_factor;
 
     let cam_forward = camera.forward().normalize_or_zero();

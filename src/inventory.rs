@@ -39,6 +39,10 @@ pub enum ItemKind {
     /// Materiali da costruzione (ADR 0042).
     Wood,
     Stone,
+    /// Armature (ADR 0049): meno danno subito, più peso.
+    LeatherArmor,
+    MailArmor,
+    PlateArmor,
     /// Oggetti di trama (ADR 0044).
     Relic(Relic),
 }
@@ -225,7 +229,7 @@ impl Category {
 
 impl ItemKind {
     /// Tutti i tipi di oggetto.
-    pub const ALL: [ItemKind; 38] = [
+    pub const ALL: [ItemKind; 41] = [
         ItemKind::HealthPotion,
         ItemKind::Coin,
         ItemKind::ShortSword,
@@ -246,6 +250,9 @@ impl ItemKind {
         ItemKind::Lockpick,
         ItemKind::Wood,
         ItemKind::Stone,
+        ItemKind::LeatherArmor,
+        ItemKind::MailArmor,
+        ItemKind::PlateArmor,
         ItemKind::Relic(Relic::Tablet),
         ItemKind::Relic(Relic::MotherCoin),
         ItemKind::Relic(Relic::Quipu),
@@ -287,6 +294,9 @@ impl ItemKind {
             ItemKind::Lockpick => Some(0.02),
             ItemKind::Wood => Some(2.5),
             ItemKind::Stone => Some(4.0),
+            ItemKind::LeatherArmor => Some(5.0),
+            ItemKind::MailArmor => Some(11.0),
+            ItemKind::PlateArmor => Some(18.0),
             ItemKind::Relic(Relic::Focaccia) => Some(0.3),
             ItemKind::Relic(_) => Some(0.05),
             ItemKind::Coin | ItemKind::Arrow => None,
@@ -299,7 +309,10 @@ impl ItemKind {
             ItemKind::ShortSword | ItemKind::LongSword | ItemKind::Axe | ItemKind::Bow => {
                 Category::Weapons
             }
-            ItemKind::Shield => Category::Defense,
+            ItemKind::Shield
+            | ItemKind::LeatherArmor
+            | ItemKind::MailArmor
+            | ItemKind::PlateArmor => Category::Defense,
             ItemKind::Arrow => Category::Ammo,
             ItemKind::HealthPotion | ItemKind::Apple | ItemKind::Fish | ItemKind::MulePotion => {
                 Category::Food
@@ -341,6 +354,9 @@ impl ItemKind {
             ItemKind::Lockpick => "grimaldello",
             ItemKind::Wood => "legname",
             ItemKind::Stone => "pietra",
+            ItemKind::LeatherArmor => "armatura-cuoio",
+            ItemKind::MailArmor => "armatura-maglia",
+            ItemKind::PlateArmor => "armatura-piastre",
             ItemKind::Relic(r) => r.icon(),
         }
     }
@@ -376,6 +392,9 @@ impl ItemKind {
             ItemKind::Lockpick => "Grimaldello",
             ItemKind::Wood => "Legname",
             ItemKind::Stone => "Pietra",
+            ItemKind::LeatherArmor => "Armatura di cuoio",
+            ItemKind::MailArmor => "Cotta di maglia",
+            ItemKind::PlateArmor => "Armatura a piastre",
             ItemKind::Relic(r) => r.name(),
         }
     }
@@ -403,6 +422,9 @@ impl ItemKind {
             ItemKind::Lockpick => "Per forzare la serratura di un baule. Può spezzarsi.",
             ItemKind::Wood => "Un tronco squadrato, per costruire.",
             ItemKind::Stone => "Un blocco di pietra, per costruire.",
+            ItemKind::LeatherArmor => "Subisci il 15% di danno in meno. Leggera.",
+            ItemKind::MailArmor => "Subisci il 30% di danno in meno.",
+            ItemKind::PlateArmor => "Subisci il 45% di danno in meno. Pesante: corri meno.",
             ItemKind::Relic(r) => r.description(),
         }
     }
@@ -453,6 +475,16 @@ impl ItemKind {
         (self == ItemKind::MulePotion).then_some((20.0, 300.0))
     }
 
+    /// Frazione di danno che passa attraverso l'armatura (`None` se non è un'armatura).
+    pub fn armor_factor(self) -> Option<f32> {
+        match self {
+            ItemKind::LeatherArmor => Some(0.85),
+            ItemKind::MailArmor => Some(0.7),
+            ItemKind::PlateArmor => Some(0.55),
+            _ => None,
+        }
+    }
+
     /// Arma che si impugna (spada, ascia, arco).
     pub fn is_weapon(self) -> bool {
         matches!(
@@ -495,6 +527,9 @@ impl ItemKind {
             ItemKind::Lockpick => Color::srgb(0.75, 0.55, 0.3),
             ItemKind::Wood => Color::srgb(0.55, 0.38, 0.2),
             ItemKind::Stone => Color::srgb(0.6, 0.6, 0.62),
+            ItemKind::LeatherArmor => Color::srgb(0.55, 0.35, 0.2),
+            ItemKind::MailArmor => Color::srgb(0.6, 0.62, 0.66),
+            ItemKind::PlateArmor => Color::srgb(0.75, 0.77, 0.8),
             ItemKind::Relic(r) => r.color(),
         }
     }
@@ -559,6 +594,8 @@ pub struct Equipment {
     pub backpack: Option<ItemKind>,
     /// Oggetto incantato indossato.
     pub charm: Option<ItemKind>,
+    /// Armatura indossata (ADR 0049).
+    pub armor: Option<ItemKind>,
 }
 
 impl Equipment {
@@ -568,6 +605,16 @@ impl Equipment {
             || (kind == ItemKind::Shield && self.shield)
             || self.backpack == Some(kind)
             || self.charm == Some(kind)
+            || self.armor == Some(kind)
+    }
+
+    /// Frazione di danno che arriva al giocatore: armatura indossata e talento Armatura.
+    pub fn armor_factor(&self) -> f32 {
+        self.armor
+            .and_then(ItemKind::armor_factor)
+            .map_or(1.0, |f| {
+                f * (1.0 - 0.05 * crate::skills::rank(crate::skills::Skill::Armor))
+            })
     }
 
     /// Toglie ciò che non si possiede più.
@@ -583,6 +630,9 @@ impl Equipment {
         }
         if self.charm.is_some_and(|k| inventory.qty(k) == 0) {
             self.charm = None;
+        }
+        if self.armor.is_some_and(|k| inventory.qty(k) == 0) {
+            self.armor = None;
         }
     }
 }
@@ -761,6 +811,14 @@ pub fn use_item(
             hp.current,
             hp.max
         );
+    } else if kind.armor_factor().is_some() {
+        // Indossa / toglie l'armatura.
+        equip.armor = if equip.armor == Some(kind) {
+            None
+        } else {
+            Some(kind)
+        };
+        info!("[INVENTORY] armatura: {:?}", equip.armor);
     } else if kind.is_weapon() {
         // Impugna / rimette via l'arma.
         equip.weapon = if equip.weapon == Some(kind) {

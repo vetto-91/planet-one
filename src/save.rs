@@ -122,6 +122,7 @@ pub struct SaveData {
     pub shield: bool,
     pub backpack: Option<ItemKind>,
     pub charm: Option<ItemKind>,
+    pub armor: Option<ItemKind>,
     pub effects: Vec<Effect>,
     pub stage: QuestStage,
     pub coins_collected: u32,
@@ -353,6 +354,7 @@ impl SaveData {
             shield: false,
             backpack: None,
             charm: None,
+            armor: None,
             effects: Vec::new(),
             stage: QuestStage::Idle,
             coins_collected: 0,
@@ -518,6 +520,7 @@ impl SaveData {
         line(format!("scudo = {}", yes(self.shield)));
         line(format!("zaino = {}", item_or_none(self.backpack)));
         line(format!("incantato = {}", item_or_none(self.charm)));
+        line(format!("armatura = {}", item_or_none(self.armor)));
         line(String::new());
         line("# fonte | chili | secondi rimasti oppure sempre".into());
         line("[effetti]".into());
@@ -850,6 +853,7 @@ impl SaveData {
                     "scudo" => self.shield = read_bool(v)?,
                     "zaino" => self.backpack = read_item_or_none(v)?,
                     "incantato" => self.charm = read_item_or_none(v)?,
+                    "armatura" => self.armor = read_item_or_none(v)?,
                     _ => return None,
                 }
             }
@@ -1340,6 +1344,7 @@ fn collect(kind: SaveKind, session: &Session, hero: &HeroParams, world: &WorldPa
     d.shield = hero.equip.shield;
     d.backpack = hero.equip.backpack;
     d.charm = hero.equip.charm;
+    d.armor = hero.equip.armor;
     d.effects = hero.effects.0.clone();
     d.stage = world.quest.stage;
     d.coins_collected = world.quest.coins_collected;
@@ -1489,6 +1494,7 @@ fn apply(d: &SaveData, hero: &mut HeroParams, world: &mut WorldParams) {
         hero.equip.shield = d.shield;
         hero.equip.backpack = d.backpack;
         hero.equip.charm = d.charm;
+        hero.equip.armor = d.armor;
     }
     if has("effetti") {
         hero.effects.0 = d.effects.clone();

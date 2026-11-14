@@ -74,3 +74,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0046 | Mondo vivo dell'isola: voci sui luoghi, esplorazione, bottino, mareggiate, pedaggio | accettato |
 | 0047 | Il risveglio sulla spiaggia: la creazione del personaggio nella scena | accettato |
 | 0048 | La storia principale del Prologo completa e la partenza a due vie | accettato |
+| 0049 | Armatura, talenti attivi, compagni, il letto di casa e la magia insegnata | accettato |

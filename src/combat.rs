@@ -87,14 +87,22 @@ pub const ARROW_DROP: f32 = 6.0;
 /// Attacco del player su click sinistro, secondo l'arma impugnata: a mani nude, spada
 /// corta/lunga, ascia (colpisce più nemici) oppure arco (consuma una freccia).
 /// Gira in Update (input), solo in Playing e se nessun dialogo è aperto.
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn player_attack(
     visuals: Query<&GlobalTransform, With<crate::player::PlayerVisual>>,
     mouse: Res<ButtonInput<MouseButton>>,
     mut raw_mouse: MessageReader<bevy::input::mouse::MouseButtonInput>,
     mut combat: Query<&mut CombatState, With<Player>>,
     players: Query<&GlobalTransform, With<Player>>,
-    mut enemies: Query<(&GlobalTransform, &mut EnemyHealth, Entity), With<Enemy>>,
+    mut enemies: Query<
+        (
+            &GlobalTransform,
+            &mut EnemyHealth,
+            Entity,
+            Has<crate::quests::denaro_rubato::QuestThief>,
+        ),
+        With<Enemy>,
+    >,
     cameras: Query<&GlobalTransform, With<Camera3d>>,
     dialog: Res<crate::entities::DialogState>,
     equip: Res<crate::inventory::Equipment>,
@@ -154,7 +162,7 @@ pub fn player_attack(
 
     // Mischia: nemico più vicino (o tutti nel cono con l'ascia) entro il raggio dell'arma.
     let mut hit: Vec<(f32, Entity)> = Vec::new();
-    for (t, _, entity) in &enemies {
+    for (t, _, entity, _) in &enemies {
         let to = t.translation() - p;
         let dist = to.length();
         if dist > stats.range || to.normalize_or_zero().dot(pf) < 0.3 {
@@ -173,15 +181,33 @@ pub fn player_attack(
     }
     combat.attack_cd = stats.cooldown;
     for (_, entity) in hit {
-        if let Ok((_, mut hp, _)) = enemies.get_mut(entity) {
+        if let Ok((_, mut hp, _, thief)) = enemies.get_mut(entity) {
             let damage = stats.damage
                 * character.stats.melee_factor()
                 * (1.0 + 0.06 * skills::rank(Skill::Blade));
             hp.current = (hp.current - damage).max(0.0);
             skills::train(Skill::Blade, 4.0);
             info!("attacco su enemy {entity:?}: vita -> {:.0}", hp.current);
+            // Disarmo di Grazia (ADR 0049): ferito gravemente, il nemico getta l'arma e se ne va.
+            if surrenders(
+                hp.current,
+                hp.max,
+                skills::active_talent(Skill::Blade),
+                thief,
+            ) {
+                commands.entity(entity).despawn();
+                inventory.add(crate::inventory::ItemKind::Coin, 4);
+                crate::karma::deed_as("pieta", 2, "un nemico disarmato si è arreso");
+                info!("[NEMICI] si arrende e se ne va");
+            }
         }
     }
+}
+
+/// Un nemico ferito gravemente si arrende, se si ha il Disarmo di Grazia (non il ladro della quest,
+/// che ha la sua storia).
+pub fn surrenders(current: f32, max: f32, talent: bool, thief: bool) -> bool {
+    talent && !thief && current > 0.0 && current < max * 0.3
 }
 
 /// Scocca una freccia del giocatore da `start` verso `dir`.
@@ -273,6 +299,7 @@ pub fn contact_damage(
         (
             &GlobalTransform,
             Has<crate::quests::denaro_rubato::QuestThief>,
+            Has<crate::magic::Calmed>,
         ),
         (With<Enemy>, Without<Player>),
     >,
@@ -298,8 +325,8 @@ pub fn contact_damage(
     }
 
     let p = pt.translation();
-    for (et, thief) in &enemies {
-        if thief && quest.thief_calm {
+    for (et, thief, calmed) in &enemies {
+        if (thief && quest.thief_calm) || calmed {
             continue;
         }
         if et.translation().distance(p) <= CONTACT_RANGE {
@@ -309,7 +336,11 @@ pub fn contact_damage(
             } else {
                 1.0
             };
-            hp.current -= CONTACT_DAMAGE * factor * crate::magic::ward_factor();
+            if equip.armor.is_some() {
+                skills::train(Skill::Armor, 4.0);
+            }
+            hp.current -=
+                CONTACT_DAMAGE * factor * equip.armor_factor() * crate::magic::ward_factor();
             combat.iframe = PLAYER_IFRAME;
             cd.left = CONTACT_DAMAGE_COOLDOWN;
             info!("colpito: player vita {:.0}", hp.current);
@@ -506,7 +537,7 @@ pub fn clear_view(
 
 /// Sistema: i nemici notano il giocatore (se lo vedono), smettono di pattugliare e attaccano:
 /// frecce da lontano, mischia da vicino (il contatto fa il resto).
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn enemy_ai(
     mut commands: Commands,
     time: Res<Time>,
@@ -519,6 +550,7 @@ pub fn enemy_ai(
             &GlobalTransform,
             &mut crate::entities::EnemyMind,
             Has<crate::quests::denaro_rubato::QuestThief>,
+            Has<crate::magic::Calmed>,
         ),
         With<Enemy>,
     >,
@@ -541,10 +573,11 @@ pub fn enemy_ai(
             }),
         )
     });
-    for (tf, mut mind, thief) in &mut enemies {
+    for (tf, mut mind, thief, calmed) in &mut enemies {
         mind.shot_cd = (mind.shot_cd - dt).max(0.0);
-        // Il ladro non attacca chi gli si avvicina senz'arma in pugno (ADR 0035).
-        let calm = thief && quest.thief_calm;
+        // Il ladro non attacca chi gli si avvicina senz'arma in pugno (ADR 0035); né chi è placato
+        // dall'incantesimo «Calma».
+        let calm = (thief && quest.thief_calm) || calmed;
         let eye = tf.translation() + Vec3::Y * 1.3;
         let dist = (target - eye).length();
         let range = if mind.chase {
@@ -642,10 +675,46 @@ pub fn update_enemy_arrows(
                 } else {
                     1.0
                 };
-                hp.current -= ENEMY_ARROW_DAMAGE * factor * crate::magic::ward_factor();
+                if equip.armor.is_some() {
+                    skills::train(Skill::Armor, 4.0);
+                }
+                hp.current -= ENEMY_ARROW_DAMAGE
+                    * factor
+                    * equip.armor_factor()
+                    * crate::magic::ward_factor();
                 combat.iframe = PLAYER_IFRAME;
                 info!("[NEMICI] freccia: vita {:.0}", hp.current);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_badly_hurt_enemy_surrenders_only_with_the_talent() {
+        assert!(surrenders(10.0, 50.0, true, false));
+        assert!(!surrenders(10.0, 50.0, false, false));
+        assert!(
+            !surrenders(10.0, 50.0, true, true),
+            "il ladro della quest no"
+        );
+        assert!(!surrenders(30.0, 50.0, true, false));
+        assert!(
+            !surrenders(0.0, 50.0, true, false),
+            "chi è a terra non si arrende"
+        );
+    }
+
+    #[test]
+    fn armor_takes_part_of_the_blow() {
+        let mut equip = crate::inventory::Equipment::default();
+        assert_eq!(equip.armor_factor(), 1.0);
+        equip.armor = Some(crate::inventory::ItemKind::PlateArmor);
+        assert!((equip.armor_factor() - 0.55).abs() < 1e-5);
+        equip.armor = Some(crate::inventory::ItemKind::LeatherArmor);
+        assert!(equip.armor_factor() > 0.8);
     }
 }

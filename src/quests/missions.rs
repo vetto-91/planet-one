@@ -1028,7 +1028,7 @@ mod tests {
             m.list[4..].iter().all(|x| x.side),
             "le altre sono secondarie"
         );
-        assert_eq!(m.list.iter().filter(|x| x.side && !x.event).count(), 17);
+        assert_eq!(m.list.iter().filter(|x| x.side && !x.event).count(), 18);
         assert_eq!(m.list.iter().filter(|x| x.event).count(), 12);
         for mission in &m.list {
             assert!(!mission.title.is_empty() && !mission.summary.is_empty());

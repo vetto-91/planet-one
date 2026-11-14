@@ -136,6 +136,45 @@ struct Chore {
     done: bool,
 }
 
+/// Un compagno segue il giocatore a qualche passo, raggiungendolo se resta indietro.
+#[allow(clippy::too_many_arguments)]
+fn follow(
+    tf: &mut Transform,
+    v: &mut Villager,
+    vis: &mut Visibility,
+    npc: &mut Npc,
+    field: &TerrainField,
+    items: &[crate::debug_place::Placement],
+    target: Vec3,
+    dt: f32,
+) {
+    v.following = true;
+    v.hidden = false;
+    *vis = Visibility::Visible;
+    npc.mode = NpcMode::Ready;
+    let here = Vec2::new(tf.translation.x, tf.translation.z);
+    let goal = target.xz();
+    let to = goal - here;
+    let dist = to.length();
+    let next = if dist > crate::companions::CATCH_UP {
+        goal - to.normalize_or_zero() * crate::companions::KEEP
+    } else if dist > crate::companions::KEEP {
+        here + to.normalize_or_zero()
+            * (crate::companions::RUN_SPEED * dt).min(dist - crate::companions::KEEP)
+    } else {
+        here
+    };
+    tf.translation = Vec3::new(
+        next.x,
+        ground_y(field, items, next.x, next.y) + CENTER_Y,
+        next.y,
+    );
+    if dist > 0.3 {
+        let want = Quat::from_rotation_y(yaw_towards(to));
+        tf.rotation = tf.rotation.slerp(want, (6.0 * dt).clamp(0.0, 1.0));
+    }
+}
+
 /// Componente di un abitante (routine).
 #[derive(Component)]
 pub struct Villager {
@@ -151,6 +190,8 @@ pub struct Villager {
     indoor: VecDeque<Vec3>,
     /// È già entrato: quando `indoor` finisce si mette a letto.
     entered: bool,
+    /// Sta seguendo il giocatore come compagno.
+    following: bool,
     /// Appena letto da un salvataggio: la routine riprende da dove era.
     resume: bool,
     /// Sosta alla finestra in corso (apre o chiude gli scuri).
@@ -418,6 +459,7 @@ pub fn spawn_villagers(
                     patrol: 0.0,
                     indoor: VecDeque::new(),
                     entered: false,
+                    following: false,
                     resume: false,
                     chore: None,
                 },
@@ -637,12 +679,11 @@ pub fn lantern_shadows(
 }
 
 /// Sistema: routine degli abitanti (posto di giorno, piazza la sera, a letto di notte) e lanterne delle guardie.
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn villager_routine(
     mut commands: Commands,
     time: Res<Time>,
-    clock: Res<GameClock>,
-    weather: Res<crate::weather::WeatherState>,
+    (clock, weather): (Res<GameClock>, Res<crate::weather::WeatherState>),
     field: Option<Res<TerrainField>>,
     dbg: Res<crate::debug_place::DebugPlace>,
     info: Res<VillageInfo>,
@@ -659,9 +700,11 @@ pub fn villager_routine(
         &NpcInventory,
         &mut Villager,
         &mut Visibility,
+        Has<crate::companions::Companion>,
     )>,
     mut lanterns: Query<(Entity, &mut PointLight), With<GuardLantern>>,
     mut gear: Query<GearItem, GearOnly>,
+    players: Query<&GlobalTransform, With<crate::player::Player>>,
 ) {
     let Some(field) = field else {
         return;
@@ -676,14 +719,14 @@ pub fn villager_routine(
     for (entity, mut l) in &mut lanterns {
         let asleep = parents
             .iter_ancestors(entity)
-            .any(|a| q.get(a).is_ok_and(|(.., v, _)| v.hidden));
+            .any(|a| q.get(a).is_ok_and(|(.., v, _, _)| v.hidden));
         let target = if dark && !asleep { 60_000.0 } else { 0.0 };
         l.intensity += (target - l.intensity) * (dt * 2.0).min(1.0);
     }
     for (entity, mut vis) in &mut gear {
         let asleep = parents
             .iter_ancestors(entity)
-            .any(|a| q.get(a).is_ok_and(|(.., v, _)| v.hidden));
+            .any(|a| q.get(a).is_ok_and(|(.., v, _, _)| v.hidden));
         // Le lanterne si portano soltanto al buio: di giorno restano riposte.
         let stowed = lanterns.contains(entity) && !dark;
         let wanted = if asleep || stowed {
@@ -695,7 +738,20 @@ pub fn villager_routine(
             *vis = wanted;
         }
     }
-    for (entity, mut tf, mut npc, keys, mut v, mut vis) in &mut q {
+    let player = players.single().ok().map(|p| p.translation());
+    for (entity, mut tf, mut npc, keys, mut v, mut vis, companion) in &mut q {
+        // Un compagno lascia la sua giornata e segue il giocatore (ADR 0049); quando torna a casa
+        // si rimette al posto giusto per l'ora.
+        if companion && let Some(target) = player {
+            follow(
+                &mut tf, &mut v, &mut vis, &mut npc, &field, &dbg.items, target, dt,
+            );
+            continue;
+        }
+        if v.following {
+            v.following = false;
+            v.placed = false;
+        }
         let want = desired_phase(&v.def, hour, weather.shelter);
         let here = Vec2::new(tf.translation.x, tf.translation.z);
         // Guardie di ronda: percorrono l'anello delle mura senza fermarsi, salvo quando parlano.

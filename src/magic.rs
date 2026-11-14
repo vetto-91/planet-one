@@ -39,15 +39,18 @@ pub enum Spell {
     Heal,
     Feather,
     Ward,
+    /// I nemici vicini smettono di cercarti (ADR 0049).
+    Calm,
 }
 
 impl Spell {
-    pub const ALL: [Spell; 5] = [
+    pub const ALL: [Spell; 6] = [
         Spell::Light,
         Spell::Dart,
         Spell::Heal,
         Spell::Feather,
         Spell::Ward,
+        Spell::Calm,
     ];
 
     pub fn name(self) -> &'static str {
@@ -57,6 +60,7 @@ impl Spell {
             Spell::Heal => "Soffio di cura",
             Spell::Feather => "Passo leggero",
             Spell::Ward => "Scudo etereo",
+            Spell::Calm => "Calma",
         }
     }
 
@@ -67,6 +71,7 @@ impl Spell {
             Spell::Heal => "cura",
             Spell::Feather => "passo",
             Spell::Ward => "scudo",
+            Spell::Calm => "calma",
         }
     }
 
@@ -84,6 +89,7 @@ impl Spell {
             Spell::Heal => "ridà 25 punti vita",
             Spell::Feather => "porti 15 kg in più per due minuti",
             Spell::Ward => "per venti secondi subisci metà danno",
+            Spell::Calm => "i nemici vicini smettono di cercarti per trenta secondi",
         }
     }
 
@@ -95,6 +101,7 @@ impl Spell {
             Spell::Heal => 20.0,
             Spell::Feather => 18.0,
             Spell::Ward => 25.0,
+            Spell::Calm => 22.0,
         }
     }
 
@@ -105,9 +112,38 @@ impl Spell {
             Spell::Heal => 5,
             Spell::Feather => 10,
             Spell::Ward => 15,
+            Spell::Calm => 20,
         }
     }
+
+    /// Sfera di luce e dardo si conoscono da sé; gli altri li insegna Agnese (ADR 0049).
+    pub fn basic(self) -> bool {
+        matches!(self, Spell::Light | Spell::Dart)
+    }
 }
+
+static TAUGHT: AtomicBool = AtomicBool::new(false);
+
+/// Agnese ha insegnato l'Accordo (missione `qs18`)?
+pub fn taught() -> bool {
+    TAUGHT.load(Ordering::Relaxed)
+}
+
+/// Sistema: legge dalle missioni se l'Accordo è stato insegnato.
+pub fn sync_taught(missions: Res<crate::quests::missions::Missions>) {
+    TAUGHT.store(
+        !missions.enabled || missions.unlocked("accordo"),
+        Ordering::Relaxed,
+    );
+}
+
+/// Secondi di calma e raggio dell'incantesimo.
+const CALM_SECS: f32 = 30.0;
+const CALM_RANGE: f32 = 14.0;
+
+/// Un nemico placato dall'incantesimo «Calma»: non ti cerca e non ti tocca.
+#[derive(Component)]
+pub struct Calmed(pub f32);
 
 /// Costo vero: ogni rango del talento «Maestro dell'Accordo» toglie l'8%.
 pub fn cost(spell: Spell, perk: f32) -> f32 {
@@ -116,15 +152,24 @@ pub fn cost(spell: Spell, perk: f32) -> f32 {
 
 /// Incantesimi conosciuti a questo grado di Magie.
 pub fn known(grade: u8) -> Vec<Spell> {
+    known_with(grade, taught())
+}
+
+/// Incantesimi conosciuti: col grado, e (quelli avanzati) solo dopo l'insegnamento di Agnese.
+pub fn known_with(grade: u8, taught: bool) -> Vec<Spell> {
     Spell::ALL
         .into_iter()
-        .filter(|s| grade >= s.grade())
+        .filter(|s| grade >= s.grade() && (s.basic() || taught))
         .collect()
 }
 
 /// Il prossimo incantesimo conosciuto dopo `current` (tasto Z).
 pub fn next(current: Spell, grade: u8) -> Spell {
-    let list = known(grade);
+    next_with(current, grade, taught())
+}
+
+fn next_with(current: Spell, grade: u8, taught: bool) -> Spell {
+    let list = known_with(grade, taught);
     let at = list.iter().position(|s| *s == current).unwrap_or(0);
     list.get((at + 1) % list.len().max(1))
         .copied()
@@ -146,6 +191,8 @@ pub struct Magic {
     pub light: f32,
     /// Incantesimo chiesto dalla shell (lanciato al prossimo frame).
     pub request: Option<Spell>,
+    /// Dove è stato lanciato «Calma» (lo applica `apply_calm`).
+    calm_at: Option<Vec3>,
 }
 
 impl Default for Magic {
@@ -156,6 +203,7 @@ impl Default for Magic {
             ward: 0.0,
             light: 0.0,
             request: None,
+            calm_at: None,
         }
     }
 }
@@ -239,9 +287,14 @@ pub fn cast(
     }
     if !known(grade).contains(&spell) {
         session.notify(format!(
-            "{} si impara al grado {} di Magie",
+            "{} si impara al grado {} di Magie{}",
             spell.name(),
-            spell.grade()
+            spell.grade(),
+            if spell.basic() {
+                ""
+            } else {
+                ", e te lo deve insegnare Agnese"
+            }
         ));
         return;
     }
@@ -321,6 +374,7 @@ pub fn cast(
             remaining: Some(FEATHER_SECS),
         }),
         Spell::Ward => magic.ward = WARD_SECS,
+        Spell::Calm => magic.calm_at = Some(p),
     }
     if !cheats.god {
         vitals.magic = (vitals.magic - price).max(0.0);
@@ -405,11 +459,37 @@ pub fn update_darts(
     }
 }
 
+/// Sistema: «Calma» placa i nemici vicini; la calma passa da sola.
+pub fn apply_calm(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut magic: ResMut<Magic>,
+    enemies: Query<(Entity, &GlobalTransform), With<crate::entities::Enemy>>,
+    mut calmed: Query<(Entity, &mut Calmed)>,
+) {
+    if let Some(at) = magic.calm_at.take() {
+        for (e, t) in &enemies {
+            if t.translation().distance(at) <= CALM_RANGE {
+                commands.entity(e).insert(Calmed(CALM_SECS));
+                info!("[MAGIA] un nemico si calma");
+            }
+        }
+    }
+    for (e, mut c) in &mut calmed {
+        c.0 -= time.delta_secs();
+        if c.0 <= 0.0 {
+            commands.entity(e).remove::<Calmed>();
+        }
+    }
+}
+
 pub fn plugin(app: &mut App) {
-    app.init_resource::<Magic>().add_systems(
-        Update,
-        (cast, follow_orb, update_darts).run_if(in_state(crate::AppState::Playing)),
-    );
+    app.init_resource::<Magic>()
+        .add_systems(Update, sync_taught)
+        .add_systems(
+            Update,
+            (cast, follow_orb, update_darts, apply_calm).run_if(in_state(crate::AppState::Playing)),
+        );
 }
 
 #[cfg(test)]
@@ -418,9 +498,14 @@ mod tests {
 
     #[test]
     fn spells_are_learned_with_the_grade() {
-        assert_eq!(known(1), vec![Spell::Light, Spell::Dart]);
-        assert_eq!(known(5).len(), 3);
-        assert_eq!(known(15), Spell::ALL.to_vec());
+        assert_eq!(known_with(1, true), vec![Spell::Light, Spell::Dart]);
+        assert_eq!(known_with(5, true).len(), 3);
+        assert_eq!(
+            known_with(5, false).len(),
+            2,
+            "senza Agnese solo luce e dardo"
+        );
+        assert_eq!(known_with(20, true), Spell::ALL.to_vec());
         for s in Spell::ALL {
             assert_eq!(Spell::parse(s.key()), Some(s));
             assert!(s.cost() <= 25.0, "{s:?} deve stare nella riserva di base");
@@ -430,10 +515,16 @@ mod tests {
 
     #[test]
     fn z_cycles_only_through_known_spells() {
-        assert_eq!(next(Spell::Light, 1), Spell::Dart);
-        assert_eq!(next(Spell::Dart, 1), Spell::Light);
-        assert_eq!(next(Spell::Dart, 5), Spell::Heal);
-        assert_eq!(next(Spell::Ward, 100), Spell::Light);
+        assert_eq!(next_with(Spell::Light, 1, true), Spell::Dart);
+        assert_eq!(next_with(Spell::Dart, 1, true), Spell::Light);
+        assert_eq!(next_with(Spell::Dart, 5, true), Spell::Heal);
+        assert_eq!(next_with(Spell::Ward, 100, true), Spell::Calm);
+        assert_eq!(next_with(Spell::Calm, 100, true), Spell::Light);
+        assert_eq!(
+            next_with(Spell::Dart, 5, false),
+            Spell::Light,
+            "senza Agnese"
+        );
     }
 
     #[test]

@@ -136,6 +136,9 @@ pub enum Offer {
     Chat,
     /// Passaggio in barca verso l'altra regione (Gaspare).
     Passage,
+    /// Un compagno ti segue, o torna a casa (ADR 0049).
+    Follow,
+    Stay,
     Bye,
 }
 
@@ -462,6 +465,9 @@ pub fn advance_dialog(
     mut next: ResMut<NextState<crate::AppState>>,
     mut voice: ResMut<crate::voice::VoiceQueue>,
     time: Res<Time>,
+    karma: Res<crate::karma::Karma>,
+    mut companion: ResMut<crate::companions::CompanionRequest>,
+    following: Query<(), With<crate::companions::Companion>>,
 ) {
     if !dialog.open {
         return;
@@ -516,6 +522,12 @@ pub fn advance_dialog(
                         info!("[VIAGGIO] passaggio in barca con {name}");
                         travel.0 = Some(passage().0);
                     }
+                    (Some(Offer::Follow), _) => {
+                        companion.0 = speaker.map(|e| (e, true));
+                    }
+                    (Some(Offer::Stay), _) => {
+                        companion.0 = speaker.map(|e| (e, false));
+                    }
                     _ => {}
                 }
                 return;
@@ -545,6 +557,13 @@ pub fn advance_dialog(
                 {
                     actions.push(Offer::Passage);
                 }
+                // Un amico può venire con te (ADR 0049).
+                let follows = dialog.speaker_entity.is_some_and(|e| following.contains(e));
+                if follows {
+                    actions.push(Offer::Stay);
+                } else if crate::companions::eligible(&dialog.speaker, &missions, &karma) {
+                    actions.push(Offer::Follow);
+                }
                 if settings.ai_enabled && ai.status == crate::ai::AiStatus::Ready {
                     actions.push(Offer::Chat);
                 }
@@ -560,6 +579,8 @@ pub fn advance_dialog(
                                 Offer::Shop => "Vorrei comprare qualcosa",
                                 Offer::Chat => "Parliamo d'altro…",
                                 Offer::Passage => passage().1,
+                                Offer::Follow => "Vieni con me",
+                                Offer::Stay => "Torna pure a casa",
                                 Offer::Bye => "Arrivederci",
                             }
                             .to_string()

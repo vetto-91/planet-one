@@ -20,6 +20,7 @@ mod buildings;
 mod camera;
 mod character;
 mod combat;
+mod companions;
 mod containers;
 mod cutscene;
 mod daynight;
@@ -246,6 +247,7 @@ fn main() -> AppExit {
         .add_plugins(island_life::plugin)
         .add_plugins(awakening::plugin)
         .add_plugins(cutscene::plugin)
+        .add_plugins(companions::plugin)
         .add_plugins(water::plugin)
         .add_plugins(nature::plugin)
         .add_plugins(save::plugin)
@@ -426,6 +428,11 @@ fn main() -> AppExit {
         )
         .add_systems(Update, debug_place::sync_markers)
         .add_systems(Update, inventory::apply_grants)
+        .init_resource::<player::Dash>()
+        .add_systems(
+            Update,
+            player::trigger_dash.run_if(in_state(AppState::Playing)),
+        )
         .add_systems(
             Update,
             (

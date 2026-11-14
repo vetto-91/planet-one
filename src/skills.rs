@@ -144,7 +144,8 @@ impl Skill {
             Skill::Pickpocket => "sfilando o infilando monete alle spalle di qualcuno",
             Skill::Lockpick => "forzando le serrature dei bauli",
             Skill::Magic => "lanciando incantesimi",
-            Skill::Armor | Skill::Building => "",
+            Skill::Armor => "incassando colpi con un'armatura indosso",
+            Skill::Building => "",
         }
     }
 
@@ -167,6 +168,7 @@ impl Skill {
             Skill::Lore => ("Passo del Viandante", "esperienza di livello +5%"),
             Skill::Pickpocket => ("Mano di Piuma", "riuscita del borseggio +5%"),
             Skill::Lockpick => ("Dita Sensibili", "tacca della serratura +10%"),
+            Skill::Armor => ("Seconda Pelle di Ferro", "danno subito con l'armatura −5%"),
             Skill::Magic => ("Maestro dell'Accordo", "costo degli incantesimi −8%"),
             _ => return None,
         })
@@ -353,7 +355,39 @@ fn publish(progress: &Progress) {
     for (slot, rank) in ACTIVE.iter().zip(progress.perks) {
         slot.store(rank, Ordering::Relaxed);
     }
+    for (slot, grade) in GRADES.iter().zip(progress.grades) {
+        slot.store(grade, Ordering::Relaxed);
+    }
 }
+
+static GRADES: [AtomicU8; COUNT] = [const { AtomicU8::new(1) }; COUNT];
+
+/// Grado di un'abilità, per chi deve sapere se un talento attivo è sbloccato.
+pub fn grade(skill: Skill) -> u8 {
+    GRADES[skill.index()].load(Ordering::Relaxed)
+}
+
+/// Grado a cui si sbloccano i talenti attivi (Apprendista; ADR 0049).
+pub const ACTIVE_TALENT: u8 = 30;
+
+/// Il talento attivo dell'abilità è sbloccato?
+pub fn active_talent(skill: Skill) -> bool {
+    grade(skill) >= ACTIVE_TALENT
+}
+
+/// I talenti attivi: abilità, nome, che cosa fa (per il pannello del personaggio).
+pub const ACTIVE_TALENTS: [(Skill, &str, &str); 2] = [
+    (
+        Skill::Athletics,
+        "Scatto di Ermes",
+        "[X] un balzo rapido in avanti (20 di vigore)",
+    ),
+    (
+        Skill::Blade,
+        "Disarmo di Grazia",
+        "un nemico ferito gravemente in mischia si arrende e se ne va",
+    ),
+];
 
 /// Sistema: applica l'esperienza raccolta nel frame e avvisa di gradi e livelli.
 pub fn apply_training(mut progress: ResMut<Progress>, mut session: ResMut<crate::save::Session>) {
@@ -443,8 +477,8 @@ mod tests {
             "il secondo rango vuole il grado 30"
         );
         assert_eq!((p.perk_rank(Skill::Athletics), p.nodes), (1, 1));
-        p.set_grade(Skill::Armor, 100);
-        assert!(!p.activate(Skill::Armor), "abilità non ancora nel gioco");
+        p.set_grade(Skill::Building, 100);
+        assert!(!p.activate(Skill::Building), "abilità senza talento");
     }
 
     #[test]

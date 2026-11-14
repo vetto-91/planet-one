@@ -378,6 +378,22 @@ def relic_letter():
     return im
 
 
+def armor(body, edge, rings):
+    im = layer(); d = ImageDraw.Draw(im)
+    pts = [(150, 90), (210, 120), (302, 120), (362, 90), (430, 160), (380, 210), (370, 430), (142, 430), (132, 210), (82, 160)]
+    d.polygon(pts, fill=body, outline=edge)
+    d.line(pts + [pts[0]], fill=edge, width=10)
+    d.arc([206, 80, 306, 170], 0, 180, fill=edge, width=10)
+    if rings:
+        for y in range(200, 420, 26):
+            for x in range(160, 360, 26):
+                d.ellipse([x, y, x + 18, y + 18], outline=edge, width=3)
+    else:
+        for y in (240, 300, 360):
+            d.line([(150, y), (362, y)], fill=edge, width=8)
+    return im
+
+
 def pack(body, flap, strap, wide=1.0, tall=1.0):
     im = layer()
     d = ImageDraw.Draw(im)
@@ -440,6 +456,9 @@ ICONS = {
     "grimaldello": lockpick,
     "legname": wood,
     "pietra": stone,
+    "armatura-cuoio": lambda: armor((140, 92, 52, 255), (80, 50, 26, 255), False),
+    "armatura-maglia": lambda: armor((150, 154, 162, 255), (90, 94, 104, 255), True),
+    "armatura-piastre": lambda: armor((196, 200, 208, 255), (100, 104, 116, 255), False),
     "tavoletta": relic_tablet,
     "moneta-madre": lambda: relic_coin((222, 186, 80, 255), (240, 210, 120, 255), (120, 60, 30, 255)),
     "quipu": lambda: relic_quipu(7),

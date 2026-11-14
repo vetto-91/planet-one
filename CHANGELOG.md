@@ -4,6 +4,12 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **Armature** (ADR 0049): dal fabbro l'armatura di cuoio, la cotta di maglia e l'armatura a piastre (meno danno subito, più peso; quella a piastre rallenta un poco). Si indossano dalla barra o dall'inventario, e incassare colpi con l'armatura allena l'abilità Armatura.
+- **Talenti attivi**, dal grado 30: lo **Scatto di Ermes** (Atletica, tasto `X`, un balzo rapido in avanti) e il **Disarmo di Grazia** (Lama: un nemico ferito gravemente in mischia si arrende e se ne va).
+- **Compagni**: Silvia (dopo la Prova dell'Arco) e Guardia Dino (dopo la sua missione), o chi dei due ti ha confidato il suo segreto, possono venire con te: ti seguono e colpiscono i nemici vicini. Nel dialogo, «Vieni con me» e «Torna pure a casa».
+- **Il letto di casa**: nella tua casa, `R` vicino al letto fa dormire fino al mattino; vita, vigore e magia tornano pieni.
+- **L'Accordo**: Agnese insegna gli incantesimi avanzati (missione secondaria nuova, in tutto sono 18), e c'è il sesto incantesimo, **Calma**, che placa i nemici vicini per mezzo minuto.
+
 - **Il tempo della storia** (ADR 0048): le missioni principali fanno avanzare il calendario e il meteo della scena. Il Prologo va dall'equinozio di marzo a metà maggio, e la discesa nella grotta avviene sotto la pioggia.
 - **Le Voci delle Pietre Antiche**: Agnese riconosce la pietra del santuario, e in cima alla torre trovi il **Disco di Tiro**.
 - **Sotto l'Arco dei Sei Gradoni**: nel laghetto sotterraneo un incantesimo fa risuonare le quattro stele. In fondo al cunicolo trovi il **Quipu Maestro**, e la **Porta Sommersa** è aperta.

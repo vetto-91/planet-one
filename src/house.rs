@@ -313,13 +313,66 @@ pub fn sync_site(
     }
 }
 
+/// Ora a cui ci si sveglia dopo aver dormito nella propria casa.
+const WAKE_HOUR: f32 = 7.0;
+
+/// Ore da dormire per svegliarsi alle sette.
+pub fn hours_to_morning(hour: f32) -> f32 {
+    (WAKE_HOUR - hour).rem_euclid(24.0)
+}
+
+/// Sistema: nel letto della propria casa (ADR 0049) si dorme fino al mattino: vita e vigore tornano pieni.
+#[allow(clippy::too_many_arguments)]
+pub fn sleep_in_bed(
+    keys: Res<ButtonInput<KeyCode>>,
+    house: Res<House>,
+    homes: Res<crate::world_props::Homes>,
+    dialog: Res<crate::entities::DialogState>,
+    mut clock: ResMut<crate::daynight::GameClock>,
+    mut vitals: ResMut<crate::vitals::Vitals>,
+    mut players: Query<
+        (&GlobalTransform, &mut crate::player::PlayerHealth),
+        With<crate::player::Player>,
+    >,
+    mut nearest: ResMut<crate::entities::NearestInteract>,
+    mut session: ResMut<crate::save::Session>,
+) {
+    if house.stage < BUILT || dialog.open || crate::region::current() != Region::Isola {
+        return;
+    }
+    let Some(bed) = homes
+        .list
+        .iter()
+        .find(|h| h.kind == KIND)
+        .and_then(|h| h.beds.first())
+    else {
+        return;
+    };
+    let Ok((player, mut hp)) = players.single_mut() else {
+        return;
+    };
+    if player.translation().distance(bed.pos) > 1.8 {
+        return;
+    }
+    nearest.prompt = Some("[R] Dormi fino al mattino".to_string());
+    if !keys.just_pressed(KeyCode::KeyR) {
+        return;
+    }
+    let hours = hours_to_morning(clock.hour);
+    clock.advance(hours);
+    hp.current = hp.max;
+    vitals.vigor = vitals.vigor_max;
+    vitals.magic = vitals.magic_max;
+    session.notify("Hai dormito nella tua casa: ti svegli riposato");
+    info!("[CASA] dormito {hours:.1} ore");
+}
+
 pub fn plugin(app: &mut App) {
     app.init_resource::<House>()
         .add_systems(Update, (sync_placement, sync_site))
         .add_systems(
             Update,
-            build
-                .after(crate::karma::give_gift)
+            (build.after(crate::karma::give_gift), sleep_in_bed)
                 .run_if(in_state(crate::AppState::Playing)),
         );
 }
@@ -327,6 +380,13 @@ pub fn plugin(app: &mut App) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sleeping_wakes_you_at_seven() {
+        assert_eq!(hours_to_morning(23.0), 8.0);
+        assert_eq!(hours_to_morning(3.0), 4.0);
+        assert_eq!(hours_to_morning(7.0), 0.0);
+    }
 
     #[test]
     fn the_house_rises_in_two_stages() {
