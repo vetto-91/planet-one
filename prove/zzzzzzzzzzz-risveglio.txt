@@ -1,0 +1,64 @@
+# Il risveglio sulla spiaggia (ADR 0047): età nell'acqua ferma, indole tra i rottami, nome a Gaspare.
+god on
+ia off
+meteo sereno
+ora 9
+aspetta 2
+risveglio nuovo
+aspetta 2
+verifica /personaggio/risveglio = 0
+verifica /personaggio/nome = Nessuno
+camera 200 20 6
+aspetta 2
+foto spiaggia
+# La pozza: E apre lo Specchio della Marea.
+tp 32.5 3 85.3
+aspetta 2
+premi e
+aspetta 1
+verifica app = Awakening
+foto specchio
+risveglio eta maturo
+aspetta 1
+verifica app = Playing
+verifica /personaggio/eta = maturo
+verifica /missioni/mp01 = 2
+# Tra i rottami: il rotolo di nodi rivela lo Studioso.
+aspetta 1
+tp 32 3 90
+aspetta 2
+premi e
+aspetta 1
+verifica app = Awakening
+foto indole
+risveglio classe Studioso
+aspetta 1
+verifica /personaggio/classe = Studioso
+verifica Relic(Quipu) = 1
+verifica /punti_statistica = 2
+verifica /missioni/mp01 = 3
+# Gaspare chiede il nome: il pannello si apre da solo alla fine del dialogo.
+tp gaspare
+aspetta 1
+attendi npc:gaspare:modo = Ready 60
+davanti gaspare
+aspetta 0.5
+guarda gaspare
+aspetta 1
+premi e
+aspetta 1
+avanza
+aspetta 1
+verifica app = Awakening
+foto nome
+risveglio nome Ada Marea
+aspetta 1
+verifica /personaggio/nome = Ada Marea
+premi e
+aspetta 1
+verifica /dialogo/riga contiene Ada Marea
+avanza
+aspetta 1
+verifica /missioni/mp01 = 5
+verifica /personaggio/risveglio = 3
+esci

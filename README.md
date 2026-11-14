@@ -340,6 +340,8 @@ Sopra la barra degli oggetti ci sono tre barre: **magia** a sinistra, **vita** a
 
 **Incantesimi**: `Z` sceglie, `Q` lancia. Da subito hai la Sfera di luce e il Dardo di Luce Viva; con la pratica arrivano il Soffio di cura, il Passo leggero e lo Scudo etereo. Sopra la barra della magia leggi quello scelto e quanto costa.
 
+**Il risveglio**: una partita nuova comincia sulla spiaggia, senza nome. Guarda nella pozza d'acqua ferma tra le rocce per scoprire la tua età, raccogli tra i rottami la cosa che ti chiama (sarà la tua indole) e di' il tuo nome a Gaspare, al molo.
+
 **La tua casa**: a sud-ovest del paese, fuori dalle mura, quattro paletti segnano il Poggio del Naufrago. Con `R` spacchi la pietra e tagli il legname lì accanto (per il legname serve un'ascia), e sempre con `R` sul terreno posi le fondamenta e poi alzi la casa. Dentro, i mobili sono il tuo deposito.
 
 **La Prova dell'Arco**: oltre il ponte di legno a est del paese pendono tre anelli di ferro. Centrali in fila, dal più vicino al più lontano, con tre frecce consecutive. Te la propone Silvia.

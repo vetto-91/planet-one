@@ -99,6 +99,8 @@ pub struct SaveData {
     pub name: String,
     pub class: Class,
     pub stats: Stats,
+    pub age: crate::character::Age,
+    pub awakening: u8,
     pub year: u32,
     pub month: u8,
     pub day: u8,
@@ -329,6 +331,8 @@ impl SaveData {
             name: String::new(),
             class: Class::Custom,
             stats: Stats::default(),
+            age: Default::default(),
+            awakening: crate::character::AWAKE,
             year: 0,
             month: 5,
             day: 20,
@@ -405,6 +409,8 @@ impl SaveData {
         line("[personaggio]".into());
         line(format!("nome = {}", self.name));
         line(format!("classe = {}", self.class.name()));
+        line(format!("eta = {}", self.age.key()));
+        line(format!("risveglio = {}", self.awakening));
         for stat in Stat::ALL {
             line(format!("{} = {}", stat.name(), self.stats.get(stat)));
         }
@@ -713,6 +719,10 @@ impl SaveData {
                     "nome" => self.name = v.to_string(),
                     "classe" => {
                         self.class = Class::ALL.into_iter().find(|c| c.name() == v)?;
+                    }
+                    "eta" => self.age = crate::character::Age::parse(v)?,
+                    "risveglio" => {
+                        self.awakening = v.parse::<u8>().ok()?.min(crate::character::AWAKE);
                     }
                     _ => self.stats.set(Stat::parse(k)?, v.parse().ok()?),
                 }
@@ -1305,6 +1315,8 @@ fn collect(kind: SaveKind, session: &Session, hero: &HeroParams, world: &WorldPa
     d.name = hero.character.name.clone();
     d.class = hero.character.class;
     d.stats = hero.character.stats;
+    d.age = hero.character.age;
+    d.awakening = hero.character.awakening;
     d.year = world.clock.date.year;
     d.month = world.clock.date.month;
     d.day = world.clock.date.day;
@@ -1419,6 +1431,8 @@ fn apply(d: &SaveData, hero: &mut HeroParams, world: &mut WorldParams) {
             name: d.name.clone(),
             class: d.class,
             stats: d.stats,
+            age: d.age,
+            awakening: d.awakening,
         };
     }
     if has("tempo") {
@@ -1732,7 +1746,13 @@ pub fn finish_loading(
     match std::mem::take(&mut *load) {
         LoadRequest::None => {}
         LoadRequest::New(character) => {
-            start_session(&mut session, &character.name, 0.0);
+            // Il naufrago non ha ancora un nome: la cartella si chiama «Naufrago» finché non lo dice.
+            let folder = if character.awakening < crate::character::AWAKE {
+                free_folder(&saves_root(), "Naufrago")
+            } else {
+                character.name.clone()
+            };
+            start_session(&mut session, &folder, 0.0);
             world.memory.0.clear();
             // La storia comincia sulla spiaggia a est del molo, tra i rottami (missione mp01).
             world.missions.reset();
@@ -1822,6 +1842,45 @@ pub fn finish_loading(
 /// Prove automatiche: partita attiva senza passare dal menu (`PLANET_ONE_SESSION=Nome`).
 pub fn start_test_session(session: &mut Session, name: &str) {
     start_session(session, name, 0.0);
+}
+
+/// Una cartella libera per i salvataggi a partire da `name` («Naufrago», «Naufrago 2»…).
+pub fn free_folder(root: &Path, name: &str) -> String {
+    let base = folder_name(name).unwrap_or_else(|| "personaggio".to_string());
+    let mut n = 1;
+    loop {
+        let candidate = if n == 1 {
+            base.clone()
+        } else {
+            format!("{base} {n}")
+        };
+        if !name_taken(root, &candidate) {
+            return candidate;
+        }
+        n += 1;
+    }
+}
+
+/// Il naufrago ha detto il suo nome: la cartella dei salvataggi lo prende (ADR 0047).
+pub fn rename_session(session: &mut Session, name: &str) {
+    let root = saves_root();
+    let wanted = folder_name(name).unwrap_or_default();
+    if wanted.is_empty() || wanted.eq_ignore_ascii_case(&session.folder) {
+        return;
+    }
+    let target = free_folder(&root, name);
+    let from = root.join(&session.folder);
+    if from.exists()
+        && let Err(e) = std::fs::rename(&from, root.join(&target))
+    {
+        warn!("[SAVE] non riesco a rinominare la cartella dei salvataggi: {e}");
+        return;
+    }
+    info!(
+        "[SAVE] cartella dei salvataggi: {} → {target}",
+        session.folder
+    );
+    session.folder = target;
 }
 
 fn start_session(session: &mut Session, name: &str, played: f32) {

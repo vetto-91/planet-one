@@ -21,7 +21,7 @@ veloce fontevivo
 aspetta 2
 verifica z > -5
 # Eventi: capitano passando di lì nel momento giusto.
-missione mp01 5
+missione mp01 7
 aspetta 1
 ora 6
 aspetta 1

@@ -72,3 +72,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0044 | Oggetti di trama e scelte nelle missioni | accettato |
 | 0045 | Ciò che sbloccano i segreti, la via degli indizi e i valori degli abitanti | accettato |
 | 0046 | Mondo vivo dell'isola: voci sui luoghi, esplorazione, bottino, mareggiate, pedaggio | accettato |
+| 0047 | Il risveglio sulla spiaggia: la creazione del personaggio nella scena | accettato |

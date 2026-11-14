@@ -178,12 +178,91 @@ impl Class {
 /// Punti da distribuire nella creazione personalizzata, a partire da 8 in tutto.
 pub const CUSTOM_POINTS: u8 = 14;
 
+/// Età del personaggio, scelta guardandosi nello «Specchio della Marea» (ADR 0047).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Age {
+    /// 18–26 anni: «il passo di Telemaco».
+    Young,
+    /// 27–45 anni: «il vigore di Odisseo».
+    #[default]
+    Adult,
+    /// 46–70 anni: «la memoria di Nestore».
+    Elder,
+}
+
+impl Age {
+    pub const ALL: [Age; 3] = [Age::Young, Age::Adult, Age::Elder];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Age::Young => "Giovane",
+            Age::Adult => "Adulto",
+            Age::Elder => "Maturo",
+        }
+    }
+
+    pub fn key(self) -> &'static str {
+        match self {
+            Age::Young => "giovane",
+            Age::Adult => "adulto",
+            Age::Elder => "maturo",
+        }
+    }
+
+    pub fn parse(text: &str) -> Option<Age> {
+        Age::ALL.into_iter().find(|a| a.key() == text.trim())
+    }
+
+    /// Ciò che si vede nell'acqua ferma.
+    pub fn mirror(self) -> &'static str {
+        match self {
+            Age::Young => {
+                "Un volto giovane, occhi inquieti, mani con più futuro che cicatrici. (18–26 anni: +1 Agilità, −1 Saggezza)"
+            }
+            Age::Adult => {
+                "Lineamenti temprati, lo sguardo di chi ha già attraversato tempeste che non ricorda. (27–45 anni)"
+            }
+            Age::Elder => {
+                "Rughe scavate dal sole e fili d'argento tra i capelli: il corpo ricorda una lunga vita. (46–70 anni: +1 Saggezza, +1 Intelligenza, −1 Agilità, −1 Costituzione)"
+            }
+        }
+    }
+
+    /// Le statistiche di partenza con il segno degli anni.
+    pub fn apply(self, mut stats: Stats) -> Stats {
+        let mut add = |s: Stat, n: i8| {
+            let v = i16::from(stats.get(s)) + i16::from(n);
+            stats.set(s, v.clamp(0, 255) as u8);
+        };
+        match self {
+            Age::Young => {
+                add(Stat::Agility, 1);
+                add(Stat::Wisdom, -1);
+            }
+            Age::Adult => {}
+            Age::Elder => {
+                add(Stat::Wisdom, 1);
+                add(Stat::Intelligence, 1);
+                add(Stat::Agility, -1);
+                add(Stat::Constitution, -1);
+            }
+        }
+        stats
+    }
+}
+
+/// Fasi del risveglio sulla spiaggia: età scelta, classe scelta, nome detto a Gaspare.
+pub const AWAKE: u8 = 3;
+
 /// Il personaggio in gioco.
 #[derive(Resource, Clone, Debug)]
 pub struct Character {
     pub name: String,
     pub class: Class,
     pub stats: Stats,
+    pub age: Age,
+    /// A che punto è il risveglio sulla spiaggia (0..=[`AWAKE`]); le partite vecchie sono già sveglie.
+    pub awakening: u8,
 }
 
 impl Default for Character {
@@ -192,6 +271,19 @@ impl Default for Character {
             name: "Viaggiatore".to_string(),
             class: Class::Custom,
             stats: Stats::default(),
+            age: Age::Adult,
+            awakening: AWAKE,
+        }
+    }
+}
+
+impl Character {
+    /// Il naufrago appena arrivato: senza nome, senza età né indole (le sceglie sulla spiaggia).
+    pub fn castaway() -> Self {
+        Self {
+            name: "Nessuno".to_string(),
+            awakening: 0,
+            ..Default::default()
         }
     }
 }

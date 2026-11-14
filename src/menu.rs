@@ -87,8 +87,8 @@ pub fn toggle(
         | AppState::Lockpick
         | AppState::Character
         | AppState::Shop => next.set(AppState::Playing),
-        // Durante il reset ESC non fa nulla: è uno stato transitorio.
-        AppState::Resetting | AppState::Loading | AppState::MainMenu => {}
+        // Durante il reset ESC non fa nulla: è uno stato transitorio. Il risveglio va concluso.
+        AppState::Resetting | AppState::Loading | AppState::MainMenu | AppState::Awakening => {}
     }
 }
 
@@ -510,7 +510,7 @@ pub fn ui(
         // Anche la shell ha il suo sistema (`shell::shell_panel`).
         AppState::Shell => {}
         // I mobili aperti hanno il loro sistema (`containers::container_window`).
-        AppState::Container | AppState::Lockpick => {}
+        AppState::Container | AppState::Lockpick | AppState::Awakening => {}
         AppState::Character => {}
         // Menu principale e attesa hanno i loro sistemi.
         AppState::MainMenu | AppState::Loading => {}

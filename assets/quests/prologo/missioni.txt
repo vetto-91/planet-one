@@ -11,12 +11,17 @@
 
 [missione mp01]
 titolo: Il Nome sulla Sabbia
-sommario: Ti sei svegliato su una spiaggia, tra rottami che non sai riconoscere. Non ricordi chi sei.
+sommario: Ti sei svegliato su una spiaggia, tra rottami che non sai riconoscere. Non ricordi chi sei, né quanti anni hai, né il tuo nome.
 
 [tappa]
-obiettivo: Guarda i rottami sulla spiaggia
-quando: vicino 30 85 4
-pensiero: Legno incastrato alla maniera antica, e un ferro piegato che non è di nessuna barca. Nessuna vela, nessun nome.
+obiettivo: Tra le rocce c'è una pozza d'acqua ferma: guardaci dentro (E)
+quando: conta risveglio 1
+pensiero: Il mare ha lavato via i ricordi, non le primavere. Ora sai almeno quanti anni porti.
+
+[tappa]
+obiettivo: Tra i rottami, raccogli la prima cosa che ti chiama (E)
+quando: conta risveglio 2
+pensiero: Legno incastrato alla maniera antica, e un ferro piegato che non è di nessuna barca. Ma le mani sanno che cosa fare.
 
 [tappa]
 obiettivo: Raggiungi il pescatore al molo
@@ -25,6 +30,12 @@ quando: parla Gaspare
 > Ci sono incastri vecchi di mille anni e un ferro che non ho mai visto in nessuna fucina. Da che nave vieni?
 > Non lo ricordi. Succede a chi attraversa il Velo delle Correnti: il sale lava via i pensieri.
 > Nelle vecchie storie del mare un capitano si salvò dicendo di chiamarsi «Nessuno». Ma finché resti Nessuno appartieni alla nebbia.
+> Dimmi tu quale nome senti tuo adesso, e io ti chiamerò così davanti a tutto il paese.
+
+[tappa]
+obiettivo: Dì a Gaspare il nome che senti tuo
+quando: conta risveglio 3
+quando: parla Gaspare
 > {nome}… suona limpido contro il vento del mattino. Allora ascoltami, {nome}: non sei più Nessuno. Benvenuto a Fontevivo.
 > Segui la strada di pietra fino al paese e cerca il Viandante, alla casetta in piazza. E sappi che quest'isola è solo il primo approdo.
 

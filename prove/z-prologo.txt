@@ -9,7 +9,8 @@ missioni on
 # MP-01 Il Nome sulla Sabbia
 tp 30 3 87.5
 aspetta 3
-verifica /missioni/mp01 = 2
+# Senza menu il personaggio è già «sveglio»: età, indole e nome li prova `zzzzzzzzzzz-risveglio`.
+verifica /missioni/mp01 = 3
 foto spiaggia
 tp gaspare
 aspetta 1
@@ -25,15 +26,20 @@ foto gaspare-risveglio
 avanza
 aspetta 1
 verifica dialogo = false
-verifica /missioni/mp01 = 3
+verifica /missioni/mp01 = 4
+premi e
+aspetta 1
+avanza
+aspetta 1
+verifica /missioni/mp01 = 5
 # Senza la traversata aperta Gaspare non offre il passaggio.
 verifica /missioni/continente = false
 tp 0.4 3 46
 aspetta 2
-verifica /missioni/mp01 = 4
+verifica /missioni/mp01 = 6
 quest cerca
 aspetta 1
-verifica /missioni/mp01 = 5
+verifica /missioni/mp01 = 7
 verifica monete >= 35
 # MP-03 Le Voci delle Pietre Antiche (dopo Denaro Rubato)
 quest completata

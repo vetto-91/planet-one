@@ -1,10 +1,8 @@
 //! Menu principale: Continua, Nuova partita, Carica partita, Impostazioni, Esci (ADR 0025).
 
 use crate::AppState;
-use crate::character::{CUSTOM_POINTS, Character, Class, STAT_MAX, Stat, Stats};
-use crate::save::{
-    LoadRequest, SaveData, SaveEntry, folder_name, list_saves, name_taken, saves_root,
-};
+use crate::character::Character;
+use crate::save::{LoadRequest, SaveData, SaveEntry, list_saves, saves_root};
 use crate::settings_ui::SettingsPanel;
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, egui};
@@ -22,9 +20,6 @@ pub enum Screen {
 #[derive(Resource)]
 pub struct MenuUi {
     pub screen: Screen,
-    name: String,
-    class: Class,
-    custom: Stats,
     selected: Option<String>,
     saves: Vec<SaveEntry>,
     message: Option<String>,
@@ -37,9 +32,6 @@ impl Default for MenuUi {
     fn default() -> Self {
         Self {
             screen: Screen::Main,
-            name: String::new(),
-            class: Class::Warrior,
-            custom: Class::Custom.stats(),
             selected: None,
             saves: Vec::new(),
             message: None,
@@ -50,24 +42,6 @@ impl Default for MenuUi {
 }
 
 impl MenuUi {
-    /// Punti ancora da distribuire nella creazione personalizzata.
-    fn points_left(&self) -> i32 {
-        let base = i32::from(Class::Custom.stats().get(Stat::Strength));
-        let spent: i32 = Stat::ALL
-            .iter()
-            .map(|s| i32::from(self.custom.get(*s)) - base)
-            .sum();
-        i32::from(CUSTOM_POINTS) - spent
-    }
-
-    fn chosen_stats(&self) -> Stats {
-        if self.class == Class::Custom {
-            self.custom
-        } else {
-            self.class.stats()
-        }
-    }
-
     pub fn open_load(&mut self) {
         self.screen = Screen::Load;
         self.stale = true;
@@ -151,82 +125,24 @@ fn new_screen(ui: &mut egui::Ui, menu: &mut MenuUi) -> Option<Choice> {
     let mut choice = None;
     title(ui, "Nuova partita", 32.0);
     ui.add_space(8.0);
-    ui.horizontal(|ui| {
-        ui.label("Nome:");
-        ui.add(egui::TextEdit::singleline(&mut menu.name).desired_width(300.0));
-    });
+    // Nome, età e indole si scelgono sulla spiaggia, nella storia (ADR 0047).
+    ui.label(
+        "Ti svegli su una spiaggia, tra rottami che non sai riconoscere. Non ricordi chi sei, \
+         né quanti anni hai, né come ti chiami.",
+    );
     ui.add_space(6.0);
-    ui.horizontal_wrapped(|ui| {
-        ui.label("Classe:");
-        for class in Class::ALL {
-            if ui
-                .selectable_label(menu.class == class, class.name())
-                .clicked()
-            {
-                menu.class = class;
-            }
-        }
-    });
-    ui.separator();
-    let custom = menu.class == Class::Custom;
-    let stats = menu.chosen_stats();
-    let left = menu.points_left();
-    if custom {
-        ui.label(format!("Punti da distribuire: {left}"));
-    }
-    for stat in Stat::ALL {
-        ui.horizontal(|ui| {
-            ui.add_sized(
-                [130.0, 24.0],
-                egui::Label::new(egui::RichText::new(stat.name()).strong()),
-            );
-            let value = stats.get(stat);
-            let base = Class::Custom.stats().get(stat);
-            if custom
-                && ui
-                    .add_enabled(value > base, egui::Button::new(" − "))
-                    .clicked()
-            {
-                menu.custom.set(stat, value - 1);
-            }
-            ui.add_sized([34.0, 24.0], egui::Label::new(value.to_string()));
-            if custom
-                && ui
-                    .add_enabled(left > 0 && value < STAT_MAX, egui::Button::new(" + "))
-                    .clicked()
-            {
-                menu.custom.set(stat, value + 1);
-            }
-            ui.label(egui::RichText::new(stat.effect()).size(14.0));
-        });
-    }
-    ui.separator();
-    let name = menu.name.replace(['|', '\n', '='], " ").trim().to_string();
-    let root = saves_root();
-    let problem = if name.is_empty() {
-        Some("Scrivi un nome.")
-    } else if folder_name(&name).is_none() {
-        Some("Questo nome non si può usare.")
-    } else if name_taken(&root, &name) {
-        Some("Esiste già un personaggio con questo nome.")
-    } else if custom && left != 0 {
-        Some("Distribuisci tutti i punti.")
-    } else {
-        None
-    };
-    if let Some(p) = problem {
-        ui.label(egui::RichText::new(p).color(egui::Color32::from_rgb(255, 170, 130)));
-    }
+    ui.label(
+        egui::RichText::new(
+            "L'acqua ferma tra le rocce ti dirà la tua età, i rottami la tua indole; \
+             il nome lo dirai al primo che ti verrà incontro.",
+        )
+        .size(15.0)
+        .color(egui::Color32::from_rgb(170, 178, 196)),
+    );
+    ui.add_space(12.0);
     ui.horizontal(|ui| {
-        if ui
-            .add_enabled(problem.is_none(), egui::Button::new("Inizia"))
-            .clicked()
-        {
-            choice = Some(Choice::Start(Character {
-                name,
-                class: menu.class,
-                stats,
-            }));
+        if ui.button("Svegliati").clicked() {
+            choice = Some(Choice::Start(Character::castaway()));
         }
         if ui.button("Indietro").clicked() {
             menu.screen = Screen::Main;
@@ -421,30 +337,4 @@ pub fn loading_ui(mut contexts: EguiContexts) {
 pub fn plugin(app: &mut App) {
     app.init_resource::<MenuUi>()
         .add_systems(OnEnter(AppState::MainMenu), on_enter_menu);
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn custom_points_are_counted() {
-        let mut menu = MenuUi {
-            class: Class::Custom,
-            ..Default::default()
-        };
-        assert_eq!(menu.points_left(), i32::from(CUSTOM_POINTS));
-        menu.custom.set(Stat::Strength, 12);
-        assert_eq!(menu.points_left(), i32::from(CUSTOM_POINTS) - 4);
-        assert_eq!(menu.chosen_stats().get(Stat::Strength), 12);
-    }
-
-    #[test]
-    fn classes_ignore_the_custom_points() {
-        let menu = MenuUi {
-            class: Class::Scholar,
-            ..Default::default()
-        };
-        assert_eq!(menu.chosen_stats(), Class::Scholar.stats());
-    }
 }

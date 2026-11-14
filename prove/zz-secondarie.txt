@@ -203,7 +203,7 @@ aspetta 1
 verifica /missioni/qs10 = 4
 verifica Relic(LauroCompass) = 1
 # qs04 Tre Nomi per le Ombre (dopo la prima missione): Don Anselmo, il campo dei banditi, l'alba sulla scogliera
-missione mp01 5
+missione mp01 7
 aspetta 1
 tp anselmo
 aspetta 1

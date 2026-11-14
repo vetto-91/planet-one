@@ -4,6 +4,8 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **Il risveglio sulla spiaggia** (ADR 0047): una partita nuova non ha più la schermata di creazione. Ti svegli tra i rottami senza nome: nella pozza d'acqua ferma fra le rocce scopri la tua **età** (giovane, adulto o maturo, novità che segna appena le statistiche); tra i rottami, la prima cosa che raccogli rivela la tua **indole** (sbarra di ferro, arco spezzato, rotolo di nodi o borsa di monete), che puoi accettare o sostituire scegliendo tu i tuoi punti; e il **nome** lo dici a Gaspare, che da quel momento ti chiama così. La cartella dei salvataggi prende il tuo nome.
+
 - **Voci sui luoghi** (ADR 0046): alcuni abitanti, la prima volta che ci parli, nominano un luogo che non conosci; sulla mappa compare con un «?» finché non ci arrivi.
 - **Luoghi esplorati**: sulla mappa un luogo scoperto prende la spunta ✓ quando hai aperto ogni mobile e non ci sono più nemici.
 - **Il bottino torna**: nei luoghi fuori dalle mura, una notte a caso, i mobili svuotati si riempiono di nuovo.

@@ -82,6 +82,7 @@ Strategia: **vertical slice prima**. Una demo giocabile (1 quest, 1 NPC, 1 nemic
 | 15.1 — Prologo: oggetti di trama e scelte | Quattordici oggetti di trama («Ricordi»), scelte con effetti nelle missioni secondarie, rito che ferma i banditi (ADR 0044) | in corso |
 | 15.2 — Prologo: segreti, indizi e valori | Sblocchi dei 26 segreti, quattro indizi nei mobili, valori personali degli abitanti, guardie che vedono i furti, fama nei saluti (ADR 0045) | in corso |
 | 15.3 — Prologo: mondo vivo | Voci «?» sui luoghi, luoghi esplorati, bottino che torna, casse delle mareggiate, pedaggio del ponte, risposte con requisito (ADR 0046) | in corso |
+| 15.4 — Prologo: il risveglio | Creazione del personaggio nella scena della spiaggia: età nello Specchio della Marea, indole dai rottami, nome a Gaspare (ADR 0047) | in corso |
 | 5.y — Mondo vivo | Colonna sonora con volume, casetta-chiosco esplorabile (porta, interni, stufa con fumo), routine giorno/notte del Viandante, voci dei personaggi, versione nel menu | `v0.0.7.0` |
 | 5.z — Mondo vivo, rifiniture | Interazione col mirino, casetta con serranda/interruttore/finestre e luci con ombre, routine del Viandante v2, voci normalizzate con ducking della musica | `v0.0.8.0` |
 | 5.w — Mappa e strumenti | Mappa dall'alto (M) con bussola e zoom, modalità debug piazzamenti (F4) con file `debug/placements.txt`, vetri e scuri spessi, il Viandante chiude porta e finestre | `v0.0.9.0` |

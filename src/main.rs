@@ -13,6 +13,7 @@ mod animation;
 mod archery;
 mod audio;
 mod autopilot;
+mod awakening;
 mod bells;
 mod bugreport;
 mod buildings;
@@ -117,6 +118,8 @@ pub enum AppState {
     Container,
     /// Scasso di una serratura (gioco dei perni): gioco sospeso.
     Lockpick,
+    /// Pannelli del risveglio sulla spiaggia (età, indole, nome): gioco sospeso.
+    Awakening,
     /// Shell dei trucchi aperta (\\): gioco sospeso, cursore libero.
     Shell,
     /// Negozio aperto (acquisto con le monete): gameplay sospeso, cursore libero.
@@ -240,6 +243,7 @@ fn main() -> AppExit {
         .add_plugins(house::plugin)
         .add_plugins(archery::plugin)
         .add_plugins(island_life::plugin)
+        .add_plugins(awakening::plugin)
         .add_plugins(water::plugin)
         .add_plugins(nature::plugin)
         .add_plugins(save::plugin)
@@ -393,6 +397,7 @@ fn main() -> AppExit {
                 shell::shell_panel.run_if(in_state(AppState::Shell)),
                 containers::container_window.run_if(in_state(AppState::Container)),
                 thievery::lockpick_window.run_if(in_state(AppState::Lockpick)),
+                awakening::awakening_window.run_if(in_state(AppState::Awakening)),
                 character::character_window.run_if(in_state(AppState::Character)),
                 main_menu::main_menu_ui.run_if(|s: Res<State<AppState>>| {
                     matches!(s.get(), AppState::MainMenu | AppState::Paused)

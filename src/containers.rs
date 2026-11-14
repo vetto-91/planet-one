@@ -202,6 +202,13 @@ pub fn starting_items(kind: ContainerKind, building: &str, key: &str) -> Vec<(It
     if building == crate::house::KIND {
         return Vec::new();
     }
+    // I rottami del naufragio sulla spiaggia (piazzamenti P-1280…1282, ADR 0047).
+    match key.split(':').next() {
+        Some("1280") => return vec![(Apple, 2), (HealthPotion, 1)],
+        Some("1281") => return vec![(Coin, 6), (Apple, 1)],
+        Some("1282") => return vec![(Satchel, 1)],
+        _ => {}
+    }
     // Indizi: nel primo mobile di certi edifici c'è un quaderno o una lettera (ADR 0045).
     let first = key.ends_with(":0") && key.matches(':').count() == 2;
     let clue = crate::karma::clue_in(building)

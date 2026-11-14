@@ -1079,6 +1079,13 @@ pub fn snapshot(world: &mut World) -> Value {
             ]
         })
         .collect();
+    let who = world.resource::<crate::character::Character>();
+    let personaggio = json!({
+        "risveglio": who.awakening,
+        "eta": who.age.key(),
+        "classe": who.class.name(),
+        "nome": who.name.clone(),
+    });
     json!({
         "app": app,
         "ora": (hour * 100.0).round() / 100.0,
@@ -1100,6 +1107,7 @@ pub fn snapshot(world: &mut World) -> Value {
         "quest": quest,
         "missioni": missioni,
         "abilita": abilita,
+        "personaggio": personaggio,
         "esplorati": world
             .resource::<crate::places::Exploration>()
             .0

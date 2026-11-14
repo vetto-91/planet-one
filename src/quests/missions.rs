@@ -412,6 +412,11 @@ impl Missions {
             .count()
     }
 
+    /// Tappa corrente di una missione (per chi deve reagire a un punto preciso della storia).
+    pub fn step_of(&self, id: &str) -> Option<usize> {
+        self.index(id).map(|i| self.progress[i])
+    }
+
     pub fn done(&self, id: &str) -> bool {
         self.index(id)
             .is_some_and(|i| self.progress[i] >= self.list[i].steps.len())
@@ -818,6 +823,7 @@ pub fn track_missions(
             .chain([
                 ("casa".to_string(), u32::from(house.stage)),
                 ("arco".to_string(), u32::from(trial.passed)),
+                ("risveglio".to_string(), u32::from(character.awakening)),
             ])
             // Segreti confidati: `quando: conta segreto:beppe 1` (ADR 0044).
             .chain(karma.revealed.iter().map(|n| (format!("segreto:{n}"), 1)))

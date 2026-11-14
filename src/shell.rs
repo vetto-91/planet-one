@@ -39,6 +39,7 @@ const HELP: &[&str] = &[
     "incantesimo <luce|dardo|cura|passo|scudo> · magia <n> (riserva di magia)",
     "casa <0|1|2> (la tua casa sul Poggio del Naufrago: terreno, fondamenta, finita)",
     "scocca <1|2|3> (una freccia mirata a un anello della Prova dell'Arco)",
+    "risveglio nuovo · risveglio eta <giovane|adulto|maturo> · risveglio classe <nome> · risveglio nome <nome>",
 ];
 
 /// Trucchi attivi: non salvati, tutti spenti a ogni avvio.
@@ -140,6 +141,8 @@ pub enum Cmd {
     SetSkill(crate::skills::Skill, u8),
     Level(Option<u32>),
     Perk(crate::skills::Skill),
+    /// Risveglio sulla spiaggia: `nuovo` riparte da naufrago, gli altri rispondono ai pannelli.
+    Awake(String),
     /// Scocca una freccia mirata a un anello della Prova dell'Arco (1..3).
     Shoot(usize),
     /// Porta la casa del giocatore a una tappa (0 terreno, 1 fondamenta, 2 finita).
@@ -383,6 +386,7 @@ pub fn parse(line: &str) -> Result<Cmd, String> {
         "davanti" if !args.is_empty() => Ok(Cmd::Behind(args.join(" ").to_lowercase(), false)),
         "volti" => Ok(Cmd::Faces),
         "scassina" => Ok(Cmd::AutoPick),
+        "risveglio" if !args.is_empty() => Ok(Cmd::Awake(args.join(" "))),
         "scocca" => args
             .first()
             .and_then(|a| a.parse::<usize>().ok())
@@ -531,6 +535,7 @@ pub struct ShellCtx<'w, 's> {
     magic: ResMut<'w, crate::magic::Magic>,
     house: ResMut<'w, crate::house::House>,
     trial: ResMut<'w, crate::archery::Trial>,
+    awakening: ResMut<'w, crate::awakening::Awakening>,
     vitals: ResMut<'w, crate::vitals::Vitals>,
     journal_tab: ResMut<'w, crate::menu::JournalTab>,
     fast_travel: ResMut<'w, crate::places::FastTravel>,
@@ -1081,6 +1086,37 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
         Cmd::Faces => {
             *ctx.journal_tab = crate::menu::JournalTab::Faces;
             shell.say("diario sulla scheda «Volti e segreti» (tasto J)");
+        }
+        Cmd::Awake(what) => {
+            use crate::awakening::Request;
+            let (verb, rest) = what.split_once(' ').unwrap_or((what.as_str(), ""));
+            let request = match verb {
+                "nuovo" => {
+                    *ctx.character = crate::character::Character::castaway();
+                    ctx.missions.reset();
+                    ctx.missions.enabled = true;
+                    if let Ok((mut t, mut v)) = ctx.player.single_mut() {
+                        t.translation = crate::save::NEW_GAME_START;
+                        v.0 = Vec3::ZERO;
+                    }
+                    shell.say("sei di nuovo un naufrago sulla spiaggia");
+                    None
+                }
+                "eta" => crate::character::Age::parse(rest).map(Request::Age),
+                "classe" => crate::character::Class::ALL
+                    .into_iter()
+                    .find(|c| c.name().eq_ignore_ascii_case(rest.trim()))
+                    .map(Request::Class),
+                "nome" if !rest.trim().is_empty() => Some(Request::Name(rest.trim().to_string())),
+                _ => {
+                    shell.say("uso: risveglio nuovo|eta <età>|classe <classe>|nome <nome>");
+                    None
+                }
+            };
+            if let Some(r) = request {
+                shell.say(format!("risveglio: {r:?}"));
+                ctx.awakening.request = Some(r);
+            }
         }
         Cmd::Shoot(ring) => {
             ctx.trial.request = Some(ring);
