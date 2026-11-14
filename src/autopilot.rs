@@ -1094,6 +1094,23 @@ pub fn snapshot(world: &mut World) -> Value {
         .iter()
         .map(|(n, _)| n.clone())
         .collect();
+    let in_piazza = world
+        .query::<&crate::villagers::Villager>()
+        .iter(world)
+        .filter(|v| v.at_festival())
+        .count();
+    let porta_sommersa = world
+        .query::<&crate::places::SunkenDoor>()
+        .iter(world)
+        .map(|d| d.open)
+        .fold(-1.0f32, f32::max);
+    let festa = json!({
+        "festa": world.resource::<crate::lanterns::LanternEvening>().on,
+        "invitati": world.resource::<crate::lanterns::LanternEvening>().gathered,
+        "in_piazza": in_piazza,
+        // Apertura della Porta Sommersa (0 chiusa, 1 aperta; -1 se la grotta non c'è).
+        "porta_sommersa": (porta_sommersa * 100.0).round() / 100.0,
+    });
     let who = world.resource::<crate::character::Character>();
     let prompt = world
         .resource::<crate::entities::NearestInteract>()
@@ -1133,6 +1150,7 @@ pub fn snapshot(world: &mut World) -> Value {
         "missioni": missioni,
         "abilita": abilita,
         "personaggio": personaggio,
+        "partenza": festa,
         "esplorati": world
             .resource::<crate::places::Exploration>()
             .0

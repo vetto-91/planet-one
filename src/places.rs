@@ -318,13 +318,204 @@ fn cave_depths(b: &mut B, int: &mut Interior) {
         (v(0.4, LO, -21.8), v(4.6, LOW, -21.2)),
         (v(6.0, LO, -27.6), v(6.6, LOW, -19.1)),
         (v(4.0, LO, -27.6), v(4.6, LOW, -21.8)),
-        (v(4.0, LO, -27.6), v(6.6, LOW, -27.0)),
+        // Fondo della nicchia: il vano della Porta Sommersa (x da 4,9 a 5,7, alto 1,95).
+        (v(4.0, LO, -27.6), v(SUNKEN_X0, LOW, -27.0)),
+        (v(SUNKEN_X1, LO, -27.6), v(6.6, LOW, -27.0)),
+        (v(SUNKEN_X0, FL + SUNKEN_H, -27.6), v(SUNKEN_X1, LOW, -27.0)),
         (v(0.4, LOW, -27.6), v(6.6, LOW + 0.6, -19.1)),
     ] {
         rock(b, int, min, max);
     }
     rooms::chest(b, int, 5.3, -26.2, FL);
     campfire(b, int, v(5.3, FL, -23.2));
+    sunken_passage(b, int);
+}
+
+/// Vano della Porta Sommersa in fondo alla nicchia (coordinate locali della grotta).
+const SUNKEN_X0: f32 = 4.9;
+const SUNKEN_X1: f32 = 5.7;
+const SUNKEN_H: f32 = 1.95;
+/// Faccia interna della parete di fondo della nicchia.
+const SUNKEN_Z: f32 = -27.0;
+
+/// Oltre la Porta Sommersa: un breve corridoio e gradini che spariscono in un'acqua ferma, la «via
+/// sotto il mare» (ADR 0048). Una cornice di rame a spirali segna il vano dal lato della nicchia.
+fn sunken_passage(b: &mut B, int: &mut Interior) {
+    const FL: f32 = -1.2;
+    const LO: f32 = -2.2;
+    const TOP: f32 = 0.95;
+    let v = Vec3::new;
+    cave_floor(b, int, v(4.6, LO, -29.0), v(6.0, FL, -27.6));
+    // Gradini che scendono nell'acqua (solo da vedere: un gradino di pietra ferma il passo).
+    for (i, z) in [-29.0f32, -29.6, -30.2].into_iter().enumerate() {
+        let top = FL - 0.25 * (i as f32 + 1.0);
+        b.cuboid(v(4.6, LO, z - 0.6), v(6.0, top, z), STONE_DARK);
+    }
+    int.walls.push((v(5.3, FL + 0.4, -29.15), v(1.4, 0.8, 0.3)));
+    b.force = Some(Mat::Plain);
+    b.cuboid_c(
+        v(5.3, FL - 0.3, -30.4),
+        v(1.4, 0.04, 2.8),
+        [0.05, 0.16, 0.24, 1.0],
+    );
+    b.force = None;
+    for (min, max) in [
+        (v(4.0, LO, -32.4), v(4.6, TOP, -27.6)),
+        (v(6.0, LO, -32.4), v(6.6, TOP, -27.6)),
+        (v(4.0, LO, -32.4), v(6.6, TOP, -31.8)),
+        (v(4.0, TOP, -32.4), v(6.6, TOP + 0.6, -27.6)),
+    ] {
+        rock(b, int, min, max);
+    }
+    // Cornice di rame: stipiti, architrave e due spirali ai lati.
+    const COPPER: Col = [0.42, 0.2, 0.09, 1.0];
+    let z = SUNKEN_Z + 0.03;
+    b.force = Some(Mat::Plain);
+    for x in [SUNKEN_X0 - 0.06, SUNKEN_X1 + 0.06] {
+        b.cuboid_c(v(x, FL + SUNKEN_H / 2.0, z), v(0.1, SUNKEN_H, 0.06), COPPER);
+    }
+    b.cuboid_c(
+        v((SUNKEN_X0 + SUNKEN_X1) / 2.0, FL + SUNKEN_H + 0.05, z),
+        v(SUNKEN_X1 - SUNKEN_X0 + 0.22, 0.1, 0.06),
+        COPPER,
+    );
+    for (cx, s) in [(SUNKEN_X0 - 0.35, 1.0f32), (SUNKEN_X1 + 0.35, -1.0)] {
+        for k in 0..7 {
+            let a = k as f32 * 0.9;
+            let r = 0.04 + k as f32 * 0.025;
+            b.cuboid_c(
+                v(cx + s * a.cos() * r, FL + 1.3 + a.sin() * r, z),
+                v(0.05, 0.05, 0.04),
+                COPPER,
+            );
+        }
+    }
+    b.force = None;
+}
+
+/// Segna la grotta piazzata: lì sotto c'è la Porta Sommersa.
+#[derive(Component)]
+pub struct CaveMouth;
+
+/// La lastra della Porta Sommersa: chiusa finché le stele non risuonano, poi scende nel pavimento.
+#[derive(Component)]
+pub struct SunkenDoor {
+    /// 0 = chiusa, 1 = del tutto aperta.
+    pub open: f32,
+}
+
+/// La porta si apre quando le stele del laghetto risuonano (o è già stata trovata aperta).
+pub fn sunken_door_unlocked(karma: &crate::karma::Karma) -> bool {
+    karma.unlocks.contains("stele-risonanti") || karma.unlocks.contains("porta-sommersa")
+}
+
+/// Sistema: mette la lastra nel vano di ogni grotta e la fa scendere quando le stele cantano.
+#[allow(clippy::too_many_arguments)]
+pub fn sunken_door(
+    mut commands: Commands,
+    caves_built: Query<(Entity, &Children), With<CaveMouth>>,
+    mut doors: Query<(Entity, &mut SunkenDoor, &mut Transform)>,
+    karma: Res<crate::karma::Karma>,
+    pbr: Option<Res<crate::pbr::PbrMaterials>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    time: Res<Time>,
+    mut copper: Local<Option<Handle<StandardMaterial>>>,
+) {
+    let unlocked = sunken_door_unlocked(&karma);
+    let closed_at = Vec3::new(
+        (SUNKEN_X0 + SUNKEN_X1) / 2.0,
+        -1.2 + SUNKEN_H / 2.0,
+        SUNKEN_Z - 0.3,
+    );
+    for (cave, children) in &caves_built {
+        if children.iter().any(|c| doors.contains(c)) {
+            continue;
+        }
+        let Some(pbr) = &pbr else {
+            return;
+        };
+        let copper = copper
+            .get_or_insert_with(|| {
+                materials.add(StandardMaterial {
+                    base_color: Color::srgb(0.66, 0.38, 0.2),
+                    metallic: 1.0,
+                    perceptual_roughness: 0.38,
+                    ..default()
+                })
+            })
+            .clone();
+        let open = if unlocked { 1.0 } else { 0.0 };
+        let w = SUNKEN_X1 - SUNKEN_X0;
+        commands.entity(cave).with_children(|c| {
+            let mut slab = c.spawn((
+                SunkenDoor { open },
+                Mesh3d(meshes.add(Cuboid::new(w, SUNKEN_H, 0.22))),
+                MeshMaterial3d(pbr.get(Mat::Stone)),
+                Transform::from_translation(closed_at - Vec3::Y * SUNKEN_H * open),
+                Visibility::default(),
+            ));
+            if !unlocked {
+                slab.insert(avian3d::prelude::Collider::cuboid(w, SUNKEN_H, 0.22));
+            }
+            slab.with_children(|s| {
+                // Fasce di rame e un disco al centro, sul lato della nicchia.
+                for y in [-0.7f32, 0.0, 0.7] {
+                    s.spawn((
+                        Mesh3d(meshes.add(Cuboid::new(w - 0.04, 0.06, 0.03))),
+                        MeshMaterial3d(copper.clone()),
+                        Transform::from_xyz(0.0, y, 0.12),
+                    ));
+                }
+                s.spawn((
+                    Mesh3d(meshes.add(Cylinder::new(0.2, 0.03))),
+                    MeshMaterial3d(copper.clone()),
+                    Transform::from_xyz(0.0, 0.35, 0.125)
+                        .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
+                ));
+            });
+            // Il bagliore dell'acqua oltre la porta.
+            c.spawn((
+                PointLight {
+                    color: Color::srgb(0.35, 0.75, 0.85),
+                    intensity: 0.0,
+                    range: 6.0,
+                    shadow_maps_enabled: false,
+                    ..default()
+                },
+                SunkenGlow,
+                Transform::from_xyz(5.3, -0.6, -30.0),
+            ));
+        });
+        info!(
+            "[MONDO] Porta Sommersa {}",
+            if unlocked { "aperta" } else { "chiusa" }
+        );
+    }
+    let dt = time.delta_secs();
+    for (e, mut door, mut tf) in &mut doors {
+        if unlocked && door.open < 1.0 {
+            if door.open == 0.0 {
+                commands.entity(e).remove::<avian3d::prelude::Collider>();
+                crate::sfx::play(crate::sfx::Sfx::Grind);
+                info!("[MONDO] la Porta Sommersa si apre");
+            }
+            door.open = (door.open + dt / 1.6).min(1.0);
+            tf.translation = closed_at - Vec3::Y * SUNKEN_H * door.open;
+        }
+    }
+}
+
+/// Luce dell'acqua oltre la Porta Sommersa: si accende con la porta aperta.
+#[derive(Component)]
+pub struct SunkenGlow;
+
+/// Sistema: il bagliore oltre la porta segue l'apertura della lastra.
+pub fn sunken_glow(doors: Query<&SunkenDoor>, mut glows: Query<&mut PointLight, With<SunkenGlow>>) {
+    let open = doors.iter().map(|d| d.open).fold(0.0f32, f32::max);
+    for mut l in &mut glows {
+        l.intensity = 30_000.0 * open;
+    }
 }
 
 /// Grotta: ingresso ad arco, corridoio di 6 m e una camera ampia, tutto in un cumulo di massi
@@ -911,6 +1102,7 @@ pub fn fast_travel(
 }
 
 pub fn plugin(app: &mut App) {
+    app.add_systems(Update, (sunken_door, sunken_glow).chain());
     app.init_resource::<Known>()
         .init_resource::<FastTravel>()
         .init_resource::<Exploration>()

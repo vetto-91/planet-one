@@ -381,6 +381,9 @@ pub fn sync_world_props(
                 if !interior.lights.is_empty() {
                     e.insert(BuildingFootprint { half: model_half });
                 }
+                if kind == "grotta" {
+                    e.insert(crate::places::CaveMouth);
+                }
                 e.with_children(|c| {
                     if model.snow.count_vertices() > 0 {
                         c.spawn((

@@ -18,6 +18,8 @@ pub enum Sfx {
     Ring,
     Pin,
     Unlock,
+    /// Lastra di pietra che scorre (la Porta Sommersa).
+    Grind,
 }
 
 static QUEUE: Mutex<Vec<Sfx>> = Mutex::new(Vec::new());
@@ -108,6 +110,33 @@ pub fn synth_unlock() -> Vec<u8> {
         .pipe(|s| to_wav(&s, 0.6))
 }
 
+/// Pietra che scorre: un rombo basso e granuloso che cresce e si spegne in un tonfo.
+pub fn synth_grind() -> Vec<u8> {
+    let n = (RATE as f32 * 1.8) as usize;
+    let mut seed: u32 = 0x9E37_79B9;
+    let mut low = 0.0f32;
+    (0..n)
+        .map(|i| {
+            let t = i as f32 / RATE as f32;
+            seed ^= seed << 13;
+            seed ^= seed >> 17;
+            seed ^= seed << 5;
+            let noise = seed as f32 / u32::MAX as f32 * 2.0 - 1.0;
+            low += (noise - low) * 0.04; // rumore filtrato: sabbia e pietra
+            let env = (t * 3.0).min(1.0) * (1.0 - (t - 1.3).max(0.0) * 2.0).max(0.0);
+            let rumble = (TAU * 48.0 * t).sin() * 0.5 + (TAU * 71.0 * t).sin() * 0.3;
+            let thud = if t > 1.35 {
+                let d = t - 1.35;
+                (TAU * 90.0 * d).sin() * (-d * 10.0).exp()
+            } else {
+                0.0
+            };
+            (low * 3.0 + rumble * 0.4) * env + thud
+        })
+        .collect::<Vec<_>>()
+        .pipe(|s| to_wav(&s, 0.7))
+}
+
 /// Scrive in modo scorrevole `x.pipe(f)` invece di `f(x)`.
 trait Pipe: Sized {
     fn pipe<R>(self, f: impl FnOnce(Self) -> R) -> R {
@@ -118,7 +147,7 @@ impl<T> Pipe for T {}
 
 /// I suoni pronti.
 #[derive(Resource)]
-pub struct SfxSounds([Handle<AudioSource>; 4]);
+pub struct SfxSounds([Handle<AudioSource>; 5]);
 
 fn setup(mut commands: Commands, mut sources: ResMut<Assets<AudioSource>>) {
     let mut add = |bytes: Vec<u8>| {
@@ -131,6 +160,7 @@ fn setup(mut commands: Commands, mut sources: ResMut<Assets<AudioSource>>) {
         add(synth_ring()),
         add(synth_pin()),
         add(synth_unlock()),
+        add(synth_grind()),
     ]));
 }
 
@@ -153,6 +183,7 @@ pub fn play_queued(
             Sfx::Ring => (&sounds.0[1], 0.8),
             Sfx::Pin => (&sounds.0[2], 0.6),
             Sfx::Unlock => (&sounds.0[3], 0.8),
+            Sfx::Grind => (&sounds.0[4], 0.9),
         };
         commands.spawn((
             AudioPlayer::new(handle.clone()),
@@ -172,7 +203,13 @@ mod tests {
 
     #[test]
     fn every_sound_is_a_short_wav() {
-        for bytes in [synth_spell(), synth_ring(), synth_pin(), synth_unlock()] {
+        for bytes in [
+            synth_spell(),
+            synth_ring(),
+            synth_pin(),
+            synth_unlock(),
+            synth_grind(),
+        ] {
             assert_eq!(&bytes[..4], b"RIFF");
             let seconds = (bytes.len() - 44) as f32 / (RATE as f32 * 2.0);
             assert!(seconds > 0.05 && seconds < 2.0, "{seconds}");

@@ -38,6 +38,7 @@ mod inventory;
 mod inventory_ui;
 mod island_life;
 mod karma;
+mod lanterns;
 mod localtime;
 mod magic;
 mod main_menu;
@@ -247,6 +248,7 @@ fn main() -> AppExit {
         .add_plugins(house::plugin)
         .add_plugins(archery::plugin)
         .add_plugins(island_life::plugin)
+        .add_plugins(lanterns::plugin)
         .add_plugins(awakening::plugin)
         .add_plugins(cutscene::plugin)
         .add_plugins(companions::plugin)

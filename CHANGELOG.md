@@ -4,6 +4,8 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **La Porta Sommersa si vede** (ADR 0048): in fondo al cunicolo della grotta c'è una lastra di pietra con fasce e un disco di rame. Quando le stele del laghetto risuonano, scende nel pavimento con un rombo e oltre si vedono gradini che spariscono in un'acqua azzurra.
+- **La Sera delle Lanterne con la piazza piena**: la sera prima della partenza gli abitanti lasciano le loro faccende e si radunano attorno al pozzo, girati verso il centro, e otto lanterne si accendono una a una. Alle 23:30 la festa finisce e tutti tornano a casa. Le guardie restano al loro turno.
 - **Eventi con persone vere** (ADR 0046): al crepuscolo Lino il carrettiere ha la ruota nel fango sulla strada del nord, e mentre lo aiuti escono dal bosco due predoni; di giorno una pecora impigliata nei rovi ti segue fino al gregge, se la liberi; in tarda mattinata Tonio e Nina litigano a voce alta in piazza finché non fai da giudice.
 - **La Croce delle Quattro Ronde** ora passa dal dialogo con le quattro guardie di ronda, ognuna nel suo turno.
 - **Un luogo è esplorato del tutto** solo quando hai visto anche ciò che vi accade (la scintilla sulla torre, l'alba sui gradoni…).

@@ -91,7 +91,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 - `src/archery.rs`: la Prova dell'Arco, tre anelli lungo il ruscello da centrare in fila (`Trial`; ADR 0043).
 - `src/island_life.rs`: casse delle mareggiate, bottino che torna, banditi del pedaggio (ADR 0046); voci e luoghi esplorati in `places.rs`.
 - `src/awakening.rs`: il risveglio sulla spiaggia, creazione del personaggio nella scena (età, indole, nome; `AppState::Awakening`; ADR 0047).
-- `src/cutscene.rs`: scene raccontate (dissolvenza e righe) e viaggio alla fine; la partenza dal Prologo (ADR 0048).
+- `src/cutscene.rs`: scene raccontate (dissolvenza e righe) e viaggio alla fine; la partenza dal Prologo (ADR 0048). `src/lanterns.rs`: la Sera delle Lanterne (piazza piena, lanterne); la Porta Sommersa in `places.rs`.
 - `src/companions.rs`: compagni Silvia e Guardia Dino (seguono, combattono, si feriscono e si ritirano; ramo in `villagers::villager_routine`; battute in `assets/world/compagni.txt`; sezione `[compagni]` nei salvataggi; ADR 0049). Armature in `inventory.rs`, Scatto in `player.rs`, Disarmo in `combat.rs`, Calma in `magic.rs`.
 - `src/sfx.rs`: suoni sintetizzati di incantesimi, anelli e serrature (`sfx::play`); voci delle battute del Prologo da `scripts/gen_voci_prologo.py` (`voice::line_clip`, ADR 0050).
 - `src/karma.rs` + `assets/world/segreti.txt`: karma, fiducia per abitante, regali e segreti confidati (`deed`, `trust`; ADR 0040); sblocchi, indizi (`CLUES`) e valori (`deed_as`, `praise`; ADR 0045); scheda «Volti e segreti» in `menu.rs`.

@@ -1,0 +1,48 @@
+# La partenza più ricca (ADR 0048, aggiornamento): la Porta Sommersa si vede in fondo al cunicolo e
+# scende nel pavimento quando le stele risuonano; alla Sera delle Lanterne la piazza si riempie
+# attorno al pozzo e le lanterne si accendono una a una; alle 23:30 tutti tornano a casa.
+# Il nome comincia per z perché un copione nuovo non sposti le risoluzioni degli altri.
+god on
+ia off
+meteo sereno
+missioni on
+ora 10
+missione mp04 4
+# La porta chiusa in fondo alla nicchia.
+tp 85.2 1.5 42.0
+aspetta 3
+verifica /partenza/porta_sommersa = 0
+camera 180 5 2.5
+aspetta 1
+foto porta-chiusa
+# Le stele cantano: la lastra scende.
+tp 96.5 2.0 33.2
+aspetta 2
+incantesimo luce
+aspetta 3
+tp 85.2 1.5 42.0
+aspetta 2
+verifica /partenza/porta_sommersa = 1
+camera 180 5 2.5
+aspetta 1
+foto porta-aperta
+# La Sera delle Lanterne.
+missione mp05 2
+ora 19.6
+tp -1.2 3 18
+aspetta 3
+verifica /partenza/festa = true
+verifica /partenza/invitati >= 12
+attendi /partenza/in_piazza >= 12 150
+aspetta 3
+tp -1.2 3 17.2
+aspetta 2
+camera 0 18 5
+aspetta 1
+foto sera-delle-lanterne
+# Finita la festa, la piazza si svuota.
+ora 23.6
+aspetta 4
+verifica /partenza/festa = false
+verifica /partenza/in_piazza = 0
+esci

@@ -43,9 +43,9 @@ pensieri. Per la trama (`Trama-Planet-One/06`, sezioni 1–2, e `09`, sezione 1.
 - La traversata non si guida: è raccontata (scelta presa con l'utente).
 - Le due vie arrivano allo stesso approdo del continente: il Grande Cenote dell'Alba e il porto di
   Tiro-Scheria non esistono ancora.
-- La Porta Sommersa non si vede nel cunicolo: si sa aperta dal pensiero e dalla scelta.
-- Alla Sera delle Lanterne la piazza non si riempie e non si accendono lanterne in più: ci sono i doni e il
-  saluto.
+- ~~La Porta Sommersa non si vede nel cunicolo.~~ **Risolto**, vedi «Aggiornamento: la partenza più ricca».
+- ~~Alla Sera delle Lanterne la piazza non si riempie e non si accendono lanterne in più.~~ **Risolto**, vedi
+  «Aggiornamento: la partenza più ricca».
 - Le partite vecchie a metà di MP-03 o MP-04 ritrovavano gli indici delle tappe spostati (le tappe nuove
   si inseriscono prima della torre e del cunicolo; MP-05 ha le stesse tappe di prima). **Risolto** con la
   migrazione dei salvataggi:
@@ -57,3 +57,34 @@ pensieri. Per la trama (`Trama-Planet-One/06`, sezioni 1–2, e `09`, sezione 1.
   - dopo lo spostamento il file letto vale come v0.0.63.0, così una regione annidata riscritta non si
     sposta due volte;
   - prima della v0.0.62 le missioni non esistevano: non c'è altro da spostare.
+
+## Aggiornamento: la partenza più ricca (2026-11-14)
+- **La Porta Sommersa** (`places::sunken_passage`, `places::sunken_door`):
+  - il fondo della nicchia del cunicolo ha un vano (0,8 × 1,95 m) con una cornice di rame a spirali;
+  - oltre il vano c'è un breve corridoio con tre gradini che scendono in un'acqua ferma, illuminata da una
+    luce azzurra; un gradino di pietra ferma il passo: la via sotto il mare si vede ma non si percorre
+    sull'isola;
+  - il vano è chiuso da una lastra di pietra con fasce e un disco di rame. È un'entità figlia della grotta
+    (`CaveMouth`), perché la grotta è una mesh unica;
+  - la lastra scende nel pavimento in 1,6 s, con un rombo sintetizzato (`sfx::Sfx::Grind`), quando le stele
+    risuonano (`stele-risonanti`) o se la porta risulta già aperta (`porta-sommersa`, per i salvataggi);
+  - chiusa ha un collider; aperta no.
+- **La Sera delle Lanterne** (`src/lanterns.rs`):
+  - vale mentre MP-05 è alla tappa della piazza o a quella dell'alba (dopo i doni), dalle 19:30 alle 23:30,
+    solo sull'isola;
+  - gli abitanti che non sono guardie ricevono un posto attorno al pozzo (fase `Festival` della routine,
+    posto in `Villager::festival`):
+    - i posti stanno su anelli da 3,6 a 7,6 m, a 1,15 m l'uno dall'altro, in ordine di nome;
+    - si scartano quelli dove c'è qualcosa di solido (bancarelle, lampioni, muri), con un cilindro di prova
+      nella fisica;
+    - tutti guardano il pozzo;
+  - otto lanterne su pali alti 3 m, a 2,5 m dal pozzo, si accendono una ogni 0,8 s (carta che si illumina
+    e luce senza ombre);
+  - alla fine della festa le lanterne spariscono e gli abitanti tornano alla loro routine (a casa);
+  - le guardie restano al loro turno; Ettore resta al faro.
+- **Prova**: `prove/zzzzzzzzzzzzzzzzz-partenza.txt` (porta chiusa e aperta, piazza piena, piazza vuota alle
+  23:30); lo stato del pilota ha `/partenza/festa`, `/partenza/invitati`, `/partenza/in_piazza` e
+  `/partenza/porta_sommersa`.
+- **Limiti**:
+  - chi lavora lontano dal paese ci mette fino a un'ora e mezza di gioco ad arrivare;
+  - la festa non ha musica né balli: gli abitanti stanno in piedi attorno al pozzo.
