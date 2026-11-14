@@ -2,6 +2,10 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Correzione: i salvataggi della v0.0.62 ritrovano la tappa giusta delle missioni.** Le tappe nuove del risveglio, di Agnese e delle stele spostavano gli indici: chi aveva salvato a metà di «Il Nome sulla Sabbia», «Le Voci delle Pietre Antiche» o «Sotto l'Arco dei Sei Gradoni» ricaricava la partita su una tappa sbagliata. Ora al caricamento ogni tappa torna al suo posto (una volta sola).
+
 ## v0.0.63.0 — Il Prologo completo: risveglio, scelte, segreti, mondo vivo, partenza e voci (2026-11-14)
 
 - **Le voci del Prologo** (ADR 0050): tutte le battute delle missioni, delle secondarie, degli eventi e delle confidenze degli abitanti ora si sentono, ognuna con la voce del suo personaggio (221 battute, generate in locale con Piper).

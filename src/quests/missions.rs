@@ -790,6 +790,38 @@ fn holds(w: &When, f: &Facts, talked: &[(String, usize)], mission: usize) -> boo
     }
 }
 
+/// Tappe aggiunte con la v0.0.63.0 (ADR 0047, 0048): per ogni missione cambiata, la tappa nuova che
+/// corrisponde a ogni tappa vecchia (l'indice è il numero di tappe fatte, l'ultimo è «compiuta»).
+/// - mp01: la pozza e i rottami prendono il posto di «Guarda i rottami», e il nome si dice a Gaspare
+///   dopo il primo dialogo: chi gli aveva già parlato salta la tappa del nome.
+/// - mp03: Agnese viene prima della torre; mp04: le stele vengono prima del cunicolo. Chi era fermo lì
+///   fa la tappa nuova.
+const MOVED_IN_0_0_63: &[(&str, &[usize])] = &[
+    ("mp01", &[0, 2, 4, 5, 6]),
+    ("mp03", &[0, 1, 2, 3, 4, 6]),
+    ("mp04", &[0, 1, 2, 3, 5]),
+];
+
+/// Riallinea la tappa salvata da una versione precedente del gioco (`vA.B.C.D`; vuota = molto
+/// vecchia). Le missioni esistono dalla v0.0.62.0: prima non c'è nulla da spostare.
+pub fn upgrade_step(game_version: &str, id: &str, step: usize) -> usize {
+    let parts: Vec<u32> = game_version
+        .trim()
+        .trim_start_matches('v')
+        .split('.')
+        .map(|p| p.parse().unwrap_or(0))
+        .collect();
+    let older = parts.as_slice() < [0, 0, 63, 0].as_slice();
+    if !older {
+        return step;
+    }
+    MOVED_IN_0_0_63
+        .iter()
+        .find(|(m, _)| *m == id)
+        .map(|(_, map)| map.get(step).copied().unwrap_or(step))
+        .unwrap_or(step)
+}
+
 /// I doni della Sera delle Lanterne: chi ti aveva affidato una missione secondaria compiuta ti
 /// porta qualcosa (oggetto, quantità, chi).
 pub fn gifts(missions: &Missions) -> Vec<(crate::inventory::ItemKind, u32, String)> {
@@ -1028,6 +1060,70 @@ mod tests {
             unlocked: Vec::new(),
             stats: None,
         }
+    }
+
+    #[test]
+    fn saves_from_before_0_0_63_find_the_same_step_after_the_new_ones() {
+        let m = all();
+        // Le tappe della v0.0.62.0, con il loro obiettivo di allora.
+        let old: &[(&str, &[&str])] = &[
+            (
+                "mp01",
+                &[
+                    "",
+                    "Raggiungi il pescatore al molo",
+                    "Sali a Fontevivo per la strada di pietra",
+                    "Trova il Viandante alla casetta in piazza",
+                ],
+            ),
+            (
+                "mp03",
+                &[
+                    "Chiedi al Viandante che cosa c'è a nord",
+                    "Parla con Gino al mulino, a nord",
+                    "Esamina le rovine antiche, a sud-ovest",
+                    "Esamina il santuario, a ovest",
+                    "",
+                ],
+            ),
+            (
+                "mp04",
+                &[
+                    "Chiedi a Don Anselmo della grotta",
+                    "Raggiungi la grotta sulla costa est",
+                    "Scendi nelle gallerie fino al laghetto",
+                    "",
+                ],
+            ),
+        ];
+        for (id, goals) in old {
+            let i = m.index(id).unwrap();
+            let steps = &m.list[i].steps;
+            for (p, goal) in goals.iter().enumerate() {
+                let new = upgrade_step("v0.0.62.0", id, p);
+                if !goal.is_empty() {
+                    assert_eq!(steps[new].goal, *goal, "{id} tappa {p}");
+                }
+            }
+            // Compiuta resta compiuta.
+            assert_eq!(upgrade_step("v0.0.62.0", id, goals.len()), steps.len());
+        }
+        // Chi era fermo dove ora c'è una tappa nuova la fa.
+        assert!(
+            m.list[m.index("mp03").unwrap()].steps[upgrade_step("v0.0.62.0", "mp03", 4)]
+                .goal
+                .contains("Agnese")
+        );
+        assert!(
+            m.list[m.index("mp04").unwrap()].steps[upgrade_step("v0.0.62.0", "mp04", 3)]
+                .goal
+                .contains("stele")
+        );
+        // Le altre missioni e i salvataggi nuovi non si toccano.
+        assert_eq!(upgrade_step("v0.0.62.0", "mp05", 2), 2);
+        assert_eq!(upgrade_step("v0.0.63.0", "mp01", 1), 1);
+        assert_eq!(upgrade_step("v0.0.64.0", "mp03", 4), 4);
+        assert_eq!(upgrade_step("v0.1.0.0", "mp01", 1), 1);
     }
 
     #[test]

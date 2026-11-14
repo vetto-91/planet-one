@@ -46,5 +46,14 @@ pensieri. Per la trama (`Trama-Planet-One/06`, sezioni 1–2, e `09`, sezione 1.
 - La Porta Sommersa non si vede nel cunicolo: si sa aperta dal pensiero e dalla scelta.
 - Alla Sera delle Lanterne la piazza non si riempie e non si accendono lanterne in più: ci sono i doni e il
   saluto.
-- Le partite vecchie a metà di MP-03, MP-04 o MP-05 ritrovano gli indici delle tappe spostati (le tappe
-  nuove si inseriscono prima della torre e del cunicolo).
+- Le partite vecchie a metà di MP-03 o MP-04 ritrovavano gli indici delle tappe spostati (le tappe nuove
+  si inseriscono prima della torre e del cunicolo; MP-05 ha le stesse tappe di prima). **Risolto** con la
+  migrazione dei salvataggi:
+  - `missions::upgrade_step` ha, per `mp01`, `mp03` e `mp04`, la tappa nuova che corrisponde a ogni tappa
+    vecchia. `SaveData::parse` la applica ai file salvati prima della v0.0.63.0 (riga `versione`), anche
+    alle regioni annidate;
+  - chi era fermo dove ora c'è una tappa nuova (Agnese, le stele) la fa; chi aveva già parlato a Gaspare
+    salta la tappa del nome;
+  - dopo lo spostamento il file letto vale come v0.0.63.0, così una regione annidata riscritta non si
+    sposta due volte;
+  - prima della v0.0.62 le missioni non esistevano: non c'è altro da spostare.

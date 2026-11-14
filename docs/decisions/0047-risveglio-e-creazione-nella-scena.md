@@ -41,4 +41,6 @@ Finora tutto si sceglieva in una schermata del menu, e l'età non esisteva.
 - L'età non cambia ancora i dialoghi degli abitanti (la trama prevede toni diversi per giovani e maturi).
 - Il riflesso nell'acqua non mostra davvero il volto: il modello del personaggio è uno solo.
 - Ettore non scende dal faro: lo cita Gaspare.
-- Le partite vecchie a metà di `mp01` ritrovano gli indici delle tappe spostati di due.
+- ~~Le partite vecchie a metà di `mp01` ritrovano gli indici delle tappe spostati di due.~~ Risolto:
+  al caricamento le tappe dei salvataggi della v0.0.62 si riallineano (`missions::upgrade_step`, vedi
+  ADR 0048).

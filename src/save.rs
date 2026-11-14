@@ -697,6 +697,21 @@ impl SaveData {
         if !d.present.contains("partita") || d.name.trim().is_empty() {
             return Err("file non valido: mancano partita o nome del personaggio".to_string());
         }
+        // Le tappe aggiunte nelle versioni successive spostano gli indici salvati.
+        for (id, step) in &mut d.missions {
+            let new = crate::quests::missions::upgrade_step(&d.game_version, id, *step);
+            if new != *step {
+                info!(
+                    "[SAVE] missione {id}: tappa {step} → {new} (salvata con {})",
+                    d.game_version
+                );
+                *step = new;
+            }
+        }
+        // Spostate una volta sola: le regioni annidate si riscrivono con la loro versione.
+        if crate::quests::missions::upgrade_step(&d.game_version, "mp01", 1) != 1 {
+            d.game_version = "v0.0.63.0".into();
+        }
         Ok(d)
     }
 
@@ -2025,7 +2040,7 @@ mod tests {
     fn sample() -> SaveData {
         let mut d = SaveData::blank();
         d.kind = SaveKind::Quick;
-        d.game_version = "v0.0.36.0".into();
+        d.game_version = "v0.0.63.0".into();
         d.saved_at = "2026-11-09 12:30".into();
         d.played_secs = 321.0;
         d.place = "Fontevivo".into();
@@ -2124,6 +2139,25 @@ mod tests {
         assert!(parsed.present.contains("nemici"));
         parsed.present.clear();
         assert_eq!(parsed, original);
+    }
+
+    #[test]
+    fn a_save_from_0_0_62_moves_the_mission_steps_once() {
+        let mut d = sample();
+        d.game_version = "v0.0.62.0".into();
+        d.missions = vec![("mp01".into(), 1), ("mp03".into(), 5), ("mp05".into(), 2)];
+        let mut island = d.clone();
+        island.region = Region::Isola;
+        d.region = Region::Nord;
+        d.elsewhere = vec![(Region::Isola, Box::new(island))];
+        let once = SaveData::parse(&d.to_text()).unwrap();
+        let moved = vec![("mp01".into(), 2), ("mp03".into(), 6), ("mp05".into(), 2)];
+        assert_eq!(once.missions, moved);
+        assert_eq!(once.elsewhere[0].1.missions, moved);
+        // Riscritto e riletto, non si sposta di nuovo (anche la regione annidata).
+        let twice = SaveData::parse(&once.to_text()).unwrap();
+        assert_eq!(twice.missions, moved);
+        assert_eq!(twice.elsewhere[0].1.missions, moved);
     }
 
     #[test]
