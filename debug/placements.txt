@@ -584,7 +584,7 @@ quando: generato da gen_porto.py
 punto: x 5.60, z 93.60
 quantità: 1   seed: 1
 nota: porto
-punti: (5.60,93.60)
+punti: (0.95,93.73)
 rotazioni: 0
 
 [P-0411] tipo: lampione | modalità: singolo
@@ -624,7 +624,7 @@ quando: generato da gen_porto.py
 punto: x -3.40, z 86.50
 quantità: 1   seed: 1
 nota: faro
-punti: (-3.07,89.72)
+punti: (-2.88,88.07)
 rotazioni: 115
 
 [P-0416] tipo: cartello | modalità: singolo
