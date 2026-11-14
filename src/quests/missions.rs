@@ -70,6 +70,12 @@ pub enum Effect {
     Unlock(String),
     /// La missione finisce qui (un bivio che chiude la storia prima delle tappe successive).
     End,
+    /// Salto narrativo del tempo: ora, giorni dopo, meteo della scena (`tempo 20 10 pioggia`).
+    Time(f32, u32, Option<crate::weather::Kind>),
+    /// I doni di chi hai aiutato (Sera delle Lanterne).
+    Gifts,
+    /// Una scena raccontata e poi il viaggio verso un'altra regione (`viaggio nord mare`).
+    Travel(crate::region::Region, String),
 }
 
 impl Effect {
@@ -103,6 +109,24 @@ impl Effect {
             }
             "sblocca" if !rest.is_empty() => Effect::Unlock(rest.to_string()),
             "fine" => Effect::End,
+            "doni" => Effect::Gifts,
+            "tempo" => {
+                let mut w = rest.split_whitespace();
+                let hour: f32 = w.next()?.replace(',', ".").parse().ok()?;
+                let days: u32 = w.next().map_or(Some(0), |d| d.parse().ok())?;
+                let weather = match w.next() {
+                    Some(k) => Some(crate::weather::Kind::parse(k)?),
+                    None => None,
+                };
+                Effect::Time(hour.rem_euclid(24.0), days, weather)
+            }
+            "viaggio" => {
+                let (region, how) = rest.split_once(' ').unwrap_or((rest, ""));
+                let region = crate::region::Region::ALL
+                    .into_iter()
+                    .find(|r| r.key() == region.trim())?;
+                Effect::Travel(region, how.trim().to_string())
+            }
             _ => return None,
         })
     }
@@ -115,6 +139,8 @@ pub struct Choice {
     pub effects: Vec<Effect>,
     /// La risposta compare solo se la statistica arriva a tanto (`scegli: [carisma 12] testo`).
     pub requires: Option<(crate::character::Stat, u8)>,
+    /// La risposta compare solo se qualcosa è sbloccato (`scegli: [sbloccato porta-sommersa] testo`).
+    pub needs_unlock: Option<String>,
 }
 
 /// Oggetto dal nome italiano usato nei file («mela», «pesce», «pozione del mulo»…).
@@ -233,7 +259,8 @@ pub fn parse(text: &str) -> Vec<Mission> {
             ("pensiero", Some(s)) => s.note = value.to_string(),
             ("monete", Some(s)) => s.coins = value.parse().unwrap_or(0),
             ("sblocca", Some(s)) => s.unlocks.push(value.to_string()),
-            ("karma" | "fiducia" | "stat", Some(s)) => {
+            ("doni", Some(s)) => s.effects.push(Effect::Gifts),
+            ("karma" | "fiducia" | "stat" | "tempo", Some(s)) => {
                 match Effect::parse(&format!("{key} {value}")) {
                     Some(e) => s.effects.push(e),
                     None => warn!("[MISSIONI] effetto non valido: {line}"),
@@ -247,6 +274,7 @@ pub fn parse(text: &str) -> Vec<Mission> {
                     .strip_prefix('[')
                     .and_then(|t| t.split_once(']'))
                 {
+                    Some((need, rest)) if need.trim().starts_with("sbloccato ") => (None, rest),
                     Some((need, rest)) => {
                         let need = need.trim().rsplit_once(' ').and_then(|(stat, n)| {
                             Some((crate::character::Stat::parse(stat)?, n.parse().ok()?))
@@ -258,6 +286,11 @@ pub fn parse(text: &str) -> Vec<Mission> {
                     }
                     None => (None, text),
                 };
+                let needs_unlock = value
+                    .trim()
+                    .strip_prefix("[sbloccato ")
+                    .and_then(|t| t.split_once(']'))
+                    .map(|(what, _)| what.trim().to_string());
                 let effects: Vec<Effect> = effects
                     .split(';')
                     .filter(|e| !e.trim().is_empty())
@@ -273,6 +306,7 @@ pub fn parse(text: &str) -> Vec<Mission> {
                     text: text.trim().to_string(),
                     effects,
                     requires,
+                    needs_unlock,
                 });
             }
             ("prendi", Some(s)) => match item_qty(value) {
@@ -533,6 +567,9 @@ impl Missions {
                     .filter(|(_, c)| {
                         c.requires
                             .is_none_or(|(stat, n)| facts.stats.is_none_or(|s| s.get(stat) >= n))
+                            && c.needs_unlock
+                                .as_ref()
+                                .is_none_or(|u| facts.unlocked.contains(u))
                     })
                     .map(|(k, c)| (k, c.text.clone()))
                     .collect();
@@ -741,6 +778,34 @@ fn holds(w: &When, f: &Facts, talked: &[(String, usize)], mission: usize) -> boo
     }
 }
 
+/// I doni della Sera delle Lanterne: chi ti aveva affidato una missione secondaria compiuta ti
+/// porta qualcosa (oggetto, quantità, chi).
+pub fn gifts(missions: &Missions) -> Vec<(crate::inventory::ItemKind, u32, String)> {
+    use crate::inventory::{ItemKind as K, Relic};
+    missions
+        .list
+        .iter()
+        .zip(&missions.progress)
+        .filter(|(m, p)| m.side && !m.event && **p >= m.steps.len())
+        .filter_map(|(m, _)| {
+            let who = m.steps.first()?.when.iter().find_map(|w| match w {
+                When::Talk(n) => Some(n.clone()),
+                _ => None,
+            })?;
+            let (kind, n) = match m.id.as_str() {
+                "qs01" | "qs06" => (K::Relic(Relic::Focaccia), 2),
+                "qs03" | "qs11" | "qs14" => (K::Arrow, 10),
+                "qs08" => (K::MulePotion, 1),
+                "qs16" => (K::Lockpick, 3),
+                "qs02" | "qs04" | "qs09" | "qs13" => (K::HealthPotion, 1),
+                "qs05" => (K::Apple, 3),
+                _ => (K::Coin, 10),
+            };
+            Some((kind, n, who))
+        })
+        .collect()
+}
+
 /// Applica un effetto di tappa o di scelta.
 fn apply_effect(
     effect: &Effect,
@@ -780,7 +845,8 @@ fn apply_effect(
                 character.stats.get(*stat)
             );
         }
-        Effect::Unlock(_) | Effect::End => {}
+        Effect::Unlock(_) | Effect::End | Effect::Time(..) | Effect::Gifts | Effect::Travel(..) => {
+        }
     }
 }
 
@@ -789,8 +855,8 @@ fn apply_effect(
 pub fn track_missions(
     mut missions: ResMut<Missions>,
     quest: Res<QuestState>,
-    clock: Res<crate::daynight::GameClock>,
-    weather: Res<crate::weather::WeatherState>,
+    mut clock: ResMut<crate::daynight::GameClock>,
+    mut weather: ResMut<crate::weather::WeatherState>,
     dialog: Res<crate::entities::DialogState>,
     players: Query<&GlobalTransform, With<crate::player::Player>>,
     enemies: Query<(&GlobalTransform, &crate::combat::EnemyHealth), With<crate::entities::Enemy>>,
@@ -801,12 +867,12 @@ pub fn track_missions(
     trial: Res<crate::archery::Trial>,
     karma: Res<crate::karma::Karma>,
     mut character: ResMut<crate::character::Character>,
-    mut was_open: Local<bool>,
+    mut cutscene: ResMut<crate::cutscene::Cutscene>,
 ) {
-    if *was_open && !dialog.open {
+    if cutscene.was_open && !dialog.open {
         missions.dialog_closed(dialog.finished, dialog.result);
     }
-    *was_open = dialog.open;
+    cutscene.was_open = dialog.open;
     let Ok(player) = players.single() else {
         return;
     };
@@ -851,7 +917,31 @@ pub fn track_missions(
             inventory.add(*kind, *n);
         }
         for effect in &step.effects {
-            apply_effect(effect, &mut inventory, &mut character);
+            match effect {
+                Effect::Time(hour, days, kind) => {
+                    let mut date = clock.date;
+                    for _ in 0..*days {
+                        date.next_day();
+                    }
+                    clock.set(date, *hour);
+                    weather.scene = kind.map(|k| (date.day_key(), k));
+                    info!("[MISSIONE] il tempo passa: {} alle {hour:.1}", date.label());
+                }
+                Effect::Gifts => {
+                    let gifts = gifts(&missions);
+                    for (kind, n, _) in &gifts {
+                        inventory.add(*kind, *n);
+                    }
+                    let givers: Vec<String> = gifts.iter().map(|(.., who)| who.clone()).collect();
+                    cutscene.queue_notice(if givers.is_empty() {
+                        "Nessuno ti porta un dono: non hai ancora aiutato nessuno.".to_string()
+                    } else {
+                        format!("Doni da chi hai aiutato: {}", givers.join(", "))
+                    });
+                }
+                Effect::Travel(region, how) => cutscene.start_travel(*region, how, &karma),
+                other => apply_effect(other, &mut inventory, &mut character),
+            }
         }
         let next = missions.list[i]
             .steps

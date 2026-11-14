@@ -4,6 +4,11 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **Il tempo della storia** (ADR 0048): le missioni principali fanno avanzare il calendario e il meteo della scena. Il Prologo va dall'equinozio di marzo a metà maggio, e la discesa nella grotta avviene sotto la pioggia.
+- **Le Voci delle Pietre Antiche**: Agnese riconosce la pietra del santuario, e in cima alla torre trovi il **Disco di Tiro**.
+- **Sotto l'Arco dei Sei Gradoni**: nel laghetto sotterraneo un incantesimo fa risuonare le quattro stele. In fondo al cunicolo trovi il **Quipu Maestro**, e la **Porta Sommersa** è aperta.
+- **Oltre il Velo del Nord**: alla Sera delle Lanterne chi hai aiutato ti porta un dono. Prima dell'alba scegli come partire: **la via del mare** con la barca di Gaspare (al timone, se ti ha confidato il suo segreto) o **la via delle profondità**, per la Porta Sommersa. La partenza è raccontata, e poi sei sul continente.
+
 - **Il risveglio sulla spiaggia** (ADR 0047): una partita nuova non ha più la schermata di creazione. Ti svegli tra i rottami senza nome: nella pozza d'acqua ferma fra le rocce scopri la tua **età** (giovane, adulto o maturo, novità che segna appena le statistiche); tra i rottami, la prima cosa che raccogli rivela la tua **indole** (sbarra di ferro, arco spezzato, rotolo di nodi o borsa di monete), che puoi accettare o sostituire scegliendo tu i tuoi punti; e il **nome** lo dici a Gaspare, che da quel momento ti chiama così. La cartella dei salvataggi prende il tuo nome.
 
 - **Voci sui luoghi** (ADR 0046): alcuni abitanti, la prima volta che ci parli, nominano un luogo che non conosci; sulla mappa compare con un «?» finché non ci arrivi.

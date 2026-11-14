@@ -256,6 +256,8 @@ enum Deed {
     Trust(String, i32),
     /// Un'azione di un certo tipo: chi la apprezza (o la detesta) cambia idea su di te.
     Praise(String, i32),
+    /// Qualcosa accaduto nel mondo che le missioni leggono (`quando: sbloccato <cosa>`).
+    Flag(String),
 }
 
 static QUEUE: Mutex<Vec<Deed>> = Mutex::new(Vec::new());
@@ -283,6 +285,13 @@ pub fn praise(value: &str, amount: i32) {
         && let Ok(mut q) = QUEUE.lock()
     {
         q.push(Deed::Praise(value.to_string(), amount));
+    }
+}
+
+/// Segna che qualcosa è accaduto nel mondo (le stele che risuonano, …): vale come sbloccato.
+pub fn flag(what: &str) {
+    if let Ok(mut q) = QUEUE.lock() {
+        q.push(Deed::Flag(what.to_string()));
     }
 }
 
@@ -329,6 +338,11 @@ pub fn apply_deeds(
                     karma.add_trust(&name, change);
                 }
                 info!("[KARMA] chi tiene a «{value}»: fiducia {change:+}");
+            }
+            Deed::Flag(what) => {
+                if karma.unlocks.insert(what.clone()) {
+                    info!("[KARMA] accaduto: {what}");
+                }
             }
             Deed::Trust(name, amount) => {
                 let before = karma.bond(&name);
@@ -470,7 +484,12 @@ pub fn reveal(karma: &mut Karma, secret: &Secret) {
             }
             Effect::Karma(n, why) => deed(*n, why.clone()),
             Effect::Trust(name, n) => trust(name, *n),
-            Effect::Take(..) | Effect::Stat(..) | Effect::End => {
+            Effect::Take(..)
+            | Effect::Stat(..)
+            | Effect::End
+            | Effect::Time(..)
+            | Effect::Gifts
+            | Effect::Travel(..) => {
                 warn!("[KARMA] sblocco non usato per {}: {effect:?}", secret.name)
             }
         }

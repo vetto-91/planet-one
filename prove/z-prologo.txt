@@ -55,6 +55,8 @@ avanza
 scegli Arrivederci
 aspetta 1
 verifica /missioni/mp03 = 2
+# Il tempo della storia salta in avanti: dieci giorni dopo, al mattino (ADR 0048).
+verifica /data contiene 31 mar
 tp gino
 aspetta 1
 attendi npc:gino:modo = Ready 60
@@ -73,17 +75,32 @@ verifica /missioni/mp03 = 4
 tp -66 4 22
 aspetta 2
 verifica /missioni/mp03 = 5
+tp agnese
+aspetta 1
+attendi npc:agnese:modo = Ready 60
+tp agnese
+aspetta 1
+guarda agnese
+aspetta 1
+premi e
+aspetta 1
+avanza
+scegli Arrivederci
+aspetta 1
+verifica /missioni/mp03 = 6
 # Di giorno la cima della torre non basta: serve la notte.
 tp 58.5 27 -58.5
 aspetta 3
 dump torre
-verifica /missioni/mp03 = 5
+verifica /missioni/mp03 = 6
 ora 23
 aspetta 2
-verifica /missioni/mp03 = 6
+verifica /missioni/mp03 = 7
+verifica Relic(TyreDisc) = 1
 foto torre-notte
-# MP-04 Sotto l'Arco dei Sei Gradoni
+# MP-04 Sotto l'Arco dei Sei Gradoni: il meteo della scena vale solo senza meteo forzato.
 ora 10
+meteo auto
 aspetta 1
 tp anselmo
 aspetta 1
@@ -97,15 +114,23 @@ aspetta 1
 avanza
 aspetta 1
 verifica /missioni/mp04 = 2
+verifica meteo = Rain
+meteo sereno
 tp 91 4 20
 aspetta 2
 verifica /missioni/mp04 = 3
 tp 96.5 2.0 33.2
 aspetta 3
 verifica /missioni/mp04 = 4
+# Le stele del laghetto risuonano con la magia.
+incantesimo luce
+aspetta 2
+verifica /missioni/mp04 = 5
+foto stele
 tp 87 1.5 38.4
 aspetta 3
-verifica /missioni/mp04 = 5
+verifica /missioni/mp04 = 6
+verifica Relic(MasterQuipu) = 1
 # MP-05 Oltre il Velo del Nord
 tp gaspare
 aspetta 1
@@ -136,16 +161,14 @@ aspetta 1
 premi e
 aspetta 1
 avanza
-aspetta 1
+verifica /dialogo/scelte contiene profondità
+foto due-vie
+# La via delle profondità: una scena raccontata e poi il continente.
+scegli profondità
+aspetta 2
 verifica /missioni/mp05 = 4
 verifica /missioni/continente = true
-# Ora Gaspare porta al continente.
-guarda gaspare
-aspetta 1
-premi e
-aspetta 1
-avanza
-scegli Portami
+foto partenza
 attendi regione = nord 90
 attendi app = Playing 90
 aspetta 4

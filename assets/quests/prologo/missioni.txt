@@ -61,6 +61,8 @@ quando: parla Viandante
 > Quest'isola è solo il molo d'ingresso. A nord, oltre la nebbia, si alza un intero continente.
 > Nessun remo forza da solo lo Stretto, e nessun passo attraversa la roccia sotto il mare. Chi è venuto prima di noi lo sapeva.
 > Ascolta le pietre che hanno lasciato: le rovine a sud-ovest, il santuario a ovest, la torre sull'altura. E parla con Gino, al mulino: lui conosce il vento del nord.
+tempo: 9 10 sereno
+pensiero: Passano dieci giorni. L'isola si veste di primavera, e la domanda del Viandante non ti lascia: che cosa c'è a nord?
 
 [tappa]
 obiettivo: Parla con Gino al mulino, a nord
@@ -80,11 +82,19 @@ quando: vicino -66 22 5
 pensiero: Sull'altare, una pietra color ambra tagliata come una lente. Dentro, la luce si divide e si ricompone.
 
 [tappa]
+obiettivo: Racconta ad Agnese della pietra del santuario
+quando: parla Agnese
+> Una lente d'ambra che divide la luce? Allora è vero quello che diceva il mio maestro, lassù sugli altopiani.
+> È una pietra che lega il sole: i miei la chiamavano Intihuatana. E i fili della Luce Viva, in piazza, sono dello stesso rame che corre sotto il santuario.
+> Sali sulla torre antica, di notte. Se le pietre cantano davvero, da lassù lo vedrai.
+
+[tappa]
 obiettivo: Sali di notte in cima alla torre antica
 quando: vicino 58.5 -58.5 5
 quando: sopra 18
 quando: ora 21 4.5
-pensiero: Sopra la nebbia, a nord, vette azzurre e il bagliore di un altro faro. La stella ferma è alta quarantotto gradi: la rotta è quella.
+pensiero: In un baule tra i merli, un disco di bronzo inciso a spirale. Sopra la nebbia, a nord, vette azzurre e il bagliore di un altro faro: la rotta è quella.
+dai: disco di tiro 1
 monete: 15
 
 [missione mp04]
@@ -97,7 +107,9 @@ obiettivo: Chiedi a Don Anselmo della grotta
 quando: parla Don Anselmo
 > La grotta a est… i banditi le girano attorno, ma non scendono oltre la prima sala. Hanno ragione ad aver paura, e torto sul perché.
 > Chi la scavò la fece a gradoni, come una scala verso il basso. In fondo c'è un'acqua ferma che non riflette il soffitto.
-> Scendi con rispetto, {nome}. E quando l'acqua ti mostrerà qualcosa, non chiederti se è vero: chiediti se è per te.
+> Scendi con rispetto, {nome}. E quando l'acqua ti mostrerà qualcosa, non chiederti se è vero: chiediti se è per te. La magia, laggiù, fa cantare la pietra.
+tempo: 10 20 pioggia
+pensiero: Venti giorni dopo, la pioggia gonfia i ruscelli: Agnese dice che è il momento, l'acqua della grotta canta di più.
 
 [tappa]
 obiettivo: Raggiungi la grotta sulla costa est
@@ -110,20 +122,28 @@ quando: sotto 2.2
 pensiero: Nell'acqua bassa, tra i quattro pilastri, non si specchia la roccia: si specchiano stelle, e le luci di città lontane.
 
 [tappa]
+obiettivo: Fai risuonare le quattro stele del laghetto con la magia (Q)
+quando: sbloccato stele-risonanti
+pensiero: Le stele cantano tutte insieme. Da qualche parte, oltre il cunicolo, la pietra si muove.
+
+[tappa]
 obiettivo: Segui il cunicolo fino in fondo
 quando: vicino 87 38.4 3
 quando: sotto 2.2
-pensiero: Una corda di rame e oro, fitta di nodi. E dietro la nicchia, murata dall'acqua, una porta che guarda a nord: una via sotto il mare.
+pensiero: Una corda di rame e oro, fitta di nodi: il Quipu Maestro. E dietro la nicchia, dove l'acqua si è ritirata, una porta di pietra e rame che guarda a nord: una via sotto il mare.
+dai: quipu maestro 1
+sblocca: porta-sommersa
 monete: 20
 
 [missione mp05]
 titolo: Oltre il Velo del Nord
-sommario: La rotta è nota e la via è aperta. Resta da preparare la barca e salutare Fontevivo.
+sommario: La rotta è nota e le vie sono aperte. Resta da salutare Fontevivo e scegliere come partire.
 dopo: mp04
 
 [tappa]
 obiettivo: Parla con Gaspare al molo della traversata
 quando: parla Gaspare
+tempo: 19.5 25 sereno
 > L'hai vista davvero, la terra a nord? Allora è deciso, {nome}. La barca regge: Ferruccio ha fissato lo scafo col bronzo, niente ferro per gli scogli che tirano.
 > Gino porta la vela, Ettore terrà acceso il faro tutta la notte. Si parte prima dell'alba, quando lo Stretto respira.
 > Stasera però resta in paese: accendono le lanterne in piazza. Una partenza senza un saluto porta male.
@@ -133,12 +153,17 @@ obiettivo: Stasera, dopo le otto, vai in piazza per la Sera delle Lanterne
 quando: vicino -1.2 10 9
 quando: ora 20 24
 pensiero: Le lanterne accese una a una, e le voci di tutti: «Quando vorrai tornare dal nord, qui ti aspetteremo sempre».
+doni: chi hai aiutato ti porta un dono
 
 [tappa]
-obiettivo: Prima dell'alba torna da Gaspare al molo
+obiettivo: Prima dell'alba torna da Gaspare al molo, e scegli la tua via
 quando: parla Gaspare
 quando: ora 3.5 9
 > Eccoti. Il mare è piatto e la stella ferma è alta. Di là troverai nebbia, e un bosco che arriva fin sulla riva.
-> Quando sei pronto dimmelo, e si salpa. E ricordati: l'isola resta qui. Si può sempre tornare.
+> E se hai aperto la porta sotto la grotta, c'è anche l'altra strada: quella che non bagna.
+> Ricordati: l'isola resta qui. Si può sempre tornare.
+scegli: La via del mare, con la barca => sblocca via-mare; viaggio nord mare
+scegli: [sbloccato porta-sommersa] La via delle profondità, per la Porta Sommersa => sblocca via-profonda; viaggio nord profonda
+scegli: Non ancora: ho cose da finire sull'isola => sblocca via-rimandata
 sblocca: continente
 monete: 10

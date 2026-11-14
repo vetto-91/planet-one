@@ -21,6 +21,7 @@ mod camera;
 mod character;
 mod combat;
 mod containers;
+mod cutscene;
 mod daynight;
 mod debug_place;
 mod devtools;
@@ -244,6 +245,7 @@ fn main() -> AppExit {
         .add_plugins(archery::plugin)
         .add_plugins(island_life::plugin)
         .add_plugins(awakening::plugin)
+        .add_plugins(cutscene::plugin)
         .add_plugins(water::plugin)
         .add_plugins(nature::plugin)
         .add_plugins(save::plugin)
@@ -405,6 +407,7 @@ fn main() -> AppExit {
                 main_menu::loading_ui.run_if(in_state(AppState::Loading)),
                 settings_ui::settings_window,
                 save::draw_notice,
+                cutscene::draw_cutscene,
             )
                 .chain(),
         )

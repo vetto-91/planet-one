@@ -59,6 +59,11 @@ impl GameDate {
         day: 21,
     };
 
+    /// Chiave unica del giorno (anno e giorno dell'anno).
+    pub fn day_key(&self) -> u32 {
+        self.year * 400 + self.day_of_year()
+    }
+
     /// Passa al giorno successivo.
     pub fn next_day(&mut self) {
         if self.day < MONTH_DAYS[self.month as usize - 1] {

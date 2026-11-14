@@ -186,6 +186,8 @@ pub struct WeatherState {
     pub snow_cover: f32,
     /// Meteo forzato (`PLANET_ONE_WEATHER` o shell).
     pub forced: Option<Kind>,
+    /// Meteo di scena di una missione principale, per quel giorno soltanto (ADR 0048).
+    pub scene: Option<(u32, Kind)>,
     /// Tuoni in arrivo: secondi di ritardo.
     pub thunder: Vec<f32>,
     next_flash: f32,
@@ -213,6 +215,7 @@ impl Default for WeatherState {
             flash_t: 99.0,
             first: true,
             forced: None,
+            scene: None,
         }
     }
 }
@@ -272,7 +275,12 @@ pub fn update_weather(
             .ok()
             .and_then(|v| Kind::parse(&v));
     }
-    let forced = state.forced;
+    let forced = state.forced.or_else(|| {
+        state
+            .scene
+            .filter(|(day, _)| *day == clock.date.day_key())
+            .map(|(_, k)| k)
+    });
     let dt = time.delta_secs().min(0.1);
     let speed = settings.time_speed.max(1) as f32;
     let hour = clock.hour;

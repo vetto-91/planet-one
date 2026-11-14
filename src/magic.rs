@@ -16,6 +16,9 @@ use bevy::prelude::*;
 use crate::character::Stat;
 use crate::skills::{self, Skill};
 
+/// Il laghetto sotterraneo della grotta (il Cenote), dove le stele risuonano con la magia.
+pub const CENOTE: Vec2 = Vec2::new(96.5, 33.2);
+const CENOTE_REACH: f32 = 4.5;
 /// Pausa (s) fra un incantesimo e l'altro.
 const CAST_COOLDOWN: f32 = 0.8;
 const DART_SPEED: f32 = 30.0;
@@ -323,6 +326,11 @@ pub fn cast(
         vitals.magic = (vitals.magic - price).max(0.0);
     }
     magic.cooldown = CAST_COOLDOWN;
+    // Nel laghetto sotto la grotta la magia fa risuonare le quattro stele (MP-04, ADR 0048).
+    if p.xz().distance(CENOTE) <= CENOTE_REACH && p.y < 2.2 {
+        crate::karma::flag("stele-risonanti");
+        session.notify("Le quattro stele rispondono: l'acqua del laghetto vibra");
+    }
     skills::train(Skill::Magic, spell.cost() * 0.5);
     session.notify(spell.name());
     info!(
