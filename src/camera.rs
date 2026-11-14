@@ -70,16 +70,54 @@ const PITCH_MAX: f32 = 1.35;
 const FOLLOW_SMOOTHNESS: f32 = 8.0;
 /// Offset verticale del punto osservato in terza persona (petto del pg).
 const LOOK_AT_HEIGHT: f32 = 1.0;
-/// Offset degli occhi rispetto al centro della capsula del player (prima persona).
-const FIRST_PERSON_EYE: f32 = 0.72;
+/// Offset degli occhi rispetto al centro della capsula del player (prima persona): gli occhi del
+/// modello stanno a 1,70 m da terra, il centro della capsula a 0,85 m.
+const FIRST_PERSON_EYE: f32 = 0.85;
+/// Parti del modello del giocatore che in prima persona si nascondono: la testa starebbe davanti
+/// alla camera (e le animazioni la spostano). Il resto del corpo resta visibile guardando in basso.
+const HEAD_PARTS: [&str; 4] = ["part_SuperHero", "part_Hair", "part_Eyes", "part_Eyebrows"];
+
+/// Una parte della testa del giocatore (vedi [`HEAD_PARTS`]).
+#[derive(Component)]
+pub struct PlayerHead;
+
+/// Sistema: riconosce le parti della testa nel modello del giocatore appena caricato.
+pub fn tag_player_head(
+    mut commands: Commands,
+    visuals: Query<Entity, With<crate::player::PlayerVisual>>,
+    heads: Query<(), With<PlayerHead>>,
+    children: Query<&Children>,
+    names: Query<&Name>,
+) {
+    if !heads.is_empty() {
+        return;
+    }
+    for visual in &visuals {
+        for e in children.iter_descendants(visual) {
+            if names
+                .get(e)
+                .is_ok_and(|n| HEAD_PARTS.iter().any(|p| n.as_str().starts_with(p)))
+            {
+                commands.entity(e).insert(PlayerHead);
+            }
+        }
+    }
+}
 
 /// Nasconde/mostra il mesh visivo del player: in prima persona non si deve vedere.
 #[allow(clippy::type_complexity)]
 pub fn player_visibility(
-    _state: Res<OrbitCamera>,
     // Nascondi sia il corpo fisico (Player) sia il gruppo mesh (PlayerVisual):
     // il corpo ha Visibility perche' e' parent dei mesh figli.
-    mut bodies: Query<&mut Visibility, Or<(With<Player>, With<crate::player::PlayerVisual>)>>,
+    mut bodies: Query<
+        &mut Visibility,
+        (
+            Or<(With<Player>, With<crate::player::PlayerVisual>)>,
+            Without<PlayerHead>,
+        ),
+    >,
+    mut heads: Query<&mut Visibility, With<PlayerHead>>,
+    state: Res<OrbitCamera>,
     cheats: Res<crate::shell::Cheats>,
 ) {
     // In prima persona il corpo resta: guardando in basso ci si vede, con ciò che si impugna.
@@ -89,7 +127,16 @@ pub fn player_visibility(
         Visibility::Visible
     };
     for mut v in &mut bodies {
-        *v = target;
+        v.set_if_neq(target);
+    }
+    // In prima persona la testa sparisce: la camera sta dove sono gli occhi.
+    let head = if state.mode == CameraMode::FirstPerson {
+        Visibility::Hidden
+    } else {
+        Visibility::Inherited
+    };
+    for mut v in &mut heads {
+        v.set_if_neq(head);
     }
 }
 
@@ -97,16 +144,21 @@ pub fn player_visibility(
 /// entrambe le modalità, così la mira resta sincronizzata).
 pub fn orbit(
     mut cursor_events: MessageReader<CursorMoved>,
+    mut motion_events: MessageReader<bevy::input::mouse::MouseMotion>,
+    cursors: Query<&bevy::window::CursorOptions, With<bevy::window::PrimaryWindow>>,
     mut state: ResMut<OrbitCamera>,
     debug: Res<crate::debug_place::DebugPlace>,
     keys: Res<ButtonInput<KeyCode>>,
 ) {
-    // Usiamo CursorMoved (delta calcolato da Bevy dal WindowEvent): su X11 i
-    // DeviceEvent MouseMotion possono non arrivare, CursorMoved arriva sempre.
-    let mut delta = Vec2::ZERO;
-    for ev in cursor_events.read() {
-        delta += ev.delta.unwrap_or_default();
-    }
+    let cursor: Vec2 = cursor_events
+        .read()
+        .map(|ev| ev.delta.unwrap_or_default())
+        .sum();
+    let motion: Vec2 = motion_events.read().map(|ev| ev.delta).sum();
+    let captured = cursors
+        .single()
+        .is_ok_and(|c| c.grab_mode != bevy::window::CursorGrabMode::None);
+    let delta = pick_delta(captured, cursor, motion);
     // Con F4 la visuale resta normale; solo con Ctrl (cursore libero sul pannello) non ruota.
     if crate::debug_place::cursor_free(debug.on, &keys) {
         return;
@@ -124,6 +176,24 @@ pub fn orbit(
     // Stesso segno di dy' in entrambe le viste: pitch alto = guardi in basso
     // (sia in 3a che in 1a), cosi' il passaggio 3a->1a non inverte la verticale.
     state.pitch = (state.pitch + delta.y * state.sensitivity).clamp(min, max);
+}
+
+/// Quale movimento del mouse usare.
+///
+/// - Cursore catturato (schermo intero): il movimento grezzo del dispositivo (`MouseMotion`). Con il
+///   cursore bloccato, su Wayland (anche via XWayland) e su macOS la posizione del cursore non cambia
+///   più e `CursorMoved` non porta nulla: la visuale restava ferma (difetto della v0.0.61 su un PC
+///   con Wayland).
+/// - Cursore libero (finestra), o se il dispositivo tace: lo spostamento del cursore (`CursorMoved`),
+///   che su X11 arriva sempre e non fa girare la visuale quando il mouse è su un'altra finestra.
+///
+/// Mai tutti e due insieme, o la rotazione raddoppia.
+pub fn pick_delta(captured: bool, cursor: Vec2, motion: Vec2) -> Vec2 {
+    if captured && motion != Vec2::ZERO {
+        motion
+    } else {
+        cursor
+    }
 }
 
 /// Legge gli eventi raw del mouse e aggiorna `rmb_held` nella resource.
@@ -239,11 +309,34 @@ pub fn follow(
             // Mouse giu' -> pitch aumenta -> -pitch diminuisce -> guardi giu'.
             // La mira resta coerente con la crosshair della 3a persona.
             let rot = Quat::from_rotation_y(state.yaw) * Quat::from_rotation_x(-state.pitch);
-            // Occhi a ~1,57 m da terra (il centro della capsula è a 0,85 m).
-            // Un po' avanti agli occhi: la testa resta dietro la camera e non copre la vista.
-            camera.translation =
-                player.translation() + Vec3::Y * FIRST_PERSON_EYE + rot * Vec3::NEG_Z * 0.14;
+            // Occhi a 1,70 m da terra (il centro della capsula è a 0,85 m), appena davanti al
+            // viso: la testa è nascosta (`player_visibility`), così non entra mai nell'inquadratura.
+            let ahead = Quat::from_rotation_y(state.yaw) * Vec3::NEG_Z * 0.12;
+            camera.translation = player.translation() + Vec3::Y * FIRST_PERSON_EYE + ahead;
             camera.rotation = rot;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_captured_cursor_turns_with_the_raw_mouse_motion() {
+        let cursor = Vec2::new(15.0, 0.0);
+        let motion = Vec2::new(14.0, 2.0);
+        // Schermo intero: conta il movimento grezzo, anche quando il cursore bloccato non si muove.
+        assert_eq!(pick_delta(true, Vec2::ZERO, motion), motion);
+        assert_eq!(
+            pick_delta(true, cursor, motion),
+            motion,
+            "mai i due sommati"
+        );
+        // Se il dispositivo tace (X11 senza eventi grezzi) resta il cursore.
+        assert_eq!(pick_delta(true, cursor, Vec2::ZERO), cursor);
+        // A finestra solo il cursore: il mouse su un'altra finestra non gira la visuale.
+        assert_eq!(pick_delta(false, Vec2::ZERO, motion), Vec2::ZERO);
+        assert_eq!(pick_delta(false, cursor, motion), cursor);
     }
 }

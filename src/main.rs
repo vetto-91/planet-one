@@ -342,6 +342,7 @@ fn main() -> AppExit {
                 camera::orbit,
                 camera::mode_input,
                 camera::follow,
+                camera::tag_player_head,
                 camera::player_visibility,
             )
                 .chain()

@@ -1100,6 +1100,12 @@ pub fn snapshot(world: &mut World) -> Value {
         "quest": quest,
         "missioni": missioni,
         "abilita": abilita,
+        "vista": {
+            "yaw": (world.resource::<OrbitCamera>().yaw.to_degrees() * 10.0).round() / 10.0,
+            "pitch": (world.resource::<OrbitCamera>().pitch.to_degrees() * 10.0).round() / 10.0,
+            "prima_persona": world.resource::<OrbitCamera>().mode
+                == crate::camera::CameraMode::FirstPerson,
+        },
         "anelli": world.resource::<crate::archery::Trial>().hits,
         "prova_arco": world.resource::<crate::archery::Trial>().passed,
         "casa": world.resource::<crate::house::House>().stage,

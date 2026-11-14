@@ -4,6 +4,8 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **Correzione: la visuale non girava col mouse a schermo intero** su alcuni PC (con Wayland, anche tramite XWayland, e su macOS): con il cursore bloccato il gioco leggeva la posizione del cursore, che lì non cambia più. Ora, a cursore catturato, legge il movimento del mouse vero e proprio; a finestra resta come prima.
+- **Correzione: in prima persona si vedeva l'interno della testa.** La camera stava all'altezza del collo e, con le animazioni (soprattutto correndo), la testa le finiva davanti. Ora è all'altezza degli occhi e in prima persona testa e capelli non si disegnano; guardando in basso il corpo si vede ancora.
 - **La Prova dell'Arco** (ADR 0043): oltre il ponte di legno sul ruscello pendono tre anelli di ferro, uno vicino, uno a mezza strada e uno lontano. Centrali con tre frecce di fila, in quest'ordine; un tiro a vuoto fa ricominciare dal primo. È la missione secondaria nuova di Silvia (in tutto sono 17).
 - **La tua casa** (ADR 0042): a sud-ovest del paese, fuori dalle mura, c'è un terreno segnato da quattro paletti, il Poggio del Naufrago. Con il tasto `R` spacchi la pietra all'affioramento e tagli il legname alla catasta al margine del bosco (serve un'ascia); sempre con `R`, sul terreno, posi prima le fondamenta (10 pietre) e poi alzi la casa (16 tronchi e 6 pietre). La casa finita è un edificio vero: ci entri, e i suoi mobili vuoti sono il tuo deposito. Si salva con la partita.
 - **Missione secondaria nuova**: Un Tetto tra gli Ulivi e il Mare (Beppe e il Viandante). In tutto sono 16.

@@ -1,0 +1,35 @@
+# Prima persona: la testa del giocatore non entra nell'inquadratura (gli occhi a 1,70 m, la testa
+# nascosta); il resto del corpo si vede guardando in basso.
+ia off
+meteo sereno
+ora 10
+aspetta 2
+tp 0.5 3 -60
+aspetta 2
+prima-persona
+camera 90 0
+aspetta 1
+verifica /vista/prima_persona = true
+foto avanti
+camera 0 0
+aspetta 0.5
+foto lato
+camera 180 0
+aspetta 0.5
+foto dietro
+camera 90 70
+aspetta 0.5
+foto in-basso
+# Correndo la testa si sporge in avanti: non deve comparire.
+camera 90 5
+tieni shift 3
+tieni w 3
+aspetta 1.5
+foto corsa
+aspetta 2
+camera 90 15
+prima-persona off
+aspetta 1
+verifica /vista/prima_persona = false
+foto terza-persona
+esci
