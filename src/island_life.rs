@@ -7,6 +7,10 @@
 //! - **Il pedaggio del ponte** (evento EC-05): al tramonto e di notte due banditi sbarrano il ponte di
 //!   legno sul ruscello. Si paga, si convincono col Carisma o si combatte: la scelta è nel dialogo
 //!   (`eventi.txt`, missione `ec05`), qui si mettono in scena.
+//! - **Il carretto nella nebbia** (EC-02): al crepuscolo Lino il carrettiere ha la ruota nel fango
+//!   sulla strada del nord; mentre lo aiuti escono dal bosco due predoni.
+//! - **La disputa del mercato** (EC-08): in tarda mattinata Tonio e Nina litigano ad alta voce in
+//!   piazza finché non fai da giudice.
 
 use avian3d::prelude::*;
 use bevy::prelude::*;
@@ -30,9 +34,40 @@ pub const TOLLER: &str = "Bandito del ponte";
 /// Da quanto lontano si vedono (e si mettono al loro posto).
 const TOLL_RANGE: f32 = 45.0;
 
+/// EC-02: dove sta il carretto, dove sta Lino, da dove escono i predoni (e dove vanno).
+const CART: Vec2 = Vec2::new(1.7, -24.0);
+const CARTER_AT: Vec2 = Vec2::new(-0.7, -22.8);
+pub const CARTER: &str = "Lino il carrettiere";
+const RAIDERS: [(Vec2, Vec2); 2] = [
+    (Vec2::new(15.0, -31.0), Vec2::new(3.0, -25.0)),
+    (Vec2::new(-13.0, -29.0), Vec2::new(-1.5, -24.5)),
+];
+/// Da quanto lontano compare la scena del carretto.
+const CART_RANGE: f32 = 45.0;
+
+/// EC-08: le battute della lite (chi parla, che cosa), a turno ogni [`QUARREL_EVERY`] secondi.
+const QUARREL: [(&str, &str); 6] = [
+    ("Tonio", "Una mela al giorno, e il marinaio torna a casa!"),
+    ("Nina", "Col pesce, Tonio! Il marinaio vive di pesce!"),
+    (
+        "Tonio",
+        "Il pesce puzza dopo un giorno. Le mie mele durano un inverno!",
+    ),
+    ("Nina", "E chi l'ha mai visto un melo in mezzo al mare?"),
+    ("Tonio", "Chiediamolo a qualcuno che non è di parte!"),
+    ("Nina", "Ecco, chiediamolo! Tu, sì, tu: vieni qui!"),
+];
+const QUARREL_EVERY: f32 = 4.5;
+
 /// Una cassa delle mareggiate.
 #[derive(Component)]
 pub struct WreckChest;
+
+/// La scena del carretto (Lino e il carretto) e i suoi predoni.
+#[derive(Component)]
+pub struct CartScene;
+#[derive(Component)]
+pub struct Raider;
 
 /// Uno dei banditi del pedaggio, finché si può parlare con loro.
 #[derive(Component)]
@@ -196,7 +231,8 @@ pub fn bridge_toll(
             commands.entity(e).despawn();
             if fight {
                 let to = at + Vec3::new(2.5, 0.0, -2.0);
-                crate::entities::spawn_enemy(&mut commands, &server, at, to);
+                let e = crate::entities::spawn_enemy(&mut commands, &server, at, to);
+                commands.entity(e).insert(crate::combat::NoRespawn);
             }
         }
         if fight {
@@ -220,40 +256,198 @@ pub fn bridge_toll(
     }
     for post in TOLL_POSTS {
         let y = field.height_at(post.x, post.y);
-        let face = (BRIDGE - post).normalize_or_zero();
-        commands
-            .spawn((
-                Toller,
-                crate::scene::SceneNode,
-                crate::entities::Npc {
-                    name: TOLLER,
-                    mode: crate::entities::NpcMode::Ready,
-                    lines: &["Il ponte è nostro, stanotte."],
-                    shop: None,
-                },
-                crate::entities::Interactable {
-                    prompt: "[E] Parla".to_string(),
-                    range: 3.0,
-                    aim: Some(0.5),
-                    use_from: None,
-                },
-                crate::figure::ModelName("ladro"),
-                crate::hud::NameAnchor(1.1),
-                RigidBody::Static,
-                Collider::capsule(0.35, 1.0),
-                Transform::from_xyz(post.x, y + crate::figure::CENTER_Y + 0.05, post.y)
-                    .with_rotation(Quat::from_rotation_y((-face.x).atan2(-face.y))),
-                Visibility::default(),
-            ))
-            .with_children(|c| crate::figure::spawn_character(c, &server, "ladro"));
+        let e = spawn_talker(
+            &mut commands,
+            &server,
+            TOLLER,
+            "ladro",
+            &["Il ponte è nostro, stanotte."],
+            Vec3::new(post.x, y, post.y),
+            BRIDGE - post,
+        );
+        commands.entity(e).insert(Toller);
     }
     info!("[MONDO] pedaggio: due banditi sul ponte");
+}
+
+/// Un personaggio di passaggio con cui si parla (banditi del ponte, Lino).
+fn spawn_talker(
+    commands: &mut Commands,
+    server: &AssetServer,
+    name: &'static str,
+    model: &'static str,
+    lines: &'static [&'static str],
+    at: Vec3,
+    face: Vec2,
+) -> Entity {
+    commands
+        .spawn((
+            crate::scene::SceneNode,
+            crate::entities::Npc {
+                name,
+                mode: crate::entities::NpcMode::Ready,
+                lines,
+                shop: None,
+            },
+            crate::entities::Interactable {
+                prompt: "[E] Parla".to_string(),
+                range: 3.0,
+                aim: Some(0.5),
+                use_from: None,
+            },
+            crate::figure::ModelName(model),
+            crate::hud::NameAnchor(1.1),
+            RigidBody::Static,
+            Collider::capsule(0.35, 1.0),
+            Transform::from_xyz(at.x, at.y + crate::figure::CENTER_Y + 0.05, at.z)
+                .with_rotation(Quat::from_rotation_y((-face.x).atan2(-face.y))),
+            Visibility::default(),
+        ))
+        .with_children(|c| crate::figure::spawn_character(c, server, model))
+        .id()
+}
+
+/// Sistema: EC-02, il carretto nella nebbia. Lino compare al crepuscolo vicino al carretto finché
+/// l'evento è aperto; dopo il primo dialogo escono due predoni dal bosco (`predoni-vinti` quando
+/// sono a terra); a evento chiuso Lino e il carretto se ne vanno.
+#[allow(clippy::too_many_arguments)]
+pub fn cart_in_the_mud(
+    mut commands: Commands,
+    server: Res<AssetServer>,
+    clock: Res<crate::daynight::GameClock>,
+    missions: Res<crate::quests::missions::Missions>,
+    karma: Res<crate::karma::Karma>,
+    field: Option<Res<crate::terrain::TerrainField>>,
+    pbr: Res<crate::pbr::PbrMaterials>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    players: Query<&GlobalTransform, With<crate::player::Player>>,
+    scene: Query<Entity, With<CartScene>>,
+    raiders: Query<&crate::combat::EnemyHealth, With<Raider>>,
+    mut fight: Local<u8>,
+    mut session: ResMut<crate::save::Session>,
+) {
+    let (Some(field), Ok(player)) = (field, players.single()) else {
+        return;
+    };
+    let step = missions.step_of("ec02").unwrap_or(0);
+    let open =
+        missions.enabled && crate::region::current() == Region::Isola && !missions.done("ec02");
+    let near = player.translation().xz().distance(CART) <= CART_RANGE;
+    let dusk = (18.0..20.5).contains(&clock.hour);
+    let wanted = open && near && (step > 0 || dusk);
+    if !wanted {
+        for e in &scene {
+            commands.entity(e).despawn();
+        }
+        *fight = 0;
+        return;
+    }
+    if scene.is_empty() {
+        let ground = |p: Vec2| Vec3::new(p.x, field.height_at(p.x, p.y), p.y);
+        let lino = spawn_talker(
+            &mut commands,
+            &server,
+            CARTER,
+            "civile-m-ocra",
+            &["La ruota è nel fango fino al mozzo."],
+            ground(CARTER_AT),
+            CART - CARTER_AT,
+        );
+        commands.entity(lino).insert(CartScene);
+        let model = crate::buildings::model("carretto", 3);
+        commands
+            .spawn((
+                CartScene,
+                crate::scene::SceneNode,
+                Transform::from_translation(ground(CART) - Vec3::Y * 0.12)
+                    .with_rotation(Quat::from_rotation_y(0.35) * Quat::from_rotation_z(0.08)),
+                Visibility::default(),
+                RigidBody::Static,
+            ))
+            .with_children(|c| {
+                for (m, mesh) in model.parts {
+                    c.spawn((Mesh3d(meshes.add(mesh)), MeshMaterial3d(pbr.get(m))));
+                }
+                for (center, size) in model.colliders {
+                    c.spawn((
+                        Collider::cuboid(size.x, size.y, size.z),
+                        Transform::from_translation(center),
+                    ));
+                }
+            });
+        info!("[MONDO] carretto nel fango sulla strada del nord");
+    }
+    if step == 1 && !karma.unlocks.contains("predoni-vinti") {
+        match *fight {
+            0 => {
+                for (from, to) in RAIDERS {
+                    let start = Vec3::new(from.x, field.height_at(from.x, from.y) + 1.0, from.y);
+                    let end = Vec3::new(to.x, field.height_at(to.x, to.y) + 1.0, to.y);
+                    let e = crate::entities::spawn_enemy(&mut commands, &server, start, end);
+                    commands
+                        .entity(e)
+                        .insert((Raider, CartScene, crate::combat::NoRespawn));
+                }
+                session.notify("Dal bosco escono due predoni!");
+                info!("[MONDO] carretto: arrivano i predoni");
+                *fight = 1;
+            }
+            1 if !raiders.is_empty() => *fight = 2,
+            2 if raiders.iter().all(|hp| hp.current <= 0.0) => {
+                crate::karma::flag("predoni-vinti");
+                info!("[MONDO] carretto: i predoni sono a terra");
+                *fight = 3;
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Sistema: EC-08, la disputa del mercato. Finché non hai fatto da giudice, in tarda mattinata
+/// Tonio e Nina si rimbeccano ad alta voce quando sei in piazza.
+#[allow(clippy::too_many_arguments)]
+pub fn market_quarrel(
+    time: Res<Time>,
+    clock: Res<crate::daynight::GameClock>,
+    missions: Res<crate::quests::missions::Missions>,
+    dialog: Res<crate::entities::DialogState>,
+    players: Query<&GlobalTransform, With<crate::player::Player>>,
+    npcs: Query<(Entity, &GlobalTransform, &crate::entities::Npc)>,
+    mut barks: ResMut<crate::quests::Barks>,
+    mut beat: Local<(f32, usize)>,
+) {
+    let Ok(player) = players.single() else {
+        return;
+    };
+    let active = missions.enabled
+        && crate::region::current() == Region::Isola
+        && missions.step_of("ec08") == Some(0)
+        && (10.0..13.0).contains(&clock.hour)
+        && !dialog.open;
+    if !active {
+        return;
+    }
+    beat.0 -= time.delta_secs();
+    if beat.0 > 0.0 {
+        return;
+    }
+    let (who, line) = QUARREL[beat.1 % QUARREL.len()];
+    let Some((e, t, npc)) = npcs.iter().find(|(.., n)| n.name == who) else {
+        return;
+    };
+    if t.translation().distance(player.translation()) > 25.0 {
+        return;
+    }
+    barks.say(e, npc.name, line.to_string());
+    beat.0 = QUARREL_EVERY;
+    beat.1 += 1;
 }
 
 pub fn plugin(app: &mut App) {
     app.add_systems(Update, spawn_wreck_chests).add_systems(
         Update,
-        (refill_loot, bridge_toll).run_if(in_state(crate::AppState::Playing)),
+        (refill_loot, bridge_toll, cart_in_the_mud, market_quarrel)
+            .run_if(in_state(crate::AppState::Playing)),
     );
 }
 

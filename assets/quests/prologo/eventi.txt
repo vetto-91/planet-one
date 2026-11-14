@@ -2,7 +2,8 @@
 # missioni, con `tipo: evento`; in più `quando: meteo <sereno|nuvoloso|pioggia|temporale|nebbia|neve>`.
 # Capitano una volta sola, quando passi di lì nel momento giusto; entrano nel diario a cose fatte.
 # Fonte: Trama-Planet-One/09, sezione 4 (EC-01…EC-12). EC-05, il pedaggio del ponte, mette in scena due
-# banditi veri (`src/island_life.rs`): la scelta è nel dialogo, qui sotto.
+# banditi veri (`src/island_life.rs`): la scelta è nel dialogo, qui sotto. Anche EC-02 (Lino e i
+# predoni), EC-04 (la pecora, `src/animals.rs`) ed EC-08 (la lite in piazza) hanno persone e bestie vere.
 
 [missione ec01]
 titolo: Il Relitto della Mareggiata
@@ -25,10 +26,22 @@ tipo: evento
 
 [tappa]
 obiettivo: La strada del nord, al crepuscolo
-quando: vicino 0.2 -24 7
-quando: ora 18 20.5
-pensiero: Un carretto con la ruota nel fango, e nessuno attorno. La sollevi di spalla: sotto il telo c'è un cesto di mele, e un biglietto: «Per chi mi ha tolto dal guaio».
+quando: parla Lino il carrettiere
+> Ehi, tu! Dammi una mano, per carità. La ruota è nel fango fino al mozzo, e tra poco è buio.
+> Io sollevo da dietro, tu spingi dalla sponda… Aspetta. Senti? Nel bosco. Qualcuno ci ha visti.
+
+[tappa]
+obiettivo: Difendi Lino dai due predoni
+quando: sbloccato predoni-vinti
+pensiero: I predoni sono a terra. Lino ha ancora il bastone alzato, e le mani che tremano.
+
+[tappa]
+obiettivo: Aiuta Lino a tirare fuori il carretto
+quando: parla Lino il carrettiere
+> Uno, due… su! È fuori. Mi hai salvato il carico, e forse anche la pelle.
+> Sotto il telo ci sono le mele per il mercato di domani. Prendine quante ne porti: Tonio non le conterà.
 dai: mela 4
+karma: 3 #aiuto hai difeso Lino dai predoni
 
 [missione ec03]
 titolo: Fuoco Notturno sulla Torre
@@ -48,17 +61,17 @@ sommario: Un belato nel bosco, lontano dal gregge.
 tipo: evento
 
 [tappa]
-obiettivo: Il bosco a est del pascolo, di giorno
-quando: vicino 46 28 8
-quando: ora 8 18
-pensiero: Una pecora impigliata nei rovi. La liberi con le mani, piano, e lei ti segue per un tratto. Sa dov'è il gregge meglio di te.
+obiettivo: Il bosco a est del pascolo, di giorno: libera la pecora dai rovi, senz'armi
+quando: sbloccato pecora-liberata
+pensiero: Una pecora impigliata nei rovi. La liberi con le mani, piano, e lei ti viene dietro. Sa dov'è il gregge meglio di te.
 
 [tappa]
 obiettivo: Riportala al pascolo
-quando: vicino 34 38 6
+quando: sbloccato pecora-al-gregge
 pensiero: Rientra tra le altre senza voltarsi. Sul recinto qualcuno ha lasciato un fagotto per chi riporta le bestie.
 dai: mela 2
 monete: 6
+karma: 2 #pieta hai riportato una pecora al gregge
 
 [missione ec06]
 titolo: Il Serpente di Luce
@@ -94,13 +107,17 @@ obiettivo: La piazza, al mattino tardi
 quando: parla Tonio
 quando: ora 10 13
 > Ah, tu! Fai da giudice. Nina dice di aver salvato più marinai lei col suo pesce che io con le mie mele.
-> Un uomo in mare tre giorni: gli dai una mela o un'acciuga? … Ecco. Vedi? Nemmeno tu lo sai. Tieni una mela, e non dirle che te l'ho data.
+> Un uomo in mare tre giorni: gli dai una mela o un'acciuga? Avanti, giudice: decidi tu.
+scegli: La mela: dura un inverno => fiducia Tonio 2
+scegli: Il pesce: sazia di più => fiducia Nina 2
+scegli: Tutti e due: la mela a colazione, il pesce a cena => karma 1 #aiuto hai fatto ridere la piazza; fiducia Tonio 1; fiducia Nina 1
 dai: mela 1
 
 [tappa]
 obiettivo: Senti anche Nina
 quando: parla Nina
 > Ti ha dato una mela, vero? Lo fa con tutti. Tieni un pesce: così siamo pari, e il giudice resta onesto.
+> E non farci caso: litighiamo così da vent'anni. Il mercato senza un po' di voce è un mercato morto.
 dai: pesce 1
 
 [missione ec09]

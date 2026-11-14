@@ -390,6 +390,10 @@ pub fn player_death(
     session.notify("Sei svenuto… ti risvegli al villaggio");
 }
 
+/// Nemico di un evento (i predoni del carretto, i banditi del ponte): ucciso, non ricompare.
+#[derive(Component)]
+pub struct NoRespawn;
+
 /// Query dei nemici con i dati necessari alla gestione della morte.
 type EnemiesQuery<'w, 's> = Query<
     'w,
@@ -400,6 +404,7 @@ type EnemiesQuery<'w, 's> = Query<
         &'static PatrolState,
         &'static GlobalTransform,
         Option<&'static crate::quests::denaro_rubato::QuestThief>,
+        Has<NoRespawn>,
     ),
     With<Enemy>,
 >;
@@ -417,7 +422,7 @@ pub fn handle_enemy_death(
     names: Query<&crate::figure::ModelName>,
     character: Res<crate::character::Character>,
 ) {
-    for (entity, hp, patrol, transform, is_thief) in &enemies {
+    for (entity, hp, patrol, transform, is_thief, once) in &enemies {
         if hp.current <= 0.0 {
             // Il corpo resta a terra qualche secondo: solo visivo, senza collider.
             if let Ok(name) = names.get(entity) {
@@ -452,7 +457,9 @@ pub fn handle_enemy_death(
                     character.stats.enemy_coins(),
                     transform.translation() + Vec3::Y * 0.2,
                 );
-                if bandit {
+                if once {
+                    info!("[NEMICI] nemico di un evento ucciso: non torna");
+                } else if bandit {
                     // I banditi tornano di notte (`places::keep_bandits`), non subito.
                     info!("[NEMICI] bandito ucciso: tornerà una notte a caso");
                 } else {

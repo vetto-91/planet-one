@@ -4,6 +4,10 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **Eventi con persone vere** (ADR 0046): al crepuscolo Lino il carrettiere ha la ruota nel fango sulla strada del nord, e mentre lo aiuti escono dal bosco due predoni; di giorno una pecora impigliata nei rovi ti segue fino al gregge, se la liberi; in tarda mattinata Tonio e Nina litigano a voce alta in piazza finché non fai da giudice.
+- **La Croce delle Quattro Ronde** ora passa dal dialogo con le quattro guardie di ronda, ognuna nel suo turno.
+- **Un luogo è esplorato del tutto** solo quando hai visto anche ciò che vi accade (la scintilla sulla torre, l'alba sui gradoni…).
+- **Correzioni**: pecore, mucche e galline restavano ferme (il controllo degli ostacoli vedeva il loro stesso corpo); i banditi del pedaggio, uccisi, tornavano dopo qualche minuto.
 - **Tre indizi nuovi** (ADR 0045): l'astrolabio spezzato nel baule di Beppe, le pagine antiche del Libro degli Approdi nel nuovo baule della sacrestia e il medaglione di Lauro nel baule in cima alla torre. Trovarli rivela il segreto di Beppe, di Don Anselmo e di Rosa.
 - **Pedinare un abitante la sera**: Marta e Agnese, in certe ore della sera, vanno di nascosto in un posto legato al loro segreto. Seguile senza farti vedere fino all'arrivo e lo scoprirai; se ti notano, per quel giorno non c'è niente da fare.
 - **La fama conta di più**: con una fama pessima chi tiene all'onestà o alla pietà non ti rivolge la parola, e le guardie notano un borseggio da più lontano e multano di più; con una fama ottima chiudono un occhio.

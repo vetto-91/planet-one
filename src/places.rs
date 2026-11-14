@@ -751,12 +751,14 @@ pub struct Explored {
     pub opened: u32,
     pub furniture: u32,
     pub enemies: u32,
+    /// Eventi del luogo non ancora vissuti (la scintilla sulla torre, l'alba sui gradoni…).
+    pub events: u32,
 }
 
 impl Explored {
-    /// Esplorato del tutto: niente nemici e ogni mobile aperto.
+    /// Esplorato del tutto: niente nemici, ogni mobile aperto e ogni evento del luogo vissuto.
     pub fn complete(self) -> bool {
-        self.enemies == 0 && self.opened >= self.furniture
+        self.enemies == 0 && self.opened >= self.furniture && self.events == 0
     }
 
     pub fn label(self) -> &'static str {
@@ -805,6 +807,7 @@ pub fn update_exploration(
     containers: Res<crate::containers::Containers>,
     furniture: Query<(&GlobalTransform, &crate::containers::Container)>,
     enemies: Query<(&GlobalTransform, &crate::combat::EnemyHealth), With<Enemy>>,
+    missions: Res<crate::quests::missions::Missions>,
     mut exploration: ResMut<Exploration>,
 ) {
     *timer -= time.delta_secs();
@@ -829,6 +832,9 @@ pub fn update_exploration(
             .iter()
             .filter(|(t, hp)| hp.current > 0.0 && near(t))
             .count() as u32;
+        if missions.enabled {
+            e.events = missions.events_near(at, PLACE_REACH) as u32;
+        }
         exploration.0.insert(name, e);
     }
 }

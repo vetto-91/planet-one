@@ -75,7 +75,20 @@ struct Grazer {
     clip: usize,
     player: Option<Entity>,
     rng: u32,
+    /// Non scappa dal giocatore (la pecora smarrita di EC-04, che ti segue).
+    tame: bool,
 }
+
+/// La pecora smarrita di EC-04 (ADR 0046, aggiornamento): impigliata nei rovi finché non la si
+/// libera, poi segue il giocatore fino al pascolo e torna nel gregge.
+#[derive(Component)]
+struct LostSheep {
+    freed: bool,
+}
+
+/// Dove si impiglia la pecora, e il centro del pascolo (stesso gregge di `isola.txt`).
+pub const BRAMBLES: Vec2 = Vec2::new(46.0, 28.0);
+pub const PASTURE: Vec2 = Vec2::new(34.0, 38.0);
 
 /// Gallina che razzola attorno a un punto.
 #[derive(Component)]
@@ -181,6 +194,7 @@ fn turn_to(yaw: f32, want: f32, step: f32) -> f32 {
 fn blocked_ahead(
     spatial: &SpatialQuery,
     grounds: &Query<(), With<crate::scene::Ground>>,
+    parents: &Query<&ChildOf>,
     me: Entity,
     from: Vec3,
     dir: Vec2,
@@ -196,7 +210,8 @@ fn blocked_ahead(
             dist,
             true,
             &SpatialQueryFilter::from_excluded_entities([me]),
-            &|e| !grounds.contains(e),
+            // Il corpo dell'animale (un collider figlio) non è un ostacolo per sé stesso.
+            &|e| !grounds.contains(e) && parents.get(e).map_or(true, |p| p.parent() != me),
         )
         .is_some()
 }
@@ -425,6 +440,7 @@ fn populate(
                         clip: IDLE,
                         player: None,
                         rng: seed.wrapping_add(1) | 1,
+                        tame: false,
                     },
                     Transform::from_xyz(pos.x, field.height_at(pos.x, pos.y), pos.y),
                     Visibility::default(),
@@ -650,6 +666,7 @@ fn move_grazers(
     player: Query<&Transform, (With<Player>, Without<Grazer>)>,
     spatial: SpatialQuery,
     grounds: Query<(), With<crate::scene::Ground>>,
+    parents: Query<&ChildOf>,
     mut grazers: Query<(Entity, &mut Grazer, &mut Transform)>,
     mut anim: Query<(&mut AnimationPlayer, &mut AnimationTransitions)>,
 ) {
@@ -663,7 +680,7 @@ fn move_grazers(
     for (entity, mut g, mut t) in &mut grazers {
         let (_, _, walk, run) = GRAZERS[g.kind];
         let ok = |p: Vec2| walkable(&field, &pasture.0, p);
-        let scared = g.pos.distance(me) < SHY;
+        let scared = !g.tame && g.pos.distance(me) < SHY;
         if scared && g.clip != RUN {
             let from = g.pos;
             g.target = flee_spot(from, me, ok);
@@ -671,7 +688,9 @@ fn move_grazers(
         let mut clip = IDLE;
         if let Some(target) = g.target {
             let to = target - g.pos;
-            let running = g.pos.distance(me) < SHY * 2.0 && (scared || g.clip == RUN);
+            // La pecora che ti segue corre per non restare indietro.
+            let running = (g.pos.distance(me) < SHY * 2.0 && (scared || g.clip == RUN))
+                || (g.tame && g.pos.distance(me) > 5.0);
             let speed = if running { run } else { walk };
             clip = if running { RUN } else { WALK };
             if to.length() < 0.3 {
@@ -682,7 +701,7 @@ fn move_grazers(
                 let step = to.normalize() * speed * dt;
                 let next = g.pos + step;
                 let from = Vec3::new(g.pos.x, t.translation.y + 0.7, g.pos.y);
-                let stuck = blocked_ahead(&spatial, &grounds, entity, from, step, 1.3);
+                let stuck = blocked_ahead(&spatial, &grounds, &parents, entity, from, step, 1.3);
                 if ok(next) && !stuck {
                     g.pos = next;
                     let yaw = g.yaw;
@@ -720,6 +739,7 @@ fn move_grazers(
 
 /// Sistema: galline in giro di giorno, al chiuso di notte.
 #[allow(clippy::type_complexity)]
+#[allow(clippy::too_many_arguments)]
 fn move_hens(
     time: Res<Time>,
     clock: Res<GameClock>,
@@ -727,6 +747,7 @@ fn move_hens(
     player: Query<&Transform, (With<Player>, Without<Hen>)>,
     spatial: SpatialQuery,
     grounds: Query<(), With<crate::scene::Ground>>,
+    parents: Query<&ChildOf>,
     mut hens: Query<(Entity, &mut Hen, &mut Transform, &mut Visibility)>,
 ) {
     let (Some(field), Ok(me)) = (field, player.single()) else {
@@ -758,7 +779,7 @@ fn move_hens(
             } else {
                 let step = to.normalize() * 0.55 * dt;
                 let from = Vec3::new(h.pos.x, t.translation.y + 0.3, h.pos.y);
-                if blocked_ahead(&spatial, &grounds, entity, from, step, 0.55) {
+                if blocked_ahead(&spatial, &grounds, &parents, entity, from, step, 0.55) {
                     h.target = None;
                     h.wait = 0.5;
                 } else {
@@ -972,8 +993,110 @@ pub fn plugin(app: &mut App) {
             move_fish,
             move_butterflies,
             flap_wings,
+            lost_sheep,
         ),
     );
+}
+
+/// Sistema: la pecora smarrita di EC-04. Compare fra i rovi di giorno finché l'evento è aperto;
+/// toccandola si libera e ti segue; al pascolo torna nel gregge.
+#[allow(clippy::too_many_arguments)]
+fn lost_sheep(
+    mut commands: Commands,
+    clock: Res<GameClock>,
+    kit: Option<Res<AnimalKit>>,
+    field: Option<Res<TerrainField>>,
+    pasture: Option<Res<Pasture>>,
+    missions: Res<crate::quests::missions::Missions>,
+    karma: Res<crate::karma::Karma>,
+    mut session: ResMut<crate::save::Session>,
+    player: Query<&Transform, (With<Player>, Without<Grazer>)>,
+    mut sheep: Query<(Entity, &mut Grazer, &mut LostSheep)>,
+) {
+    let (Some(kit), Some(field), Some(pasture), Ok(me)) = (kit, field, pasture, player.single())
+    else {
+        return;
+    };
+    let me = me.translation.xz();
+    let freed = karma.unlocks.contains("pecora-liberata");
+    let open = missions.enabled
+        && crate::region::current() == crate::region::Region::Isola
+        && !missions.done("ec04")
+        && !karma.unlocks.contains("pecora-al-gregge");
+    if sheep.is_empty() {
+        let daytime = (8.0..18.0).contains(&clock.hour);
+        if open && (freed || daytime) && me.distance(BRAMBLES) < 40.0 {
+            // Al margine dei rovi, dove si può camminare (fra gli alberi resterebbe bloccata).
+            let mut rng = 0x5EE9_u32;
+            let pos = pick_spot(&mut rng, BRAMBLES, 7.0, |p| walkable(&field, &pasture.0, p))
+                .unwrap_or(BRAMBLES);
+            commands
+                .spawn((
+                    SceneNode,
+                    Animal,
+                    LostSheep { freed },
+                    Grazer {
+                        kind: 1,
+                        home: pos,
+                        radius: 0.01,
+                        pos,
+                        yaw: 2.0,
+                        target: None,
+                        wait: 1.0,
+                        clip: IDLE,
+                        player: None,
+                        rng: 0x5EE9 | 1,
+                        tame: true,
+                    },
+                    Transform::from_xyz(pos.x, field.height_at(pos.x, pos.y), pos.y),
+                    Visibility::default(),
+                    RigidBody::Kinematic,
+                ))
+                .with_children(|p| {
+                    p.spawn((
+                        Collider::cuboid(0.75, 1.1, 1.3),
+                        Transform::from_xyz(0.0, 0.6, 0.0),
+                    ));
+                    p.spawn((
+                        WorldAssetRoot(kit.scenes[1].clone()),
+                        Transform::from_scale(Vec3::splat(GRAZERS[1].1)),
+                    ))
+                    .observe(on_grazer_ready);
+                });
+            info!("[ANIMALI] una pecora smarrita fra i rovi a {pos}");
+        }
+        return;
+    }
+    for (entity, mut g, mut lost) in &mut sheep {
+        if !lost.freed {
+            if me.distance(g.pos) < 1.8 {
+                lost.freed = true;
+                crate::karma::flag("pecora-liberata");
+                session.notify("Liberi la pecora dai rovi: ti segue");
+                info!("[ANIMALI] pecora liberata");
+            }
+            continue;
+        }
+        if g.pos.distance(PASTURE) < 6.0 {
+            // A casa: torna una pecora del gregge come le altre.
+            g.home = PASTURE;
+            g.radius = 9.0;
+            g.tame = false;
+            commands.entity(entity).remove::<LostSheep>();
+            crate::karma::flag("pecora-al-gregge");
+            info!("[ANIMALI] la pecora è tornata al gregge");
+            continue;
+        }
+        // Ti segue a un paio di passi.
+        let to = me - g.pos;
+        if to.length() > 2.5 {
+            g.home = me - to.normalize() * 1.5;
+            g.radius = 0.5;
+            if g.target.is_none_or(|t| t.distance(g.home) > 1.5) {
+                g.target = Some(g.home);
+            }
+        }
+    }
 }
 
 #[cfg(test)]

@@ -38,6 +38,31 @@ sezione 8.1, e `02`, sezione 4.7) c'erano solo «sconosciuto» e «scoperto». M
 
 ## Conseguenze
 - Il pedaggio capita una volta sola (è un evento a tappa unica).
-- Gli eventi EC-02, EC-04 ed EC-08 sono ancora incontri raccontati, senza persone sul posto.
-- L'esplorazione conta solo mobili e nemici, non i segreti del luogo.
+- ~~Gli eventi EC-02, EC-04 ed EC-08 sono ancora incontri raccontati~~ e ~~l'esplorazione conta solo mobili e
+  nemici~~: risolti, vedi «Aggiornamento» sotto.
 - Il bottino torna anche nei mobili dei luoghi che non si vedono (nessun limite di distanza).
+
+## Aggiornamento (2026-11-14): eventi con persone sul posto, le quattro ronde, i segreti dei luoghi
+- **EC-02, il carretto nella nebbia** (`island_life::cart_in_the_mud`): al crepuscolo, sulla strada del nord,
+  c'è davvero un carretto con la ruota nel fango e **Lino il carrettiere** (personaggio di passaggio, voce
+  generata).
+  - Al primo dialogo escono dal bosco due predoni.
+  - Quando sono a terra (`sbloccato predoni-vinti`) si aiuta Lino: mele e karma (+3, aiuto).
+  - A evento chiuso Lino e il carretto spariscono.
+- **EC-04, la pecora smarrita** (`animals::lost_sheep`): di giorno una pecora vera, impigliata al margine dei
+  rovi a est del pascolo.
+  - Avvicinandosi la si libera senz'armi; poi ti segue, correndo se resta indietro, e non scappa.
+  - Al pascolo torna una pecora del gregge (`pecora-liberata`, `pecora-al-gregge`; karma +2, pietà).
+- **EC-08, la disputa del mercato** (`island_life::market_quarrel`): in tarda mattinata Tonio e Nina si
+  rimbeccano a voce alta (fumetti a turno) finché non fai da giudice; tre verdetti, con fiducia e karma.
+- **Nemici di un evento** (`combat::NoRespawn`): i predoni e i banditi del pedaggio, uccisi, non ricompaiono.
+  Prima i banditi del ponte tornavano come nemici comuni dopo qualche minuto.
+- **QS-12 dalle ronde**: le tappe sulle mura diventano dialoghi con le quattro guardie di ronda, ognuna nel
+  suo turno (Gino di mattina, Ivo nel pomeriggio, Livio e Mario di notte), con +3 di fiducia ciascuna. Resta
+  la tappa finale al pozzo a mezzogiorno.
+- **I segreti dei luoghi** (`Missions::events_near`): un luogo è «esplorato» solo quando anche gli eventi che
+  capitano entro 18 m (la scintilla sulla torre, l'alba sui gradoni della grotta, la nave fantasma dietro il
+  mulino…) sono stati vissuti.
+- **Animali**: il raggio che cerca gli ostacoli davanti a un animale colpiva il suo stesso corpo (un collider
+  figlio), quindi pecore, mucche e galline restavano ferme; ora il corpo è escluso (`blocked_ahead`).
+- **Prove**: copione `zzzzzzzzzzzzzzzz-eventi` (lite e verdetto, pecora, prima ronda, carretto e predoni).

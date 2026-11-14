@@ -449,6 +449,22 @@ impl Missions {
             .count()
     }
 
+    /// Eventi non ancora vissuti che capitano entro `reach` metri da `at` (il segreto di un luogo:
+    /// conta per dire che il luogo è esplorato del tutto).
+    pub fn events_near(&self, at: Vec2, reach: f32) -> usize {
+        self.list
+            .iter()
+            .zip(&self.progress)
+            .filter(|(m, p)| m.event && **p < m.steps.len())
+            .filter(|(m, _)| {
+                m.steps.iter().flat_map(|s| &s.when).any(|w| match w {
+                    When::Near(p, _) => p.distance(at) <= reach,
+                    _ => false,
+                })
+            })
+            .count()
+    }
+
     /// Tappa corrente di una missione (per chi deve reagire a un punto preciso della storia).
     pub fn step_of(&self, id: &str) -> Option<usize> {
         self.index(id).map(|i| self.progress[i])
@@ -1060,6 +1076,54 @@ mod tests {
             unlocked: Vec::new(),
             stats: None,
         }
+    }
+
+    #[test]
+    fn events_have_people_on_the_spot_and_the_patrols_tell_their_side() {
+        let m = all();
+        let get = |id: &str| &m.list[m.index(id).unwrap()];
+        let ec02 = get("ec02");
+        assert_eq!(ec02.steps.len(), 3);
+        assert!(
+            ec02.steps[0]
+                .when
+                .contains(&When::Talk(crate::island_life::CARTER.into()))
+        );
+        assert!(
+            ec02.steps[1]
+                .when
+                .contains(&When::Unlocked("predoni-vinti".into()))
+        );
+        let ec04 = get("ec04");
+        assert!(
+            ec04.steps[0]
+                .when
+                .contains(&When::Unlocked("pecora-liberata".into()))
+        );
+        assert!(
+            ec04.steps[1]
+                .when
+                .contains(&When::Unlocked("pecora-al-gregge".into()))
+        );
+        assert_eq!(get("ec08").steps[0].choices.len(), 3);
+        let qs12 = get("qs12");
+        for guard in [
+            "Guardia Gino",
+            "Guardia Livio",
+            "Guardia Ivo",
+            "Guardia Mario",
+        ] {
+            assert!(
+                qs12.steps
+                    .iter()
+                    .any(|s| s.when.contains(&When::Talk(guard.into()))
+                        && s.effects.contains(&Effect::Trust(guard.into(), 3))),
+                "{guard}"
+            );
+        }
+        // La scintilla sulla torre è un segreto del luogo finché non la si vede.
+        assert!(m.events_near(Vec2::new(58.5, -58.5), 18.0) >= 1);
+        assert_eq!(m.events_near(Vec2::new(-200.0, -200.0), 18.0), 0);
     }
 
     #[test]

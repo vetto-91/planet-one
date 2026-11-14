@@ -1,0 +1,96 @@
+# Eventi con persone sul posto (ADR 0046, aggiornamento): Lino e i predoni (EC-02), la pecora
+# smarrita (EC-04), la lite in piazza (EC-08) e le quattro ronde di QS-12.
+# Il nome comincia per z perché un copione nuovo non sposti le risoluzioni degli altri.
+god on
+ia off
+meteo sereno
+missioni on
+# EC-08: in tarda mattinata Tonio e Nina litigano; fai da giudice.
+ora 10.5
+tp tonio
+aspetta 3
+attendi npc:tonio:modo = Ready 60
+tp tonio
+aspetta 1
+foto lite
+guarda tonio
+aspetta 1
+premi e
+aspetta 1
+avanza
+verifica /dialogo/scelte contiene Tutti e due
+scegli Tutti e due
+aspetta 1
+verifica /missioni/ec08 = 2
+tp nina
+aspetta 1
+guarda nina
+aspetta 1
+premi e
+aspetta 1
+avanza
+scegli Arrivederci
+aspetta 1
+verifica /missioni/ec08 = 3
+# EC-04: la pecora fra i rovi; toccandola si libera e ti segue fino al pascolo.
+tp 46 4 33
+aspetta 3
+foto pecora-nei-rovi
+tp 43 4 30.4
+aspetta 2
+verifica /missioni/ec04 = 2
+tp 40 4 33
+aspetta 4
+tp 37 4 36
+aspetta 4
+tp 34.5 4 38.5
+aspetta 6
+foto pecora-al-pascolo
+verifica /missioni/ec04 = 3
+# QS-12: le ronde, ognuna nel suo turno.
+missione qs12 2
+ora 10
+aspetta 2
+attendi npc:guardia_gino:modo = Ready 60
+tp guardia gino
+aspetta 1
+guarda guardia gino
+aspetta 1
+premi e
+aspetta 1
+avanza
+aspetta 1
+verifica /missioni/qs12 = 3
+# EC-02: al crepuscolo Lino ha il carretto nel fango; arrivano due predoni.
+ora 18.3
+tp 0 4 -19
+aspetta 3
+attendi npc:lino:modo = Ready 30
+tp lino
+aspetta 1
+guarda lino
+aspetta 1
+foto carretto
+premi e
+aspetta 1
+verifica parla = Lino il carrettiere
+avanza
+aspetta 4
+verifica /missioni/ec02 = 2
+foto predoni
+uccidi 40
+aspetta 0.5
+uccidi 40
+aspetta 3
+verifica /missioni/ec02 = 3
+tp lino
+aspetta 1
+guarda lino
+aspetta 1
+premi e
+aspetta 1
+avanza
+aspetta 2
+verifica /missioni/ec02 = 4
+verifica Apple >= 4
+esci

@@ -388,31 +388,35 @@ tipo: secondaria
 obiettivo: Chiedi al sergente, la Guardia Aldo, delle ronde
 quando: parla Guardia Aldo
 > Le ronde? Quattro lati, quattro uomini, e ognuno giura di vedere una cosa strana dal suo.
-> Io ho una porta da tenere. Sali tu sulle mura, dalle scale, un lato alla volta, e dimmi se sono fantasie.
+> Io ho una porta da tenere. Sali tu sulle mura, dalle scale, e chiedi a ognuno: Gino a nord, Ivo a sud, Livio a est, Mario a ovest.
 
 [tappa]
-obiettivo: Sali sulle mura a nord
-quando: vicino -9.6 -8.7 5
-quando: sopra 2.8
-pensiero: Da qui la torre antica sta dritta a nord-est. Sul parapetto qualcuno ha inciso una tacca: a mezzogiorno la sua ombra punta verso il paese come un dito.
+obiettivo: Sali sulle mura e parla con la Guardia Gino, la ronda del lato nord (di mattina)
+quando: parla Guardia Gino
+> Fantasie? Vieni qui, guarda. La torre antica sta dritta a nord-est, e sul parapetto c'è questa tacca.
+> A mezzogiorno la sua ombra punta verso il paese come un dito. Non verso la porta, non verso il mulino: verso la piazza.
+fiducia: Guardia Gino 3
 
 [tappa]
-obiettivo: Sali sulle mura a est
-quando: vicino 24.7 13.6 5
-quando: sopra 2.8
-pensiero: A est, oltre il bosco, la grotta. Un'altra tacca, e una riga graffiata: «all'equinozio il sole esce da lì, e la luce corre fino alla piazza».
+obiettivo: Parla con la Guardia Ivo, la ronda del lato sud (nel pomeriggio)
+quando: parla Guardia Ivo
+> Il faro? Lo guardo tutte le notti, è la mia compagnia. E il fascio passa sempre sopra il campanile.
+> Mai un palmo più in là, mai un palmo più in qua. Ettore giura che non l'ha puntato lui.
+fiducia: Guardia Ivo 3
 
 [tappa]
-obiettivo: Sali sulle mura a sud
-quando: vicino 10.8 24.3 5
-quando: sopra 2.8
-pensiero: A sud il faro. La tacca qui dice: «il fascio passa sopra il campanile. Mai un palmo più in là».
+obiettivo: Parla con la Guardia Livio, la ronda del lato est (di notte)
+quando: parla Guardia Livio
+> A est, oltre il bosco, c'è la grotta. Ho contato le albe per tre anni, sai? Con un sasso per ogni giorno.
+> All'equinozio il sole esce proprio da lì, e la luce corre lungo la strada fino alla piazza. Una riga dritta.
+fiducia: Guardia Livio 3
 
 [tappa]
-obiettivo: Sali sulle mura a ovest
-quando: vicino -26.9 10 5
-quando: sopra 2.8
-pensiero: A ovest il santuario: al tramonto il suo tetto getta un'ombra a punta fin sotto le mura. Due linee, allora: torre e faro, santuario e grotta. Dove si incrociano?
+obiettivo: Parla con la Guardia Mario, la ronda del lato ovest (di notte)
+quando: parla Guardia Mario
+> Al tramonto il tetto a punta del santuario getta un'ombra lunghissima, fin sotto le mura. L'ho scritto in una poesia.
+> Due linee, allora: torre e faro, santuario e grotta. Le altre ronde le hanno viste anche loro? Dove si incrociano?
+fiducia: Guardia Mario 3
 
 [tappa]
 obiettivo: A mezzogiorno, mettiti accanto al pozzo della piazza
