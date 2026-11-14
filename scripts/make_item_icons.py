@@ -435,6 +435,50 @@ def belt():
     return im
 
 
+def relic_astrolabe():
+    im = layer(); d = ImageDraw.Draw(im)
+    # Due metà d'ottone, un po' scostate lungo la frattura.
+    for dx, dy, a0, a1 in [(-14, -6, 100, 280), (14, 6, 280, 460)]:
+        box = [96 + dx, 96 + dy, 416 + dx, 416 + dy]
+        d.pieslice(box, a0, a1, fill=(204, 160, 70, 255), outline=(120, 86, 30, 255), width=10)
+        inner = [150 + dx, 150 + dy, 362 + dx, 362 + dy]
+        d.arc(inner, a0, a1, fill=(130, 92, 34, 255), width=8)
+    d.line([(160, 352), (352, 160)], fill=(90, 62, 22, 255), width=10)
+    d.ellipse([240, 240, 272, 272], fill=(120, 86, 30, 255))
+    return im
+
+
+def relic_pages():
+    im = layer(); d = ImageDraw.Draw(im)
+    d.polygon([(130, 110), (390, 96), (402, 410), (120, 420)], fill=(222, 204, 160, 255), outline=(140, 110, 70, 255))
+    d.polygon([(110, 130), (370, 118), (382, 430), (100, 440)], fill=(236, 220, 180, 255), outline=(150, 120, 80, 255))
+    ink = (80, 60, 40, 255)
+    # Un uccello, un occhio e qualche segno sconosciuto.
+    d.arc([150, 170, 230, 230], 200, 340, fill=ink, width=8)
+    d.arc([200, 170, 280, 230], 200, 340, fill=ink, width=8)
+    d.ellipse([280, 175, 350, 215], outline=ink, width=8)
+    d.ellipse([304, 186, 326, 206], fill=ink)
+    for k in range(4):
+        y = 270 + k * 40
+        d.line([(140, y), (340 - (k % 2) * 60, y - 3)], fill=ink, width=6)
+    return im
+
+
+def relic_medallion():
+    im = layer(); d = ImageDraw.Draw(im)
+    d.line([(256, 60), (180, 150)], fill=(170, 140, 70, 255), width=8)
+    d.line([(256, 60), (332, 150)], fill=(170, 140, 70, 255), width=8)
+    d.ellipse([150, 140, 362, 420], fill=(214, 172, 80, 255), outline=(120, 86, 30, 255), width=12)
+    d.ellipse([190, 190, 322, 370], outline=(150, 110, 40, 255), width=6)
+    rose = (176, 60, 60, 255)
+    for a in range(0, 360, 72):
+        x = 256 + math.cos(math.radians(a)) * 26
+        y = 278 + math.sin(math.radians(a)) * 26
+        d.ellipse([x - 22, y - 22, x + 22, y + 22], fill=rose)
+    d.ellipse([240, 262, 272, 294], fill=(130, 40, 40, 255))
+    return im
+
+
 ICONS = {
     "spada-corta": lambda: sword(310, 58, 124),
     "spada-lunga": lambda: sword(430, 46, 150),
@@ -477,6 +521,9 @@ ICONS = {
     "scatola-semi": relic_seedbox,
     "lettera": relic_letter,
     "taccuino": lambda: relic_book((110, 80, 50, 255), (60, 110, 60, 255)),
+    "astrolabio": relic_astrolabe,
+    "pagine-antiche": relic_pages,
+    "medaglione": relic_medallion,
 }
 
 

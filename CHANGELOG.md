@@ -4,6 +4,9 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **Tre indizi nuovi** (ADR 0045): l'astrolabio spezzato nel baule di Beppe, le pagine antiche del Libro degli Approdi nel nuovo baule della sacrestia e il medaglione di Lauro nel baule in cima alla torre. Trovarli rivela il segreto di Beppe, di Don Anselmo e di Rosa.
+- **Pedinare un abitante la sera**: Marta e Agnese, in certe ore della sera, vanno di nascosto in un posto legato al loro segreto. Seguile senza farti vedere fino all'arrivo e lo scoprirai; se ti notano, per quel giorno non c'è niente da fare.
+- **La fama conta di più**: con una fama pessima chi tiene all'onestà o alla pietà non ti rivolge la parola, e le guardie notano un borseggio da più lontano e multano di più; con una fama ottima chiudono un occhio.
 - **Compagni completi** (ADR 0049): Silvia e Guardia Dino ora prendono colpi dai nemici (anche frecce mirate a loro), dicono quando sono allo stremo e, senza forze, tornano a casa a curarsi fino al giorno dopo. Lontani dai colpi si riprendono. La loro vita si vede in una barra sopra quella della magia.
 - **Il compagno resta nel salvataggio**: dopo un caricamento chi ti seguiva è ancora con te, con la vita che aveva; anche chi è ferito resta a casa.
 - **Battute con voce dei compagni**: accettare, tornare a casa, chiedere aiuto e ritirarsi hanno ognuna la sua battuta, detta con la voce del personaggio (in locale con Piper). I testi sono in `assets/world/compagni.txt`.

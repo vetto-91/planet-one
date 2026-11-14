@@ -34,7 +34,7 @@ const HELP: &[&str] = &[
     "missioni [on|off] · missione <id> <tappa> (storia del Prologo e secondarie)",
     "veloce [luogo] (viaggio veloce verso un luogo scoperto; senza nome: l'elenco)",
     "abilita [<nome> <grado>] · livello [n] · talento <abilità> (attiva un rango con un Nodo d'Oro)",
-    "dietro <abitante> (alle sue spalle, per il borseggio) · scassina (la serratura aperta si forza da sola)",
+    "dietro <abitante> [m] (alle sue spalle, per il borseggio o a distanza per pedinare) · scassina (la serratura aperta si forza da sola)",
     "karma [n] · fiducia <abitante> <n> · davanti <abitante> · volti (diario su «Volti e segreti»)",
     "incantesimo <luce|dardo|cura|passo|scudo> · magia <n> (riserva di magia)",
     "casa <0|1|2> (la tua casa sul Poggio del Naufrago: terreno, fondamenta, finita)",
@@ -156,7 +156,7 @@ pub enum Cmd {
     Karma(Option<i32>),
     Trust(String, i32),
     /// Alle spalle di un abitante (per provare il borseggio).
-    Behind(String, bool),
+    Behind(String, bool, Option<f32>),
     /// Apre il diario sulla scheda «Volti e segreti».
     Faces,
     /// Durante lo scasso: il perno si spinge da solo quando l'ago è sulla tacca.
@@ -384,8 +384,20 @@ pub fn parse(line: &str) -> Result<Cmd, String> {
                 .ok_or_else(|| "il livello va da 1 a 200".to_string()),
             _ => Err("uso: livello [n]".into()),
         },
-        "dietro" if !args.is_empty() => Ok(Cmd::Behind(args.join(" ").to_lowercase(), true)),
-        "davanti" if !args.is_empty() => Ok(Cmd::Behind(args.join(" ").to_lowercase(), false)),
+        "dietro" | "davanti" if !args.is_empty() => {
+            // Un numero in fondo è la distanza (`dietro marta 8`, per pedinare).
+            let (who, dist) = match args.split_last() {
+                Some((last, rest)) if !rest.is_empty() && last.parse::<f32>().is_ok() => {
+                    (rest.join(" "), last.parse().ok())
+                }
+                _ => (args.join(" "), None),
+            };
+            Ok(Cmd::Behind(
+                who.to_lowercase(),
+                first.eq_ignore_ascii_case("dietro"),
+                dist,
+            ))
+        }
         "volti" => Ok(Cmd::Faces),
         "scassina" => Ok(Cmd::AutoPick),
         "risveglio" if !args.is_empty() => Ok(Cmd::Awake(args.join(" "))),
@@ -544,6 +556,7 @@ pub struct ShellCtx<'w, 's> {
     house: ResMut<'w, crate::house::House>,
     trial: ResMut<'w, crate::archery::Trial>,
     companions: ResMut<'w, crate::companions::CompanionState>,
+    tailing: Res<'w, crate::tailing::Tailing>,
     awakening: ResMut<'w, crate::awakening::Awakening>,
     vitals: ResMut<'w, crate::vitals::Vitals>,
     journal_tab: ResMut<'w, crate::menu::JournalTab>,
@@ -1027,14 +1040,26 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
                 shell.say("serve un Nodo d'Oro e il grado della soglia (15, 30, 50, 75, 100)");
             }
         }
-        Cmd::Behind(name, behind) => {
+        Cmd::Behind(name, behind, dist) => {
             let found = ctx
                 .npcs
                 .iter()
                 .max_by_key(|(npc, ..)| name_rank(npc.name, &name))
                 .filter(|(npc, ..)| name_rank(npc.name, &name) > 0)
-                .map(|(_, t, _)| {
-                    let side = if behind { -1.1 } else { 1.3 };
+                .map(|(npc, t, _)| {
+                    // A distanza (per pedinare) conta il verso in cui cammina, se si sta muovendo.
+                    if let Some(d) = dist
+                        && let Some(h) = ctx.tailing.heading(npc.name)
+                    {
+                        let back = Vec3::new(h.x, 0.0, h.y) * if behind { -d } else { d };
+                        return t.translation() + back;
+                    }
+                    let side = match (behind, dist) {
+                        (true, Some(d)) => -d,
+                        (false, Some(d)) => d,
+                        (true, None) => -1.1,
+                        (false, None) => 1.3,
+                    };
                     t.translation() + t.rotation() * Vec3::Z * side
                 });
             match (found, ctx.player.single_mut()) {

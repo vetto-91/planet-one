@@ -169,7 +169,7 @@ impl Secrets {
 
 /// Indizi: oggetti che, letti, rivelano il segreto di qualcuno senza la sua confidenza
 /// (la «via degli indizi», ADR 0045). Chi è il proprietario del segreto, e in quale edificio si trova.
-pub const CLUES: [(crate::inventory::Relic, &str, &str); 4] = [
+pub const CLUES: [(crate::inventory::Relic, &str, &str); 7] = [
     (crate::inventory::Relic::NightLog, "Ettore", "faro"),
     (crate::inventory::Relic::SeedBox, "Gino", "mulino"),
     (
@@ -178,9 +178,26 @@ pub const CLUES: [(crate::inventory::Relic, &str, &str); 4] = [
         "locanda",
     ),
     (crate::inventory::Relic::HuntingNotes, "Silvia", "arcere"),
+    // Una casa precisa si indica come in `abitanti.txt` («tipo n-esima»).
+    (
+        crate::inventory::Relic::BrokenAstrolabe,
+        "Beppe",
+        "casa-media 0",
+    ),
+    (
+        crate::inventory::Relic::ApprodiPages,
+        "Don Anselmo",
+        "chiesa",
+    ),
+    (
+        crate::inventory::Relic::LauroMedallion,
+        "Rosa",
+        "torre-rovina",
+    ),
 ];
 
-/// L'indizio che sta nel primo mobile di un edificio (se ce n'è uno).
+/// L'indizio che sta nel primo mobile di un edificio (se ce n'è uno): per tipo («faro») o per casa
+/// precisa («casa-media 0»).
 pub fn clue_in(building: &str) -> Option<crate::inventory::Relic> {
     CLUES
         .iter()
@@ -422,11 +439,27 @@ pub fn meet_and_confide(
     let key = name.to_lowercase();
     let day = today(&clock);
     karma.met.insert(key.clone());
+    dialog.cold = false;
+    let in_story = missions.in_dialog() || !dialog.choices.is_empty();
+    // Con una fama pessima chi tiene all'onestà o alla pietà non ti parla (i venditori sì, e le
+    // battute delle missioni restano): e la chiacchierata non fa crescere la fiducia.
+    if !in_story
+        && dialog.shop.is_none()
+        && let Some(secret) = secrets.of(&name)
+        && refuses(karma.global, karma.bond(&name), &secret.values)
+    {
+        dialog.lines = vec![COLD_LINE.to_string()];
+        dialog.voices = vec![Vec::new()];
+        dialog.index = 0;
+        dialog.cold = true;
+        info!("[KARMA] {name} non ti parla");
+        return;
+    }
     if karma.talked.insert(key.clone(), day) != Some(day) {
         trust(&name, TALK_TRUST);
     }
     // Una battuta di missione o una scelta di quest hanno la precedenza sulla confidenza.
-    if missions.in_dialog() || !dialog.choices.is_empty() {
+    if in_story {
         return;
     }
     let Some(secret) = secrets.of(&name) else {
@@ -458,6 +491,37 @@ pub fn meet_and_confide(
     reveal(&mut karma, secret);
     crate::skills::train(crate::skills::Skill::Eloquence, 15.0);
     session.notify(format!("{name} ti confida il suo segreto"));
+}
+
+/// Che cosa dice chi non vuole parlarti.
+pub const COLD_LINE: &str = "Non ho niente da dirti. Lasciami in pace.";
+/// Sotto questa fama i più onesti e pietosi non ti parlano più.
+pub const SHUNNED: i32 = -40;
+
+/// Chi tiene all'onestà o alla pietà non parla a chi ha una fama pessima, se non è già un amico.
+pub fn refuses(global: i32, bond: Bond, values: &[String]) -> bool {
+    global <= SHUNNED
+        && matches!(bond, Bond::Wary | Bond::Stranger)
+        && values.iter().any(|v| v == "onesta" || v == "pieta")
+}
+
+/// La fama del giocatore (karma), letta da sistemi che non hanno la risorsa.
+pub fn fame() -> i32 {
+    PRICES
+        .lock()
+        .ok()
+        .and_then(|k| k.as_ref().map(|k| k.global))
+        .unwrap_or(0)
+}
+
+/// Le guardie e un borseggio scoperto: (da quanti metri lo vedono, multa in più). Con una brutta
+/// fama ti tengono d'occhio; con una fama ottima chiudono un occhio.
+pub fn guard_watch(fame: i32) -> (f32, u32) {
+    match fame {
+        f if f <= -25 => (26.0, 20),
+        f if f >= 40 => (12.0, 5),
+        _ => (18.0, 10),
+    }
 }
 
 /// Prima battuta del saluto secondo la fama del giocatore (solo se è netta, e mai con gli amici).
@@ -668,12 +732,42 @@ mod tests {
         for (relic, owner, building) in CLUES {
             assert!(Secrets::default().of(owner).is_some(), "{owner}");
             assert_eq!(clue_in(building), Some(relic));
-            let first = starting_items(ContainerKind::Chest, building, "12:0:0");
+            // Una casa precisa («casa-media 0») è il tipo più il numero della casa.
+            let (kind, home) = match building.split_once(' ') {
+                Some((kind, _)) => (kind, building),
+                None => (building, ""),
+            };
+            let first = starting_items(ContainerKind::Chest, kind, home, "12:0:0");
             assert!(first.contains(&(ItemKind::Relic(relic), 1)), "{building}");
-            let other = starting_items(ContainerKind::Chest, building, "12:0:1");
+            let other = starting_items(ContainerKind::Chest, kind, home, "12:0:1");
             assert!(!other.contains(&(ItemKind::Relic(relic), 1)));
         }
         assert_eq!(clue_in("casetta"), None);
+        // Le altre case medie non hanno l'astrolabio di Beppe.
+        let elsewhere =
+            starting_items(ContainerKind::Chest, "casa-media", "casa-media 1", "12:0:0");
+        assert!(
+            !elsewhere.contains(&(ItemKind::Relic(crate::inventory::Relic::BrokenAstrolabe), 1))
+        );
+    }
+
+    #[test]
+    fn a_bad_name_closes_doors_and_opens_the_guards_eyes() {
+        let honest = vec!["onesta".to_string(), "lavoro".to_string()];
+        let brave = vec!["coraggio".to_string()];
+        assert!(refuses(-45, Bond::Stranger, &honest));
+        assert!(
+            !refuses(-45, Bond::Friend, &honest),
+            "un amico ti parla lo stesso"
+        );
+        assert!(
+            !refuses(-45, Bond::Stranger, &brave),
+            "chi ama il coraggio sì"
+        );
+        assert!(!refuses(-30, Bond::Stranger, &honest));
+        assert!(guard_watch(-30).0 > guard_watch(0).0);
+        assert!(guard_watch(-30).1 > guard_watch(0).1);
+        assert!(guard_watch(50).1 < guard_watch(0).1);
     }
 
     #[test]

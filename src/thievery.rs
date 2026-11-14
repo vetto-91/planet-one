@@ -24,9 +24,8 @@ use crate::skills::{self, Skill};
 /// Monete infilate a ogni pressione di `G` e multa quando si è scoperti.
 pub const SLIP_COINS: u32 = 5;
 pub const FINE: u32 = 10;
-/// Le guardie entro questa distanza vedono un borseggio scoperto, e la multa che aggiungono.
-const GUARD_SIGHT: f32 = 18.0;
-const GUARD_FINE: u32 = 10;
+// Le guardie che vedono un borseggio scoperto: distanza e multa secondo la fama
+// (`karma::guard_watch`).
 /// Distanza (m) entro cui si arriva alle tasche di qualcuno.
 const POCKET_RANGE: f32 = 1.7;
 
@@ -123,6 +122,7 @@ pub enum Push {
 pub struct Lockpicking {
     pub key: String,
     pub building: String,
+    pub home: String,
     pub lock: u8,
     pub pins: u8,
     pub done: u8,
@@ -142,6 +142,7 @@ impl Lockpicking {
         *self = Self {
             key: c.key.clone(),
             building: c.building.clone(),
+            home: c.home.clone(),
             lock,
             pins: 2 + lock,
             done: 0,
@@ -289,9 +290,12 @@ pub fn lockpick_window(
                 crate::sfx::play(crate::sfx::Sfx::Unlock);
                 skills::train(Skill::Lockpick, 10.0 * lock);
                 thievery.picked += 1;
-                // Forzare il baule di una casa è un furto; le casse senza padrone no (ADR 0046).
+                // Forzare il baule di una casa (o della sacrestia) è un furto; le casse senza
+                // padrone no (ADR 0046).
                 if pick.building.starts_with("casa") && pick.building != crate::house::KIND {
                     crate::karma::deed_as("onesta", -2, "hai forzato un baule in una casa");
+                } else if pick.building == "chiesa" {
+                    crate::karma::deed_as("onesta", -2, "hai forzato il baule della sacrestia");
                 }
                 *thievery.picked_in.entry(pick.building.clone()).or_default() += 1;
                 info!("[SCASSO] {}: aperta", pick.key);
@@ -299,6 +303,7 @@ pub fn lockpick_window(
                     key: pick.key.clone(),
                     kind: ContainerKind::Chest,
                     building: pick.building.clone(),
+                    home: pick.home.clone(),
                 });
                 session.notify("La serratura cede");
                 next.set(AppState::Container);
@@ -504,13 +509,14 @@ pub fn pickpocket(
         );
         // Le guardie vicine hanno visto tutto: altra multa e niente più fiducia (ADR 0045).
         let p_here = p;
+        let (sight, guard_fine) = crate::karma::guard_watch(crate::karma::fame());
         for (guard_entity, gt, guard) in npcs.iter().filter(|(e, t, n)| {
             *e != entity
                 && n.name.starts_with("Guardia")
-                && t.translation().distance(p_here) <= GUARD_SIGHT
+                && t.translation().distance(p_here) <= sight
         }) {
             let _ = gt;
-            let extra = GUARD_FINE.min(inventory.qty(ItemKind::Coin));
+            let extra = guard_fine.min(inventory.qty(ItemKind::Coin));
             inventory.consume(ItemKind::Coin, extra);
             crate::karma::trust(guard.name, -10);
             barks.say(
@@ -574,6 +580,7 @@ mod tests {
             key: "prova:baule".into(),
             kind: ContainerKind::Chest,
             building: building.into(),
+            home: String::new(),
         }
     }
 

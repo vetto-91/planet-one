@@ -868,6 +868,8 @@ pub(crate) fn furnish_church(b: &mut B, int: &mut Interior, r: &Room) {
         Vec3::new(0.7, 0.12, 0.12),
         WOOD_DARK,
     );
+    // Il baule della sacrestia, accanto all'altare: dentro le pagine antiche (ADR 0045).
+    chest(b, int, r.x1 - 0.7, r.z0 + 0.6, y);
 }
 
 #[cfg(test)]

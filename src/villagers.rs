@@ -49,6 +49,9 @@ pub struct VillagerDef {
     pub home: Option<(String, usize, usize)>,
     /// Chiavi in più (edifici dove lavora): nomi come `chiesa 0`.
     pub extra_keys: Vec<String>,
+    /// La passeggiata segreta della sera (`pedina:`): dalle, alle, posto e sguardo. Chi la segue
+    /// senza farsi vedere ne scopre il segreto (`tailing.rs`).
+    pub secret_walk: Option<(f32, f32, Vec2, Vec2)>,
 }
 
 fn parse(text: &str) -> Vec<VillagerDef> {
@@ -89,6 +92,14 @@ fn parse(text: &str) -> Vec<VillagerDef> {
                 }
             }
             "sera" => d.evening = pos(&nums),
+            "pedina" if nums.len() >= 6 => {
+                d.secret_walk = Some((
+                    nums[0],
+                    nums[1],
+                    Vec2::new(nums[2], nums[3]),
+                    Vec2::new(nums[4], nums[5]),
+                ));
+            }
             "orari" if nums.len() >= 3 => d.hours = (nums[0], nums[1], nums[2]),
             "chiave" => {
                 let key = val.split_whitespace().collect::<Vec<_>>().join(" ");
@@ -123,6 +134,8 @@ enum Phase {
     Night,
     /// Guardia fuori turno: va alla casa delle guardie.
     Rest,
+    /// La passeggiata segreta della sera (`pedina:`).
+    Secret,
 }
 
 /// Sosta a una finestra per aprire o chiudere gli scuri.
@@ -222,6 +235,18 @@ impl Villager {
         format!("{:?}", self.phase)
     }
 
+    /// È nella passeggiata segreta della sera, e dove va.
+    pub fn secret_walk(&self) -> Option<Vec2> {
+        (self.phase == Phase::Secret && !self.hidden)
+            .then_some(self.def.secret_walk.map(|(.., p, _)| p))
+            .flatten()
+    }
+
+    /// Sta camminando lungo la strada (non è ancora arrivato).
+    pub fn en_route(&self) -> bool {
+        !self.path.is_empty()
+    }
+
     /// Sta facendo il gesto alla finestra (animazione `Interact`).
     pub fn interacting(&self) -> bool {
         self.chore.as_ref().is_some_and(|c| c.timer > 0.0)
@@ -253,6 +278,7 @@ impl Villager {
             "Evening" => Phase::Evening,
             "Night" => Phase::Night,
             "Rest" => Phase::Rest,
+            "Secret" => Phase::Secret,
             _ => Phase::Work,
         };
         self.hidden = saved.hidden;
@@ -325,7 +351,10 @@ fn desired_phase(def: &VillagerDef, hour: f32, shelter: bool) -> Phase {
     if shelter {
         return Phase::Night;
     }
-    phase_by_hours(def.hours, hour)
+    match (phase_by_hours(def.hours, hour), def.secret_walk) {
+        (Phase::Evening, Some((from, to, ..))) if (from..to).contains(&hour) => Phase::Secret,
+        (phase, _) => phase,
+    }
 }
 
 /// Fase secondo gli orari `(inizio, fine, notte)`; fine e notte possono superare le 24
@@ -375,6 +404,9 @@ fn patrol_start(wall: &str) -> f32 {
 fn spot(def: &VillagerDef, phase: Phase, info: &VillageInfo) -> (Vec2, Vec2) {
     match phase {
         Phase::Evening => def.evening.unwrap_or(def.work),
+        Phase::Secret => def
+            .secret_walk
+            .map_or(def.evening.unwrap_or(def.work), |(.., p, look)| (p, look)),
         Phase::Rest => info.barracks.map_or(def.work, |(door, out)| (door, -out)),
         _ => {
             if let (Some(name), Some(shift)) = (&def.gate, def.shift)

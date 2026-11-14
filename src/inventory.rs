@@ -83,12 +83,18 @@ pub enum Relic {
     SeedBox,
     GrandfatherLetter,
     HuntingNotes,
+    /// L'astrolabio spezzato dei genitori di Pietro, nel baule di Beppe (ADR 0045).
+    BrokenAstrolabe,
+    /// Le prime pagine del Libro degli Approdi, nel baule della sacrestia.
+    ApprodiPages,
+    /// Il medaglione di Lauro per Rosa, nel baule in cima alla torre.
+    LauroMedallion,
 }
 
 impl Relic {
     /// Tutti gli oggetti di trama (serve ai test).
     #[cfg(test)]
-    pub const ALL: [Relic; 18] = [
+    pub const ALL: [Relic; 21] = [
         Relic::Tablet,
         Relic::MotherCoin,
         Relic::Quipu,
@@ -107,6 +113,9 @@ impl Relic {
         Relic::SeedBox,
         Relic::GrandfatherLetter,
         Relic::HuntingNotes,
+        Relic::BrokenAstrolabe,
+        Relic::ApprodiPages,
+        Relic::LauroMedallion,
     ];
 
     fn name(self) -> &'static str {
@@ -129,6 +138,9 @@ impl Relic {
             Relic::SeedBox => "Scatola dei semi",
             Relic::GrandfatherLetter => "Lettera del nonno di Osvaldo",
             Relic::HuntingNotes => "Taccuino di caccia",
+            Relic::BrokenAstrolabe => "Astrolabio spezzato",
+            Relic::ApprodiPages => "Pagine antiche degli Approdi",
+            Relic::LauroMedallion => "Medaglione di Lauro",
         }
     }
 
@@ -152,6 +164,9 @@ impl Relic {
             Relic::SeedBox => "scatola-semi",
             Relic::GrandfatherLetter => "lettera",
             Relic::HuntingNotes => "taccuino",
+            Relic::BrokenAstrolabe => "astrolabio",
+            Relic::ApprodiPages => "pagine-antiche",
+            Relic::LauroMedallion => "medaglione",
         }
     }
 
@@ -177,12 +192,21 @@ impl Relic {
                 "Una lettera ingiallita: parla di un'anfora e di una carta."
             }
             Relic::HuntingNotes => "Appunti di Silvia sulle tracce dei banditi fino alla grotta.",
+            Relic::BrokenAstrolabe => {
+                "Ottone rotto in due, con inciso il nome di una famiglia del nord."
+            }
+            Relic::ApprodiPages => {
+                "Uccelli, occhi e lettere sconosciute: nomi più vecchi del paese."
+            }
+            Relic::LauroMedallion => "Una rosa incisa a mano e una data di quarant'anni fa.",
         }
     }
 
     fn color(self) -> Color {
         match self {
-            Relic::MotherCoin | Relic::Cowbell => Color::srgb(0.95, 0.75, 0.25),
+            Relic::MotherCoin | Relic::Cowbell | Relic::BrokenAstrolabe | Relic::LauroMedallion => {
+                Color::srgb(0.95, 0.75, 0.25)
+            }
             Relic::Focaccia => Color::srgb(0.85, 0.65, 0.35),
             Relic::FeatherAmulet => Color::srgb(0.85, 0.9, 0.95),
             _ => Color::srgb(0.7, 0.55, 0.35),
@@ -229,7 +253,7 @@ impl Category {
 
 impl ItemKind {
     /// Tutti i tipi di oggetto.
-    pub const ALL: [ItemKind; 41] = [
+    pub const ALL: [ItemKind; 44] = [
         ItemKind::HealthPotion,
         ItemKind::Coin,
         ItemKind::ShortSword,
@@ -271,6 +295,9 @@ impl ItemKind {
         ItemKind::Relic(Relic::SeedBox),
         ItemKind::Relic(Relic::GrandfatherLetter),
         ItemKind::Relic(Relic::HuntingNotes),
+        ItemKind::Relic(Relic::BrokenAstrolabe),
+        ItemKind::Relic(Relic::ApprodiPages),
+        ItemKind::Relic(Relic::LauroMedallion),
     ];
 
     /// Peso reale di un'unità (kg). Monete e munizioni non pesano.

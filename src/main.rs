@@ -59,6 +59,7 @@ mod shell;
 mod shop;
 mod skills;
 mod sky;
+mod tailing;
 mod terrain;
 mod thievery;
 mod trees;
@@ -249,6 +250,7 @@ fn main() -> AppExit {
         .add_plugins(awakening::plugin)
         .add_plugins(cutscene::plugin)
         .add_plugins(companions::plugin)
+        .add_plugins(tailing::plugin)
         .add_plugins(sfx::plugin)
         .add_plugins(water::plugin)
         .add_plugins(nature::plugin)

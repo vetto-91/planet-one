@@ -1,0 +1,60 @@
+# Indizi e fama (ADR 0045, aggiornamento): il medaglione di Lauro nel baule in cima alla torre
+# rivela il segreto di Rosa; le pagine antiche nel baule della sacrestia quello di Don Anselmo.
+# Con una fama pessima Don Anselmo non ti parla.
+# Il nome comincia per z perché un copione nuovo non sposti le risoluzioni degli altri.
+god on
+ia off
+meteo sereno
+ora 11
+dai grimaldello 6
+abilita scassinare 100
+# In cima alla torre.
+tp 58.5 27 -58.5
+aspetta 3
+mira container
+premi e
+aspetta 1
+verifica app = Lockpick
+scassina
+attendi app = Container 40
+prendi
+aspetta 0.5
+chiudi
+aspetta 1.5
+verifica Relic(LauroMedallion) = 1
+verifica /segreti contiene rosa
+# Il baule della sacrestia, accanto all'altare.
+tp -20.5 3 9.5
+aspetta 3
+mira container
+foto sacrestia
+premi e
+aspetta 1
+verifica app = Lockpick
+scassina
+attendi app = Container 40
+prendi
+aspetta 0.5
+chiudi
+aspetta 1.5
+verifica Relic(ApprodiPages) = 1
+verifica /segreti contiene don anselmo
+# Fama pessima: chi tiene all'onestà non ti parla.
+karma -45
+aspetta 1
+tp beppe
+aspetta 1
+attendi npc:beppe:modo = Ready 60
+tp beppe
+aspetta 1
+guarda beppe
+aspetta 1
+premi e
+aspetta 1
+verifica parla = Beppe
+verifica /dialogo/riga contiene Lasciami in pace
+foto beppe-non-parla
+avanza
+aspetta 1
+verifica dialogo = false
+esci

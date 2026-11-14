@@ -6,6 +6,8 @@
 # Guardie ai cancelli: "cancello: Nord|Sud" + "turno: 1|2|3" (6-14, 14-22, 22-6; fuori turno riposano alla casa delle guardie).
 # "casa: tipo n letto" = edificio dove dorme (n-esimo di quel tipo, da 0, nell'ordine di debug/placements.txt) e posto letto.
 # "chiave: tipo n" = chiave in più oltre a quella di casa (per esempio dell'edificio dove lavora).
+# "pedina: dalle alle x z dx dz" = la sera, in quelle ore, va di nascosto in quel posto: chi la segue
+#   senza farsi vedere ne scopre il segreto (src/tailing.rs).
 # Guardie di ronda sul camminamento delle mura: "muro: nord|sud|est|ovest". Il posto si calcola dalla geometria (lavoro: è il ripiego).
 # Anche le ronde hanno un turno (almeno una sempre sulle mura) e dormono alla caserma (le ultime due nel sottotetto).
 # Una guardia senza turno segue "orari:"; si può lavorare di notte con fine e notte oltre le 24 (es. "orari: 17 31 31").
@@ -24,6 +26,7 @@ modello: civile-f-rosa
 lavoro: 2.2 23.4 -1 0
 sera: 0.4 16.0 -1 0
 orari: 5.5 18.5 21.5
+pedina: 19.5 21.3 1.8 -62.6 1 0
 
 [Don Anselmo]
 casa: casa 0 0
@@ -170,6 +173,7 @@ modello: civile-f-viola
 negozio: erborista
 lavoro: -6.4 7.4 1 0
 orari: 7 18 20
+pedina: 18.2 19.9 -61.6 22.0 -1 0
 
 [Tonio]
 casa: casa-grande 0 0

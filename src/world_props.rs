@@ -311,12 +311,14 @@ pub fn sync_world_props(
                 let mut home_index = None;
                 let mut lock = crate::hut::Lock::Private;
                 let mut lived = false;
+                let mut home = String::new();
                 if let Some(door) = interior.door {
                     let occurrence = *occurrences
                         .entry(kind.clone())
                         .and_modify(|n| *n += 1)
                         .or_insert(0);
                     lock = lock_for(&kind, occurrence, &defs);
+                    home = format!("{kind} {occurrence}");
                     lived = defs.iter().any(|d| {
                         d.home
                             .as_ref()
@@ -439,11 +441,12 @@ pub fn sync_world_props(
                         ));
                     }
                     for (i, spot) in interior.containers.iter().enumerate() {
-                        c.spawn(crate::containers::bundle(
+                        c.spawn(crate::containers::bundle_in(
                             spot.kind,
                             spot.pos,
                             format!("{place_id}:{j}:{i}"),
                             &kind,
+                            &home,
                         ));
                     }
                     for (i, win) in interior.windows.iter().enumerate() {

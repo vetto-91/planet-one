@@ -1,0 +1,106 @@
+# Pedinare un abitante la sera (ADR 0045, aggiornamento): Marta va di nascosto alla cesta di Gino
+# al mulino; standole dietro a 8 m senza farsi vedere, all'arrivo se ne scopre il segreto. Agnese,
+# guardata in faccia mentre va al santuario, si accorge di te e per quel giorno non c'è niente da fare.
+# Il nome comincia per z perché un copione nuovo non sposti le risoluzioni degli altri.
+god on
+ia off
+meteo sereno
+ora 18.1
+aspetta 2
+# Agnese parte per il santuario alle 18:12: le si va davanti e se ne accorge.
+attendi npc:agnese:fase = Secret 60
+aspetta 4
+davanti agnese 5
+aspetta 2
+verifica /segreti != agnese
+foto agnese-ti-vede
+# Marta parte per il mulino alle 19:30: le si sta dietro a 8 m, a passo con lei.
+ora 19.45
+aspetta 2
+attendi npc:marta:fase = Secret 60
+aspetta 3
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+dietro marta 8
+aspetta 2
+aspetta 4
+foto mulino-di-sera
+verifica /segreti contiene marta
+verifica /segreti != agnese
+esci

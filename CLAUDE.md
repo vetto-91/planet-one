@@ -95,6 +95,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 - `src/companions.rs`: compagni Silvia e Guardia Dino (seguono, combattono, si feriscono e si ritirano; ramo in `villagers::villager_routine`; battute in `assets/world/compagni.txt`; sezione `[compagni]` nei salvataggi; ADR 0049). Armature in `inventory.rs`, Scatto in `player.rs`, Disarmo in `combat.rs`, Calma in `magic.rs`.
 - `src/sfx.rs`: suoni sintetizzati di incantesimi, anelli e serrature (`sfx::play`); voci delle battute del Prologo da `scripts/gen_voci_prologo.py` (`voice::line_clip`, ADR 0050).
 - `src/karma.rs` + `assets/world/segreti.txt`: karma, fiducia per abitante, regali e segreti confidati (`deed`, `trust`; ADR 0040); sblocchi, indizi (`CLUES`) e valori (`deed_as`, `praise`; ADR 0045); scheda «Volti e segreti» in `menu.rs`.
+- `src/tailing.rs`: pedinare un abitante la sera (`pedina:` in `abitanti.txt`, fase `Secret` della routine; ADR 0045).
 - `src/containers.rs`: inventari dei mobili (`AppState::Container`, capienze, contenuto iniziale; ADR 0023).
 - `src/shell.rs`: shell dei trucchi (tasto `\`, `AppState::Shell`, `Cheats` non salvata; ADR 0021).
 - `src/interiors.rs`: arredi, solai e scale degli edifici (ADR 0019), porte e luci in `world_props.rs`, spiazzi in `terrain.rs`, letti in `abitanti.txt` (`casa:`).

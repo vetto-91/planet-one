@@ -91,15 +91,29 @@ pub struct Container {
     pub key: String,
     pub kind: ContainerKind,
     pub building: String,
+    /// La casa precisa, come in `abitanti.txt` («casa-media 0»); vuota fuori dalle case.
+    pub home: String,
 }
 
 /// Componenti di un contenitore nel mondo.
 pub fn bundle(kind: ContainerKind, pos: Vec3, key: String, building: &str) -> impl Bundle {
+    bundle_in(kind, pos, key, building, "")
+}
+
+/// Come [`bundle`], per un mobile di una casa precisa (`home`, «casa-media 0»).
+pub fn bundle_in(
+    kind: ContainerKind,
+    pos: Vec3,
+    key: String,
+    building: &str,
+    home: &str,
+) -> impl Bundle {
     (
         Container {
             key,
             kind,
             building: building.to_string(),
+            home: home.to_string(),
         },
         PropKind::Container,
         PropState { on: false },
@@ -195,7 +209,12 @@ pub(crate) fn roll(key: &str, salt: u32) -> f32 {
 }
 
 /// Contenuto iniziale: poche cose a tema, sempre uguali per lo stesso mobile. Alcuni sono vuoti.
-pub fn starting_items(kind: ContainerKind, building: &str, key: &str) -> Vec<(ItemKind, u32)> {
+pub fn starting_items(
+    kind: ContainerKind,
+    building: &str,
+    home: &str,
+    key: &str,
+) -> Vec<(ItemKind, u32)> {
     use ContainerKind as K;
     use ItemKind::*;
     // I mobili della casa che ti sei costruito sono vuoti: li riempi tu.
@@ -212,6 +231,7 @@ pub fn starting_items(kind: ContainerKind, building: &str, key: &str) -> Vec<(It
     // Indizi: nel primo mobile di certi edifici c'è un quaderno o una lettera (ADR 0045).
     let first = key.ends_with(":0") && key.matches(':').count() == 2;
     let clue = crate::karma::clue_in(building)
+        .or_else(|| crate::karma::clue_in(home))
         .filter(|_| first)
         .map(|r| (ItemKind::Relic(r), 1));
     if roll(key, 0) < 0.2 {
@@ -305,7 +325,7 @@ impl Containers {
         self.kinds.insert(c.key.clone(), c.kind);
         self.stores.entry(c.key.clone()).or_insert_with(|| {
             let mut store = Store::empty(c.kind.capacity());
-            for (item, qty) in starting_items(c.kind, &c.building, &c.key) {
+            for (item, qty) in starting_items(c.kind, &c.building, &c.home, &c.key) {
                 store.add(item, qty);
             }
             store
@@ -652,8 +672,8 @@ mod tests {
                 "caserma",
             ] {
                 for k in ALL {
-                    let a = starting_items(k, building, &key);
-                    assert_eq!(a, starting_items(k, building, &key));
+                    let a = starting_items(k, building, "", &key);
+                    assert_eq!(a, starting_items(k, building, "", &key));
                     let mut store = Store::empty(k.capacity());
                     for (item, qty) in a.iter().copied() {
                         store.add(item, qty);
@@ -680,6 +700,7 @@ mod tests {
             key: key.to_string(),
             kind: ContainerKind::Chest,
             building: "casa".to_string(),
+            home: String::new(),
         };
         all.open(&chest("7:0:1"));
         let mut inv = Inventory::default();

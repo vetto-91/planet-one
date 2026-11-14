@@ -43,7 +43,37 @@ possa scoprire anche con gli indizi, e che ognuno giudichi secondo i propri valo
 ## Conseguenze
 - I segni sbloccati per ora non cambiano il mondo: li useranno i passi successivi (partenza, compagni, Rito
   del Nome).
-- Mancano gli indizi di Beppe (l'astrolabio in casa sua), della chiesa e della torre: la loro casa non ha un
-  mobile riconoscibile dal codice dei contenitori.
-- Il pedinare un abitante la sera non c'è.
-- La fama cambia una sola battuta, non le voci né il comportamento.
+- ~~Mancano gli indizi di Beppe, della chiesa e della torre~~, ~~il pedinare un abitante la sera non c'è~~ e
+  ~~la fama cambia una sola battuta~~: risolti, vedi «Aggiornamento» sotto.
+
+## Aggiornamento (2026-11-14): gli indizi mancanti, il pedinamento e la fama
+- **Tre indizi nuovi** (oggetti di trama, icone da `scripts/make_item_icons.py`):
+  - l'**Astrolabio spezzato** nel primo mobile della casa di Beppe → il segreto di Beppe;
+  - le **Pagine antiche degli Approdi** nel baule nuovo della sacrestia, accanto all'altare → Don Anselmo;
+  - il **Medaglione di Lauro** nel baule in cima alla torre → Rosa (come nella trama, `04`, sezione 7).
+- **Una casa precisa**: in `karma::CLUES` l'edificio può essere un tipo («faro») o una casa precisa scritta
+  come in `abitanti.txt` («casa-media 0»). I mobili delle case portano il campo `Container.home`, che passa
+  anche dallo scasso (`Lockpicking.home`). Forzare il baule della sacrestia pesa come quello di una casa
+  (−2, onestà).
+- **Pedinare** (`src/tailing.rs`): con `pedina: dalle alle x z dx dz` in `abitanti.txt` un abitante, la sera,
+  va di nascosto in un posto (una fase nuova della routine, `Phase::Secret`, che usa le stesse strade).
+  - Marta, dalle 19:30, porta il dolce alla cesta di Gino al mulino; Agnese, dalle 18:12, va ad ascoltare la
+    pietra del santuario.
+  - Chi le sta dietro mentre camminano (entro 22 m, per almeno 12 secondi) e all'arrivo è entro 16 m ne
+    scopre il segreto, e allena la Furtività.
+  - Più vicino di 2,5 m, o davanti entro 9 m (meno con la Furtività), si viene notati: per quel giorno è
+    fallito, e la fiducia scende di uno.
+  - Pietro e la legnaia restano fuori: nel mondo la legnaia non c'è e il suo posto serale è a tre metri dal
+    pozzo.
+- **La fama**:
+  - i prezzi la seguivano già (ADR 0040);
+  - sotto −40 chi tiene all'onestà o alla pietà e non è ancora tuo conoscente non ti parla («Non ho niente da
+    dirti. Lasciami in pace.»), e la chiacchierata non gli fa crescere la fiducia. I venditori e le battute
+    delle missioni restano;
+  - le guardie e un borseggio scoperto (`karma::guard_watch`): sotto −25 lo vedono da 26 m e la multa in più
+    è 20 monete; da +40 in su lo vedono da 12 m e la multa è 5; altrimenti 18 m e 10 monete.
+- **Prove**: shell `dietro <abitante> <metri>` (a distanza conta il verso in cui cammina); copioni
+  `zzzzzzzzzzzzzz-pedinare` (Agnese si accorge di te, Marta no) e `zzzzzzzzzzzzzzz-indizi` (torre, sacrestia,
+  Beppe che non ti parla).
+- Restano fuori: l'astrolabio non ha un copione (la casa di Beppe è chiusa a chiave); la fama non cambia
+  ancora le voci in paese.

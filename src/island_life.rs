@@ -157,7 +157,8 @@ pub fn refill_loot(
         if crate::containers::roll(&key, night as u32) >= REFILL_CHANCE {
             continue;
         }
-        let items = crate::containers::starting_items(kind, &building, &format!("{key}#{night}"));
+        let items =
+            crate::containers::starting_items(kind, &building, "", &format!("{key}#{night}"));
         if !items.is_empty() {
             containers.refill(&key, &items);
             info!("[MONDO] bottino tornato in {key}");

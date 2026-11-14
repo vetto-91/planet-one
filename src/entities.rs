@@ -129,6 +129,8 @@ pub struct DialogState {
     pub offer_actions: Vec<Offer>,
     /// Assortimento del venditore con cui si parla (se c'è).
     pub shop: Option<&'static str>,
+    /// L'abitante non vuole parlarti (fama pessima, ADR 0045): niente offerte a fine dialogo.
+    pub cold: bool,
 }
 
 /// Azione dell'offerta mostrata a fine dialogo.
@@ -542,7 +544,9 @@ pub fn advance_dialog(
     if confirm {
         dialog.index += 1;
         if dialog.index >= dialog.lines.len() {
-            if dialog.choices.is_empty() {
+            if dialog.choices.is_empty() && dialog.cold {
+                close_dialog(&mut dialog, None, true);
+            } else if dialog.choices.is_empty() {
                 // Dialogo scritto finito, nessuna scelta di quest in sospeso: si offre di comprare
                 // (se è un venditore) e/o di chiacchierare (se la IA locale è attiva e pronta).
                 let mut actions = Vec::new();
