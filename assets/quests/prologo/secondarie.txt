@@ -92,7 +92,9 @@ obiettivo: Riporta il disco a Ferruccio
 quando: parla Ferruccio
 > È lui. Guarda come combacia… Dammi un giorno d'incudine.
 > No: dammi un'ora. Ecco. Lo scudo è tuo: l'hai rimesso insieme tu, io ho solo battuto.
-dai: scudo 1
+> Oppure… lo appendiamo sopra Porta Nord, dove lo vedono tutti quelli che partono. Decidi tu.
+scegli: Lo porto con me => dai scudo 1; fiducia Ferruccio 3
+scegli: Appendilo sopra Porta Nord => karma 4 hai donato lo scudo al paese; fiducia Ferruccio 8; fiducia Guardia Aldo 6; monete 30
 
 [missione qs04]
 titolo: Tre Nomi per le Ombre
@@ -112,19 +114,26 @@ obiettivo: Libera il campo dei banditi, a est
 quando: vicino 76 40 14
 quando: libero 76 40 14
 pensiero: Nella cassa, tre piastrine di legno e rame mangiate dal sale. Tre nomi, quasi illeggibili.
+dai: piastrine dei banditi 1
 
 [tappa]
 obiettivo: Porta le piastrine a Don Anselmo
 quando: parla Don Anselmo
 > Dammele… Qui c'è una T. Qui forse «Ari». E questo… questo lo conoscevo.
 > All'alba sali alla scogliera a est, vicino alla grotta, e dilli ad alta voce verso il mare. Io li scrivo nel Libro degli Approdi.
+> Lo so, la Guardia Aldo paga una taglia per quelle piastrine. Decidi tu che cosa valgono.
+scegli: Diamo loro pace: dirò i nomi al mare => karma 2 hai scelto la pietà per i banditi; fiducia Don Anselmo 6
+scegli: Le porto ad Aldo, per la taglia => prendi piastrine dei banditi 1; monete 40; fiducia Guardia Aldo 6; fiducia Don Anselmo -6; karma -3 hai venduto i nomi dei morti; fine
 
 [tappa]
 obiettivo: All'alba, pronuncia i tre nomi sulla scogliera a est
 quando: vicino 91 20 8
 quando: ora 5 8
 pensiero: Tre nomi detti al mare, uno alla volta. Il vento li porta via, e per un momento l'acqua sotto la scogliera è perfettamente ferma.
+prendi: piastrine dei banditi 1
 monete: 20
+karma: 4 i banditi hanno ritrovato il nome
+sblocca: rito-banditi
 
 [missione qs05]
 titolo: Il Pascolo del Sole
@@ -142,13 +151,16 @@ obiettivo: Verso il tramonto, vai al santuario
 quando: vicino -66 22 6
 quando: ora 17 20.5
 pensiero: Alla base di una colonna la terra è smossa. Sotto, un campanaccio d'oro e rame: un occhio inciso, e un nodo. Quando lo sfiori, l'altare risponde con una nota limpida.
+dai: campanaccio del sole 1
 
 [tappa]
 obiettivo: Riporta il campanaccio a Ida
 quando: parla Ida
+quando: ha campanaccio del sole 1
 > Un campanaccio? D'oro? … Lo metto a Bianchina. Se l'è guadagnato, a forza di aspettare.
 > Tieni, per il disturbo. E grazie di non averla spaventata.
-dai: mela 3
+prendi: campanaccio del sole 1
+dai: amuleto piuma 1
 monete: 10
 
 [missione qs06]
@@ -184,6 +196,7 @@ quando: ora 20 24
 > Eccola. Piano… piano… aperta! Senti che profumo: cent'anni, e sa ancora di sole.
 > Guarda dentro il sigillo: una lamina d'argento. Secche, correnti… è una carta dello Stretto. Tienila tu, che vai lontano.
 monete: 15
+dai: mappa delle correnti 1
 
 [missione qs07]
 titolo: Il Compleanno di Pietro
@@ -212,8 +225,10 @@ quando: parla Viandante
 [tappa]
 obiettivo: Torna da Beppe con il consiglio
 quando: parla Beppe
-> Insieme, dal Viandante. … Sì. Così ce la faccio.
-> Sei una brava persona, forestiero. Il ragazzo non lo dimentica, e nemmeno io.
+> Il Viandante dice di aprirla insieme. Ma il ragazzo è mio, e la paura è mia. Tu che cosa faresti?
+scegli: Apritela insieme, dal Viandante => karma 3 hai riunito Beppe e Pietro; fiducia Beppe 6; fiducia Pietro 6; dai chiave di rame 1
+scegli: Aspetta che Pietro sia più grande => fiducia Beppe 8; fiducia Pietro -3
+scegli: Pietro ha il diritto di sapere: diglielo oggi => karma 1 hai difeso il diritto di Pietro; fiducia Pietro 8; fiducia Beppe -4
 monete: 10
 
 [missione qs08]
@@ -243,9 +258,10 @@ pensiero: L'acqua si fa liscia come uno specchio. Sul fondo basso brilla una gem
 [tappa]
 obiettivo: Porta la gemma ad Agnese
 quando: parla Agnese
+scegli: L'infuso del sogno, per vedere più lontano => stat saggezza 1; fiducia Agnese 4
+scegli: L'infuso della memoria, per ricordare i segni => stat intelligenza 1; fiducia Agnese 4
 > … Dove l'hai trovata? Mi cadde il giorno in cui arrivai. Dal nord. Non lo sa nessuno.
 > Ecco l'infuso. E tieni la bocca chiusa, viaggiatore: certe cose si dicono a tempo.
-dai: pozione del mulo 1
 monete: 10
 
 [missione qs10]
@@ -265,10 +281,13 @@ obiettivo: Sali in cima alla torre antica
 quando: vicino 58.5 -58.5 5
 quando: sopra 18
 pensiero: Dietro un merlo spezzato, rivolto a nord: una bussola di bronzo con due nomi incisi, Rosa e Lauro, e una perlina di vetro azzurro.
+dai: bussola di lauro 1
 
 [tappa]
 obiettivo: Porta la bussola a Rosa
 quando: parla Rosa
+scegli: È tua, Rosa: tienila tu => prendi bussola di lauro 1; karma 2 hai reso a Rosa il suo ricordo; fiducia Rosa 10
+scegli: La porterò a nord, a cercare Lauro => fiducia Rosa 6
 > … Ce l'ha fatta. Ce l'ha fatta davvero.
 > Tienila tu, la bussola. A me basta sapere. E se lassù, a nord, trovi qualcuno che porta una perlina così… digli che Rosa ha aspettato.
 monete: 15
@@ -449,12 +468,12 @@ obiettivo: Parla con Ferruccio dei bauli senza chiave
 quando: parla Ferruccio
 > Le chiavi della guarnigione sono in fondo al mare da anni, {nome}. I bauli no: sono ancora lì, in caserma e nelle case, con dentro le cose di tutti.
 > Tieni: tre grimaldelli di bronzo. Una serratura non si forza, si ascolta. Quando l'ago passa sulla tacca, spingi il perno.
-> Aprine tre, dove vuoi. Poi vai a dirlo a Carlo, a Porta Sud: è lui che tiene il conto dei bauli.
+> I tre della caserma sono i più vecchi: lì dentro ci sono le paghe arretrate delle guardie. Poi vai a dirlo a Carlo, a Porta Sud: è lui che tiene il conto dei bauli.
 dai: grimaldello 3
 
 [tappa]
-obiettivo: Apri tre bauli chiusi a chiave con i grimaldelli
-quando: conta serrature 3
+obiettivo: Apri i tre bauli chiusi a chiave della caserma, con i grimaldelli
+quando: conta serrature:caserma 3
 pensiero: Tre serrature hanno ceduto. Guardia Carlo vorrà saperlo.
 
 [tappa]

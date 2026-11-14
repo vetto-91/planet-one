@@ -403,6 +403,7 @@ pub fn interact(
             weather: None,
             sides_done: 0,
             counters: Vec::new(),
+            unlocked: Vec::new(),
         };
         let busy_keeper = npc.name == "Viandante" && quest.accepted && !facts.quest_done;
         let mission = if busy_keeper {
@@ -410,9 +411,9 @@ pub fn interact(
         } else {
             missions.dialog_for(npc.name, &mut facts, &character.name)
         };
-        let (lines, choices, voices) = if let Some(lines) = mission {
+        let (lines, choices, voices) = if let Some((lines, choices)) = mission {
             let n = lines.len();
-            (lines, Vec::new(), vec![Vec::new(); n])
+            (lines, choices, vec![Vec::new(); n])
         } else if npc.name == "Viandante" {
             crate::quests::npc_dialog(&quest, &texts)
         } else {

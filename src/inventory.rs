@@ -39,6 +39,128 @@ pub enum ItemKind {
     /// Materiali da costruzione (ADR 0042).
     Wood,
     Stone,
+    /// Oggetti di trama (ADR 0044).
+    Relic(Relic),
+}
+
+/// Oggetti di trama del Prologo: si conservano, non si vendono, non vanno nella barra (ADR 0044).
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum Relic {
+    /// La tavoletta incisa trovata al campo del ladro.
+    Tablet,
+    /// La prima delle dodici monete, affidata dal Viandante a chi risparmia il ladro.
+    MotherCoin,
+    /// Cordicelle annodate trovate tra i rottami della spiaggia.
+    Quipu,
+    /// Il disco di bronzo della torre antica.
+    TyreDisc,
+    /// Il quipu grande della grotta.
+    MasterQuipu,
+    /// Le piastrine dei tre banditi.
+    BanditTags,
+    /// Il campanaccio d'oro e rame del santuario.
+    Cowbell,
+    /// La bussola di Lauro, in cima alla torre.
+    LauroCompass,
+    /// La chiave di rame trovata vicino al pozzo.
+    CopperKey,
+    /// Un bulbo di Luce Viva di ricambio.
+    LightBulb,
+    /// La pergamena con le correnti dello Stretto.
+    CurrentsMap,
+    /// La carta delle secche di Gaspare.
+    ShoalsMap,
+    /// Pane da viaggio di Marta: sazia e dà forza.
+    Focaccia,
+    /// Amuleto di Ida: si porta qualche chilo in più.
+    FeatherAmulet,
+}
+
+impl Relic {
+    /// Tutti gli oggetti di trama (serve ai test).
+    #[cfg(test)]
+    pub const ALL: [Relic; 14] = [
+        Relic::Tablet,
+        Relic::MotherCoin,
+        Relic::Quipu,
+        Relic::TyreDisc,
+        Relic::MasterQuipu,
+        Relic::BanditTags,
+        Relic::Cowbell,
+        Relic::LauroCompass,
+        Relic::CopperKey,
+        Relic::LightBulb,
+        Relic::CurrentsMap,
+        Relic::ShoalsMap,
+        Relic::Focaccia,
+        Relic::FeatherAmulet,
+    ];
+
+    fn name(self) -> &'static str {
+        match self {
+            Relic::Tablet => "Tavoletta del ladro",
+            Relic::MotherCoin => "Moneta Madre",
+            Relic::Quipu => "Quipu dei sette nodi",
+            Relic::TyreDisc => "Disco di Tiro",
+            Relic::MasterQuipu => "Quipu Maestro",
+            Relic::BanditTags => "Piastrine dei banditi",
+            Relic::Cowbell => "Campanaccio del Sole",
+            Relic::LauroCompass => "Bussola di Lauro",
+            Relic::CopperKey => "Chiave di rame",
+            Relic::LightBulb => "Bulbo di Luce Viva",
+            Relic::CurrentsMap => "Mappa delle Correnti",
+            Relic::ShoalsMap => "Mappa delle Secche",
+            Relic::Focaccia => "Focaccia del Navigante",
+            Relic::FeatherAmulet => "Amuleto Piuma",
+        }
+    }
+
+    fn icon(self) -> &'static str {
+        match self {
+            Relic::Tablet => "tavoletta",
+            Relic::MotherCoin => "moneta-madre",
+            Relic::Quipu => "quipu",
+            Relic::TyreDisc => "disco",
+            Relic::MasterQuipu => "quipu-maestro",
+            Relic::BanditTags => "piastrine",
+            Relic::Cowbell => "campanaccio",
+            Relic::LauroCompass => "bussola",
+            Relic::CopperKey => "chiave-rame",
+            Relic::LightBulb => "bulbo",
+            Relic::CurrentsMap => "mappa-correnti",
+            Relic::ShoalsMap => "mappa-secche",
+            Relic::Focaccia => "focaccia",
+            Relic::FeatherAmulet => "amuleto",
+        }
+    }
+
+    fn description(self) -> &'static str {
+        match self {
+            Relic::Tablet => "Segni incisi da Renzo: un nome, una rotta, una promessa.",
+            Relic::MotherCoin => "La prima delle dodici. Il conio non somiglia a nessun altro.",
+            Relic::Quipu => "Sette nodi su cordicelle colorate: un conto, o un messaggio.",
+            Relic::TyreDisc => "Bronzo verde, con navi e stelle incise a spirale.",
+            Relic::MasterQuipu => "Il quipu grande della grotta: cento nodi, una mappa.",
+            Relic::BanditTags => "Tre piastrine con tre nomi. Chi le portava non dorme più.",
+            Relic::Cowbell => "Oro e rame: quando suona le bestie si calmano.",
+            Relic::LauroCompass => "Una bussola d'ottone con dentro una perlina rossa.",
+            Relic::CopperKey => "Antica, verde di salsedine. Non si sa ancora cosa apra.",
+            Relic::LightBulb => "Vetro e fili sottili: la Luce Viva, di ricambio.",
+            Relic::CurrentsMap => "Le correnti dello Stretto, disegnate a inchiostro.",
+            Relic::ShoalsMap => "Dove l'acqua è bassa e dove morde: la carta di Gaspare.",
+            Relic::Focaccia => "Cura 30 punti vita e ridà fiato.",
+            Relic::FeatherAmulet => "Leggero come una piuma: porti 5 kg in più finché lo indossi.",
+        }
+    }
+
+    fn color(self) -> Color {
+        match self {
+            Relic::MotherCoin | Relic::Cowbell => Color::srgb(0.95, 0.75, 0.25),
+            Relic::Focaccia => Color::srgb(0.85, 0.65, 0.35),
+            Relic::FeatherAmulet => Color::srgb(0.85, 0.9, 0.95),
+            _ => Color::srgb(0.7, 0.55, 0.35),
+        }
+    }
 }
 
 /// Categoria dell'inventario.
@@ -50,16 +172,19 @@ pub enum Category {
     Food,
     Gear,
     Valuables,
+    /// Oggetti di trama.
+    Keepsakes,
 }
 
 impl Category {
-    pub const ALL: [Category; 6] = [
+    pub const ALL: [Category; 7] = [
         Category::Weapons,
         Category::Defense,
         Category::Ammo,
         Category::Food,
         Category::Gear,
         Category::Valuables,
+        Category::Keepsakes,
     ];
 
     pub fn name(self) -> &'static str {
@@ -70,13 +195,14 @@ impl Category {
             Category::Food => "Cibo e cure",
             Category::Gear => "Equipaggiamento",
             Category::Valuables => "Valori",
+            Category::Keepsakes => "Ricordi",
         }
     }
 }
 
 impl ItemKind {
     /// Tutti i tipi di oggetto.
-    pub const ALL: [ItemKind; 20] = [
+    pub const ALL: [ItemKind; 34] = [
         ItemKind::HealthPotion,
         ItemKind::Coin,
         ItemKind::ShortSword,
@@ -97,6 +223,20 @@ impl ItemKind {
         ItemKind::Lockpick,
         ItemKind::Wood,
         ItemKind::Stone,
+        ItemKind::Relic(Relic::Tablet),
+        ItemKind::Relic(Relic::MotherCoin),
+        ItemKind::Relic(Relic::Quipu),
+        ItemKind::Relic(Relic::TyreDisc),
+        ItemKind::Relic(Relic::MasterQuipu),
+        ItemKind::Relic(Relic::BanditTags),
+        ItemKind::Relic(Relic::Cowbell),
+        ItemKind::Relic(Relic::LauroCompass),
+        ItemKind::Relic(Relic::CopperKey),
+        ItemKind::Relic(Relic::LightBulb),
+        ItemKind::Relic(Relic::CurrentsMap),
+        ItemKind::Relic(Relic::ShoalsMap),
+        ItemKind::Relic(Relic::Focaccia),
+        ItemKind::Relic(Relic::FeatherAmulet),
     ];
 
     /// Peso reale di un'unità (kg). Monete e munizioni non pesano.
@@ -120,6 +260,8 @@ impl ItemKind {
             ItemKind::Lockpick => Some(0.02),
             ItemKind::Wood => Some(2.5),
             ItemKind::Stone => Some(4.0),
+            ItemKind::Relic(Relic::Focaccia) => Some(0.3),
+            ItemKind::Relic(_) => Some(0.05),
             ItemKind::Coin | ItemKind::Arrow => None,
         }
     }
@@ -144,6 +286,8 @@ impl ItemKind {
             | ItemKind::Wood
             | ItemKind::Stone => Category::Gear,
             ItemKind::Coin | ItemKind::MasterKey => Category::Valuables,
+            ItemKind::Relic(Relic::Focaccia) => Category::Food,
+            ItemKind::Relic(_) => Category::Keepsakes,
         }
     }
 
@@ -170,6 +314,7 @@ impl ItemKind {
             ItemKind::Lockpick => "grimaldello",
             ItemKind::Wood => "legname",
             ItemKind::Stone => "pietra",
+            ItemKind::Relic(r) => r.icon(),
         }
     }
 
@@ -178,7 +323,7 @@ impl ItemKind {
         !matches!(
             self,
             ItemKind::Coin | ItemKind::MasterKey | ItemKind::Wood | ItemKind::Stone
-        )
+        ) && !matches!(self, ItemKind::Relic(r) if r != Relic::Focaccia && r != Relic::FeatherAmulet)
     }
 
     /// Nome mostrato nell'inventario.
@@ -204,6 +349,7 @@ impl ItemKind {
             ItemKind::Lockpick => "Grimaldello",
             ItemKind::Wood => "Legname",
             ItemKind::Stone => "Pietra",
+            ItemKind::Relic(r) => r.name(),
         }
     }
 
@@ -230,6 +376,7 @@ impl ItemKind {
             ItemKind::Lockpick => "Per forzare la serratura di un baule. Può spezzarsi.",
             ItemKind::Wood => "Un tronco squadrato, per costruire.",
             ItemKind::Stone => "Un blocco di pietra, per costruire.",
+            ItemKind::Relic(r) => r.description(),
         }
     }
 
@@ -267,7 +414,11 @@ impl ItemKind {
 
     /// Chili in più se è un oggetto incantato da indossare.
     pub fn charm_kg(self) -> Option<f32> {
-        (self == ItemKind::CarryBelt).then_some(10.0)
+        match self {
+            ItemKind::CarryBelt => Some(10.0),
+            ItemKind::Relic(Relic::FeatherAmulet) => Some(5.0),
+            _ => None,
+        }
     }
 
     /// Effetto a tempo se bevuto: chili in più e secondi.
@@ -289,6 +440,7 @@ impl ItemKind {
             ItemKind::HealthPotion => Some(POTION_HEAL),
             ItemKind::Apple => Some(10.0),
             ItemKind::Fish => Some(20.0),
+            ItemKind::Relic(Relic::Focaccia) => Some(30.0),
             _ => None,
         }
     }
@@ -316,7 +468,29 @@ impl ItemKind {
             ItemKind::Lockpick => Color::srgb(0.75, 0.55, 0.3),
             ItemKind::Wood => Color::srgb(0.55, 0.38, 0.2),
             ItemKind::Stone => Color::srgb(0.6, 0.6, 0.62),
+            ItemKind::Relic(r) => r.color(),
         }
+    }
+}
+
+static GRANTS: std::sync::Mutex<Vec<(ItemKind, u32)>> = std::sync::Mutex::new(Vec::new());
+
+/// Dà un oggetto al giocatore al prossimo frame, da un sistema che non ha l'inventario.
+pub fn grant(kind: ItemKind, qty: u32) {
+    if let Ok(mut g) = GRANTS.lock() {
+        g.push((kind, qty));
+    }
+}
+
+/// Sistema: consegna gli oggetti di [`grant`].
+pub fn apply_grants(mut inventory: ResMut<Inventory>) {
+    let pending = GRANTS
+        .lock()
+        .map(|mut g| std::mem::take(&mut *g))
+        .unwrap_or_default();
+    for (kind, qty) in pending {
+        inventory.add(kind, qty);
+        info!("[INVENTORY] ricevuto {} x{qty}", kind.name());
     }
 }
 
@@ -763,6 +937,24 @@ pub fn collect_pickups(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn keepsakes_are_found_by_name_and_stay_out_of_the_hotbar() {
+        for r in Relic::ALL {
+            let k = ItemKind::Relic(r);
+            assert_eq!(ItemKind::from_name(k.name()), Some(k), "{r:?}");
+            assert!(ItemKind::ALL.contains(&k));
+            assert!(k.weight_kg().is_some_and(|w| w < 0.5));
+        }
+        assert!(!ItemKind::Relic(Relic::Tablet).can_go_in_hotbar());
+        assert!(ItemKind::Relic(Relic::Focaccia).can_go_in_hotbar());
+        assert_eq!(
+            ItemKind::Relic(Relic::Tablet).category(),
+            Category::Keepsakes
+        );
+        assert_eq!(ItemKind::Relic(Relic::FeatherAmulet).charm_kg(), Some(5.0));
+        assert_eq!(ItemKind::Relic(Relic::Focaccia).heal(), Some(30.0));
+    }
+
     use super::*;
 
     #[test]

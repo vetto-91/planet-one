@@ -1,0 +1,74 @@
+# Scelte nelle missioni e oggetti di trama (ADR 0044).
+god on
+ia off
+meteo sereno
+ora 10
+missioni on
+aspetta 2
+verifica /karma = 0
+# qs08: Agnese prepara un infuso a scelta; l'Intelligenza sale di uno.
+missione qs08 4
+aspetta 1
+tp agnese
+aspetta 1
+attendi npc:agnese:modo = Ready 90
+tp agnese
+aspetta 1
+guarda agnese
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+verifica /dialogo/scelte contiene memoria
+foto scelta-agnese
+scegli memoria
+aspetta 1
+verifica /missioni/qs08 = 5
+verifica /fiducia/agnese >= 4
+# qs04: chi vende le piastrine ad Aldo chiude la missione e i banditi continuano a tornare.
+missione qs04 3
+dai piastrine dei banditi 1
+aspetta 1
+tp anselmo
+aspetta 1
+attendi npc:anselmo:modo = Ready 90
+tp anselmo
+aspetta 1
+guarda anselmo
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+scegli taglia
+aspetta 1
+verifica /missioni/qs04 = 5
+verifica /karma < 3
+verifica monete >= 40
+# qs07: tre risposte per Beppe; insieme dal Viandante, e Pietro affida la chiave di rame.
+missione qs07 4
+aspetta 1
+tp beppe
+aspetta 1
+attendi npc:beppe:modo = Ready 90
+tp beppe
+aspetta 1
+guarda beppe
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+verifica /dialogo/scelte contiene Aspetta
+scegli insieme
+aspetta 1
+verifica /missioni/qs07 = 5
+verifica Relic(CopperKey) = 1
+# Gli oggetti di trama stanno nella categoria «Ricordi» dell'inventario.
+premi i
+aspetta 1
+foto ricordi
+premi i
+aspetta 1
+esci

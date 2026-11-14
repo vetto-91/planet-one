@@ -622,6 +622,7 @@ fn keep_bandits(
     field: Option<Res<TerrainField>>,
     enemies: Query<&PatrolState, With<Enemy>>,
     seeded: Query<(), With<BanditsSeeded>>,
+    missions: Res<crate::quests::missions::Missions>,
     mut timer: Local<f32>,
     mut last_night: Local<Option<i64>>,
 ) {
@@ -647,8 +648,10 @@ fn keep_bandits(
         .filter(|p| p.kind == "banditi")
         .flat_map(|p| p.points.iter().copied());
     let mut spawned = false;
+    // Dopo il Rito del Nome di Don Anselmo (qs04) i banditi trovano pace e non tornano più.
+    let at_peace = missions.unlocked("rito-banditi");
     for center in camps {
-        if !start && !bandits_return(center, night) {
+        if at_peace || (!start && !bandits_return(center, night)) {
             continue;
         }
         for (a, b) in bandit_routes(center) {

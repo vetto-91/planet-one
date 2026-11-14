@@ -91,10 +91,10 @@ premi e
 aspetta 1
 verifica dialogo = true
 avanza
-scegli Arrivederci
+scegli Appendilo
 aspetta 1
 verifica /missioni/qs03 = 4
-verifica Shield >= 1
+verifica /karma >= 4
 # qs06 L'Anfora dei Cent'Anni: Osvaldo, Agnese, pesci e mele, la sera alla locanda
 tp osvaldo
 aspetta 1
@@ -198,8 +198,10 @@ premi e
 aspetta 1
 verifica dialogo = true
 avanza
+scegli Lauro
 aspetta 1
 verifica /missioni/qs10 = 4
+verifica Relic(LauroCompass) = 1
 # qs04 Tre Nomi per le Ombre (dopo la prima missione): Don Anselmo, il campo dei banditi, l'alba sulla scogliera
 missione mp01 5
 aspetta 1
@@ -239,8 +241,10 @@ premi e
 aspetta 1
 verifica dialogo = true
 avanza
+scegli pace
 aspetta 1
 verifica /missioni/qs04 = 4
+verifica Relic(BanditTags) = 1
 ora 6
 tp 91 4 20
 aspetta 3

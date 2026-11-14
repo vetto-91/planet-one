@@ -415,6 +415,7 @@ fn main() -> AppExit {
                 .run_if(in_state(AppState::Playing)),
         )
         .add_systems(Update, debug_place::sync_markers)
+        .add_systems(Update, inventory::apply_grants)
         .add_systems(
             Update,
             (

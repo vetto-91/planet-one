@@ -32,6 +32,8 @@ const POCKET_RANGE: f32 = 1.7;
 pub struct Thievery {
     /// Serrature aperte col grimaldello.
     pub picked: u32,
+    /// Serrature aperte per edificio (`caserma`, `grotta`…): `conta serrature:caserma 3`.
+    pub picked_in: BTreeMap<String, u32>,
     /// Tentativi fatti finora (seme dei tiri).
     pub attempts: u32,
     /// Monete infilate di nascosto a ciascuno (nome in minuscolo).
@@ -45,6 +47,11 @@ impl Thievery {
     /// Contatori per le condizioni delle missioni (`quando: conta <chiave> <n>`).
     pub fn counters(&self) -> Vec<(String, u32)> {
         let mut out = vec![("serrature".to_string(), self.picked)];
+        out.extend(
+            self.picked_in
+                .iter()
+                .map(|(b, n)| (format!("serrature:{b}"), *n)),
+        );
         out.extend(
             self.slipped
                 .iter()
@@ -277,6 +284,7 @@ pub fn lockpick_window(
             Push::Open => {
                 skills::train(Skill::Lockpick, 10.0 * lock);
                 thievery.picked += 1;
+                *thievery.picked_in.entry(pick.building.clone()).or_default() += 1;
                 info!("[SCASSO] {}: aperta", pick.key);
                 containers.open(&Container {
                     key: pick.key.clone(),

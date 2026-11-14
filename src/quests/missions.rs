@@ -51,6 +51,68 @@ pub enum When {
     SidesDone(usize),
     /// Un contatore del mondo arriva a `n` (`serrature`, `infilate:<nome>`; ADR 0039).
     Count(String, u32),
+    /// Qualcosa è stato sbloccato da una tappa o da una scelta (`quando: sbloccato rito-banditi`).
+    Unlocked(String),
+}
+
+/// Effetto di una tappa o di una scelta (ADR 0044).
+#[derive(Clone, Debug, PartialEq)]
+pub enum Effect {
+    Give(crate::inventory::ItemKind, u32),
+    Take(crate::inventory::ItemKind, u32),
+    Coins(u32),
+    /// Karma globale, con il motivo mostrato a schermo.
+    Karma(i32, String),
+    /// Fiducia di un abitante.
+    Trust(String, i32),
+    /// Una statistica sale (o scende) di tanto.
+    Stat(crate::character::Stat, i8),
+    Unlock(String),
+    /// La missione finisce qui (un bivio che chiude la storia prima delle tappe successive).
+    End,
+}
+
+impl Effect {
+    /// «dai scudo 1», «monete 20», «karma 3 hai restituito lo scudo», «fiducia Guardia Aldo 5»,
+    /// «stat saggezza 1», «sblocca rito-banditi».
+    pub fn parse(text: &str) -> Option<Effect> {
+        let text = text.trim();
+        let (verb, rest) = text.split_once(' ').unwrap_or((text, ""));
+        let rest = rest.trim();
+        Some(match verb {
+            "dai" => {
+                let (k, n) = item_qty(rest)?;
+                Effect::Give(k, n)
+            }
+            "prendi" => {
+                let (k, n) = item_qty(rest)?;
+                Effect::Take(k, n)
+            }
+            "monete" => Effect::Coins(rest.parse().ok()?),
+            "karma" => {
+                let (n, why) = rest.split_once(' ').unwrap_or((rest, ""));
+                Effect::Karma(n.parse().ok()?, why.trim().to_string())
+            }
+            "fiducia" => {
+                let (name, n) = rest.rsplit_once(' ')?;
+                Effect::Trust(name.trim().to_string(), n.parse().ok()?)
+            }
+            "stat" => {
+                let (name, n) = rest.rsplit_once(' ')?;
+                Effect::Stat(crate::character::Stat::parse(name)?, n.parse().ok()?)
+            }
+            "sblocca" if !rest.is_empty() => Effect::Unlock(rest.to_string()),
+            "fine" => Effect::End,
+            _ => return None,
+        })
+    }
+}
+
+/// Una risposta fra cui scegliere alla fine del dialogo della tappa.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Choice {
+    pub text: String,
+    pub effects: Vec<Effect>,
 }
 
 /// Oggetto dal nome italiano usato nei file («mela», «pesce», «pozione del mulo»…).
@@ -85,6 +147,10 @@ pub struct Step {
     pub gives: Vec<(crate::inventory::ItemKind, u32)>,
     /// Cose sbloccate nel mondo (per esempio `continente`).
     pub unlocks: Vec<String>,
+    /// Effetti in più (karma, fiducia, statistiche: ADR 0044).
+    pub effects: Vec<Effect>,
+    /// Risposte fra cui scegliere alla fine del dialogo (`scegli: testo => effetto; effetto`).
+    pub choices: Vec<Choice>,
 }
 
 /// Una missione letta dal file.
@@ -165,6 +231,30 @@ pub fn parse(text: &str) -> Vec<Mission> {
             ("pensiero", Some(s)) => s.note = value.to_string(),
             ("monete", Some(s)) => s.coins = value.parse().unwrap_or(0),
             ("sblocca", Some(s)) => s.unlocks.push(value.to_string()),
+            ("karma" | "fiducia" | "stat", Some(s)) => {
+                match Effect::parse(&format!("{key} {value}")) {
+                    Some(e) => s.effects.push(e),
+                    None => warn!("[MISSIONI] effetto non valido: {line}"),
+                }
+            }
+            ("scegli", Some(s)) => {
+                let (text, effects) = value.split_once("=>").unwrap_or((value, ""));
+                let effects: Vec<Effect> = effects
+                    .split(';')
+                    .filter(|e| !e.trim().is_empty())
+                    .filter_map(|e| {
+                        let parsed = Effect::parse(e);
+                        if parsed.is_none() {
+                            warn!("[MISSIONI] effetto non valido nella scelta: {e}");
+                        }
+                        parsed
+                    })
+                    .collect();
+                s.choices.push(Choice {
+                    text: text.trim().to_string(),
+                    effects,
+                });
+            }
             ("prendi", Some(s)) => match item_qty(value) {
                 Some(x) => s.takes.push(x),
                 None => warn!("[MISSIONI] oggetto sconosciuto: {line}"),
@@ -182,6 +272,9 @@ pub fn parse(text: &str) -> Vec<Mission> {
                     ("ha", _) => item_qty(rest).map(|(k, n)| When::Has(k, n)),
                     ("meteo", _) => crate::weather::Kind::parse(rest).map(When::Weather),
                     ("fatte", [n]) => Some(When::SidesDone(*n as usize)),
+                    ("sbloccato", _) if !rest.trim().is_empty() => {
+                        Some(When::Unlocked(rest.trim().to_string()))
+                    }
                     ("conta", _) => rest.trim().rsplit_once(' ').and_then(|(key, n)| {
                         Some(When::Count(key.trim().to_lowercase(), n.parse().ok()?))
                     }),
@@ -222,6 +315,12 @@ pub struct Missions {
     talking: Option<(String, usize)>,
     /// Dialoghi di missione letti fino in fondo (nome dell'abitante), in attesa di essere contati.
     talked: Vec<(String, usize)>,
+    /// Risposta scelta alla fine di un dialogo di missione (missione, risposta), in attesa.
+    picked: Vec<(usize, usize)>,
+    /// Risposte date nelle tappe già fatte: (missione, tappa) → risposta.
+    pub chosen: std::collections::BTreeMap<(usize, usize), usize>,
+    /// Contatori del mondo dell'ultimo frame (servono anche ai dialoghi, vedi `dialog_for`).
+    counters: Vec<(String, u32)>,
 }
 
 impl Default for Missions {
@@ -243,6 +342,9 @@ impl Default for Missions {
             enabled: false,
             talking: None,
             talked: Vec::new(),
+            picked: Vec::new(),
+            chosen: Default::default(),
+            counters: Vec::new(),
         }
     }
 }
@@ -262,6 +364,8 @@ pub struct Facts {
     pub sides_done: usize,
     /// Contatori del mondo: serrature forzate, monete infilate (`thievery::Thievery::counters`).
     pub counters: Vec<(String, u32)>,
+    /// Cose sbloccate (lo riempie il motore).
+    pub unlocked: Vec<String>,
 }
 
 impl Missions {
@@ -295,12 +399,64 @@ impl Missions {
     }
 
     /// Qualcosa di sbloccato da una tappa già completata (per esempio `continente`).
+    /// Tappe fatte davvero della missione `i`: una scelta con `fine` chiude la missione, ma le
+    /// tappe saltate non valgono (non sbloccano nulla).
+    fn reached(&self, i: usize) -> usize {
+        let ended = self
+            .chosen
+            .iter()
+            .filter(|((m, _), _)| *m == i)
+            .filter(|((m, s), c)| {
+                self.list[*m]
+                    .steps
+                    .get(*s)
+                    .and_then(|st| st.choices.get(**c))
+                    .is_some_and(|ch| ch.effects.contains(&Effect::End))
+            })
+            .map(|((_, s), _)| s + 1)
+            .min();
+        self.progress[i]
+            .min(self.list[i].steps.len())
+            .min(ended.unwrap_or(usize::MAX))
+    }
+
     pub fn unlocked(&self, what: &str) -> bool {
-        self.list.iter().zip(&self.progress).any(|(m, p)| {
-            m.steps[..(*p).min(m.steps.len())]
-                .iter()
-                .any(|s| s.unlocks.iter().any(|u| u == what))
-        })
+        let by_step = self.list.iter().enumerate().any(|(i, m)| {
+            m.steps[..self.reached(i)].iter().any(|s| {
+                s.unlocks.iter().any(|u| u == what)
+                    || s.effects.contains(&Effect::Unlock(what.to_string()))
+            })
+        });
+        by_step
+            || self.chosen.iter().any(|((m, s), c)| {
+                self.list[*m]
+                    .steps
+                    .get(*s)
+                    .and_then(|step| step.choices.get(*c))
+                    .is_some_and(|ch| ch.effects.contains(&Effect::Unlock(what.to_string())))
+            })
+    }
+
+    /// Tutte le cose sbloccate finora (per la condizione `sbloccato`).
+    fn unlocked_all(&self) -> Vec<String> {
+        let mut out = Vec::new();
+        for (i, m) in self.list.iter().enumerate() {
+            for (k, s) in m.steps[..self.reached(i)].iter().enumerate() {
+                out.extend(s.unlocks.iter().cloned());
+                let chosen = self
+                    .chosen
+                    .get(&(i, k))
+                    .and_then(|c| s.choices.get(*c))
+                    .map(|c| c.effects.as_slice())
+                    .unwrap_or_default();
+                for e in s.effects.iter().chain(chosen) {
+                    if let Effect::Unlock(u) = e {
+                        out.push(u.clone());
+                    }
+                }
+            }
+        }
+        out
     }
 
     /// Tappa corrente di ogni missione cominciata e non finita.
@@ -318,13 +474,17 @@ impl Missions {
         npc: &str,
         facts: &mut Facts,
         player: &str,
-    ) -> Option<Vec<String>> {
+    ) -> Option<(Vec<String>, Vec<String>)> {
         if !self.enabled {
             return None;
         }
         facts.sides_done = self.sides_done();
+        facts.unlocked = self.unlocked_all();
+        if facts.counters.is_empty() {
+            facts.counters = self.counters.clone();
+        }
         let facts = &*facts;
-        let (mission, lines) = self.current(facts.quest_done).find_map(|(i, step)| {
+        let (mission, lines, choices) = self.current(facts.quest_done).find_map(|(i, step)| {
             let mine = step
                 .when
                 .iter()
@@ -334,20 +494,30 @@ impl Missions {
                 .iter()
                 .filter(|w| !matches!(w, When::Talk(_)))
                 .all(|w| holds(w, facts, &[], i));
-            (mine && rest && !step.lines.is_empty()).then(|| (i, step.lines.clone()))
+            (mine && rest && !step.lines.is_empty()).then(|| {
+                let choices = step.choices.iter().map(|c| c.text.clone()).collect();
+                (i, step.lines.clone(), choices)
+            })
         })?;
         // Il dialogo vale per questa missione sola: un altro incarico dello stesso abitante
         // aspetta la prossima volta che gli si parla.
         self.talking = Some((npc.to_string(), mission));
-        Some(lines.iter().map(|l| l.replace("{nome}", player)).collect())
+        Some((
+            lines.iter().map(|l| l.replace("{nome}", player)).collect(),
+            choices,
+        ))
     }
 
     /// Il dialogo si è chiuso: se era di missione ed è stato letto tutto, vale come «parlato».
-    pub fn dialog_closed(&mut self, finished: bool) {
-        if let Some(npc) = self.talking.take()
+    /// `choice` è la risposta scelta, se la tappa ne chiedeva una.
+    pub fn dialog_closed(&mut self, finished: bool, choice: Option<usize>) {
+        if let Some((npc, mission)) = self.talking.take()
             && finished
         {
-            self.talked.push(npc);
+            if let Some(c) = choice {
+                self.picked.push((mission, c));
+            }
+            self.talked.push((npc, mission));
         }
     }
 
@@ -358,6 +528,8 @@ impl Missions {
             return done;
         }
         facts.sides_done = self.sides_done();
+        facts.unlocked = self.unlocked_all();
+        self.counters = facts.counters.clone();
         let facts = &*facts;
         for i in 0..self.list.len() {
             let Some(step) = self.list[i].steps.get(self.progress[i]) else {
@@ -367,13 +539,28 @@ impl Missions {
                 continue;
             }
             if step.when.iter().all(|w| holds(w, facts, &self.talked, i)) {
-                let step = step.clone();
+                let mut step = step.clone();
+                // La risposta scelta aggiunge i suoi effetti a quelli della tappa.
+                if !step.choices.is_empty() {
+                    let c = self
+                        .picked
+                        .iter()
+                        .find(|(m, _)| *m == i)
+                        .map_or(0, |(_, c)| *c)
+                        .min(step.choices.len() - 1);
+                    self.chosen.insert((i, self.progress[i]), c);
+                    step.effects.extend(step.choices[c].effects.iter().cloned());
+                }
                 self.progress[i] += 1;
+                if step.effects.contains(&Effect::End) {
+                    self.progress[i] = self.list[i].steps.len();
+                }
                 let finished = self.progress[i] >= self.list[i].steps.len();
                 done.push((i, step, finished));
             }
         }
         self.talked.clear();
+        self.picked.clear();
         done
     }
 
@@ -433,11 +620,30 @@ impl Missions {
         }
     }
 
+    /// Risposte date, da salvare: (missione, tappa, risposta).
+    pub fn choices_snapshot(&self) -> Vec<(String, usize, usize)> {
+        self.chosen
+            .iter()
+            .map(|((m, s), c)| (self.list[*m].id.clone(), *s, *c))
+            .collect()
+    }
+
+    pub fn restore_choices(&mut self, saved: &[(String, usize, usize)]) {
+        self.chosen.clear();
+        for (id, step, choice) in saved {
+            if let Some(i) = self.index(id) {
+                self.chosen.insert((i, *step), *choice);
+            }
+        }
+    }
+
     /// Nuova partita: tutto da capo.
     pub fn reset(&mut self) {
         self.progress.iter_mut().for_each(|p| *p = 0);
         self.talking = None;
         self.talked.clear();
+        self.picked.clear();
+        self.chosen.clear();
     }
 
     /// Shell e prove: porta una missione a una tappa (le precedenti risultano fatte).
@@ -480,6 +686,7 @@ fn holds(w: &When, f: &Facts, talked: &[(String, usize)], mission: usize) -> boo
         When::Weather(kind) => f.weather == Some(*kind),
         When::SidesDone(n) => f.sides_done >= *n,
         When::Count(key, n) => f.counters.iter().any(|(k, v)| k == key && v >= n),
+        When::Unlocked(what) => f.unlocked.iter().any(|u| u == what),
         When::Quest(done) => {
             if *done {
                 f.quest_done
@@ -487,6 +694,40 @@ fn holds(w: &When, f: &Facts, talked: &[(String, usize)], mission: usize) -> boo
                 f.quest_accepted
             }
         }
+    }
+}
+
+/// Applica un effetto di tappa o di scelta.
+fn apply_effect(
+    effect: &Effect,
+    inventory: &mut crate::inventory::Inventory,
+    character: &mut crate::character::Character,
+) {
+    match effect {
+        Effect::Give(kind, n) => inventory.add(*kind, *n),
+        Effect::Take(kind, n) => {
+            inventory.consume(*kind, *n);
+        }
+        Effect::Coins(n) => inventory.add(crate::inventory::ItemKind::Coin, *n),
+        Effect::Karma(n, why) => crate::karma::deed(
+            *n,
+            if why.is_empty() {
+                "una scelta".to_string()
+            } else {
+                why.clone()
+            },
+        ),
+        Effect::Trust(name, n) => crate::karma::trust(name, *n),
+        Effect::Stat(stat, n) => {
+            let value = i16::from(character.stats.get(*stat)) + i16::from(*n);
+            character.stats.set(*stat, value.clamp(0, 255) as u8);
+            info!(
+                "[MISSIONE] {} → {}",
+                stat.name(),
+                character.stats.get(*stat)
+            );
+        }
+        Effect::Unlock(_) | Effect::End => {}
     }
 }
 
@@ -505,10 +746,12 @@ pub fn track_missions(
     thievery: Res<crate::thievery::Thievery>,
     house: Res<crate::house::House>,
     trial: Res<crate::archery::Trial>,
+    karma: Res<crate::karma::Karma>,
+    mut character: ResMut<crate::character::Character>,
     mut was_open: Local<bool>,
 ) {
     if *was_open && !dialog.open {
-        missions.dialog_closed(dialog.finished);
+        missions.dialog_closed(dialog.finished, dialog.result);
     }
     *was_open = dialog.open;
     let Ok(player) = players.single() else {
@@ -528,7 +771,10 @@ pub fn track_missions(
                 ("casa".to_string(), u32::from(house.stage)),
                 ("arco".to_string(), u32::from(trial.passed)),
             ])
+            // Segreti confidati: `quando: conta segreto:beppe 1` (ADR 0044).
+            .chain(karma.revealed.iter().map(|n| (format!("segreto:{n}"), 1)))
             .collect(),
+        unlocked: Vec::new(),
         items: inventory.slots.iter().map(|s| (s.kind, s.qty)).collect(),
         // Solo i vivi: un nemico sconfitto resta un attimo nel mondo prima di sparire.
         enemies: enemies
@@ -547,6 +793,9 @@ pub fn track_missions(
         }
         for (kind, n) in &step.gives {
             inventory.add(*kind, *n);
+        }
+        for effect in &step.effects {
+            apply_effect(effect, &mut inventory, &mut character);
         }
         let next = missions.list[i]
             .steps
@@ -570,7 +819,9 @@ pub fn track_missions(
                 crate::karma::trust(npc, crate::karma::MISSION_TRUST);
             }
         }
-        if finished {
+        // Una missione chiusa da un bivio (`fine`, per esempio vendendo le piastrine) non vale come
+        // compiuta per la bilancia: pesa solo la scelta.
+        if finished && !step.effects.contains(&Effect::End) {
             let m = &missions.list[i];
             crate::karma::deed(
                 if m.event {
@@ -615,6 +866,7 @@ mod tests {
             weather: None,
             sides_done: 0,
             counters: Vec::new(),
+            unlocked: Vec::new(),
         }
     }
 
@@ -661,6 +913,7 @@ mod tests {
             enabled: true,
             talking: None,
             talked: Vec::new(),
+            ..Default::default()
         };
         // Posto giusto, ora sbagliata.
         assert!(
@@ -681,12 +934,12 @@ mod tests {
         assert_eq!(m.dialog_for("Marta", &mut f, "Ada"), None);
         assert_eq!(
             m.dialog_for("Gino", &mut f, "Ada"),
-            Some(vec!["Ciao Ada.".to_string()])
+            Some((vec!["Ciao Ada.".to_string()], Vec::new()))
         );
-        m.dialog_closed(false);
+        m.dialog_closed(false, None);
         assert!(m.advance(&mut f).is_empty());
         m.dialog_for("Gino", &mut f, "Ada");
-        m.dialog_closed(true);
+        m.dialog_closed(true, None);
         let done = m.advance(&mut f);
         assert!(done[0].2, "missione finita");
         assert!(m.done("a") && m.unlocked("x"));
@@ -703,23 +956,104 @@ mod tests {
             enabled: true,
             talking: None,
             talked: Vec::new(),
+            ..Default::default()
         };
         let mut f = facts(Vec3::ZERO, 12.0, false, false);
         assert_eq!(
             m.dialog_for("Gino", &mut f, "x"),
-            Some(vec!["Uno.".to_string()])
+            Some((vec!["Uno.".to_string()], Vec::new()))
         );
-        m.dialog_closed(true);
+        m.dialog_closed(true, None);
         assert_eq!(m.advance(&mut f).len(), 1);
         assert_eq!(m.progress, vec![1, 0]);
         // La seconda volta Gino propone l'altro incarico.
         assert_eq!(
             m.dialog_for("Gino", &mut f, "x"),
-            Some(vec!["Due.".to_string()])
+            Some((vec!["Due.".to_string()], Vec::new()))
         );
-        m.dialog_closed(true);
+        m.dialog_closed(true, None);
         m.advance(&mut f);
         assert_eq!(m.progress, vec![1, 1]);
+    }
+
+    #[test]
+    fn a_choice_in_the_dialog_adds_its_effects_and_can_end_the_mission() {
+        use crate::inventory::{ItemKind, Relic};
+        let text = "[missione q]\ntitolo: Q\nsommario: s\ntipo: secondaria\n[tappa]\nobiettivo: scegli\n\
+                    quando: parla Ida\n> Che fai?\nkarma: 1 ascolto\n\
+                    scegli: Tienilo => dai amuleto piuma 1; fiducia Ida 5\n\
+                    scegli: Vendilo => monete 30; karma -2 avidità; fine\n\
+                    [tappa]\nobiettivo: dopo\nquando: vicino 0 0 1\nsblocca: dopo\n";
+        let list = parse(text);
+        let step = &list[0].steps[0];
+        assert_eq!(step.effects, vec![Effect::Karma(1, "ascolto".into())]);
+        assert_eq!(step.choices.len(), 2);
+        assert_eq!(
+            step.choices[0].effects,
+            vec![
+                Effect::Give(ItemKind::Relic(Relic::FeatherAmulet), 1),
+                Effect::Trust("Ida".into(), 5)
+            ]
+        );
+        assert!(step.choices[1].effects.contains(&Effect::End));
+        let mut m = Missions {
+            list,
+            progress: vec![0],
+            enabled: true,
+            ..Default::default()
+        };
+        let mut f = facts(Vec3::new(50.0, 0.0, 50.0), 12.0, false, false);
+        let (lines, choices) = m.dialog_for("Ida", &mut f, "Ada").unwrap();
+        assert_eq!(
+            (lines.len(), choices),
+            (1, vec!["Tienilo".into(), "Vendilo".into()])
+        );
+        m.dialog_closed(true, Some(1));
+        let done = m.advance(&mut f);
+        assert_eq!(done.len(), 1);
+        assert!(done[0].1.effects.contains(&Effect::Coins(30)));
+        assert!(done[0].2, "la seconda risposta chiude la missione");
+        assert_eq!(m.choices_snapshot(), vec![("q".to_string(), 0, 1)]);
+        assert!(!m.unlocked("dopo"));
+        // Chi sceglie la prima risposta prosegue alla tappa dopo.
+        m.reset();
+        m.dialog_for("Ida", &mut f, "Ada");
+        m.dialog_closed(true, Some(0));
+        let done = m.advance(&mut f);
+        assert!(!done[0].2);
+        assert!(done[0].1.effects.contains(&Effect::Trust("Ida".into(), 5)));
+        let saved = m.choices_snapshot();
+        m.reset();
+        m.restore_choices(&saved);
+        assert_eq!(m.chosen.get(&(0, 0)), Some(&0));
+    }
+
+    #[test]
+    fn the_side_quests_offer_their_choices_and_keepsakes() {
+        let m = all();
+        let find = |id: &str| m.list.iter().find(|x| x.id == id).unwrap();
+        let choices = |id: &str| -> usize { find(id).steps.iter().map(|s| s.choices.len()).sum() };
+        assert_eq!(choices("qs03"), 2);
+        assert_eq!(choices("qs04"), 2);
+        assert_eq!(choices("qs07"), 3);
+        assert_eq!(choices("qs08"), 2);
+        assert_eq!(choices("qs10"), 2);
+        // Ogni effetto scritto nei file è stato riconosciuto (nessuna scelta senza effetti).
+        for mission in &m.list {
+            for step in &mission.steps {
+                for c in &step.choices {
+                    assert!(
+                        !c.effects.is_empty(),
+                        "{}: «{}» senza effetti",
+                        mission.id,
+                        c.text
+                    );
+                }
+            }
+        }
+        let qs04 = find("qs04");
+        assert!(qs04.steps[2].choices[1].effects.contains(&Effect::End));
+        assert!(qs04.steps[3].unlocks.contains(&"rito-banditi".to_string()));
     }
 
     #[test]
@@ -742,6 +1076,7 @@ mod tests {
             enabled: true,
             talking: None,
             talked: Vec::new(),
+            ..Default::default()
         };
         let mut f = facts(Vec3::ZERO, 12.0, false, false);
         f.counters = vec![("serrature".into(), 2)];
@@ -772,6 +1107,7 @@ mod tests {
             enabled: true,
             talking: None,
             talked: Vec::new(),
+            ..Default::default()
         };
         let mut f = facts(Vec3::ZERO, 12.0, false, false);
         f.items = vec![(ItemKind::Fish, 1), (ItemKind::Apple, 3)];

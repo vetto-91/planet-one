@@ -2,6 +2,12 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Oggetti di trama** (ADR 0044): la tavoletta del ladro, la Moneta Madre, il campanaccio, la bussola di Lauro, le piastrine dei banditi, la chiave di rame, le mappe e gli altri ricordi del Prologo sono oggetti veri, nella nuova categoria «Ricordi» dell'inventario. L'Amuleto Piuma si indossa (+5 kg), la Focaccia del Navigante si mangia.
+- **Scelte nelle missioni secondarie**: lo scudo di Ferruccio si tiene o si appende sopra Porta Nord; le piastrine dei banditi si portano al rito di Don Anselmo (e da allora i banditi non tornano più) o si vendono ad Aldo per la taglia; Agnese prepara l'infuso del sogno (+1 Saggezza) o della memoria (+1 Intelligenza); per la scatola di Beppe ci sono tre risposte; la bussola si rende a Rosa o si porta a nord. Ogni scelta pesa su karma e fiducia.
+- Lo scasso per Guardia Carlo vale solo per i tre bauli della caserma.
+
 ## v0.0.62.0 — L'isola si completa: storia, missioni, abilità, karma, magia e casa (2026-11-14)
 
 - **Correzione: la visuale non girava col mouse a schermo intero** su alcuni PC (con Wayland, anche tramite XWayland, e su macOS): con il cursore bloccato il gioco leggeva la posizione del cursore, che lì non cambia più. Ora, a cursore catturato, legge il movimento del mouse vero e proprio; a finestra resta come prima.

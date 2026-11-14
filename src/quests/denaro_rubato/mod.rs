@@ -256,6 +256,7 @@ pub fn quest_on_dialog_close(
                     inventory.add(ItemKind::Coin, REWARD_COINS);
                     if quest.fate == Fate::Spared {
                         quest.mother_coin = true;
+                        inventory.add(ItemKind::Relic(crate::inventory::Relic::MotherCoin), 1);
                         show_title(&mut quest, "Il Viandante ti affida la Moneta Madre", 4.0);
                     } else {
                         show_title(&mut quest, "Missione completata: Denaro recuperato", 4.0);
@@ -708,6 +709,8 @@ pub fn thief_parley(
     // La tavoletta, al campo del ladro.
     if !quest.tablet && p.xz().distance(CAMP) < 3.0 {
         quest.tablet = true;
+        // La tavoletta si porta via: è un oggetto di trama (ADR 0044).
+        crate::inventory::grant(ItemKind::Relic(crate::inventory::Relic::Tablet), 1);
         session.notify(d.text("tavoletta", &[]));
         info!("[QUEST] tavoletta del ladro letta");
     }

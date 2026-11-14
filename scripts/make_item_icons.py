@@ -231,6 +231,125 @@ def stone():
     return im
 
 
+def relic_tablet():
+    im = layer(); d = ImageDraw.Draw(im)
+    d.rounded_rectangle([120, 90, 392, 430], 26, fill=(176, 150, 112, 255), outline=(98, 78, 52, 255), width=10)
+    for k in range(6):
+        y = 140 + k * 46
+        d.line([(160, y), (352 - (k % 3) * 40, y)], fill=(96, 72, 46, 255), width=9)
+    return im
+
+
+def relic_coin(rim, face, mark):
+    im = layer(); d = ImageDraw.Draw(im)
+    d.ellipse([86, 86, 426, 426], fill=rim, outline=(110, 80, 20, 255), width=10)
+    d.ellipse([136, 136, 376, 376], fill=face)
+    d.polygon([(256, 170), (330, 300), (182, 300)], outline=mark, width=12)
+    d.ellipse([236, 236, 276, 276], fill=mark)
+    return im
+
+
+def relic_quipu(n):
+    im = layer(); d = ImageDraw.Draw(im)
+    d.line([(80, 120), (432, 120)], fill=(120, 84, 48, 255), width=20)
+    colors = [(200, 60, 50, 255), (60, 120, 190, 255), (220, 180, 60, 255), (70, 150, 80, 255)]
+    for k in range(n):
+        x = 100 + k * (312 // max(n - 1, 1))
+        c = colors[k % len(colors)]
+        d.line([(x, 120), (x + 10, 410)], fill=c, width=10)
+        for j in range(1 + k % 3):
+            y = 190 + j * 70 + (k * 23) % 40
+            d.ellipse([x - 14, y - 14, x + 18, y + 18], fill=c, outline=(60, 40, 20, 255), width=4)
+    return im
+
+
+def relic_disc():
+    im = layer(); d = ImageDraw.Draw(im)
+    d.ellipse([70, 70, 442, 442], fill=(92, 140, 112, 255), outline=(52, 86, 66, 255), width=12)
+    pts = [(256 + math.cos(t / 6) * t * 0.9, 256 + math.sin(t / 6) * t * 0.9) for t in range(0, 180, 3)]
+    d.line(pts, fill=(170, 210, 180, 255), width=8)
+    return im
+
+
+def relic_tags():
+    im = layer(); d = ImageDraw.Draw(im)
+    d.arc([140, 40, 372, 260], 200, 340, fill=(150, 150, 160, 255), width=8)
+    for k, x in enumerate([150, 236, 322]):
+        d.rounded_rectangle([x - 46, 200 + k * 20, x + 46, 380 + k * 20], 18, fill=(170, 172, 182, 255), outline=(90, 92, 102, 255), width=8)
+        d.line([(x - 22, 260 + k * 20), (x + 22, 260 + k * 20)], fill=(90, 92, 102, 255), width=8)
+    return im
+
+
+def relic_bell():
+    im = layer(); d = ImageDraw.Draw(im)
+    d.polygon([(186, 120), (326, 120), (390, 400), (122, 400)], fill=(214, 168, 70, 255), outline=(130, 92, 30, 255))
+    d.rectangle([226, 80, 286, 124], fill=(180, 110, 60, 255))
+    d.ellipse([226, 380, 286, 440], fill=(120, 80, 30, 255))
+    d.line([(150, 330), (362, 330)], fill=(190, 110, 60, 255), width=14)
+    return im
+
+
+def relic_compass():
+    im = layer(); d = ImageDraw.Draw(im)
+    d.ellipse([80, 80, 432, 432], fill=(200, 160, 80, 255), outline=(120, 90, 40, 255), width=14)
+    d.ellipse([120, 120, 392, 392], fill=(236, 230, 210, 255))
+    d.polygon([(256, 140), (286, 256), (256, 372), (226, 256)], fill=(60, 60, 70, 255))
+    d.polygon([(256, 140), (286, 256), (226, 256)], fill=(200, 50, 50, 255))
+    d.ellipse([240, 240, 272, 272], fill=(190, 30, 40, 255))
+    return im
+
+
+def relic_key():
+    im = layer(); d = ImageDraw.Draw(im)
+    green, dark = (90, 160, 130, 255), (40, 90, 70, 255)
+    d.ellipse([90, 90, 250, 250], outline=dark, width=40)
+    d.ellipse([100, 100, 240, 240], outline=green, width=22)
+    d.polygon([(220, 210), (250, 180), (420, 350), (390, 380)], fill=green, outline=dark)
+    d.polygon([(350, 330), (380, 300), (430, 350), (400, 380)], fill=green, outline=dark)
+    return im
+
+
+def relic_bulb():
+    im = layer(); d = ImageDraw.Draw(im)
+    d.ellipse([136, 70, 376, 310], fill=(255, 240, 170, 220), outline=(180, 150, 70, 255), width=8)
+    d.line([(226, 230), (246, 170), (266, 230), (286, 170)], fill=(220, 120, 40, 255), width=6)
+    d.rectangle([196, 300, 316, 400], fill=(160, 160, 170, 255), outline=(90, 90, 100, 255), width=6)
+    for y in (330, 360):
+        d.line([(196, y), (316, y)], fill=(90, 90, 100, 255), width=6)
+    return im
+
+
+def relic_map(ink):
+    im = layer(); d = ImageDraw.Draw(im)
+    d.rectangle([110, 110, 402, 402], fill=(226, 206, 160, 255), outline=(150, 120, 80, 255), width=8)
+    d.ellipse([80, 90, 140, 422], fill=(206, 182, 132, 255), outline=(150, 120, 80, 255), width=6)
+    d.ellipse([372, 90, 432, 422], fill=(206, 182, 132, 255), outline=(150, 120, 80, 255), width=6)
+    pts = [(150 + k * 30, 256 + math.sin(k) * 60) for k in range(9)]
+    d.line(pts, fill=ink, width=10)
+    d.line([(160, 170), (340, 340)], fill=ink, width=5)
+    return im
+
+
+def relic_focaccia():
+    im = layer(); d = ImageDraw.Draw(im)
+    d.ellipse([80, 140, 432, 380], fill=(214, 168, 96, 255), outline=(150, 100, 50, 255), width=10)
+    for x, y in [(180, 220), (260, 200), (340, 230), (220, 290), (300, 300)]:
+        d.ellipse([x - 16, y - 12, x + 16, y + 12], fill=(170, 120, 60, 255))
+    return im
+
+
+def relic_feather():
+    im = layer(); d = ImageDraw.Draw(im)
+    d.line([(140, 420), (370, 90)], fill=(140, 120, 90, 255), width=10)
+    for k in range(14):
+        t = k / 13
+        x, y = 140 + (370 - 140) * t, 420 + (90 - 420) * t
+        d.line([(x, y), (x - 90 * (1 - t * 0.6), y - 30)], fill=(236, 240, 246, 255), width=14)
+        d.line([(x, y), (x + 60 * (1 - t * 0.6), y + 40)], fill=(220, 226, 236, 255), width=14)
+    d.ellipse([110, 400, 170, 460], outline=(200, 160, 80, 255), width=10)
+    return im
+
+
 def pack(body, flap, strap, wide=1.0, tall=1.0):
     im = layer()
     d = ImageDraw.Draw(im)
@@ -293,6 +412,20 @@ ICONS = {
     "grimaldello": lockpick,
     "legname": wood,
     "pietra": stone,
+    "tavoletta": relic_tablet,
+    "moneta-madre": lambda: relic_coin((222, 186, 80, 255), (240, 210, 120, 255), (120, 60, 30, 255)),
+    "quipu": lambda: relic_quipu(7),
+    "disco": relic_disc,
+    "quipu-maestro": lambda: relic_quipu(12),
+    "piastrine": relic_tags,
+    "campanaccio": relic_bell,
+    "bussola": relic_compass,
+    "chiave-rame": relic_key,
+    "bulbo": relic_bulb,
+    "mappa-correnti": lambda: relic_map((60, 90, 170, 255)),
+    "mappa-secche": lambda: relic_map((40, 120, 120, 255)),
+    "focaccia": relic_focaccia,
+    "amuleto": relic_feather,
 }
 
 

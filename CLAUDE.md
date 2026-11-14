@@ -53,7 +53,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 - `src/combat.rs`, `src/inventory.rs`, `src/hud.rs`: combattimento, inventario, HUD.
 - `src/quests/mod.rs`: parser dei dialoghi, voci del diario, fumetti (barks), registro quest.
 - `src/quests/<quest>/mod.rs` + `assets/quests/<quest>/dialoghi.txt`: logica e testi (modificabili a mano) di ogni quest. Vedi ADR 0003.
-- `src/quests/missions.rs` + `assets/quests/prologo/missioni.txt` e `secondarie.txt`: missioni a tappe guidate dai file di testo (storia principale del Prologo, ADR 0034; secondarie, ADR 0036; `eventi.txt`, ADR 0037).
+- `src/quests/missions.rs` + `assets/quests/prologo/missioni.txt` e `secondarie.txt`: missioni a tappe guidate dai file di testo (storia principale del Prologo, ADR 0034; secondarie, ADR 0036; `eventi.txt`, ADR 0037); scelte `scegli: testo => effetti` e oggetti di trama `inventory::Relic` (ADR 0044).
 - `src/sky.rs`: cielo da `assets/textures/sky.png` convertito in cubemap a runtime.
 - `src/weather.rs`: meteo deterministico per data (sereno, nuvoloso, pioggia, temporale, nebbia, neve), temperatura, vento, nebbia di distanza, particelle di pioggia/neve, neve a terra, suoni sintetizzati in locale (ADR 0014).
 - `src/seasons.rs`: stagioni visibili (tinte erba/chiome, fiori, neve a terra e sui tetti, foglie che cadono) da `look(giorno)`, ADR 0012.

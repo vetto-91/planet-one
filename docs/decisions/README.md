@@ -69,3 +69,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0041 | Incantesimi dell'Accordo | accettato |
 | 0042 | La casa del giocatore sul Poggio del Naufrago | accettato |
 | 0043 | La Prova dell'Arco | accettato |
+| 0044 | Oggetti di trama e scelte nelle missioni | accettato |
