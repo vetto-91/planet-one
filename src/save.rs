@@ -153,6 +153,8 @@ pub struct SaveData {
     pub karma: crate::karma::Karma,
     /// La casa del giocatore sull'isola (ADR 0042).
     pub house: crate::house::House,
+    /// La Prova dell'Arco è stata superata (ADR 0043).
+    pub archery_passed: bool,
     /// Regione in cui si trova il giocatore.
     pub region: Region,
     /// Stato delle altre regioni visitate (porte, contenitori, nemici…), com'erano quando
@@ -371,6 +373,7 @@ impl SaveData {
             thievery: Default::default(),
             karma: Default::default(),
             house: Default::default(),
+            archery_passed: false,
             region: Region::Isola,
             elsewhere: Vec::new(),
             present: HashSet::new(),
@@ -448,6 +451,7 @@ impl SaveData {
         line(format!("stadio = {}", self.house.stage));
         line(format!("legname = {}", self.house.wood));
         line(format!("pietra = {}", self.house.stone));
+        line(format!("prova_arco = {}", yes(self.archery_passed)));
         line(String::new());
         line("[furti]".into());
         line(format!("serrature = {}", self.thievery.picked));
@@ -748,6 +752,7 @@ impl SaveData {
                     "stadio" => self.house.stage = v.parse::<u8>().ok()?.min(crate::house::BUILT),
                     "legname" => self.house.wood = v.parse().ok()?,
                     "pietra" => self.house.stone = v.parse().ok()?,
+                    "prova_arco" => self.archery_passed = read_bool(v)?,
                     _ => return None,
                 }
             }
@@ -1165,6 +1170,7 @@ pub struct HeroParams<'w, 's> {
     thievery: ResMut<'w, crate::thievery::Thievery>,
     karma: ResMut<'w, crate::karma::Karma>,
     house: ResMut<'w, crate::house::House>,
+    trial: ResMut<'w, crate::archery::Trial>,
     effects: ResMut<'w, ActiveEffects>,
     inventory: ResMut<'w, Inventory>,
     equip: ResMut<'w, Equipment>,
@@ -1250,6 +1256,7 @@ fn collect(kind: SaveKind, session: &Session, hero: &HeroParams, world: &WorldPa
     d.thievery = hero.thievery.clone();
     d.karma = hero.karma.clone();
     d.house = *hero.house;
+    d.archery_passed = hero.trial.passed;
     d.vigor = hero.vitals.vigor;
     d.magic = hero.vitals.magic;
     d.region = crate::region::current();
@@ -1365,6 +1372,11 @@ fn apply(d: &SaveData, hero: &mut HeroParams, world: &mut WorldParams) {
     }
     if has("casa") {
         *hero.house = d.house;
+        *hero.trial = crate::archery::Trial {
+            passed: d.archery_passed,
+            hits: if d.archery_passed { 3 } else { 0 },
+            request: None,
+        };
     }
     if has("karma") {
         *hero.karma = d.karma.clone();
@@ -1703,6 +1715,7 @@ pub fn finish_loading(
             *hero.thievery = Default::default();
             *hero.karma = Default::default();
             *hero.house = Default::default();
+            *hero.trial = Default::default();
             *hero.vitals = crate::vitals::Vitals::full(character.stats);
             *hero.character = character;
             *hero.inventory = Inventory::default();
@@ -1759,6 +1772,7 @@ pub fn finish_loading(
             *hero.thievery = Default::default();
             *hero.karma = Default::default();
             *hero.house = Default::default();
+            *hero.trial = Default::default();
             world.memory.0 = data
                 .elsewhere
                 .iter()
@@ -1879,6 +1893,9 @@ mod tests {
         assert_eq!(back.thievery, d.thievery);
         assert_eq!(back.karma, d.karma);
         assert_eq!(back.house, d.house);
+        assert!(!back.archery_passed);
+        d.archery_passed = true;
+        assert!(SaveData::parse(&d.to_text()).unwrap().archery_passed);
         assert_eq!((back.vigor, back.magic), (42.0, 17.0));
         assert!(back.present.contains("abilita"));
         // Un salvataggio vecchio, senza la sezione, resta leggibile.

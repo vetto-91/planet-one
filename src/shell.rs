@@ -38,6 +38,7 @@ const HELP: &[&str] = &[
     "karma [n] · fiducia <abitante> <n> · davanti <abitante> · volti (diario su «Volti e segreti»)",
     "incantesimo <luce|dardo|cura|passo|scudo> · magia <n> (riserva di magia)",
     "casa <0|1|2> (la tua casa sul Poggio del Naufrago: terreno, fondamenta, finita)",
+    "scocca <1|2|3> (una freccia mirata a un anello della Prova dell'Arco)",
 ];
 
 /// Trucchi attivi: non salvati, tutti spenti a ogni avvio.
@@ -139,6 +140,8 @@ pub enum Cmd {
     SetSkill(crate::skills::Skill, u8),
     Level(Option<u32>),
     Perk(crate::skills::Skill),
+    /// Scocca una freccia mirata a un anello della Prova dell'Arco (1..3).
+    Shoot(usize),
     /// Porta la casa del giocatore a una tappa (0 terreno, 1 fondamenta, 2 finita).
     House(u8),
     /// Lancia un incantesimo; riempie o imposta la riserva di magia.
@@ -380,6 +383,12 @@ pub fn parse(line: &str) -> Result<Cmd, String> {
         "davanti" if !args.is_empty() => Ok(Cmd::Behind(args.join(" ").to_lowercase(), false)),
         "volti" => Ok(Cmd::Faces),
         "scassina" => Ok(Cmd::AutoPick),
+        "scocca" => args
+            .first()
+            .and_then(|a| a.parse::<usize>().ok())
+            .filter(|n| (1..=3).contains(n))
+            .map(|n| Cmd::Shoot(n - 1))
+            .ok_or_else(|| "uso: scocca <1|2|3> (anello della Prova dell'Arco)".to_string()),
         "casa" => args
             .first()
             .and_then(|a| a.parse::<u8>().ok())
@@ -521,6 +530,7 @@ pub struct ShellCtx<'w, 's> {
     karma: ResMut<'w, crate::karma::Karma>,
     magic: ResMut<'w, crate::magic::Magic>,
     house: ResMut<'w, crate::house::House>,
+    trial: ResMut<'w, crate::archery::Trial>,
     vitals: ResMut<'w, crate::vitals::Vitals>,
     journal_tab: ResMut<'w, crate::menu::JournalTab>,
     fast_travel: ResMut<'w, crate::places::FastTravel>,
@@ -1071,6 +1081,10 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
         Cmd::Faces => {
             *ctx.journal_tab = crate::menu::JournalTab::Faces;
             shell.say("diario sulla scheda «Volti e segreti» (tasto J)");
+        }
+        Cmd::Shoot(ring) => {
+            ctx.trial.request = Some(ring);
+            shell.say(format!("freccia verso l'anello {}", ring + 1));
         }
         Cmd::House(stage) => {
             *ctx.house = crate::house::House {

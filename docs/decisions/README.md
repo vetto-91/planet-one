@@ -68,3 +68,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0040 | Karma, fiducia e segreti degli abitanti | accettato |
 | 0041 | Incantesimi dell'Accordo | accettato |
 | 0042 | La casa del giocatore sul Poggio del Naufrago | accettato |
+| 0043 | La Prova dell'Arco | accettato |

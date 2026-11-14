@@ -1,0 +1,36 @@
+# La Prova dell'Arco (ADR 0043): tre anelli lungo il ruscello, in fila.
+god on
+ia off
+meteo sereno
+ora 10
+missioni on
+missione qs14 3
+aspetta 2
+tp 81 3 -8
+aspetta 2
+camera -70 8 2.5
+aspetta 1
+foto anelli
+verifica /anelli = 0
+verifica /prova_arco = false
+# Il primo anello.
+scocca 1
+aspetta 1.5
+verifica /anelli = 1
+# L'anello sbagliato fa ricominciare.
+scocca 3
+aspetta 1.5
+verifica /anelli = 0
+# Tre in fila.
+scocca 1
+aspetta 1.5
+scocca 2
+aspetta 1.5
+verifica /anelli = 2
+scocca 3
+aspetta 2
+verifica /anelli = 3
+verifica /prova_arco = true
+verifica /missioni/qs14 = 4
+verifica /abilita/arco > 1
+esci

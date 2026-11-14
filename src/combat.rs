@@ -80,7 +80,9 @@ pub(crate) type ArrowSolids = Or<(
 
 /// Danno di una freccia e raggio di impatto sul nemico.
 const ARROW_DAMAGE: f32 = 10.0;
-const ARROW_SPEED: f32 = 38.0;
+pub const ARROW_SPEED: f32 = 38.0;
+/// Caduta della freccia (m/s²).
+pub const ARROW_DROP: f32 = 6.0;
 
 /// Attacco del player su click sinistro, secondo l'arma impugnata: a mani nude, spada
 /// corta/lunga, ascia (colpisce più nemici) oppure arco (consuma una freccia).
@@ -146,19 +148,7 @@ pub fn player_attack(
         crate::vitals::spend(crate::vitals::SWING_COST);
         let dir = cam.forward();
         let start = p + Vec3::Y * 0.4 + *dir * 0.8;
-        commands.spawn((
-            crate::scene::SceneNode,
-            Arrow {
-                vel: *dir * ARROW_SPEED,
-                life: 3.0,
-            },
-            Mesh3d(meshes.add(Cuboid::new(0.04, 0.04, 0.7))),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color: Color::srgb(0.85, 0.78, 0.55),
-                ..default()
-            })),
-            Transform::from_translation(start).looking_to(dir, Vec3::Y),
-        ));
+        loose(&mut commands, &mut meshes, &mut materials, start, dir);
         return;
     }
 
@@ -194,6 +184,29 @@ pub fn player_attack(
     }
 }
 
+/// Scocca una freccia del giocatore da `start` verso `dir`.
+pub fn loose(
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+    start: Vec3,
+    dir: Dir3,
+) {
+    commands.spawn((
+        crate::scene::SceneNode,
+        Arrow {
+            vel: *dir * ARROW_SPEED,
+            life: 3.0,
+        },
+        Mesh3d(meshes.add(Cuboid::new(0.04, 0.04, 0.7))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::srgb(0.85, 0.78, 0.55),
+            ..default()
+        })),
+        Transform::from_translation(start).looking_to(dir, Vec3::Y),
+    ));
+}
+
 /// Sistema: muove le frecce (con una lieve caduta), le ferma contro terreno/edifici e
 /// danneggia i nemici che colpiscono.
 #[allow(clippy::too_many_arguments)]
@@ -212,7 +225,7 @@ pub fn update_arrows(
             commands.entity(e).despawn();
             continue;
         }
-        a.vel.y -= 6.0 * dt;
+        a.vel.y -= ARROW_DROP * dt;
         let step = a.vel * dt;
         let from = tf.translation;
         // Impatto contro il mondo.
@@ -597,7 +610,7 @@ pub fn update_enemy_arrows(
             commands.entity(e).despawn();
             continue;
         }
-        a.vel.y -= 6.0 * dt;
+        a.vel.y -= ARROW_DROP * dt;
         let step = a.vel * dt;
         let from = tf.translation;
         if let Ok(dir) = Dir3::new(step)

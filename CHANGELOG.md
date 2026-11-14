@@ -4,6 +4,7 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **La Prova dell'Arco** (ADR 0043): oltre il ponte di legno sul ruscello pendono tre anelli di ferro, uno vicino, uno a mezza strada e uno lontano. Centrali con tre frecce di fila, in quest'ordine; un tiro a vuoto fa ricominciare dal primo. È la missione secondaria nuova di Silvia (in tutto sono 17).
 - **La tua casa** (ADR 0042): a sud-ovest del paese, fuori dalle mura, c'è un terreno segnato da quattro paletti, il Poggio del Naufrago. Con il tasto `R` spacchi la pietra all'affioramento e tagli il legname alla catasta al margine del bosco (serve un'ascia); sempre con `R`, sul terreno, posi prima le fondamenta (10 pietre) e poi alzi la casa (16 tronchi e 6 pietre). La casa finita è un edificio vero: ci entri, e i suoi mobili vuoti sono il tuo deposito. Si salva con la partita.
 - **Missione secondaria nuova**: Un Tetto tra gli Ulivi e il Mare (Beppe e il Viandante). In tutto sono 16.
 - L'incantesimo scelto ora si legge a sinistra della barra della magia.

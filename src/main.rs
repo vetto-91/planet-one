@@ -10,6 +10,7 @@ mod ai;
 mod ambience;
 mod animals;
 mod animation;
+mod archery;
 mod audio;
 mod autopilot;
 mod bells;
@@ -236,6 +237,7 @@ fn main() -> AppExit {
         .add_plugins(karma::plugin)
         .add_plugins(magic::plugin)
         .add_plugins(house::plugin)
+        .add_plugins(archery::plugin)
         .add_plugins(water::plugin)
         .add_plugins(nature::plugin)
         .add_plugins(save::plugin)

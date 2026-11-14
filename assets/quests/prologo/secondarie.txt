@@ -521,3 +521,35 @@ quando: parla Viandante
 > Tieni: per il primo inverno.
 dai: pozione di cura 2
 monete: 15
+
+[missione qs14]
+titolo: La Prova dell'Arco
+sommario: Silvia ha appeso tre anelli di ferro lungo il ruscello, oltre il ponte di legno. Tre frecce, tre anelli, in fila.
+tipo: secondaria
+
+[tappa]
+obiettivo: Parla con Silvia della prova
+quando: parla Silvia
+> Chi tira bene non ha le braccia forti, {nome}: ha il respiro quieto. Vuoi vedere quanto è quieto il tuo?
+> Oltre il ponte di legno, lungo il ruscello, ho appeso tre anelli di ferro. Uno vicino, uno a mezza strada, uno lontano.
+> Tre frecce, una per anello, in quest'ordine. Se ne sbagli una ricominci dal primo. Ti servono un arco e queste.
+dai: freccia 12
+
+[tappa]
+obiettivo: Raggiungi il ponte di legno sul ruscello, a est del paese
+quando: vicino 81 -8 5
+pensiero: Eccoli: tre cerchi di ferro sospesi sull'acqua, uno dietro l'altro.
+
+[tappa]
+obiettivo: Centra i tre anelli con tre frecce di fila
+quando: conta arco 1
+pensiero: Tre rintocchi di ferro, uno dopo l'altro. Silvia vorrà saperlo.
+
+[tappa]
+obiettivo: Torna da Silvia
+quando: parla Silvia
+> Li ho sentiti suonare da qui. Tre, senza pause. Non capita spesso.
+> C'era un re, dicono, che tornò a casa vestito da mendicante e fece passare una freccia in dodici anelli. Tu sei a un quarto della strada.
+> Tieni: frecce buone, e qualche moneta per l'incomodo.
+dai: freccia 20
+monete: 25
