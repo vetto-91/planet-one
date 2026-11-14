@@ -45,6 +45,30 @@ sezione 2.4C, e `04`):
 - Mancano gli altri talenti con nome della trama (apnea, controparata, borseggio dei nemici, borseggio di
   chiavi e lettere).
 - L'armatura non si vede sul modello del personaggio.
-- I compagni non si salvano (dopo un caricamento sono di nuovo a casa), non ricevono danno dai nemici e non
-  viaggiano sul continente.
+- ~~I compagni non si salvano e non ricevono danno dai nemici~~: risolto, vedi «Aggiornamento» sotto. Non
+  viaggiano ancora sul continente: arriverà con l'Atto I.
 - La casa non si amplia ancora (camino che fuma, luce con interruttore).
+
+## Aggiornamento (2026-11-14): ferite, ritirata, salvataggio e voci dei compagni
+- **Vita** (`Companion.hp`, 100): i nemici vivi entro la portata del contatto feriscono il compagno come
+  il giocatore, e le loro frecce lo colpiscono lungo tutto il tratto percorso in un fotogramma
+  (`near_segment`). Dino porta la cotta della guardia e prende il 70% del danno.
+- **Bersaglio delle frecce** (`combat::enemy_ai`): un nemico tira al compagno se gli è più vicino del
+  giocatore, e comunque una freccia su due quando è in vista (`EnemyMind.shots`). Senza questa regola il
+  compagno, che sta qualche passo dietro, non veniva mai colpito.
+- **Allarme e ritirata**: sotto 35 il compagno lo dice (una volta, finché non si riprende); a zero lascia
+  il gruppo, torna alla sua giornata ed è ferito fino al giorno dopo (`CompanionState.wounded`, con il
+  giorno). Intanto nel dialogo non offre «Vieni con me». Lontano dai colpi per 8 secondi si riprende di
+  3 punti al secondo.
+- **HUD**: sopra la barra della magia, una barra arancio con il nome e la vita del compagno.
+- **Salvataggio**: sezione `[compagni]`, con `segue = <nome>|<vita>` e `ferito = <nome>|<giorno>`. Al
+  caricamento `restore_and_heal` toglie chi seguiva prima e rimette il compagno salvato appena l'abitante
+  c'è (solo sull'isola). Viaggiando verso il continente il compagno resta a casa.
+- **Battute con voce**: `assets/world/compagni.txt` (chiavi `segui`, `casa`, `allarme`, `ferita`), dette
+  con un fumetto e con la voce generata in locale da `scripts/gen_voci_prologo.py`. Un test controlla che
+  ogni battuta abbia la sua clip.
+- **Prove**: shell `ferisci <danno>`; nello stato del pilota `/personaggio/compagno_vita` e
+  `/personaggio/feriti`; il copione `zzzzzzzzzzzz-sistemi` prova colpo, salvataggio e ricaricamento,
+  allarme, ritirata e guarigione a mezzanotte.
+- Restano fuori: il compagno non schiva e non si ripara; i nemici in mischia colpiscono solo chi è a
+  portata di contatto.

@@ -70,6 +70,8 @@ pub struct EnemyMind {
     pub chase: bool,
     /// Secondi prima della prossima freccia.
     pub shot_cd: f32,
+    /// Frecce tirate: una su due va al compagno che ti segue, se è in vista (ADR 0049).
+    pub shots: u32,
 }
 
 /// Velocità del pattugliamento (m/s): a passo, non di corsa.
@@ -465,7 +467,7 @@ pub fn advance_dialog(
     mut voice: ResMut<crate::voice::VoiceQueue>,
     time: Res<Time>,
     karma: Res<crate::karma::Karma>,
-    mut companion: ResMut<crate::companions::CompanionRequest>,
+    mut companion: ResMut<crate::companions::CompanionState>,
     following: Query<(), With<crate::companions::Companion>>,
 ) {
     if !dialog.open {
@@ -522,10 +524,10 @@ pub fn advance_dialog(
                         travel.0 = Some(passage().0);
                     }
                     (Some(Offer::Follow), _) => {
-                        companion.0 = speaker.map(|e| (e, true));
+                        companion.request = speaker.map(|e| (e, true));
                     }
                     (Some(Offer::Stay), _) => {
-                        companion.0 = speaker.map(|e| (e, false));
+                        companion.request = speaker.map(|e| (e, false));
                     }
                     _ => {}
                 }
@@ -560,7 +562,12 @@ pub fn advance_dialog(
                 let follows = dialog.speaker_entity.is_some_and(|e| following.contains(e));
                 if follows {
                     actions.push(Offer::Stay);
-                } else if crate::companions::eligible(&dialog.speaker, &missions, &karma) {
+                } else if crate::companions::eligible(
+                    &dialog.speaker,
+                    &missions,
+                    &karma,
+                    &companion,
+                ) {
                     actions.push(Offer::Follow);
                 }
                 if settings.ai_enabled && ai.status == crate::ai::AiStatus::Ready {

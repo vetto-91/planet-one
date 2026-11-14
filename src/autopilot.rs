@@ -1083,11 +1083,17 @@ pub fn snapshot(world: &mut World) -> Value {
         .resource::<crate::inventory::Equipment>()
         .armor
         .map_or("nessuna", crate::inventory::ItemKind::name);
-    let compagno = world
-        .query_filtered::<&crate::entities::Npc, With<crate::companions::Companion>>()
+    let (compagno, compagno_vita) = world
+        .query::<(&crate::entities::Npc, &crate::companions::Companion)>()
         .iter(world)
         .next()
-        .map_or("", |n| n.name);
+        .map_or(("", 0.0), |(n, c)| (n.name, c.hp.round()));
+    let feriti: Vec<String> = world
+        .resource::<crate::companions::CompanionState>()
+        .wounded
+        .iter()
+        .map(|(n, _)| n.clone())
+        .collect();
     let who = world.resource::<crate::character::Character>();
     let prompt = world
         .resource::<crate::entities::NearestInteract>()
@@ -1098,6 +1104,8 @@ pub fn snapshot(world: &mut World) -> Value {
         "prompt": prompt,
         "armatura": armatura,
         "compagno": compagno,
+        "compagno_vita": compagno_vita,
+        "feriti": feriti.join(","),
         "risveglio": who.awakening,
         "eta": who.age.key(),
         "classe": who.class.name(),

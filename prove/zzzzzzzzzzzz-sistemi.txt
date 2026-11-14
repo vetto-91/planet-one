@@ -1,4 +1,5 @@
-# Sistemi del Prologo (ADR 0049): armatura, scatto, Calma, compagni.
+# Sistemi del Prologo (ADR 0049): armatura, scatto, Calma, compagni (ferite, salvataggio, ritirata).
+# env: PLANET_ONE_SESSION=Compagni
 god on
 ia off
 meteo sereno
@@ -51,4 +52,28 @@ verifica npc:silvia:dist < 6
 camera 200 20 8
 aspetta 1
 foto compagna
+verifica /personaggio/compagno_vita = 100
+# Un colpo: salvata e ricaricata, Silvia ti segue ancora con la vita che aveva.
+ferisci 30
+aspetta 1
+verifica /personaggio/compagno_vita = 70
+premi f5
+aspetta 2
+premi f9
+aspetta 10
+verifica /personaggio/compagno = Silvia
+verifica /personaggio/compagno_vita >= 70
+# Lontano dai colpi si è ripresa; con poca vita lo dice, senza forze si ritira a casa fino al
+# giorno dopo.
+verifica /personaggio/compagno_vita > 70
+ferisci 80
+aspetta 1
+verifica /personaggio/compagno_vita < 35
+ferisci 60
+aspetta 1
+verifica /personaggio/compagno != Silvia
+verifica /personaggio/feriti = Silvia
+ora 23.9
+aspetta 10
+verifica /personaggio/feriti != Silvia
 esci

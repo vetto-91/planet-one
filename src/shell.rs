@@ -38,7 +38,7 @@ const HELP: &[&str] = &[
     "karma [n] · fiducia <abitante> <n> · davanti <abitante> · volti (diario su «Volti e segreti»)",
     "incantesimo <luce|dardo|cura|passo|scudo> · magia <n> (riserva di magia)",
     "casa <0|1|2> (la tua casa sul Poggio del Naufrago: terreno, fondamenta, finita)",
-    "scocca <1|2|3> (una freccia mirata a un anello della Prova dell'Arco)",
+    "scocca <1|2|3> (una freccia mirata a un anello della Prova dell'Arco) · ferisci <danno> (il compagno)",
     "risveglio nuovo · risveglio eta <giovane|adulto|maturo> · risveglio classe <nome> · risveglio nome <nome>",
 ];
 
@@ -145,6 +145,8 @@ pub enum Cmd {
     Awake(String),
     /// Scocca una freccia mirata a un anello della Prova dell'Arco (1..3).
     Shoot(usize),
+    /// Un colpo al compagno che ti segue (ADR 0049).
+    Wound(f32),
     /// Porta la casa del giocatore a una tappa (0 terreno, 1 fondamenta, 2 finita).
     House(u8),
     /// Lancia un incantesimo; riempie o imposta la riserva di magia.
@@ -387,6 +389,12 @@ pub fn parse(line: &str) -> Result<Cmd, String> {
         "volti" => Ok(Cmd::Faces),
         "scassina" => Ok(Cmd::AutoPick),
         "risveglio" if !args.is_empty() => Ok(Cmd::Awake(args.join(" "))),
+        "ferisci" => args
+            .first()
+            .and_then(|a| a.parse::<f32>().ok())
+            .filter(|n| *n > 0.0)
+            .map(Cmd::Wound)
+            .ok_or_else(|| "uso: ferisci <danno> (un colpo al compagno che ti segue)".to_string()),
         "scocca" => args
             .first()
             .and_then(|a| a.parse::<usize>().ok())
@@ -535,6 +543,7 @@ pub struct ShellCtx<'w, 's> {
     magic: ResMut<'w, crate::magic::Magic>,
     house: ResMut<'w, crate::house::House>,
     trial: ResMut<'w, crate::archery::Trial>,
+    companions: ResMut<'w, crate::companions::CompanionState>,
     awakening: ResMut<'w, crate::awakening::Awakening>,
     vitals: ResMut<'w, crate::vitals::Vitals>,
     journal_tab: ResMut<'w, crate::menu::JournalTab>,
@@ -1117,6 +1126,10 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
                 shell.say(format!("risveglio: {r:?}"));
                 ctx.awakening.request = Some(r);
             }
+        }
+        Cmd::Wound(damage) => {
+            ctx.companions.hurt += damage;
+            shell.say(format!("colpo al compagno: {damage:.0}"));
         }
         Cmd::Shoot(ring) => {
             ctx.trial.request = Some(ring);

@@ -146,6 +146,14 @@ pub struct UiQueries<'w, 's> {
         ),
     >,
     pub anchors: Query<'w, 's, &'static crate::hud::NameAnchor>,
+    pub companions: Query<
+        'w,
+        's,
+        (
+            &'static crate::entities::Npc,
+            &'static crate::companions::Companion,
+        ),
+    >,
     pub styled: Local<'s, bool>,
     pub audio: ResMut<'w, crate::audio::AudioSettings>,
     pub chat: ResMut<'w, crate::ai::AiChat>,
@@ -278,6 +286,7 @@ pub fn ui(
                     &inventory,
                     &q.equip,
                     q.icons.as_deref(),
+                    q.companions.iter().next().map(|(n, c)| (n.name, c.hp)),
                 );
             }
 

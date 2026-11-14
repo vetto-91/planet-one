@@ -160,6 +160,9 @@ pub struct SaveData {
     pub house: crate::house::House,
     /// La Prova dell'Arco è stata superata (ADR 0043).
     pub archery_passed: bool,
+    /// Chi ti segue e con quanta vita, e chi è a casa ferito (da che giorno) (ADR 0049).
+    pub companion: Option<(String, f32)>,
+    pub wounded: Vec<(String, u32)>,
     /// Regione in cui si trova il giocatore.
     pub region: Region,
     /// Stato delle altre regioni visitate (porte, contenitori, nemici…), com'erano quando
@@ -180,8 +183,9 @@ const WORLD_SECTIONS: [&str; 8] = [
     "abitanti",
     "viandante",
 ];
-const HERO_SECTIONS: [&str; 14] = [
+const HERO_SECTIONS: [&str; 15] = [
     "abilita",
+    "compagni",
     "casa",
     "karma",
     "furti",
@@ -377,6 +381,8 @@ impl SaveData {
             keeper_stove_manual: false,
             missions: Vec::new(),
             choices: Vec::new(),
+            companion: None,
+            wounded: Vec::new(),
             known: Vec::new(),
             skills: Default::default(),
             thievery: Default::default(),
@@ -466,6 +472,14 @@ impl SaveData {
         line(format!("legname = {}", self.house.wood));
         line(format!("pietra = {}", self.house.stone));
         line(format!("prova_arco = {}", yes(self.archery_passed)));
+        line(String::new());
+        line("[compagni]".into());
+        if let Some((name, hp)) = &self.companion {
+            line(format!("segue = {name}|{hp:.0}"));
+        }
+        for (name, day) in &self.wounded {
+            line(format!("ferito = {name}|{day}"));
+        }
         line(String::new());
         line("[furti]".into());
         line(format!("serrature = {}", self.thievery.picked));
@@ -795,6 +809,17 @@ impl SaveData {
                     "legname" => self.house.wood = v.parse().ok()?,
                     "pietra" => self.house.stone = v.parse().ok()?,
                     "prova_arco" => self.archery_passed = read_bool(v)?,
+                    _ => return None,
+                }
+            }
+            "compagni" => {
+                let (k, v) = pair?;
+                let (name, n) = v.rsplit_once('|')?;
+                match k {
+                    "segue" => self.companion = Some((name.trim().to_string(), n.parse().ok()?)),
+                    "ferito" => self
+                        .wounded
+                        .push((name.trim().to_string(), n.parse().ok()?)),
                     _ => return None,
                 }
             }
@@ -1280,6 +1305,16 @@ pub struct WorldParams<'w, 's> {
     respawns: Query<'w, 's, (Entity, &'static crate::combat::EnemyRespawn)>,
     villagers: Query<'w, 's, VillagerItem, (Without<Player>, Without<Enemy>)>,
     keepers: Query<'w, 's, KeeperItem, KeeperFilter>,
+    companions: Query<
+        'w,
+        's,
+        (
+            &'static crate::entities::Npc,
+            &'static crate::companions::Companion,
+        ),
+        Without<Keeper>,
+    >,
+    companion_state: ResMut<'w, crate::companions::CompanionState>,
 }
 
 /// Nome del luogo per l'elenco dei salvataggi.
@@ -1312,6 +1347,12 @@ fn collect(kind: SaveKind, session: &Session, hero: &HeroParams, world: &WorldPa
     d.karma = hero.karma.clone();
     d.house = *hero.house;
     d.archery_passed = hero.trial.passed;
+    d.companion = world
+        .companions
+        .iter()
+        .next()
+        .map(|(npc, c)| (npc.name.to_string(), c.hp));
+    d.wounded = world.companion_state.wounded.clone();
     d.vigor = hero.vitals.vigor;
     d.magic = hero.vitals.magic;
     d.region = crate::region::current();
@@ -1428,6 +1469,10 @@ fn apply(d: &SaveData, hero: &mut HeroParams, world: &mut WorldParams) {
     }
     if has("luoghi") {
         world.known.0 = d.known.iter().cloned().collect();
+    }
+    if has("compagni") {
+        world.companion_state.restore = Some(d.companion.clone());
+        world.companion_state.wounded = d.wounded.clone();
     }
     if has("casa") {
         *hero.house = d.house;
@@ -2129,6 +2174,8 @@ mod tests {
         }];
         d.keeper_asleep = true;
         d.keeper_stove_manual = true;
+        d.companion = Some(("Guardia Dino".into(), 64.0));
+        d.wounded = vec![("Silvia".into(), 812)];
         d
     }
 

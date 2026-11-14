@@ -4,6 +4,9 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **Compagni completi** (ADR 0049): Silvia e Guardia Dino ora prendono colpi dai nemici (anche frecce mirate a loro), dicono quando sono allo stremo e, senza forze, tornano a casa a curarsi fino al giorno dopo. Lontani dai colpi si riprendono. La loro vita si vede in una barra sopra quella della magia.
+- **Il compagno resta nel salvataggio**: dopo un caricamento chi ti seguiva è ancora con te, con la vita che aveva; anche chi è ferito resta a casa.
+- **Battute con voce dei compagni**: accettare, tornare a casa, chiedere aiuto e ritirarsi hanno ognuna la sua battuta, detta con la voce del personaggio (in locale con Piper). I testi sono in `assets/world/compagni.txt`.
 - **Correzione: i salvataggi della v0.0.62 ritrovano la tappa giusta delle missioni.** Le tappe nuove del risveglio, di Agnese e delle stele spostavano gli indici: chi aveva salvato a metà di «Il Nome sulla Sabbia», «Le Voci delle Pietre Antiche» o «Sotto l'Arco dei Sei Gradoni» ricaricava la partita su una tappa sbagliata. Ora al caricamento ogni tappa torna al suo posto (una volta sola).
 
 ## v0.0.63.0 — Il Prologo completo: risveglio, scelte, segreti, mondo vivo, partenza e voci (2026-11-14)

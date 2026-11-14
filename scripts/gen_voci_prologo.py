@@ -3,7 +3,8 @@
 
 Legge le battute («> testo») delle missioni (`assets/quests/prologo/{missioni,secondarie,eventi}.txt`,
 dette da chi è nella condizione `quando: parla <abitante>` della tappa) e delle confidenze
-(`assets/world/segreti.txt`, dette dall'abitante della sezione). Per ogni battuta scrive
+(`assets/world/segreti.txt`, dette dall'abitante della sezione) e dei compagni di strada
+(`assets/world/compagni.txt`, righe «chiave: battuta» nella sezione del compagno). Per ogni battuta scrive
 `assets/audio/voci/prologo/<abitante>-<hash>.ogg`, con la voce della persona in `assets/ai/<abitante>.txt`.
 
 L'hash è FNV-1a a 64 bit del testo della battuta così com'è nel file (con `{nome}`): il gioco lo
@@ -27,6 +28,7 @@ from gen_tts_voci import convert_to_ogg, data_dir, find_piper, synthesize  # noq
 ROOT = Path(__file__).resolve().parent.parent
 MISSIONS = [ROOT / f"assets/quests/prologo/{n}.txt" for n in ("missioni", "secondarie", "eventi")]
 SECRETS = ROOT / "assets/world/segreti.txt"
+COMPANIONS = ROOT / "assets/world/compagni.txt"
 PERSONE = ROOT / "assets/ai"
 OUT = ROOT / "assets/audio/voci/prologo"
 MALE = "it_IT-riccardo-x_low"
@@ -83,6 +85,19 @@ def secret_lines(path: Path):
     return out
 
 
+def companion_lines(path: Path):
+    out, speaker = [], None
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            speaker = line[1:-1].strip()
+        elif ":" in line and speaker:
+            out.append((speaker, line.split(":", 1)[1].strip()))
+    return out
+
+
 def persona(speaker: str):
     voce, scale = MALE, 1.0
     path = PERSONE / f"{slug(speaker)}.txt"
@@ -109,7 +124,7 @@ def main():
     ap.add_argument("--piper")
     ap.add_argument("--elenco", action="store_true", help="mostra le battute senza generare nulla")
     args = ap.parse_args()
-    pairs = [p for path in MISSIONS for p in mission_lines(path)] + secret_lines(SECRETS)
+    pairs = [p for path in MISSIONS for p in mission_lines(path)] + secret_lines(SECRETS) + companion_lines(COMPANIONS)
     wanted = {clip_name(s, l): (s, l) for s, l in pairs}
     if args.elenco:
         for name, (s, l) in sorted(wanted.items()):

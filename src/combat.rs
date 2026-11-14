@@ -503,13 +503,13 @@ const LOSE_RANGE: f32 = 22.0;
 /// Il nemico tira da lontano fra queste distanze.
 const SHOOT_MIN: f32 = 4.5;
 const SHOOT_MAX: f32 = 16.0;
-const ENEMY_ARROW_DAMAGE: f32 = 7.0;
+pub const ENEMY_ARROW_DAMAGE: f32 = 7.0;
 const ENEMY_ARROW_SPEED: f32 = 17.0;
 
 /// Freccia scagliata da un nemico.
 #[derive(Component)]
 pub struct EnemyArrow {
-    vel: Vec3,
+    pub vel: Vec3,
     life: f32,
 }
 
@@ -536,7 +536,8 @@ pub fn clear_view(
 }
 
 /// Sistema: i nemici notano il giocatore (se lo vedono), smettono di pattugliare e attaccano:
-/// frecce da lontano, mischia da vicino (il contatto fa il resto).
+/// frecce da lontano, mischia da vicino (il contatto fa il resto). Se il compagno che ti segue è
+/// più vicino, tirano a lui, e comunque una freccia su due (ADR 0049).
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn enemy_ai(
     mut commands: Commands,
@@ -545,6 +546,14 @@ pub fn enemy_ai(
     spatial: avian3d::prelude::SpatialQuery,
     solids: Query<(), ArrowSolids>,
     player: Query<&GlobalTransform, (With<Player>, Without<Enemy>)>,
+    companions: Query<
+        &GlobalTransform,
+        (
+            With<crate::companions::Companion>,
+            Without<Player>,
+            Without<Enemy>,
+        ),
+    >,
     mut enemies: Query<
         (
             &GlobalTransform,
@@ -604,8 +613,26 @@ pub fn enemy_ai(
                 }
             );
         }
+        // Il bersaglio delle frecce: il giocatore, o il compagno in vista se è più vicino (o una
+        // freccia su due).
+        let share = mind.shots % 2 == 1;
+        let ((target, dist), at_companion) = companions
+            .iter()
+            .map(|c| c.translation() + Vec3::Y * 0.9)
+            .map(|c| (c, (c - eye).length()))
+            .filter(|(c, d)| {
+                (*d < dist || (share && *d < SHOOT_MAX)) && clear_view(&spatial, &solids, eye, *c)
+            })
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+            .filter(|_| sees)
+            .map(|c| (c, true))
+            .unwrap_or(((target, dist), false));
         if sees && mind.shot_cd <= 0.0 && (SHOOT_MIN..SHOOT_MAX).contains(&dist) {
             mind.shot_cd = 2.6;
+            mind.shots += 1;
+            if at_companion {
+                info!("[NEMICI] tira al compagno");
+            }
             // Mira un po' avanti, con la caduta compensata.
             let aim = (target - eye).normalize_or_zero() + Vec3::Y * (dist / 120.0);
             commands.spawn((

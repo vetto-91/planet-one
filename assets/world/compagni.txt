@@ -1,0 +1,19 @@
+# Battute dei compagni di strada (ADR 0049). Modificabile a mano: letto alla compilazione.
+# Una sezione per compagno, una riga «chiave: battuta» per ogni momento:
+#   segui    quando accetta di venire con te («Vieni con me»)
+#   casa     quando lo rimandi alla sua giornata («Torna pure a casa»)
+#   allarme  quando gli resta poca vita
+#   ferita   quando si ritira, ferito, fino al giorno dopo
+# Le voci si generano in locale con scripts/gen_voci_prologo.py (rigenerare dopo ogni modifica).
+
+[Silvia]
+segui: Va bene. Io sto un passo dietro, con l'arco pronto: tu guarda avanti.
+casa: Torno all'arceria. Se ti serve una freccia in più, sai dove trovarmi.
+allarme: Mi hanno presa di striscio… non reggo ancora per molto!
+ferita: Basta, sanguino troppo. Torno a casa a fasciarmi: domani ci sono di nuovo.
+
+[Guardia Dino]
+segui: Agli ordini, per modo di dire. Ti copro le spalle.
+casa: Torno al mio posto. La caserma non si sorveglia da sola.
+allarme: Mi stanno facendo a pezzi, sbrighiamoci!
+ferita: Non ce la faccio più… vado a farmi ricucire. Domani torno buono.

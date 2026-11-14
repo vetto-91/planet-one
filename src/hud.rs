@@ -14,6 +14,7 @@ use bevy_egui::egui;
 const HEALTH_COLOR: egui::Color32 = egui::Color32::from_rgb(196, 58, 52);
 const VIGOR_COLOR: egui::Color32 = egui::Color32::from_rgb(98, 172, 84);
 const MAGIC_COLOR: egui::Color32 = egui::Color32::from_rgb(72, 118, 214);
+const COMPANION_COLOR: egui::Color32 = egui::Color32::from_rgb(214, 150, 64);
 /// Altezza delle barre e distanza dalla barra degli oggetti.
 const BAR_H: f32 = 20.0;
 const BAR_GAP: f32 = 8.0;
@@ -86,7 +87,9 @@ fn reserve_bar(
 }
 
 /// Disegna l'HUD in `Playing`: crosshair al centro, barra degli oggetti in basso e, subito sopra,
-/// le tre riserve: magia a sinistra, vita al centro, vigore a destra (ADR 0039).
+/// le tre riserve: magia a sinistra, vita al centro, vigore a destra (ADR 0039). Sopra la magia, la
+/// vita del compagno che ti segue (ADR 0049).
+#[allow(clippy::too_many_arguments)]
 pub fn draw_hud(
     ctx: &egui::Context,
     health: &PlayerHealth,
@@ -95,6 +98,7 @@ pub fn draw_hud(
     inventory: &Inventory,
     equip: &crate::inventory::Equipment,
     icons: Option<&crate::inventory_ui::ItemIcons>,
+    companion: Option<(&str, f32)>,
 ) {
     let size = ctx.viewport_rect().size();
 
@@ -180,6 +184,21 @@ pub fn draw_hud(
             "[Q]",
             font,
             crate::ui_style::GOLD,
+        );
+    }
+    if let Some((name, hp)) = companion {
+        let rect = egui::Rect::from_min_size(
+            egui::pos2(left, bars_y - BAR_H - 6.0),
+            egui::vec2(side_w, BAR_H),
+        );
+        reserve_bar(
+            &painter,
+            rect,
+            name,
+            hp,
+            crate::companions::MAX_HP,
+            COMPANION_COLOR,
+            false,
         );
     }
     reserve_bar(
