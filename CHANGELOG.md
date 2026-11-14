@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.63.0 — Il Prologo completo: risveglio, scelte, segreti, mondo vivo, partenza e voci (2026-11-14)
 
 - **Le voci del Prologo** (ADR 0050): tutte le battute delle missioni, delle secondarie, degli eventi e delle confidenze degli abitanti ora si sentono, ognuna con la voce del suo personaggio (221 battute, generate in locale con Piper).
 - **Suoni**: gli incantesimi, l'anello di ferro centrato nella Prova dell'Arco, i perni e la serratura che cede.
