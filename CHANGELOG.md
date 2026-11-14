@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.62.0 — L'isola si completa: storia, missioni, abilità, karma, magia e casa (2026-11-14)
 
 - **Correzione: la visuale non girava col mouse a schermo intero** su alcuni PC (con Wayland, anche tramite XWayland, e su macOS): con il cursore bloccato il gioco leggeva la posizione del cursore, che lì non cambia più. Ora, a cursore catturato, legge il movimento del mouse vero e proprio; a finestra resta come prima.
 - **Correzione: in prima persona si vedeva l'interno della testa.** La camera stava all'altezza del collo e, con le animazioni (soprattutto correndo), la testa le finiva davanti. Ora è all'altezza degli occhi e in prima persona testa e capelli non si disegnano; guardando in basso il corpo si vede ancora.

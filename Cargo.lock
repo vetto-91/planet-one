@@ -5166,7 +5166,7 @@ checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 
 [[package]]
 name = "planet-one"
-version = "0.0.61"
+version = "0.0.62"
 dependencies = [
  "avian3d",
  "bevy",

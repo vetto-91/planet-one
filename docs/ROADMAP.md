@@ -70,15 +70,15 @@ Strategia: **vertical slice prima**. Una demo giocabile (1 quest, 1 NPC, 1 nemic
 | 13.4 — Beta test: audio e camera | Audio posizionale (ADR 0032), passi sull'erba, voci che non saturano, camera fuori dalle gronde, intoppi segnalati dal pilota | `v0.0.60.0` |
 | 14.1 — Continente del Nord: regione esplorabile | Regioni separate e viaggio con Gaspare (ADR 0033); Piana delle Brume: approdo, bosco di querce e betulle, Grande Lago, Fontebruma, i 16 luoghi | `v0.0.61.0` |
 | 14.2 — Continente del Nord: abitanti | I 12 di Fontebruma, Olmo, Nereo, le tre famiglie isolate, Barnaba: case, orari, voci, personalità IA, negozi | `v0.0.61.0` |
-| 14.3 — Isola: storia principale del Prologo | Motore di missioni a tappe da file (ADR 0034); Il Nome sulla Sabbia, Le Voci delle Pietre Antiche, Sotto l'Arco dei Sei Gradoni, Oltre il Velo del Nord; il continente si apre con la storia | in corso |
-| 14.4 — Isola: bivi e missioni secondarie | Bivi di «Denaro Rubato» (ADR 0035); undici missioni secondarie degli abitanti (ADR 0036); restano sei secondarie che chiedono sistemi nuovi | in corso |
-| 14.5 — Isola: eventi, luoghi e viaggio veloce | Undici eventi casuali, altre tre secondarie (14 in tutto), luoghi scoperti sulla mappa e viaggio veloce (ADR 0037) | in corso |
-| 14.6 — Isola: abilità e livelli | Sedici abilità che crescono con l'uso (undici allenabili), livello del personaggio, punti statistica, Nodi d'Oro e talenti a ranghi (ADR 0038) | in corso |
-| 14.7 — Isola: vigore, magia, scasso e borseggio | Barre di magia, vita e vigore sopra la barra degli oggetti; serrature dei bauli col gioco dei perni; borseggio e borseggio inverso; missione QS-16 (ADR 0039) | in corso |
-| 14.8 — Isola: karma e segreti | Karma globale, fiducia per abitante, regali, i 26 segreti confidati agli amici, scheda «Volti e segreti» nel diario, prezzi e IA locale che ne tengono conto (ADR 0040) | in corso |
-| 14.9 — Isola: incantesimi | Cinque incantesimi che spendono la magia e allenano Magie, scelti con Z e lanciati con Q (ADR 0041) | in corso |
-| 14.10 — Isola: la casa del giocatore | Terreno fuori dalle mura, legname e pietra da raccogliere, fondamenta e casa visitabile con deposito, missione QS-17 (ADR 0042) | in corso |
-| 14.11 — Isola: la Prova dell'Arco | Tre anelli lungo il ruscello da centrare in fila, missione QS-14 di Silvia (ADR 0043) | in corso |
+| 14.3 — Isola: storia principale del Prologo | Motore di missioni a tappe da file (ADR 0034); Il Nome sulla Sabbia, Le Voci delle Pietre Antiche, Sotto l'Arco dei Sei Gradoni, Oltre il Velo del Nord; il continente si apre con la storia | `v0.0.62.0` |
+| 14.4 — Isola: bivi e missioni secondarie | Bivi di «Denaro Rubato» (ADR 0035); undici missioni secondarie degli abitanti (ADR 0036); restano sei secondarie che chiedono sistemi nuovi | `v0.0.62.0` |
+| 14.5 — Isola: eventi, luoghi e viaggio veloce | Undici eventi casuali, altre tre secondarie (14 in tutto), luoghi scoperti sulla mappa e viaggio veloce (ADR 0037) | `v0.0.62.0` |
+| 14.6 — Isola: abilità e livelli | Sedici abilità che crescono con l'uso (undici allenabili), livello del personaggio, punti statistica, Nodi d'Oro e talenti a ranghi (ADR 0038) | `v0.0.62.0` |
+| 14.7 — Isola: vigore, magia, scasso e borseggio | Barre di magia, vita e vigore sopra la barra degli oggetti; serrature dei bauli col gioco dei perni; borseggio e borseggio inverso; missione QS-16 (ADR 0039) | `v0.0.62.0` |
+| 14.8 — Isola: karma e segreti | Karma globale, fiducia per abitante, regali, i 26 segreti confidati agli amici, scheda «Volti e segreti» nel diario, prezzi e IA locale che ne tengono conto (ADR 0040) | `v0.0.62.0` |
+| 14.9 — Isola: incantesimi | Cinque incantesimi che spendono la magia e allenano Magie, scelti con Z e lanciati con Q (ADR 0041) | `v0.0.62.0` |
+| 14.10 — Isola: la casa del giocatore | Terreno fuori dalle mura, legname e pietra da raccogliere, fondamenta e casa visitabile con deposito, missione QS-17 (ADR 0042) | `v0.0.62.0` |
+| 14.11 — Isola: la Prova dell'Arco | Tre anelli lungo il ruscello da centrare in fila, missione QS-14 di Silvia (ADR 0043) | `v0.0.62.0` |
 | 5.y — Mondo vivo | Colonna sonora con volume, casetta-chiosco esplorabile (porta, interni, stufa con fumo), routine giorno/notte del Viandante, voci dei personaggi, versione nel menu | `v0.0.7.0` |
 | 5.z — Mondo vivo, rifiniture | Interazione col mirino, casetta con serranda/interruttore/finestre e luci con ombre, routine del Viandante v2, voci normalizzate con ducking della musica | `v0.0.8.0` |
 | 5.w — Mappa e strumenti | Mappa dall'alto (M) con bussola e zoom, modalità debug piazzamenti (F4) con file `debug/placements.txt`, vetri e scuri spessi, il Viandante chiude porta e finestre | `v0.0.9.0` |
