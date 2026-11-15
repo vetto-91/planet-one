@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.65.0 — Isola, Prologo e traversata completi: ricompense, scene, eventi, l'approdo e le rifiniture (2026-11-15)
 
 - **Cinque luoghi nuovi sulla mappa** (ADR 0055): il Faro, il Porticciolo, il Laghetto, il Ponte sul ruscello e il Poggio del Naufrago si scoprono avvicinandosi e poi si raggiungono col viaggio veloce.
 - **La legnaia e la porticina**: vicino alla casa di Beppe c'è una legnaia con le cataste e una scaletta, e nelle mura ovest una piccola porta. La sera Pietro ci va di nascosto: seguilo senza farti vedere e ne scoprirai il segreto.
