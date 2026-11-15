@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.64.0 — Il Prologo rifinito: compagni, segreti, eventi vivi, partenza, età e voci (2026-11-15)
 
 - **Le battute del gioco hanno la voce** (ADR 0050): il saluto secondo la fama, il rifiuto di chi non ti parla, il grazie per un regalo, chi ti coglie a borseggiare, la guardia che ti multa, chi si accorge di essere pedinata, la lite di Tonio e Nina, il bandito del ponte e Lino il carrettiere. Ognuno con la sua voce (160 battute nuove, generate in locale con Piper). I testi sono in `assets/world/battute.txt`.
 - **Pronuncia dei nomi**: un piccolo lessico (`assets/audio/voci/pronuncia.txt`) corregge come la voce legge Quipu, Ermes, Fontevivo e Calliope, anche nei dialoghi dal vivo con l'IA.
