@@ -105,6 +105,7 @@ pub fn build(
     mut nearest: ResMut<crate::entities::NearestInteract>,
     mut session: ResMut<crate::save::Session>,
     mut cooldown: Local<f32>,
+    mut knack: Local<f32>,
 ) {
     *cooldown = (*cooldown - time.delta_secs()).max(0.0);
     if dialog.open {
@@ -144,9 +145,18 @@ pub fn build(
         }
         *cooldown = GATHER_COOLDOWN;
         crate::vitals::spend(GATHER_VIGOR);
-        inventory.add(kind, 1);
+        // Mano del Mastro (talento di Costruire): ogni rango rende un pezzo in più ogni tanto.
+        let (extra, rest) = knack_bonus(*knack, skills::rank(Skill::Building));
+        *knack = rest;
+        inventory.add(kind, 1 + extra);
         skills::train(Skill::Building, 1.5);
-        info!("[CASA] raccolto: {}", kind.name());
+        info!("[CASA] raccolto: {} x{}", kind.name(), 1 + extra);
+        if extra > 0 {
+            session.notify(format!(
+                "Colpo da mastro: un pezzo di {} in più",
+                kind.name()
+            ));
+        }
         return;
     }
     if !here(island, p, PLOT, PLOT_RANGE) {
@@ -181,6 +191,14 @@ pub fn build(
         session.notify(format!("Messi in opera {wood} legname e {stone} pietra"));
         info!("[CASA] messi in opera {wood} legname, {stone} pietra");
     }
+}
+
+/// Pezzi in più per il talento di Costruire: ogni raccolta mette da parte il 15% per rango, e
+/// quando si arriva a un pezzo intero lo si aggiunge. Rende (pezzi in più, resto).
+pub fn knack_bonus(saved: f32, rank: f32) -> (u32, f32) {
+    let total = saved + 0.15 * rank;
+    let whole = total.floor();
+    (whole as u32, total - whole)
 }
 
 /// Sistema: la casa finita è un piazzamento in più (non scritto nel file dei piazzamenti).
@@ -380,6 +398,19 @@ pub fn plugin(app: &mut App) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_master_hand_adds_a_piece_now_and_then() {
+        assert_eq!(knack_bonus(0.0, 0.0), (0, 0.0));
+        // Rango 2: il 30% a raccolta, un pezzo in più ogni quattro raccolte circa.
+        let (mut saved, mut extra) = (0.0, 0);
+        for _ in 0..10 {
+            let (e, r) = knack_bonus(saved, 2.0);
+            extra += e;
+            saved = r;
+        }
+        assert_eq!(extra, 3);
+    }
 
     #[test]
     fn sleeping_wakes_you_at_seven() {

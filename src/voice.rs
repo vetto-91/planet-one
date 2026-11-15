@@ -235,6 +235,16 @@ mod tests {
     }
 
     #[test]
+    fn every_bark_line_has_its_voice() {
+        for (name, key, text) in crate::awakening::bark_lines() {
+            assert!(
+                !line_clip(name, text).is_empty(),
+                "{name} «{key}»: voce mancante (scripts/gen_voci_prologo.py)"
+            );
+        }
+    }
+
+    #[test]
     fn farewell_clip_matches_voice_and_wraps() {
         assert_eq!(farewell_clip("it_IT-paola-medium", 0), "congedo/f-1");
         assert_eq!(farewell_clip("it_IT-riccardo-x_low", 7), "congedo/m-2");

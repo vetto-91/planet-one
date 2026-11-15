@@ -4,6 +4,12 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **L'età si sente nei dialoghi** (ADR 0047): Gaspare e Don Anselmo parlano in modo diverso a un giovane, a un adulto e a una persona matura (nove battute nuove, con voce).
+- **Ettore scende dal faro**: quando arrivi da Gaspare il guardiano del faro è lì al molo, ti saluta, e dopo che hai detto il tuo nome torna su.
+- **Due talenti nuovi** (ADR 0049): la **Controparata di Atena** (dopo un colpo parato con lo scudo il fendente successivo fa il doppio) e le **Dita di Mercurio** (frugare nelle tasche dei nemici che non ti hanno visto, e sfilare la chiave di casa con le monete di un abitante: la chiave apre quella porta).
+- **Mano del Mastro**: salendo in Costruire ogni tanto raccogli un pezzo di legname o di pietra in più.
+- **La tua casa** (ADR 0042): un interruttore accanto alla porta comanda le luci, e il focolare lo accendi e lo spegni solo tu.
+- **Correzione: i banditi in mischia ora colpiscono davvero.** Si fermavano appena fuori dalla portata del colpo, così quasi non facevano danno.
 - **La Porta Sommersa si vede** (ADR 0048): in fondo al cunicolo della grotta c'è una lastra di pietra con fasce e un disco di rame. Quando le stele del laghetto risuonano, scende nel pavimento con un rombo e oltre si vedono gradini che spariscono in un'acqua azzurra.
 - **La Sera delle Lanterne con la piazza piena**: la sera prima della partenza gli abitanti lasciano le loro faccende e si radunano attorno al pozzo, girati verso il centro, e otto lanterne si accendono una a una. Alle 23:30 la festa finisce e tutti tornano a casa. Le guardie restano al loro turno.
 - **Eventi con persone vere** (ADR 0046): al crepuscolo Lino il carrettiere ha la ruota nel fango sulla strada del nord, e mentre lo aiuti escono dal bosco due predoni; di giorno una pecora impigliata nei rovi ti segue fino al gregge, se la liberi; in tarda mattinata Tonio e Nina litigano a voce alta in piazza finché non fai da giudice.

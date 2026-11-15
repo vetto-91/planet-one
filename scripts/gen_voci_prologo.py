@@ -4,7 +4,8 @@
 Legge le battute («> testo») delle missioni (`assets/quests/prologo/{missioni,secondarie,eventi}.txt`,
 dette da chi è nella condizione `quando: parla <abitante>` della tappa) e delle confidenze
 (`assets/world/segreti.txt`, dette dall'abitante della sezione) e dei compagni di strada
-(`assets/world/compagni.txt`, righe «chiave: battuta» nella sezione del compagno). Per ogni battuta scrive
+(`assets/world/compagni.txt`, righe «chiave: battuta» nella sezione del compagno) e dei fumetti
+(`assets/world/battute.txt`, stesso formato). Per ogni battuta scrive
 `assets/audio/voci/prologo/<abitante>-<hash>.ogg`, con la voce della persona in `assets/ai/<abitante>.txt`.
 
 L'hash è FNV-1a a 64 bit del testo della battuta così com'è nel file (con `{nome}`): il gioco lo
@@ -29,6 +30,7 @@ ROOT = Path(__file__).resolve().parent.parent
 MISSIONS = [ROOT / f"assets/quests/prologo/{n}.txt" for n in ("missioni", "secondarie", "eventi")]
 SECRETS = ROOT / "assets/world/segreti.txt"
 COMPANIONS = ROOT / "assets/world/compagni.txt"
+BARKS = ROOT / "assets/world/battute.txt"
 PERSONE = ROOT / "assets/ai"
 OUT = ROOT / "assets/audio/voci/prologo"
 MALE = "it_IT-riccardo-x_low"
@@ -65,7 +67,8 @@ def mission_lines(path: Path):
             flush()
             speaker, lines = None, []
         elif line.startswith(">"):
-            lines.append(line[1:].strip())
+            # «> [giovane] testo»: la battuta per un'età sola (ADR 0047); la voce è del solo testo.
+            lines.append(re.sub(r"^\[(giovane|adulto|maturo)\]\s*", "", line[1:].strip()))
         elif line.startswith("quando:"):
             m = re.match(r"quando:\s*parla\s+(.+)$", line)
             if m:
@@ -124,7 +127,7 @@ def main():
     ap.add_argument("--piper")
     ap.add_argument("--elenco", action="store_true", help="mostra le battute senza generare nulla")
     args = ap.parse_args()
-    pairs = [p for path in MISSIONS for p in mission_lines(path)] + secret_lines(SECRETS) + companion_lines(COMPANIONS)
+    pairs = [p for path in MISSIONS for p in mission_lines(path)] + secret_lines(SECRETS) + companion_lines(COMPANIONS) + companion_lines(BARKS)
     wanted = {clip_name(s, l): (s, l) for s, l in pairs}
     if args.elenco:
         for name, (s, l) in sorted(wanted.items()):

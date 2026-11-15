@@ -332,7 +332,7 @@ pub fn companions_hurt(
                 hp.current > 0.0
                     && !calmed
                     && !(thief && quest.thief_calm)
-                    && et.translation().distance(here) <= crate::combat::CONTACT_RANGE
+                    && crate::combat::in_contact(et.translation(), here)
             })
         {
             damage += crate::combat::CONTACT_DAMAGE;

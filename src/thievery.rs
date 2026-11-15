@@ -11,7 +11,7 @@
 //! La riuscita dipende dal grado dell'abilità; i tiri sono deterministici (stesso tentativo,
 //! stesso esito) così le prove automatiche non ballano.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, egui};
@@ -43,6 +43,8 @@ pub struct Thievery {
     /// Giorno in cui la tasca di qualcuno è stata vuotata, e in cui si è fatto scoprire.
     emptied: HashMap<String, u32>,
     wary: HashMap<String, u32>,
+    /// Chiavi di casa sfilate con le Dita di Mercurio (`casa 2`, `forno 0`…): aprono quella porta.
+    pub keys: BTreeSet<String>,
 }
 
 impl Thievery {
@@ -234,9 +236,15 @@ pub struct PickParams<'w> {
     pick: ResMut<'w, Lockpicking>,
     session: ResMut<'w, crate::save::Session>,
     progress: Res<'w, skills::Progress>,
+    thievery: Res<'w, Thievery>,
 }
 
 impl PickParams<'_> {
+    /// Si ha la chiave (sfilata a un abitante) di questa porta?
+    pub fn has_key(&self, key: &str) -> bool {
+        self.thievery.keys.contains(key)
+    }
+
     pub fn open(
         &mut self,
         c: &Container,
@@ -435,7 +443,12 @@ pub fn behind(npc: Vec3, forward: Vec3, player: Vec3) -> bool {
 pub fn pickpocket(
     keys: Res<ButtonInput<KeyCode>>,
     players: Query<&GlobalTransform, With<crate::player::Player>>,
-    npcs: Query<(Entity, &GlobalTransform, &crate::entities::Npc)>,
+    npcs: Query<(
+        Entity,
+        &GlobalTransform,
+        &crate::entities::Npc,
+        Option<&crate::villagers::NpcInventory>,
+    )>,
     dialog: Res<crate::entities::DialogState>,
     clock: Res<crate::daynight::GameClock>,
     character: Res<crate::character::Character>,
@@ -456,13 +469,13 @@ pub fn pickpocket(
     // Il modello degli abitanti guarda verso +Z locale.
     let target = npcs
         .iter()
-        .filter(|(_, t, _)| behind(t.translation(), t.rotation() * Vec3::Z, p))
+        .filter(|(_, t, ..)| behind(t.translation(), t.rotation() * Vec3::Z, p))
         .min_by(|a, b| {
             a.1.translation()
                 .distance(p)
                 .total_cmp(&b.1.translation().distance(p))
         });
-    let Some((entity, _, npc)) = target else {
+    let Some((entity, _, npc, pocket)) = target else {
         return;
     };
     let name = npc.name.to_lowercase();
@@ -510,7 +523,7 @@ pub fn pickpocket(
         // Le guardie vicine hanno visto tutto: altra multa e niente più fiducia (ADR 0045).
         let p_here = p;
         let (sight, guard_fine) = crate::karma::guard_watch(crate::karma::fame());
-        for (guard_entity, gt, guard) in npcs.iter().filter(|(e, t, n)| {
+        for (guard_entity, gt, guard, _) in npcs.iter().filter(|(e, t, n, _)| {
             *e != entity
                 && n.name.starts_with("Guardia")
                 && t.translation().distance(p_here) <= sight
@@ -563,7 +576,125 @@ pub fn pickpocket(
         crate::karma::deed_as("onesta", -3, format!("hai derubato {}", npc.name));
         session.notify(format!("Sfili {loot} monete a {}", npc.name));
         info!("[BORSEGGIO] {}: sfilate {loot} monete", npc.name);
+        // Dita di Mercurio (talento attivo del Borseggio): con le monete viene via anche una chiave.
+        if skills::active_talent(Skill::Pickpocket)
+            && let Some(key) = pocket.and_then(|inv| stealable_key(&inv.keys, &thievery.keys))
+        {
+            thievery.keys.insert(key.clone());
+            crate::karma::deed_as("onesta", -2, format!("la chiave di {}", npc.name));
+            session.notify(format!(
+                "Con le monete viene via la chiave di {}: «{}»",
+                npc.name,
+                key_label(&key)
+            ));
+            info!("[BORSEGGIO] {}: sfilata la chiave {key}", npc.name);
+        }
     }
+}
+
+/// La prima chiave in tasca che non si ha già.
+pub fn stealable_key(pocket: &[String], owned: &BTreeSet<String>) -> Option<String> {
+    pocket.iter().find(|k| !owned.contains(*k)).cloned()
+}
+
+/// Nome leggibile di una chiave (`casa-piccola 2` → «casa piccola n. 3»).
+pub fn key_label(key: &str) -> String {
+    match key.rsplit_once(' ') {
+        Some((kind, n)) => format!(
+            "{} n. {}",
+            kind.replace('-', " "),
+            n.parse::<u32>().map_or(1, |n| n + 1)
+        ),
+        None => key.to_string(),
+    }
+}
+
+/// Un nemico già frugato: non ha più niente in tasca.
+#[derive(Component)]
+pub struct Frisked;
+
+/// Sistema: Dita di Mercurio, le tasche dei nemici. Alle spalle di un nemico che non ti ha visto,
+/// `F` fruga: monete e a volte frecce; se va male, si gira e ti attacca.
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
+pub fn pick_enemy_pockets(
+    mut commands: Commands,
+    keys: Res<ButtonInput<KeyCode>>,
+    players: Query<&GlobalTransform, With<crate::player::Player>>,
+    mut enemies: Query<
+        (Entity, &GlobalTransform, &mut crate::entities::EnemyMind),
+        (
+            With<crate::entities::Enemy>,
+            Without<Frisked>,
+            Without<crate::quests::denaro_rubato::QuestThief>,
+        ),
+    >,
+    dialog: Res<crate::entities::DialogState>,
+    clock: Res<crate::daynight::GameClock>,
+    character: Res<crate::character::Character>,
+    progress: Res<skills::Progress>,
+    mut thievery: ResMut<Thievery>,
+    mut inventory: ResMut<Inventory>,
+    mut nearest: ResMut<crate::entities::NearestInteract>,
+    mut session: ResMut<crate::save::Session>,
+) {
+    if dialog.open || !skills::active_talent(Skill::Pickpocket) {
+        return;
+    }
+    let Ok(player) = players.single() else {
+        return;
+    };
+    let p = player.translation();
+    let Some((entity, _, mut mind)) = enemies
+        .iter_mut()
+        .filter(|(_, t, m)| !m.chase && behind(t.translation(), t.rotation() * Vec3::Z, p))
+        .min_by(|a, b| {
+            a.1.translation()
+                .distance(p)
+                .total_cmp(&b.1.translation().distance(p))
+        })
+    else {
+        return;
+    };
+    nearest.prompt = Some("[F] Fruga nelle tasche".to_string());
+    if !keys.just_pressed(KeyCode::KeyF) {
+        return;
+    }
+    let night = !(5.0..21.0).contains(&clock.hour);
+    let chance = pocket_chance(
+        progress.grade(Skill::Pickpocket),
+        skills::rank(Skill::Pickpocket),
+        character.stats.get(crate::character::Stat::Agility),
+        character.stats.get(crate::character::Stat::Luck),
+        night,
+        false,
+    );
+    let tag = format!("nemico:{}", entity.index());
+    commands.entity(entity).insert(Frisked);
+    if thievery.next_roll(&tag) >= chance {
+        mind.chase = true;
+        skills::train(Skill::Pickpocket, 3.0);
+        session.notify("Ti ha sentito: si gira con l'arma in pugno!");
+        info!("[BORSEGGIO] nemico: scoperto");
+        return;
+    }
+    let roll = crate::containers::roll(&tag, thievery.attempts);
+    let coins = 3 + (roll * 8.0) as u32;
+    inventory.add(ItemKind::Coin, coins);
+    let arrows = if roll > 0.5 {
+        2 + (roll * 4.0) as u32
+    } else {
+        0
+    };
+    if arrows > 0 {
+        inventory.add(ItemKind::Arrow, arrows);
+    }
+    skills::train(Skill::Pickpocket, 15.0);
+    session.notify(if arrows > 0 {
+        format!("Sfili {coins} monete e {arrows} frecce senza che se ne accorga")
+    } else {
+        format!("Sfili {coins} monete senza che se ne accorga")
+    });
+    info!("[BORSEGGIO] nemico: sfilate {coins} monete, {arrows} frecce");
 }
 
 pub fn plugin(app: &mut App) {

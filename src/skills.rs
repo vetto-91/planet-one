@@ -376,7 +376,7 @@ pub fn active_talent(skill: Skill) -> bool {
 }
 
 /// I talenti attivi: abilità, nome, che cosa fa (per il pannello del personaggio).
-pub const ACTIVE_TALENTS: [(Skill, &str, &str); 2] = [
+pub const ACTIVE_TALENTS: [(Skill, &str, &str); 4] = [
     (
         Skill::Athletics,
         "Scatto di Ermes",
@@ -386,6 +386,16 @@ pub const ACTIVE_TALENTS: [(Skill, &str, &str); 2] = [
         Skill::Blade,
         "Disarmo di Grazia",
         "un nemico ferito gravemente in mischia si arrende e se ne va",
+    ),
+    (
+        Skill::Defense,
+        "Controparata di Atena",
+        "dopo un colpo parato con lo scudo, il prossimo fendente entro 2 s vale doppio",
+    ),
+    (
+        Skill::Pickpocket,
+        "Dita di Mercurio",
+        "[F] alle spalle di un nemico ignaro; con le monete di un abitante sfili la chiave di casa",
     ),
 ];
 

@@ -527,6 +527,7 @@ pub fn sync_world_props(
                             .spawn((
                                 crate::hut::PropKind::Hearth,
                                 crate::hut::PropId(format!("focolare:{place_id}:{j}:{i}")),
+                                crate::village_life::OwnHearth(kind == crate::house::KIND),
                                 crate::hut::PropState { on: false },
                                 crate::entities::Interactable {
                                     prompt: "[E] Accendi il fuoco".to_string(),
@@ -601,8 +602,33 @@ pub fn sync_world_props(
                             }
                         });
                     }
+                    // Casa del giocatore: le luci seguono un interruttore accanto alla porta (ADR 0042).
+                    let switch = (kind == crate::house::KIND)
+                        .then_some(interior.door)
+                        .flatten()
+                        .map(|door| {
+                            let at = door.hinge + Vec3::new(-0.35, 1.3, -0.12);
+                            c.spawn((
+                                Mesh3d(meshes.add(Cuboid::new(0.12, 0.18, 0.03))),
+                                MeshMaterial3d(pbr.get(crate::pbr::Mat::Planks)),
+                                Transform::from_translation(at),
+                            ));
+                            c.spawn((
+                                crate::hut::PropKind::Light,
+                                crate::hut::PropId(format!("luce:{place_id}:{j}")),
+                                crate::hut::PropState { on: false },
+                                crate::entities::Interactable {
+                                    prompt: "[E] Accendi luce".to_string(),
+                                    range: 2.5,
+                                    aim: Some(0.3),
+                                    use_from: None,
+                                },
+                                Transform::from_translation(at - Vec3::Z * 0.02),
+                            ))
+                            .id()
+                        });
                     for at in interior.lights {
-                        c.spawn((
+                        let mut light = c.spawn((
                             InteriorLight,
                             PointLight {
                                 color: Color::srgb(1.0, 0.78, 0.5),
@@ -614,6 +640,9 @@ pub fn sync_world_props(
                             Transform::from_translation(at),
                             Visibility::Hidden,
                         ));
+                        if let Some(state) = switch {
+                            light.insert(SwitchedBy(state));
+                        }
                     }
                     if let Some(door) = interior.door {
                         let (w, h) = (door.width, door.height);
@@ -634,6 +663,7 @@ pub fn sync_world_props(
                                 crate::hut::PropId(format!("porta:{place_id}:{j}")),
                                 crate::hut::PropState { on: false },
                                 lock,
+                                crate::hut::DoorKey(home.clone()),
                                 crate::entities::Interactable {
                                     prompt: "[E] Apri porta".to_string(),
                                     range: 3.0,
@@ -948,12 +978,18 @@ pub fn sync_world_props(
     homes.built = true;
 }
 
-/// Sistema: accende le luci dell'edificio in cui si trova il giocatore (e nessun'altra).
+/// Luce interna comandata da un interruttore (casa del giocatore): segue il suo stato.
+#[derive(Component)]
+pub struct SwitchedBy(pub Entity);
+
+/// Sistema: accende le luci dell'edificio in cui si trova il giocatore (e nessun'altra); quelle
+/// con l'interruttore seguono soltanto l'interruttore, anche da fuori (si vedono dalle finestre).
 pub fn update_interior_lights(
     settings: Res<crate::audio::AudioSettings>,
     player: Query<&GlobalTransform, With<crate::player::Player>>,
     buildings: Query<(&GlobalTransform, &BuildingFootprint, &Children)>,
-    mut lights: Query<&mut Visibility, With<InteriorLight>>,
+    mut lights: Query<(&mut Visibility, Option<&SwitchedBy>), With<InteriorLight>>,
+    switches: Query<&crate::hut::PropState>,
 ) {
     let Ok(player) = player.single() else {
         return;
@@ -971,10 +1007,15 @@ pub fn update_interior_lights(
             Visibility::Hidden
         };
         for child in children {
-            if let Ok(mut vis) = lights.get_mut(*child)
-                && *vis != wanted
-            {
-                *vis = wanted;
+            if let Ok((mut vis, switched)) = lights.get_mut(*child) {
+                let wanted = match switched {
+                    Some(SwitchedBy(state)) if switches.get(*state).is_ok_and(|s| s.on) => {
+                        Visibility::Inherited
+                    }
+                    Some(_) => Visibility::Hidden,
+                    None => wanted,
+                };
+                vis.set_if_neq(wanted);
             }
         }
     }

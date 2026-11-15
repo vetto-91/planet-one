@@ -428,6 +428,51 @@ pub struct Facts {
     pub unlocked: Vec<String>,
     /// Statistiche del personaggio (per le risposte che le chiedono; `None` = tutte valide).
     pub stats: Option<crate::character::Stats>,
+    /// Età del personaggio (`giovane`, `adulto`, `maturo`): sceglie le battute col tono giusto
+    /// (`> [giovane] …`, ADR 0047). `None` = tutte.
+    pub age: Option<&'static str>,
+}
+
+/// Età a cui è rivolta una battuta (`[giovane] testo`) e il testo senza l'etichetta.
+pub fn age_line(line: &str) -> (Option<&str>, &str) {
+    if let Some(rest) = line.strip_prefix('[')
+        && let Some((tag, text)) = rest.split_once(']')
+        && crate::character::Age::parse(tag).is_some()
+    {
+        return (Some(tag.trim()), text.trim());
+    }
+    (None, line)
+}
+
+#[cfg(test)]
+#[test]
+fn age_lines_pick_the_tone() {
+    let lines: Vec<String> = [
+        "Ciao",
+        "[giovane] Ragazzo!",
+        "[maturo] Signore.",
+        "[x] resta",
+    ]
+    .map(String::from)
+    .to_vec();
+    assert_eq!(
+        lines_for_age(&lines, Some("giovane")),
+        ["Ciao", "Ragazzo!", "[x] resta"]
+    );
+    assert_eq!(lines_for_age(&lines, Some("adulto")), ["Ciao", "[x] resta"]);
+    assert_eq!(lines_for_age(&lines, None).len(), 4);
+}
+
+/// Le battute per un personaggio di questa età: quelle senza etichetta e quelle della sua età,
+/// senza l'etichetta.
+pub fn lines_for_age(lines: &[String], age: Option<&str>) -> Vec<String> {
+    lines
+        .iter()
+        .filter_map(|l| match age_line(l) {
+            (Some(tag), text) => (age.is_none_or(|a| a == tag)).then(|| text.to_string()),
+            (None, text) => Some(text.to_string()),
+        })
+        .collect()
 }
 
 impl Missions {
@@ -592,7 +637,7 @@ impl Missions {
                     })
                     .map(|(k, c)| (k, c.text.clone()))
                     .collect();
-                (i, step.lines.clone(), choices)
+                (i, lines_for_age(&step.lines, facts.age), choices)
             })
         })?;
         self.shown = choices.iter().map(|(k, _)| *k).collect();
@@ -937,6 +982,7 @@ pub fn track_missions(
         return;
     };
     let mut facts = Facts {
+        age: None,
         pos: player.translation(),
         hour: clock.hour,
         quest_accepted: quest.accepted,
@@ -1064,6 +1110,7 @@ mod tests {
 
     fn facts(pos: Vec3, hour: f32, accepted: bool, done: bool) -> Facts {
         Facts {
+            age: None,
             pos,
             hour,
             quest_accepted: accepted,
@@ -1421,9 +1468,9 @@ mod tests {
                 }) else {
                     continue;
                 };
-                for line in &step.lines {
+                for line in lines_for_age(&step.lines, None) {
                     assert!(
-                        !crate::voice::line_clip(&npc, line).is_empty(),
+                        !crate::voice::line_clip(&npc, &line).is_empty(),
                         "{}: manca la voce di {npc} per «{line}»",
                         mission.id
                     );

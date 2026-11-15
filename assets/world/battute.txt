@@ -1,0 +1,9 @@
+# Battute dette dagli abitanti fuori dai dialoghi (fumetti con voce). Modificabile a mano: letto
+# alla compilazione. Una sezione per abitante, una riga «chiave: battuta» per ogni momento.
+#   Ettore  arrivo   quando arrivi al molo e lui è sceso dal faro (Il Nome sulla Sabbia)
+#           ritorno  quando, saputo il tuo nome, torna su al faro
+# Le voci si generano in locale con scripts/gen_voci_prologo.py (rigenerare dopo ogni modifica).
+
+[Ettore]
+arrivo: Eccolo, il naufrago! Ti ho visto io, dalla lanterna: un puntino tra i legni, prima che il sole toccasse l'acqua.
+ritorno: Torno su al faro. Di giorno si dorme, ma per vederti in piedi ne valeva la pena.

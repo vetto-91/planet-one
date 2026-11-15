@@ -27,6 +27,9 @@ pensiero: Legno incastrato alla maniera antica, e un ferro piegato che non è di
 obiettivo: Raggiungi il pescatore al molo
 quando: parla Gaspare
 > Per tutti i venti del sud… respiri ancora! Ettore ha visto quei legni dalla cima del faro, prima dell'alba.
+> [giovane] E sei poco più che un ragazzo. Il mare non ha rispetto per gli anni che non hai ancora avuto.
+> [adulto] Hai spalle da marinaio, almeno: il mare ti ha messo alla prova e tu hai tenuto.
+> [maturo] Alla tua età il mare non dovrebbe chiedere più niente a nessuno. Eppure eccoti qui, ancora in piedi.
 > Ci sono incastri vecchi di mille anni e un ferro che non ho mai visto in nessuna fucina. Da che nave vieni?
 > Non lo ricordi. Succede a chi attraversa il Velo delle Correnti: il sale lava via i pensieri.
 > Nelle vecchie storie del mare un capitano si salvò dicendo di chiamarsi «Nessuno». Ma finché resti Nessuno appartieni alla nebbia.
@@ -107,6 +110,9 @@ obiettivo: Chiedi a Don Anselmo della grotta
 quando: parla Don Anselmo
 > La grotta a est… i banditi le girano attorno, ma non scendono oltre la prima sala. Hanno ragione ad aver paura, e torto sul perché.
 > Chi la scavò la fece a gradoni, come una scala verso il basso. In fondo c'è un'acqua ferma che non riflette il soffitto.
+> [giovane] Hai l'età in cui si crede che il buio sia vuoto. Laggiù imparerai che non lo è: tieni la luce alta.
+> [adulto] Tu sai già che cosa vuol dire scendere dove gli altri non vanno. Fallo con calma.
+> [maturo] Tu lo sai meglio di me, credo: certe acque si attraversano una volta sola, e bisogna esserne degni.
 > Scendi con rispetto, {nome}. E quando l'acqua ti mostrerà qualcosa, non chiederti se è vero: chiediti se è per te. La magia, laggiù, fa cantare la pietra.
 tempo: 10 20 pioggia
 pensiero: Venti giorni dopo, la pioggia gonfia i ruscelli: Agnese dice che è il momento, l'acqua della grotta canta di più.
@@ -161,6 +167,9 @@ quando: parla Gaspare
 quando: ora 3.5 9
 > Eccoti. Il mare è piatto e la stella ferma è alta. Di là troverai nebbia, e un bosco che arriva fin sulla riva.
 > E se hai aperto la porta sotto la grotta, c'è anche l'altra strada: quella che non bagna.
+> [giovane] Non avere fretta di diventare grande, di là. Torna intero, e torna a raccontarcelo.
+> [adulto] Hai la testa sulle spalle: usala anche quando il mare ti dice il contrario.
+> [maturo] Io e te sappiamo che cos'è una partenza. Non ci si volta, ma non si dimentica.
 > Ricordati: l'isola resta qui. Si può sempre tornare.
 scegli: La via del mare, con la barca => sblocca via-mare; viaggio nord mare
 scegli: [sbloccato porta-sommersa] La via delle profondità, per la Porta Sommersa => sblocca via-profonda; viaggio nord profonda

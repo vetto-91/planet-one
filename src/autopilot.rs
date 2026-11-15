@@ -1097,7 +1097,7 @@ pub fn snapshot(world: &mut World) -> Value {
     let in_piazza = world
         .query::<&crate::villagers::Villager>()
         .iter(world)
-        .filter(|v| v.at_festival())
+        .filter(|v| v.at_call())
         .count();
     let porta_sommersa = world
         .query::<&crate::places::SunkenDoor>()
@@ -1111,6 +1111,18 @@ pub fn snapshot(world: &mut World) -> Value {
         // Apertura della Porta Sommersa (0 chiusa, 1 aperta; -1 se la grotta non c'è).
         "porta_sommersa": (porta_sommersa * 100.0).round() / 100.0,
     });
+    let parate = world
+        .query::<&crate::combat::CombatState>()
+        .iter(world)
+        .next()
+        .map_or(0, |c| c.parries);
+    let chiavi: Vec<String> = world
+        .resource::<crate::thievery::Thievery>()
+        .keys
+        .iter()
+        .cloned()
+        .collect();
+    let scudo = world.resource::<crate::inventory::Equipment>().shield;
     let who = world.resource::<crate::character::Character>();
     let prompt = world
         .resource::<crate::entities::NearestInteract>()
@@ -1123,6 +1135,9 @@ pub fn snapshot(world: &mut World) -> Value {
         "compagno": compagno,
         "compagno_vita": compagno_vita,
         "feriti": feriti.join(","),
+        "parate": parate,
+        "chiavi": chiavi.join(","),
+        "scudo": scudo,
         "risveglio": who.awakening,
         "eta": who.age.key(),
         "classe": who.class.name(),

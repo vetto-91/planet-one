@@ -55,7 +55,7 @@ aspetta 1
 foto volti-e-segreti
 premi j
 aspetta 1
-# Rubare pesa sulla bilancia.
+# Rubare pesa sulla bilancia (col talento Dita di Mercurio viene via anche la chiave: altri -2).
 abilita borseggio 100
 dietro beppe
 aspetta 0.3
@@ -67,5 +67,5 @@ dietro beppe
 aspetta 0.3
 premi g
 aspetta 1
-verifica /karma = -1
+verifica /karma = -3
 esci

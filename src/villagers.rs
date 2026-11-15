@@ -136,8 +136,8 @@ enum Phase {
     Rest,
     /// La passeggiata segreta della sera (`pedina:`).
     Secret,
-    /// La Sera delle Lanterne: tutti in piazza (`lanterns.rs`).
-    Festival,
+    /// Chiamato dalla storia in un posto (`Villager::call_to`): la Sera delle Lanterne, Ettore al molo.
+    Called,
 }
 
 /// Sosta a una finestra per aprire o chiudere gli scuri.
@@ -213,8 +213,9 @@ pub struct Villager {
     resume: bool,
     /// Sosta alla finestra in corso (apre o chiude gli scuri).
     chore: Option<Chore>,
-    /// Posto alla Sera delle Lanterne (punto e sguardo), finché dura la festa (`lanterns.rs`).
-    festival: Option<(Vec2, Vec2)>,
+    /// Posto a cui lo chiama la storia (punto e sguardo): la Sera delle Lanterne (`lanterns.rs`),
+    /// Ettore che scende al molo (`awakening.rs`). Finché c'è, vale più della routine.
+    called: Option<(Vec2, Vec2)>,
 }
 
 /// Stato di un abitante nel salvataggio.
@@ -265,17 +266,17 @@ impl Villager {
         !self.def.guard
     }
 
-    /// È arrivato al suo posto alla Sera delle Lanterne?
-    pub fn at_festival(&self) -> bool {
-        self.phase == Phase::Festival
+    /// È arrivato al posto a cui l'ha chiamato la storia?
+    pub fn at_call(&self) -> bool {
+        self.phase == Phase::Called
             && !self.hidden
             && self.path.is_empty()
             && self.indoor.is_empty()
     }
 
-    /// Assegna (o toglie) il posto alla Sera delle Lanterne.
-    pub fn set_festival(&mut self, spot: Option<(Vec2, Vec2)>) {
-        self.festival = spot;
+    /// Assegna (o toglie) il posto a cui lo chiama la storia.
+    pub fn call_to(&mut self, spot: Option<(Vec2, Vec2)>) {
+        self.called = spot;
     }
 
     /// Fotografia: chi è a metà di una scala viene considerato già arrivato in fondo al percorso.
@@ -301,7 +302,7 @@ impl Villager {
             "Night" => Phase::Night,
             "Rest" => Phase::Rest,
             "Secret" => Phase::Secret,
-            "Festival" => Phase::Festival,
+            "Called" => Phase::Called,
             _ => Phase::Work,
         };
         self.hidden = saved.hidden;
@@ -426,14 +427,12 @@ fn patrol_start(wall: &str) -> f32 {
 
 fn spot(
     def: &VillagerDef,
-    festival: Option<(Vec2, Vec2)>,
+    called: Option<(Vec2, Vec2)>,
     phase: Phase,
     info: &VillageInfo,
 ) -> (Vec2, Vec2) {
     match phase {
-        Phase::Festival => festival
-            .or(def.evening)
-            .unwrap_or((info.spec.plaza, Vec2::Y)),
+        Phase::Called => called.or(def.evening).unwrap_or((info.spec.plaza, Vec2::Y)),
         Phase::Evening => def.evening.unwrap_or(def.work),
         Phase::Secret => def
             .secret_walk
@@ -527,7 +526,7 @@ pub fn spawn_villagers(
                     following: false,
                     resume: false,
                     chore: None,
-                    festival: None,
+                    called: None,
                 },
                 RigidBody::Kinematic,
                 Collider::capsule(0.35, 1.0),
@@ -818,8 +817,8 @@ pub fn villager_routine(
             v.following = false;
             v.placed = false;
         }
-        let want = if v.festival.is_some() && !weather.shelter {
-            Phase::Festival
+        let want = if v.called.is_some() && !weather.shelter {
+            Phase::Called
         } else {
             desired_phase(&v.def, hour, weather.shelter)
         };
@@ -932,7 +931,7 @@ pub fn villager_routine(
         if !v.placed {
             v.placed = true;
             v.phase = want;
-            let (p, look) = spot(&v.def, v.festival, want, &info);
+            let (p, look) = spot(&v.def, v.called, want, &info);
             tf.translation = Vec3::new(p.x, 0.0, p.y);
             tf.rotation = Quat::from_rotation_y(yaw_towards(look));
             v.hidden = matches!(want, Phase::Night | Phase::Rest);
@@ -962,7 +961,7 @@ pub fn villager_routine(
                 };
             } else {
                 *vis = Visibility::Inherited;
-                let (to, _) = spot(&v.def, v.festival, v.phase, &info);
+                let (to, _) = spot(&v.def, v.called, v.phase, &info);
                 let dest = match (&home, v.phase) {
                     (Some(h), Phase::Night | Phase::Rest) => h.door,
                     _ => to,
@@ -976,7 +975,7 @@ pub fn villager_routine(
         }
         // Cambio di fase: si parte (o si compare/scompare).
         if want != v.phase && v.path.is_empty() && v.indoor.is_empty() {
-            let (to, _) = spot(&v.def, v.festival, want, &info);
+            let (to, _) = spot(&v.def, v.called, want, &info);
             let going_to_bed = matches!(want, Phase::Night | Phase::Rest);
             if want == Phase::Night && home.is_none() {
                 *vis = Visibility::Hidden;
@@ -996,7 +995,7 @@ pub fn villager_routine(
                 let from_rest = v.phase == Phase::Rest;
                 let appear = match &home {
                     Some(h) => h.door,
-                    None if from_rest => spot(&v.def, v.festival, Phase::Rest, &info).0,
+                    None if from_rest => spot(&v.def, v.called, Phase::Rest, &info).0,
                     None => to,
                 };
                 tf.translation = Vec3::new(appear.x, 0.0, appear.y);
@@ -1025,7 +1024,7 @@ pub fn villager_routine(
             } else {
                 let dest = match &home {
                     Some(h) if going_to_bed => h.door,
-                    _ if want == Phase::Rest => spot(&v.def, v.festival, Phase::Rest, &info).0,
+                    _ if want == Phase::Rest => spot(&v.def, v.called, Phase::Rest, &info).0,
                     _ => to,
                 };
                 v.path = graph
@@ -1119,7 +1118,7 @@ pub fn villager_routine(
             commands.entity(entity).insert(ColliderDisabled);
             continue;
         } else {
-            let (_, look) = spot(&v.def, v.festival, v.phase, &info);
+            let (_, look) = spot(&v.def, v.called, v.phase, &info);
             if !talking {
                 let want_rot = Quat::from_rotation_y(yaw_towards(look));
                 tf.rotation = tf.rotation.slerp(want_rot, (6.0 * dt).clamp(0.0, 1.0));

@@ -518,7 +518,83 @@ pub fn shell_answers(
     }
 }
 
+/// Le battute fuori dai dialoghi (`assets/world/battute.txt`): (abitante, chiave, battuta).
+pub fn bark_lines() -> &'static [(String, String, String)] {
+    static LINES: std::sync::OnceLock<Vec<(String, String, String)>> = std::sync::OnceLock::new();
+    LINES
+        .get_or_init(|| crate::companions::parse_lines(include_str!("../assets/world/battute.txt")))
+}
+
+/// La battuta di `who` per un momento.
+pub fn bark_line(who: &str, key: &str) -> Option<&'static str> {
+    bark_lines()
+        .iter()
+        .find(|(n, k, _)| n == who && k == key)
+        .map(|(_, _, s)| s.as_str())
+}
+
+/// Dove aspetta Ettore, sceso dal faro: accanto a Gaspare sul molo, girato verso la spiaggia.
+pub const ETTORE_ON_PIER: (Vec2, Vec2) = (Vec2::new(10.2, 102.0), Vec2::new(-0.6, -0.8));
+/// A che distanza ti saluta.
+const ETTORE_HAIL: f32 = 8.0;
+
+/// Ettore scende dal faro mentre si cerca Gaspare e si dice il nome (tappe 3 e 4 di MP-01)?
+pub fn ettore_called(step: Option<usize>) -> bool {
+    matches!(step, Some(2 | 3))
+}
+
+/// Sistema: Ettore scende dal faro al molo quando arrivi da Gaspare (ADR 0047), ti saluta quando
+/// sei vicino e, saputo il tuo nome, torna su al faro.
+#[allow(clippy::type_complexity)]
+fn ettore_comes_down(
+    missions: Res<crate::quests::missions::Missions>,
+    mut villagers: Query<(Entity, &mut crate::villagers::Villager, &GlobalTransform)>,
+    players: Query<&GlobalTransform, With<crate::player::Player>>,
+    mut barks: ResMut<crate::quests::Barks>,
+    mut voice: ResMut<crate::voice::VoiceQueue>,
+    mut state: Local<(bool, bool)>,
+) {
+    let island = crate::region::current() == crate::region::Region::Isola;
+    let want = island && ettore_called(missions.step_of("mp01"));
+    let Some((e, mut v, t)) = villagers.iter_mut().find(|(_, v, _)| v.name() == "Ettore") else {
+        return;
+    };
+    let near = players
+        .single()
+        .is_ok_and(|p| p.translation().distance(t.translation()) <= ETTORE_HAIL);
+    let mut say = |key: &str| {
+        if let Some(line) = bark_line("Ettore", key) {
+            barks.say(e, "Ettore", line.to_string());
+            voice.play_from(
+                crate::voice::line_clip("Ettore", line),
+                crate::voice::VoiceKind::Bark,
+                Some(e),
+            );
+        }
+    };
+    if want && !state.0 {
+        v.call_to(Some(ETTORE_ON_PIER));
+        info!("[RISVEGLIO] Ettore scende dal faro");
+    } else if !want && state.0 {
+        v.call_to(None);
+        if near {
+            say("ritorno");
+        }
+        info!("[RISVEGLIO] Ettore torna al faro");
+    }
+    state.0 = want;
+    // Il saluto, una volta sola, quando è arrivato e tu gli sei vicino.
+    if want && !state.1 && near && v.at_call() {
+        state.1 = true;
+        say("arrivo");
+    }
+}
+
 pub fn plugin(app: &mut App) {
+    app.add_systems(
+        Update,
+        ettore_comes_down.run_if(in_state(AppState::Playing)),
+    );
     app.init_resource::<Awakening>()
         .add_systems(
             Update,

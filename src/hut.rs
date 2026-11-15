@@ -100,6 +100,10 @@ pub enum Lock {
     Private,
 }
 
+/// Chiave di una porta del paese (`casa 2`): chi ce l'ha la apre (`Thievery::keys`).
+#[derive(Component, Clone, Debug)]
+pub struct DoorKey(pub String);
+
 /// Esito del tentativo di aprire una porta chiusa.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Access {
@@ -1521,7 +1525,7 @@ pub fn handle_prop_toggle(
     links: Query<&WindowLink>,
     buttons: Query<&crate::village::GateButton>,
     mut keepers: Query<&mut Keeper>,
-    locks: Query<(&Lock, &GlobalTransform)>,
+    locks: Query<(&Lock, &GlobalTransform, Option<&DoorKey>)>,
     players: Query<&GlobalTransform, With<crate::player::Player>>,
     clock: Res<crate::daynight::GameClock>,
     furniture: Query<&crate::containers::Container>,
@@ -1567,9 +1571,11 @@ pub fn handle_prop_toggle(
         };
         // Porta chiusa a chiave: senza accesso non si apre (chiudere è sempre possibile).
         if !st.on
-            && let (Ok((lock, door)), Ok(player)) = (locks.get(target), players.single())
+            && let (Ok((lock, door, key)), Ok(player)) = (locks.get(target), players.single())
         {
-            let master = carried.qty(crate::inventory::ItemKind::MasterKey) > 0;
+            // La chiave di questa casa (Dita di Mercurio) vale quanto il passepartout.
+            let master = carried.qty(crate::inventory::ItemKind::MasterKey) > 0
+                || key.is_some_and(|k| picking.has_key(&k.0));
             let inside = player_inside(door, player.translation());
             if lock.access(clock.hour, master, inside) == Access::Locked {
                 info!("[HUT] porta chiusa a chiave");
@@ -1727,7 +1733,7 @@ pub fn animate_sliders(
 
 /// Luce di casa: lampada (emissivo e luce) e levetta seguono l'interruttore.
 pub fn apply_house_light(
-    switches: Query<(&PropKind, &PropState)>,
+    switches: Query<(&PropKind, &PropId, &PropState)>,
     mut lights: Query<&mut PointLight, With<HouseLampLight>>,
     lamps: Query<&MeshMaterial3d<StandardMaterial>, With<HouseLamp>>,
     mut levers: Query<&mut Transform, With<SwitchLever>>,
@@ -1735,8 +1741,8 @@ pub fn apply_house_light(
 ) {
     let Some(on) = switches
         .iter()
-        .find(|(k, _)| **k == PropKind::Light)
-        .map(|(_, s)| s.on)
+        .find(|(k, id, _)| **k == PropKind::Light && id.0 == "casetta:luce")
+        .map(|(.., s)| s.on)
     else {
         return;
     };

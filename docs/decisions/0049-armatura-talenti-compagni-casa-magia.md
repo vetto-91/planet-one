@@ -42,12 +42,13 @@ sezione 2.4C, e `04`):
   (componente `magic::Calmed`).
 
 ## Conseguenze
-- Mancano gli altri talenti con nome della trama (apnea, controparata, borseggio dei nemici, borseggio di
-  chiavi e lettere).
+- ~~Mancano gli altri talenti con nome della trama (controparata, borseggio dei nemici e di chiavi).~~
+  **Risolto**, vedi «Aggiornamento: Controparata e Dita di Mercurio». Restano l'apnea (non si nuota
+  sott'acqua) e il borseggio delle lettere.
 - L'armatura non si vede sul modello del personaggio.
 - ~~I compagni non si salvano e non ricevono danno dai nemici~~: risolto, vedi «Aggiornamento» sotto. Non
   viaggiano ancora sul continente: arriverà con l'Atto I.
-- La casa non si amplia ancora (camino che fuma, luce con interruttore).
+- ~~La casa non si amplia ancora (camino che fuma, luce con interruttore).~~ **Risolto**, vedi ADR 0042.
 
 ## Aggiornamento (2026-11-14): ferite, ritirata, salvataggio e voci dei compagni
 - **Vita** (`Companion.hp`, 100): i nemici vivi entro la portata del contatto feriscono il compagno come
@@ -72,3 +73,21 @@ sezione 2.4C, e `04`):
   allarme, ritirata e guarigione a mezzanotte.
 - Restano fuori: il compagno non schiva e non si ripara; i nemici in mischia colpiscono solo chi è a
   portata di contatto.
+
+## Aggiornamento: Controparata e Dita di Mercurio (2026-11-15)
+- **Controparata di Atena** (Difesa, dal grado 30): un colpo parato con lo scudo apre la guardia del
+  nemico; il prossimo fendente in mischia entro 2 secondi fa il doppio del danno
+  (`CombatState::riposte`).
+- **Dita di Mercurio** (Borseggio, dal grado 30):
+  - alle spalle di un nemico che non ti ha visto, `F` fruga nelle tasche: monete e a volte frecce. Ogni
+    nemico si fruga una volta (`thievery::Frisked`); se va male si gira e ti attacca;
+  - quando sfili le monete a un abitante, viene via anche la chiave della sua casa (o della bottega).
+    La chiave apre quella porta a qualsiasi ora (`hut::DoorKey`, `Thievery::keys`, salvate nella
+    sezione `[furti]` come `chiave = casa-media 0`) e costa 2 di onestà.
+- **Correzione del contatto in mischia** (`combat::in_contact`): i nemici si fermavano a 1,3 m da te, in
+  piano, mentre il colpo valeva solo entro 1,2 m in tre dimensioni (anche la differenza di quota). Così
+  quasi non colpivano mai. Ora il contatto si misura in piano, entro 1,6 m e con meno di 1,5 m di
+  dislivello; vale anche per i compagni.
+- **Prova**: `prove/zzzzzzzzzzzzzzzzzz-eta.txt` (Ettore al molo, battuta per un giovane, chiave di Beppe,
+  controparata, luce di casa); lo stato del pilota ha `/personaggio/parate`, `/personaggio/chiavi` e
+  `/personaggio/scudo`.

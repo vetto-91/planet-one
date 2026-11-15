@@ -206,7 +206,7 @@ fn lantern_evening(
         });
         for ((e, _), spot) in guests.iter().zip(spots.iter()) {
             if let Ok((_, mut v)) = villagers.get_mut(*e) {
-                v.set_festival(Some(*spot));
+                v.call_to(Some(*spot));
             }
         }
         state.gathered = spots.len().min(guests.len());
@@ -218,7 +218,7 @@ fn lantern_evening(
         state.on = false;
         state.gathered = 0;
         for (_, mut v) in &mut villagers {
-            v.set_festival(None);
+            v.call_to(None);
         }
         for (e, ..) in &lanterns {
             commands.entity(e).despawn();

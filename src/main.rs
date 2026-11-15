@@ -425,6 +425,7 @@ fn main() -> AppExit {
                 quests::missions::track_missions,
                 quest::thief_parley.after(entities::interact),
                 thievery::pickpocket.after(quest::thief_parley),
+                thievery::pick_enemy_pockets.after(thievery::pickpocket),
                 karma::give_gift.after(thievery::pickpocket),
                 karma::meet_and_confide.after(entities::interact),
                 karma::judge_quest,

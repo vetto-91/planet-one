@@ -32,4 +32,16 @@ casa con le proprie mani in un terreno libero fuori dalle mura di Fontevivo, all
 - Quando la casa compare tutti gli oggetti del mondo vengono ricreati (un attimo di pausa): le porte del
   paese tornano chiuse, il contenuto dei mobili resta.
 - Catasta e roccia non si esauriscono, e il legname non viene dagli alberi veri.
-- Costruire ora si allena ma non ha un talento; resta ferma solo Armatura.
+- ~~Costruire ora si allena ma non ha un talento.~~ **Risolto**: «Mano del Mastro», vedi sotto.
+
+## Aggiornamento: luce con interruttore, focolare tuo e Mano del Mastro (2026-11-15)
+- La casa finita aveva già un focolare col camino che fuma (è una casa piccola come le altre), ma seguiva
+  l'orario del paese, e le luci si accendevano da sole quando entravi.
+- **Interruttore**: accanto alla porta, dentro, c'è un interruttore (`[E] Accendi luce`). Le luci della
+  casa seguono soltanto l'interruttore (`world_props::SwitchedBy`), anche da fuori, e il suo stato resta
+  nel salvataggio.
+- **Il focolare è tuo** (`village_life::OwnHearth`): l'orario del paese non lo accende né lo spegne più;
+  lo comandi tu con `E`, e il camino fuma quando è acceso.
+- **Mano del Mastro** (rango del talento di Costruire): ogni raccolta di legname o pietra mette da parte il
+  15% di un pezzo per rango; arrivati a un pezzo intero, se ne raccoglie uno in più (`house::knack_bonus`).
+- Restano fuori la fucina e l'orto.

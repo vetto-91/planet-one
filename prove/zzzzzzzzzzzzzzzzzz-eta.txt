@@ -1,0 +1,80 @@
+# Età, Ettore, talenti e casa (ADR 0047, 0042, 0049, aggiornamento): Gaspare parla secondo l'età,
+# Ettore scende dal faro al molo e torna su, la Controparata di Atena, le Dita di Mercurio
+# (la chiave di casa di Beppe) e l'interruttore della luce di casa.
+# Il nome comincia per z perché un copione nuovo non sposti le risoluzioni degli altri.
+god on
+ia off
+meteo sereno
+missioni on
+ora 9
+risveglio eta giovane
+missione mp01 3
+# Ettore scende dal faro e aspetta accanto a Gaspare.
+tp 8.5 3 97
+aspetta 2
+verifica /personaggio/eta = giovane
+attendi npc:ettore:dist < 6 150
+aspetta 3
+camera 0 20 7
+aspetta 1
+foto ettore-al-molo
+# Gaspare si rivolge a un giovane.
+tp gaspare
+aspetta 1
+attendi npc:gaspare:modo = Ready 60
+tp gaspare
+aspetta 1
+guarda gaspare
+aspetta 1
+premi e
+aspetta 1
+premi invio
+aspetta 1
+verifica /dialogo/riga contiene ragazzo
+avanza
+# Saputo il nome, Ettore torna al faro.
+missione mp01 5
+aspetta 3
+verifica npc:ettore:fase != Called
+# Dita di Mercurio: con le monete di Beppe viene via la chiave di casa.
+abilita borseggio 100
+ora 10
+dietro beppe
+aspetta 0.5
+premi f
+aspetta 1
+verifica /personaggio/chiavi contiene casa-media 0
+# Controparata di Atena: un colpo parato con lo scudo prepara il contrattacco.
+abilita difesa 40
+dai scudo
+aspetta 0.5
+premi 1
+aspetta 0.5
+verifica /personaggio/scudo = true
+dai spada corta
+aspetta 0.5
+premi 2
+aspetta 0.5
+verifica arma contiene sword
+god off
+tp 74 12 38
+aspetta 1
+guarda banditi
+attendi /personaggio/parate > 0 40
+premi click
+aspetta 1
+god on
+# La casa: la luce segue l'interruttore accanto alla porta.
+casa 2
+ora 21
+aspetta 4
+tp -40 4 40
+aspetta 3
+verifica prop:luce:attivo = false
+mira luce
+aspetta 0.5
+premi e
+aspetta 1
+verifica prop:luce:attivo = true
+foto luce-di-casa
+esci

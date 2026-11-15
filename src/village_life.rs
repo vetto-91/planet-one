@@ -32,6 +32,10 @@ pub struct TownChimney {
     pub hearth: Option<Entity>,
 }
 
+/// Focolare della casa del giocatore (`true`): lo accende e lo spegne solo lui, non l'orario.
+#[derive(Component)]
+pub struct OwnHearth(pub bool);
+
 /// Luce del focolare di una casa: segue lo stato del focolare.
 #[derive(Component)]
 pub struct HearthLight {
@@ -52,7 +56,11 @@ fn clock_jumped(hour: f32, last: &mut Option<f32>) -> bool {
 fn hearth_schedule(
     clock: Res<GameClock>,
     weather: Res<WeatherState>,
-    mut hearths: Query<(Ref<crate::hut::PropKind>, &mut crate::hut::PropState)>,
+    mut hearths: Query<(
+        Ref<crate::hut::PropKind>,
+        &mut crate::hut::PropState,
+        Option<&OwnHearth>,
+    )>,
     mut last: Local<Option<bool>>,
     mut last_hour: Local<Option<f32>>,
 ) {
@@ -60,8 +68,10 @@ fn hearth_schedule(
     let jumped = clock_jumped(clock.hour, &mut last_hour);
     let changed = *last != Some(want) && !jumped;
     *last = Some(want);
-    for (k, mut st) in &mut hearths {
-        if *k == crate::hut::PropKind::Hearth && (changed || k.is_added()) && st.on != want {
+    for (k, mut st, own) in &mut hearths {
+        let own = own.is_some_and(|o| o.0);
+        if *k == crate::hut::PropKind::Hearth && (changed && !own || k.is_added()) && st.on != want
+        {
             st.on = want;
         }
     }

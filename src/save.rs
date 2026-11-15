@@ -490,6 +490,9 @@ impl SaveData {
         for (name, n) in &self.thievery.slipped {
             line(format!("infilate:{name} = {n}"));
         }
+        for key in &self.thievery.keys {
+            line(format!("chiave = {key}"));
+        }
         line(String::new());
         line("[tempo]".into());
         line(format!("anno = {}", self.year));
@@ -828,6 +831,9 @@ impl SaveData {
                 match k {
                     "serrature" => self.thievery.picked = v.parse().ok()?,
                     "tentativi" => self.thievery.attempts = v.parse().ok()?,
+                    "chiave" => {
+                        self.thievery.keys.insert(v.to_string());
+                    }
                     _ if k.starts_with("forzate:") => {
                         self.thievery
                             .picked_in
@@ -2026,6 +2032,7 @@ mod tests {
         d.thievery.picked_in.insert("caserma".into(), 2);
         d.choices = vec![("qs03".into(), 2, 1), ("qs08".into(), 3, 0)];
         d.thievery.attempts = 7;
+        d.thievery.keys.insert("casa-piccola 2".into());
         d.thievery.slipped.insert("guardia bruno".into(), 15);
         d.vigor = 42.0;
         d.magic = 17.0;

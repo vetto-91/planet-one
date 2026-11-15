@@ -36,7 +36,16 @@ impl Default for EnemyHealth {
 pub struct CombatState {
     pub attack_cd: f32,
     pub iframe: f32,
+    /// Controparata di Atena (talento della Difesa): secondi in cui il prossimo colpo in mischia
+    /// vale doppio, dopo aver parato un colpo con lo scudo.
+    pub riposte: f32,
+    /// Controparate preparate finora (per il pilota automatico).
+    pub parries: u32,
 }
+
+/// Quanto dura l'occasione della controparata, e quanto moltiplica il colpo.
+pub const RIPOSTE_WINDOW: f32 = 2.0;
+pub const RIPOSTE_FACTOR: f32 = 2.0;
 
 /// Marker su entità in attesa di respawn (nemico morto).
 #[derive(Component)]
@@ -48,7 +57,11 @@ pub struct EnemyRespawn {
 /// Costanti di combattimento.
 pub const CONTACT_DAMAGE_COOLDOWN: f32 = 0.8;
 pub const CONTACT_DAMAGE: f32 = 5.0;
-pub const CONTACT_RANGE: f32 = 1.2;
+/// Portata del colpo a contatto, in piano: un po' oltre il punto in cui il nemico si ferma
+/// davanti al giocatore (`entities::MELEE_STOP`), altrimenti non arriverebbe mai a colpire.
+pub const CONTACT_RANGE: f32 = 1.6;
+/// Differenza di quota oltre la quale il contatto non vale (uno sopra, l'altro sotto).
+pub const CONTACT_HEIGHT: f32 = 1.5;
 pub const ENEMY_RESPAWN_TIME: f32 = 3.0;
 pub const PLAYER_IFRAME: f32 = 0.3;
 
@@ -180,11 +193,19 @@ pub fn player_attack(
         return;
     }
     combat.attack_cd = stats.cooldown;
+    let had_riposte = combat.riposte > 0.0;
     for (_, entity) in hit {
         if let Ok((_, mut hp, _, thief)) = enemies.get_mut(entity) {
+            let riposte = if combat.riposte > 0.0 {
+                info!("[COMBATTIMENTO] controparata");
+                RIPOSTE_FACTOR
+            } else {
+                1.0
+            };
             let damage = stats.damage
                 * character.stats.melee_factor()
-                * (1.0 + 0.06 * skills::rank(Skill::Blade));
+                * (1.0 + 0.06 * skills::rank(Skill::Blade))
+                * riposte;
             hp.current = (hp.current - damage).max(0.0);
             skills::train(Skill::Blade, 4.0);
             info!("attacco su enemy {entity:?}: vita -> {:.0}", hp.current);
@@ -202,6 +223,16 @@ pub fn player_attack(
             }
         }
     }
+    if had_riposte {
+        combat.riposte = 0.0;
+        skills::train(Skill::Defense, 6.0);
+    }
+}
+
+/// Il nemico in `enemy` è abbastanza vicino da colpire il giocatore in `player`?
+pub fn in_contact(enemy: Vec3, player: Vec3) -> bool {
+    enemy.xz().distance(player.xz()) <= CONTACT_RANGE
+        && (enemy.y - player.y).abs() <= CONTACT_HEIGHT
 }
 
 /// Un nemico ferito gravemente si arrende, se si ha il Disarmo di Grazia (non il ladro della quest,
@@ -313,6 +344,7 @@ pub fn contact_damage(
         return;
     };
     combat.iframe = (combat.iframe - time.delta_secs()).max(0.0);
+    combat.riposte = (combat.riposte - time.delta_secs()).max(0.0);
     cd.left = (cd.left - time.delta_secs()).max(0.0);
 
     // Godmode e invisibilità: i nemici non fanno danno.
@@ -329,9 +361,15 @@ pub fn contact_damage(
         if (thief && quest.thief_calm) || calmed {
             continue;
         }
-        if et.translation().distance(p) <= CONTACT_RANGE {
+        if in_contact(et.translation(), p) {
             let factor = if equip.shield {
                 skills::train(Skill::Defense, 5.0);
+                // Controparata di Atena: il colpo parato apre la guardia del nemico.
+                if skills::active_talent(Skill::Defense) {
+                    combat.riposte = RIPOSTE_WINDOW;
+                    combat.parries += 1;
+                    info!("[COMBATTIMENTO] parata: controparata pronta");
+                }
                 crate::inventory::SHIELD_FACTOR * (1.0 - 0.1 * skills::rank(Skill::Defense))
             } else {
                 1.0
@@ -726,6 +764,16 @@ pub fn update_enemy_arrows(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_enemy_that_stops_in_front_can_hit() {
+        let me = Vec3::new(0.0, 1.0, 0.0);
+        // Si ferma a MELEE_STOP, con il centro un poco più in basso: deve colpire.
+        let enemy = Vec3::new(crate::entities::MELEE_STOP - 0.05, 0.6, 0.0);
+        assert!(in_contact(enemy, me));
+        assert!(!in_contact(Vec3::new(2.5, 1.0, 0.0), me));
+        assert!(!in_contact(Vec3::new(0.5, 3.0, 0.0), me));
+    }
 
     #[test]
     fn a_badly_hurt_enemy_surrenders_only_with_the_talent() {
