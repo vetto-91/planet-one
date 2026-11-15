@@ -479,6 +479,38 @@ pub fn spawn_villagers(
     materials: &mut Assets<StandardMaterial>,
     asset_server: &AssetServer,
 ) {
+    for def in load_defs() {
+        spawn_villager(commands, meshes, materials, asset_server, def);
+    }
+}
+
+/// La scheda di un abitante dell'isola che viaggia con te (un compagno sul continente): stesso aspetto
+/// e stessa voce, ma il suo posto è `post` (l'approdo), a ogni ora; niente casa, turni o negozio.
+pub fn traveler_def(name: &str, post: (Vec2, Vec2)) -> Option<VillagerDef> {
+    let mut def = parse(include_str!("../assets/world/abitanti.txt"))
+        .into_iter()
+        .find(|d| d.name == name)?;
+    def.work = post;
+    def.evening = None;
+    def.home = None;
+    def.secret_walk = None;
+    def.gate = None;
+    def.shift = None;
+    def.wall = None;
+    def.shop = None;
+    def.extra_keys.clear();
+    def.hours = (0.0, 24.0, 24.0);
+    Some(def)
+}
+
+/// Crea un abitante dalla sua scheda (anche fuori dalla sua regione: un compagno in viaggio).
+pub fn spawn_villager(
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+    asset_server: &AssetServer,
+    def: VillagerDef,
+) -> Entity {
     let steel = materials.add(StandardMaterial {
         base_color: Color::srgb(0.55, 0.56, 0.6),
         metallic: 0.5,
@@ -490,104 +522,102 @@ pub fn spawn_villagers(
         perceptual_roughness: 0.85,
         ..default()
     });
-    for def in load_defs() {
-        let persona = crate::ai::persona::load(&def.name);
-        let lines: Vec<&'static str> = persona
-            .greeting
-            .iter()
-            .map(|l| &*Box::leak(l.clone().into_boxed_str()))
-            .collect();
-        let lines: &'static [&'static str] = Box::leak(lines.into_boxed_slice());
-        let name: &'static str = Box::leak(def.name.clone().into_boxed_str());
-        let model = def.model.clone();
-        let (pos, look) = def.work;
-        let guard = def.guard;
-        let shop_key: Option<&'static str> =
-            def.shop.clone().map(|k| &*Box::leak(k.into_boxed_str()));
-        let lantern_mesh = meshes.add(Cuboid::new(0.14, 0.2, 0.14));
-        let lantern_mat = materials.add(StandardMaterial {
-            base_color: Color::srgb(1.0, 0.8, 0.45),
-            emissive: LinearRgba::rgb(0.2, 0.12, 0.03),
-            ..default()
-        });
-        let spear = meshes.add(Cylinder::new(0.03, 2.5));
-        let spear_tip = meshes.add(Cone::new(0.07, 0.25));
-        commands
-            .spawn((
-                SceneNode,
-                Npc {
-                    name,
-                    mode: NpcMode::Ready,
-                    lines,
-                    shop: shop_key,
-                },
-                Interactable {
-                    prompt: "[E] Parla".to_string(),
-                    range: 3.0,
-                    aim: Some(0.5),
-                    use_from: None,
-                },
-                crate::hud::NameAnchor(1.3),
-                NpcInventory::of(&def),
-                Villager {
-                    def,
-                    phase: Phase::Work,
-                    path: VecDeque::new(),
-                    placed: false,
-                    hidden: false,
-                    patrol: 0.0,
-                    indoor: VecDeque::new(),
-                    entered: false,
-                    following: false,
-                    resume: false,
-                    chore: None,
-                    called: None,
-                    recall: false,
-                },
-                RigidBody::Kinematic,
-                Collider::capsule(0.35, 1.0),
-                Transform::from_xyz(pos.x, CENTER_Y, pos.y)
-                    .with_rotation(Quat::from_rotation_y(yaw_towards(look))),
-                Visibility::default(),
-            ))
-            .with_children(|c| {
-                crate::figure::spawn_character(c, asset_server, &model);
-                if guard {
-                    // Lancia nella destra: l'asse dell'osso `hand_r` punta verso le dita (in basso a riposo).
-                    c.spawn((
-                        GuardGear,
-                        crate::figure::AttachToHand { right: true },
-                        // Impugnata a un terzo dell'asta, dritta e con la punta in alto: un bastone d'arma.
-                        Transform::from_xyz(-0.02, -0.15, 0.04)
-                            .with_rotation(Quat::from_rotation_x(std::f32::consts::PI)),
-                        Visibility::default(),
-                    ))
-                    .with_children(|s| {
-                        s.spawn((Mesh3d(spear.clone()), MeshMaterial3d(wood.clone())));
-                        s.spawn((
-                            Mesh3d(spear_tip.clone()),
-                            MeshMaterial3d(steel.clone()),
-                            Transform::from_xyz(0.0, 1.38, 0.0),
-                        ));
-                    });
-                    c.spawn((
-                        GuardLantern,
-                        GuardGear,
-                        crate::figure::AttachToHand { right: false },
-                        Mesh3d(lantern_mesh.clone()),
-                        MeshMaterial3d(lantern_mat.clone()),
-                        PointLight {
-                            color: Color::srgb(1.0, 0.8, 0.5),
-                            intensity: 0.0,
-                            range: 9.0,
-                            shadow_maps_enabled: false,
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, 0.26, 0.0),
+    let persona = crate::ai::persona::load(&def.name);
+    let lines: Vec<&'static str> = persona
+        .greeting
+        .iter()
+        .map(|l| &*Box::leak(l.clone().into_boxed_str()))
+        .collect();
+    let lines: &'static [&'static str] = Box::leak(lines.into_boxed_slice());
+    let name: &'static str = Box::leak(def.name.clone().into_boxed_str());
+    let model = def.model.clone();
+    let (pos, look) = def.work;
+    let guard = def.guard;
+    let shop_key: Option<&'static str> = def.shop.clone().map(|k| &*Box::leak(k.into_boxed_str()));
+    let lantern_mesh = meshes.add(Cuboid::new(0.14, 0.2, 0.14));
+    let lantern_mat = materials.add(StandardMaterial {
+        base_color: Color::srgb(1.0, 0.8, 0.45),
+        emissive: LinearRgba::rgb(0.2, 0.12, 0.03),
+        ..default()
+    });
+    let spear = meshes.add(Cylinder::new(0.03, 2.5));
+    let spear_tip = meshes.add(Cone::new(0.07, 0.25));
+    commands
+        .spawn((
+            SceneNode,
+            Npc {
+                name,
+                mode: NpcMode::Ready,
+                lines,
+                shop: shop_key,
+            },
+            Interactable {
+                prompt: "[E] Parla".to_string(),
+                range: 3.0,
+                aim: Some(0.5),
+                use_from: None,
+            },
+            crate::hud::NameAnchor(1.3),
+            NpcInventory::of(&def),
+            Villager {
+                def,
+                phase: Phase::Work,
+                path: VecDeque::new(),
+                placed: false,
+                hidden: false,
+                patrol: 0.0,
+                indoor: VecDeque::new(),
+                entered: false,
+                following: false,
+                resume: false,
+                chore: None,
+                called: None,
+                recall: false,
+            },
+            RigidBody::Kinematic,
+            Collider::capsule(0.35, 1.0),
+            Transform::from_xyz(pos.x, CENTER_Y, pos.y)
+                .with_rotation(Quat::from_rotation_y(yaw_towards(look))),
+            Visibility::default(),
+        ))
+        .with_children(|c| {
+            crate::figure::spawn_character(c, asset_server, &model);
+            if guard {
+                // Lancia nella destra: l'asse dell'osso `hand_r` punta verso le dita (in basso a riposo).
+                c.spawn((
+                    GuardGear,
+                    crate::figure::AttachToHand { right: true },
+                    // Impugnata a un terzo dell'asta, dritta e con la punta in alto: un bastone d'arma.
+                    Transform::from_xyz(-0.02, -0.15, 0.04)
+                        .with_rotation(Quat::from_rotation_x(std::f32::consts::PI)),
+                    Visibility::default(),
+                ))
+                .with_children(|s| {
+                    s.spawn((Mesh3d(spear.clone()), MeshMaterial3d(wood.clone())));
+                    s.spawn((
+                        Mesh3d(spear_tip.clone()),
+                        MeshMaterial3d(steel.clone()),
+                        Transform::from_xyz(0.0, 1.38, 0.0),
                     ));
-                }
-            });
-    }
+                });
+                c.spawn((
+                    GuardLantern,
+                    GuardGear,
+                    crate::figure::AttachToHand { right: false },
+                    Mesh3d(lantern_mesh.clone()),
+                    MeshMaterial3d(lantern_mat.clone()),
+                    PointLight {
+                        color: Color::srgb(1.0, 0.8, 0.5),
+                        intensity: 0.0,
+                        range: 9.0,
+                        shadow_maps_enabled: false,
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, 0.26, 0.0),
+                ));
+            }
+        })
+        .id()
 }
 
 /// Grafo delle strade per camminare lungo di esse.

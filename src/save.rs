@@ -1901,7 +1901,8 @@ pub fn finish_loading(
                 data.present
                     .extend(WORLD_SECTIONS.iter().map(|s| (*s).to_string()));
             }
-            let (pos, yaw) = to.arrival();
+            // Dalla via sotto il mare si arriva alla fonte (o alla nicchia), altrimenti al molo.
+            let (pos, yaw) = crate::crossing::arrival(to);
             data.pos = pos;
             data.yaw = yaw;
             data.first_person = false;

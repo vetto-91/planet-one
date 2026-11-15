@@ -1,0 +1,62 @@
+# La traversata (ADR 0054): la via sotto il mare oltre la Porta Sommersa, la fonte a gradoni tra le
+# radici della quercia sul continente, Silvia che parte con te, e il ritorno per la stessa via.
+# Il nome comincia per z perché un copione nuovo non sposti le risoluzioni degli altri.
+god on
+ia off
+meteo sereno
+missioni on
+ora 10
+# Prologo compiuto: la Porta Sommersa è aperta e la partenza è fatta.
+missione mp01 7
+missione mp03 9
+missione mp04 6
+missione mp05 4
+verifica /missioni/continente = true
+tp 96.5 2.0 33.2
+aspetta 2
+incantesimo luce
+aspetta 3
+# Silvia viene con te.
+missione qs14 8
+tp silvia
+aspetta 1
+attendi npc:silvia:modo = Ready 90
+davanti silvia
+aspetta 0.5
+guarda silvia
+aspetta 1
+premi e
+aspetta 1
+avanza
+scegli Vieni con me
+aspetta 1
+verifica /personaggio/compagno = Silvia
+# Oltre la Porta Sommersa, in fondo ai gradini che scendono nell'acqua.
+tp 85.2 1.6 46.5
+aspetta 3
+camera 180 25 3
+foto gradini-nell-acqua
+tp 85.2 0.6 48.6
+aspetta 2
+premi e
+aspetta 2
+attendi regione = nord 60
+aspetta 6
+verifica /giocatore/pos/2 > 430
+verifica /giocatore/pos/0 > 15
+verifica /personaggio/compagno = Silvia
+attendi npc:silvia:dist < 8 30
+camera 300 18 14
+foto la-fonte-sotto-la-quercia
+# Congedata sul continente, Silvia aspetta all'approdo.
+# La via sotto il mare si riprende dalla fonte, verso l'isola.
+tp 26 4 444
+aspetta 2
+premi e
+aspetta 2
+attendi regione = isola 60
+aspetta 6
+verifica /giocatore/pos/2 > 40
+verifica /giocatore/pos/0 < 90
+dump ritorno
+esci

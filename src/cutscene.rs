@@ -18,6 +18,8 @@ pub struct Cutscene {
     pub lines: Vec<String>,
     pub elapsed: f32,
     pub travel: Option<Region>,
+    /// Il viaggio è per la via sotto il mare (si arriva alla fonte o alla nicchia, `crossing`).
+    pub deep: bool,
     /// Avvisi da mostrare uno dopo l'altro (doni della Sera delle Lanterne…).
     notices: Vec<String>,
     /// Il dialogo era aperto al frame prima (serve a `missions::track_missions`).
@@ -45,7 +47,17 @@ impl Cutscene {
         self.lines = departure_lines(how, karma.unlocks.contains("gaspare-timoniere"), farewell);
         self.elapsed = 0.0;
         self.travel = Some(to);
+        self.deep = how == "profonda";
         info!("[VIAGGIO] scena della partenza ({how})");
+    }
+
+    /// Un viaggio raccontato con le sue righe (il ritorno dalla via sotto il mare).
+    pub fn start_journey(&mut self, to: Region, lines: Vec<String>, deep: bool) {
+        self.lines = lines;
+        self.elapsed = 0.0;
+        self.travel = Some(to);
+        self.deep = deep;
+        info!("[VIAGGIO] scena del viaggio verso {}", to.title());
     }
 
     fn duration(&self) -> f32 {
@@ -114,6 +126,8 @@ pub fn run_cutscene(
     if cutscene.elapsed >= cutscene.duration() {
         cutscene.lines.clear();
         if let Some(to) = cutscene.travel.take() {
+            crate::crossing::set_deep(cutscene.deep);
+            cutscene.deep = false;
             travel.0 = Some(to);
         }
     }

@@ -337,21 +337,23 @@ const SUNKEN_X1: f32 = 5.7;
 const SUNKEN_H: f32 = 1.95;
 /// Faccia interna della parete di fondo della nicchia.
 const SUNKEN_Z: f32 = -27.0;
+/// In fondo ai gradini oltre la Porta Sommersa (coordinate della grotta): lì comincia la via sotto il mare.
+pub const SUNKEN_DEEP: Vec3 = Vec3::new(5.3, -1.95, -31.0);
 
 /// Oltre la Porta Sommersa: un breve corridoio e gradini che spariscono in un'acqua ferma, la «via
-/// sotto il mare» (ADR 0048). Una cornice di rame a spirali segna il vano dal lato della nicchia.
+/// sotto il mare» (ADR 0048): in fondo ai gradini comincia la traversata (`crossing`, ADR 0054). Una cornice di rame a spirali segna il vano dal lato della nicchia.
 fn sunken_passage(b: &mut B, int: &mut Interior) {
     const FL: f32 = -1.2;
     const LO: f32 = -2.2;
     const TOP: f32 = 0.95;
     let v = Vec3::new;
     cave_floor(b, int, v(4.6, LO, -29.0), v(6.0, FL, -27.6));
-    // Gradini che scendono nell'acqua (solo da vedere: un gradino di pietra ferma il passo).
+    // Gradini che scendono nell'acqua: la via sotto il mare comincia qui (`crossing`, ADR 0054).
     for (i, z) in [-29.0f32, -29.6, -30.2].into_iter().enumerate() {
         let top = FL - 0.25 * (i as f32 + 1.0);
-        b.cuboid(v(4.6, LO, z - 0.6), v(6.0, top, z), STONE_DARK);
+        cave_floor(b, int, v(4.6, LO, z - 0.6), v(6.0, top, z));
     }
-    int.walls.push((v(5.3, FL + 0.4, -29.15), v(1.4, 0.8, 0.3)));
+    cave_floor(b, int, v(4.6, LO, -31.8), v(6.0, FL - 0.75, -30.8));
     b.force = Some(Mat::Plain);
     b.cuboid_c(
         v(5.3, FL - 0.3, -30.4),

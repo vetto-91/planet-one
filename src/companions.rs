@@ -203,12 +203,26 @@ pub fn apply_requests(
 
 /// Sistema: dopo un caricamento rimette il compagno salvato (aspetta che l'abitante ci sia), e
 /// toglie chi seguiva prima; a ogni giorno nuovo i feriti tornano disponibili.
+/// Il posto del compagno in viaggio sul continente: congedato, ti aspetta all'Approdo delle Brume.
+pub const TRAVELER_POST: (Vec2, Vec2) = (Vec2::new(-2.5, 451.0), Vec2::new(0.0, 1.0));
+
+/// Un compagno dell'isola arrivato con te sul continente (ADR 0054).
+#[derive(Component)]
+pub struct Traveler;
+
+#[allow(clippy::too_many_arguments)]
 pub fn restore_and_heal(
     mut commands: Commands,
     mut state: ResMut<CompanionState>,
     clock: Res<crate::daynight::GameClock>,
     current: Query<Entity, With<Companion>>,
     npcs: Query<(Entity, &crate::entities::Npc)>,
+    players: Query<&GlobalTransform, With<crate::player::Player>>,
+    (mut meshes, mut materials, server): (
+        ResMut<Assets<Mesh>>,
+        ResMut<Assets<StandardMaterial>>,
+        Res<AssetServer>,
+    ),
 ) {
     let today = clock.date.day_key();
     if state.wounded.iter().any(|(_, day)| *day < today) {
@@ -226,11 +240,33 @@ pub fn restore_and_heal(
     match want {
         None => state.restore = None,
         Some((name, hp)) => {
-            if crate::region::current() != crate::region::Region::Isola {
-                state.restore = None;
-            } else if let Some((e, _)) = npcs.iter().find(|(_, n)| n.name == name) {
+            if let Some((e, _)) = npcs.iter().find(|(_, n)| n.name == name) {
                 commands.entity(e).insert(Companion::with_hp(hp));
                 info!("[COMPAGNI] {name} ti segue ancora (vita {hp:.0})");
+                state.restore = None;
+            } else if crate::region::current() != crate::region::Region::Isola {
+                // Lontano dall'isola il compagno è venuto con te: compare al tuo fianco.
+                let Ok(player) = players.single() else {
+                    return;
+                };
+                let Some(def) = crate::villagers::traveler_def(&name, TRAVELER_POST) else {
+                    state.restore = None;
+                    return;
+                };
+                let e = crate::villagers::spawn_villager(
+                    &mut commands,
+                    &mut meshes,
+                    &mut materials,
+                    &server,
+                    def,
+                );
+                let at = player.translation() + Vec3::new(1.5, 0.0, 1.0);
+                commands.entity(e).insert((
+                    Companion::with_hp(hp),
+                    Traveler,
+                    Transform::from_xyz(at.x, at.y, at.z),
+                ));
+                info!("[COMPAGNI] {name}: in viaggio con te (vita {hp:.0})");
                 state.restore = None;
             }
         }
