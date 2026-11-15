@@ -151,6 +151,8 @@ pub struct SaveData {
     pub missions: Vec<(String, usize)>,
     /// Risposte date nelle missioni: (missione, tappa, risposta) (ADR 0044).
     pub choices: Vec<(String, usize, usize)>,
+    /// Missioni che si ripetono: giorno in cui sono state compiute (`ripetuta:ec05 = 12345`).
+    pub repeats: Vec<(String, u32)>,
     /// Luoghi scoperti: chiave «regione|nome» e punto d'arrivo del viaggio veloce.
     pub known: Vec<(String, Vec3)>,
     /// Abilità, talenti e livello (ADR 0038).
@@ -386,6 +388,7 @@ impl SaveData {
             keeper_stove_manual: false,
             missions: Vec::new(),
             choices: Vec::new(),
+            repeats: Vec::new(),
             companion: None,
             wounded: Vec::new(),
             known: Vec::new(),
@@ -656,6 +659,9 @@ impl SaveData {
         }
         for (id, step, choice) in &self.choices {
             line(format!("scelta:{id}.{step} = {choice}"));
+        }
+        for (id, day) in &self.repeats {
+            line(format!("ripetuta:{id} = {day}"));
         }
         line(String::new());
         line("# luogo scoperto = punto d'arrivo del viaggio veloce".into());
@@ -952,7 +958,9 @@ impl SaveData {
             }
             "missioni" => {
                 let (k, v) = pair?;
-                if let Some(at) = k.strip_prefix("scelta:") {
+                if let Some(id) = k.strip_prefix("ripetuta:") {
+                    self.repeats.push((id.to_string(), v.parse().ok()?));
+                } else if let Some(at) = k.strip_prefix("scelta:") {
                     let (id, step) = at.rsplit_once('.')?;
                     self.choices
                         .push((id.to_string(), step.parse().ok()?, v.parse().ok()?));
@@ -1358,6 +1366,12 @@ fn collect(kind: SaveKind, session: &Session, hero: &HeroParams, world: &WorldPa
     d.kind = kind;
     d.missions = world.missions.snapshot();
     d.choices = world.missions.choices_snapshot();
+    d.repeats = world
+        .missions
+        .done_on
+        .iter()
+        .map(|(k, v)| (k.clone(), *v))
+        .collect();
     d.known = world.known.0.iter().map(|(k, v)| (k.clone(), *v)).collect();
     d.skills = hero.progress.clone();
     d.thievery = hero.thievery.clone();
@@ -1485,6 +1499,7 @@ fn apply(d: &SaveData, hero: &mut HeroParams, world: &mut WorldParams) {
     if has("missioni") {
         world.missions.restore(&d.missions);
         world.missions.restore_choices(&d.choices);
+        world.missions.done_on = d.repeats.iter().cloned().collect();
     }
     if has("luoghi") {
         world.known.0 = d.known.iter().cloned().collect();
@@ -2046,6 +2061,7 @@ mod tests {
         d.thievery.picked = 2;
         d.thievery.picked_in.insert("caserma".into(), 2);
         d.choices = vec![("qs03".into(), 2, 1), ("qs08".into(), 3, 0)];
+        d.repeats = vec![("ec05".into(), 412)];
         d.thievery.attempts = 7;
         d.thievery.keys.insert("casa-piccola 2".into());
         d.thievery.slipped.insert("guardia bruno".into(), 15);
@@ -2068,6 +2084,7 @@ mod tests {
         assert_eq!(back.skills, d.skills);
         assert_eq!(back.thievery, d.thievery);
         assert_eq!(back.choices, d.choices);
+        assert_eq!(back.repeats, d.repeats);
         assert_eq!(back.karma, d.karma);
         assert_eq!(back.house, d.house);
         assert!(!back.archery_passed);

@@ -137,6 +137,24 @@ pub fn synth_grind() -> Vec<u8> {
         .pipe(|s| to_wav(&s, 0.7))
 }
 
+/// Ronzio della Luce Viva: un'ora di elettricità in un secondo che si ripete senza scatti (100 Hz e
+/// armoniche, con un battito lento come un polso).
+pub fn synth_hum() -> Vec<u8> {
+    let n = RATE as usize; // un secondo esatto: 100 Hz chiude il giro, nessuno scatto al ripetersi
+    (0..n)
+        .map(|i| {
+            let t = i as f32 / RATE as f32;
+            let pulse = 0.75 + 0.25 * (TAU * 1.0 * t).sin();
+            let tone = (TAU * 100.0 * t).sin() * 0.5
+                + (TAU * 200.0 * t).sin() * 0.3
+                + (TAU * 300.0 * t).sin() * 0.12
+                + (TAU * 1000.0 * t).sin() * 0.04;
+            tone * pulse * 0.6
+        })
+        .collect::<Vec<_>>()
+        .pipe(|s| to_wav(&s, 0.5))
+}
+
 /// Scrive in modo scorrevole `x.pipe(f)` invece di `f(x)`.
 trait Pipe: Sized {
     fn pipe<R>(self, f: impl FnOnce(Self) -> R) -> R {
@@ -145,9 +163,16 @@ trait Pipe: Sized {
 }
 impl<T> Pipe for T {}
 
+impl SfxSounds {
+    /// Il ronzio del lampione azzurro (EC-07), da far suonare in loop dove serve.
+    pub fn hum(&self) -> Handle<AudioSource> {
+        self.0[5].clone()
+    }
+}
+
 /// I suoni pronti.
 #[derive(Resource)]
-pub struct SfxSounds([Handle<AudioSource>; 5]);
+pub struct SfxSounds([Handle<AudioSource>; 6]);
 
 fn setup(mut commands: Commands, mut sources: ResMut<Assets<AudioSource>>) {
     let mut add = |bytes: Vec<u8>| {
@@ -161,6 +186,7 @@ fn setup(mut commands: Commands, mut sources: ResMut<Assets<AudioSource>>) {
         add(synth_pin()),
         add(synth_unlock()),
         add(synth_grind()),
+        add(synth_hum()),
     ]));
 }
 
@@ -209,6 +235,7 @@ mod tests {
             synth_pin(),
             synth_unlock(),
             synth_grind(),
+            synth_hum(),
         ] {
             assert_eq!(&bytes[..4], b"RIFF");
             let seconds = (bytes.len() - 44) as f32 / (RATE as f32 * 2.0);

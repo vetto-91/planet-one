@@ -222,6 +222,12 @@ pub fn starting_items(
         return Vec::new();
     }
     // I rottami del naufragio sulla spiaggia (piazzamenti P-1280…1282, ADR 0047).
+    // Gli eventi dell'isola (ADR 0053): la cassa del relitto e il sacchetto nel tronco cavo.
+    match key {
+        "evento:ec01" => return vec![(Coin, 8), (HealthPotion, 1)],
+        "evento:ec09" => return vec![(Coin, 12), (Arrow, 6)],
+        _ => {}
+    }
     match key.split(':').next() {
         Some("1280") => return vec![(Apple, 2), (HealthPotion, 1)],
         Some("1281") => return vec![(Coin, 6), (Apple, 1)],

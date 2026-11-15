@@ -1,6 +1,9 @@
 # Eventi casuali dell'isola (ADR 0037): incontri legati a luogo, ora e meteo. Stesso formato delle
 # missioni, con `tipo: evento`; in più `quando: meteo <sereno|nuvoloso|pioggia|temporale|nebbia|neve>`.
 # Capitano una volta sola, quando passi di lì nel momento giusto; entrano nel diario a cose fatte.
+# `ripeti: <giorni>`: compiuto, l'evento torna da capo dopo tanti giorni (il pedaggio del ponte).
+# Gli eventi con una cosa nel mondo (`src/island_events.rs`, ADR 0053) chiedono anche lo sblocco che
+# quella cosa dà (`quando: sbloccato …`): la cassa del relitto, la bottiglia, il tronco, il lampione…
 # Fonte: Trama-Planet-One/09, sezione 4 (EC-01…EC-12). EC-05, il pedaggio del ponte, mette in scena due
 # banditi veri (`src/island_life.rs`): la scelta è nel dialogo, qui sotto. Anche EC-02 (Lino e i
 # predoni), EC-04 (la pecora, `src/animals.rs`) ed EC-08 (la lite in piazza) hanno persone e bestie vere.
@@ -12,13 +15,11 @@ tipo: evento
 dopo: mp01
 
 [tappa]
-obiettivo: La spiaggia a est del molo, al mattino presto: apri la cassa del relitto
+obiettivo: La spiaggia a est del molo, al mattino presto: apri la cassa del relitto (E)
 quando: vicino 38 86 8
 quando: ora 5 8.5
 quando: sbloccato relitto-aperto
 pensiero: Tra i gabbiani, una cassa sigillata che ieri non c'era. Dentro, monete bagnate e una boccetta intatta. Il mare ogni tanto restituisce.
-dai: pozione di cura 1
-monete: 8
 
 [missione ec02]
 titolo: Il Carretto nella Nebbia
@@ -130,13 +131,12 @@ sommario: Tre farfalle che volano insieme, sempre nello stesso verso.
 tipo: evento
 
 [tappa]
-obiettivo: Il margine del bosco vicino al laghetto, col sole: segui le farfalle
+obiettivo: Il margine del bosco vicino al laghetto, col sole: segui le farfalle fino al tronco cavo (E)
 quando: vicino 62 -8 8
 quando: ora 9 17
 quando: meteo sereno
 quando: sbloccato tronco-delle-farfalle
 pensiero: Tre farfalle volano insieme verso un tronco cavo. Dentro, asciutto, un sacchetto di tela: qualcuno lo nascose qui molto tempo fa, e non tornò a prenderlo.
-monete: 12
 
 [missione ec10]
 titolo: La Nave Fantasma
@@ -186,6 +186,7 @@ monete: 5
 titolo: Il Pedaggio del Ponte
 sommario: Al tramonto, sul ponte di legno del ruscello, due figure col mantello chiedono un pedaggio a chi passa.
 tipo: evento
+ripeti: 7
 
 [tappa]
 obiettivo: Al tramonto o di notte, il ponte di legno sul ruscello a est

@@ -9,16 +9,21 @@ missione mp01 7
 # EC-01, il relitto: all'alba una cassa vera sulla spiaggia.
 meteo sereno
 ora 6
-tp 37 3 84.5
+tp 37 3 88.5
 aspetta 2
-camera 214 55 5
+camera 214 45 5
 foto relitto
 verifica /missioni/ec01 = 1
-tp 38 3 86.8
+tp 38 3 89.6
 aspetta 1
+mira container
 premi e
+aspetta 1
+prendi
+chiudi
 aspetta 2
 verifica /missioni/ec01 = 2
+verifica Coin >= 38
 # EC-12, la bottiglia verde tra la schiuma.
 ora 5.5
 tp 14 3 98
@@ -34,8 +39,8 @@ verifica Relic(BottleMessage) = 1
 # EC-06, il serpente di luce sui gradoni della grotta.
 ora 6
 tp 90.5 3 0
-aspetta 12
 camera 180 30 6
+aspetta 12
 foto serpente-di-luce
 verifica /missioni/ec06 = 2
 # EC-09, le farfalle e il tronco cavo.
@@ -44,14 +49,19 @@ tp 62 3 -6.2
 aspetta 3
 camera 0 40 3
 foto farfalle
+mira container
 premi e
+aspetta 1
+prendi
+chiudi
 aspetta 2
 verifica /missioni/ec09 = 2
+verifica Arrow >= 6
 # EC-03, la scintilla in cima alla torre antica (prima della pioggia: serve il cielo sereno).
 ora 1
 tp 50 18 -45
-aspetta 12
 camera 328 -20 4
+aspetta 12
 foto scintilla
 verifica /missioni/ec03 = 2
 # EC-07, il lampione azzurro sotto la pioggia.
@@ -68,10 +78,11 @@ verifica /missioni/ec07 = 2
 meteo nebbia
 ora 23
 tp 0.5 4 -86
-aspetta 14
 camera 0 5 4
+aspetta 14
 foto nave-fantasma
 tp 0.5 4 -78
+camera 0 5 4
 aspetta 14
 verifica /missioni/ec10 = 2
 # EC-11, la ronda infreddolita: una mela sul parapetto.

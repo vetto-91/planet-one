@@ -413,6 +413,7 @@ pub fn interact(
             unlocked: Vec::new(),
             stats: Some(character.stats),
             age: Some(character.age.key()),
+            day: clock.date.day_key(),
         };
         let busy_keeper = npc.name == "Viandante" && quest.accepted && !facts.quest_done;
         let mission = if busy_keeper {

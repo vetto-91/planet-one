@@ -209,6 +209,13 @@ pub fn spatial_once(volume: f32) -> PlaybackSettings {
         .with_volume(Volume::Linear(volume * SPATIAL_GAIN))
 }
 
+/// Come [`spatial_once`], ma il suono si ripete finché c'è chi lo emette (un ronzio, un fuoco).
+pub fn spatial_loop(volume: f32) -> PlaybackSettings {
+    PlaybackSettings::LOOP
+        .with_spatial(true)
+        .with_volume(Volume::Linear(volume * SPATIAL_GAIN))
+}
+
 /// Punto a `dist` metri dal centro nella direzione `angle` (radianti), alto `height`.
 pub fn around(center: Vec3, angle: f32, dist: f32, height: f32) -> Transform {
     Transform::from_translation(center + Vec3::new(angle.cos() * dist, height, angle.sin() * dist))

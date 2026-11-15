@@ -193,6 +193,8 @@ pub struct Mission {
     pub side: bool,
     /// Evento casuale: un incontro legato a luogo, ora e meteo (conta come secondaria nel diario).
     pub event: bool,
+    /// Si ripete: compiuta, torna da capo dopo tanti giorni (`ripeti: 7`, ADR 0053).
+    pub repeat: Option<u32>,
     pub steps: Vec<Step>,
 }
 
@@ -242,6 +244,7 @@ pub fn parse(text: &str) -> Vec<Mission> {
         match (key, m.steps.last_mut()) {
             ("titolo", None) => m.title = value.to_string(),
             ("sommario", None) => m.summary = value.to_string(),
+            ("ripeti", None) => m.repeat = value.parse().ok().filter(|d: &u32| *d > 0),
             ("tipo", None) => {
                 m.event = value == "evento";
                 m.side = value == "secondaria" || m.event;
@@ -377,6 +380,8 @@ pub struct Missions {
     pub chosen: std::collections::BTreeMap<(usize, usize), usize>,
     /// Contatori del mondo dell'ultimo frame (servono anche ai dialoghi, vedi `dialog_for`).
     counters: Vec<(String, u32)>,
+    /// Giorno (`GameDate::day_key`) in cui una missione che si ripete è stata compiuta.
+    pub done_on: std::collections::BTreeMap<String, u32>,
 }
 
 impl Default for Missions {
@@ -403,6 +408,7 @@ impl Default for Missions {
             picked: Vec::new(),
             chosen: Default::default(),
             counters: Vec::new(),
+            done_on: Default::default(),
         }
     }
 }
@@ -426,6 +432,8 @@ pub struct Facts {
     pub unlocked: Vec<String>,
     /// Statistiche del personaggio (per le risposte che le chiedono; `None` = tutte valide).
     pub stats: Option<crate::character::Stats>,
+    /// Giorno di gioco (`GameDate::day_key`), per le missioni che si ripetono.
+    pub day: u32,
     /// Età del personaggio (`giovane`, `adulto`, `maturo`): sceglie le battute col tono giusto
     /// (`> [giovane] …`, ADR 0047). `None` = tutte.
     pub age: Option<&'static str>,
@@ -679,6 +687,7 @@ impl Missions {
         if !self.enabled {
             return done;
         }
+        self.repeat_due(facts.day);
         facts.sides_done = self.sides_done();
         facts.unlocked.extend(self.unlocked_all());
         self.counters = facts.counters.clone();
@@ -773,6 +782,32 @@ impl Missions {
     }
 
     /// Risposte date, da salvare: (missione, tappa, risposta).
+    /// Le missioni che si ripetono: compiute, si segna il giorno; passati i loro giorni tornano da
+    /// capo, con le risposte di allora dimenticate (i loro sblocchi spariscono con loro).
+    pub fn repeat_due(&mut self, day: u32) {
+        for i in 0..self.list.len() {
+            let Some(days) = self.list[i].repeat else {
+                continue;
+            };
+            let id = self.list[i].id.clone();
+            if self.progress[i] < self.list[i].steps.len() {
+                continue;
+            }
+            match self.done_on.get(&id).copied() {
+                None => {
+                    self.done_on.insert(id, day);
+                }
+                Some(on) if day >= on + days => {
+                    self.progress[i] = 0;
+                    self.chosen.retain(|(m, _), _| *m != i);
+                    self.done_on.remove(&id);
+                    info!("[MISSIONE] {id}: torna da capo dopo {days} giorni");
+                }
+                _ => {}
+            }
+        }
+    }
+
     pub fn choices_snapshot(&self) -> Vec<(String, usize, usize)> {
         self.chosen
             .iter()
@@ -792,6 +827,7 @@ impl Missions {
     /// Nuova partita: tutto da capo.
     pub fn reset(&mut self) {
         self.progress.iter_mut().for_each(|p| *p = 0);
+        self.done_on.clear();
         self.talking = None;
         self.talked.clear();
         self.picked.clear();
@@ -996,6 +1032,7 @@ pub fn track_missions(
         return;
     };
     let mut facts = Facts {
+        day: clock.date.day_key(),
         age: None,
         pos: player.translation(),
         hour: clock.hour,
@@ -1119,6 +1156,27 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_repeating_event_comes_back_after_its_days() {
+        let mut m = all();
+        let i = m.index("ec05").unwrap();
+        assert_eq!(m.list[i].repeat, Some(7));
+        let len = m.list[i].steps.len();
+        m.progress[i] = len;
+        m.chosen.insert((i, 0), 2);
+        m.repeat_due(100);
+        assert_eq!(m.done_on.get("ec05"), Some(&100));
+        m.repeat_due(106);
+        assert_eq!(m.progress[i], len, "sei giorni non bastano");
+        m.repeat_due(107);
+        assert_eq!(m.progress[i], 0);
+        assert!(
+            !m.chosen.contains_key(&(i, 0)),
+            "la risposta di allora è dimenticata"
+        );
+        assert!(m.done_on.is_empty());
+    }
+
+    #[test]
     fn every_item_in_the_mission_files_exists() {
         // `dai:`, `prendi:` e gli effetti «dai …» delle scelte: un nome sbagliato sparirebbe in silenzio.
         for file in [
@@ -1163,6 +1221,7 @@ mod tests {
 
     fn facts(pos: Vec3, hour: f32, accepted: bool, done: bool) -> Facts {
         Facts {
+            day: 0,
             age: None,
             pos,
             hour,

@@ -33,10 +33,11 @@ pub struct EventSpec {
 pub const EVENTS: [EventSpec; 8] = [
     EventSpec {
         id: "ec01",
-        at: Vec2::new(38.0, 86.0),
+        // Sulla sabbia, tra il bosco di betulle e l'acqua.
+        at: Vec2::new(38.0, 90.5),
         hours: (5.0, 8.5),
         weather: None,
-        prompt: Some("[E] Apri la cassa del relitto"),
+        prompt: None,
         flag: "relitto-aperto",
         reach: 2.5,
     },
@@ -72,7 +73,7 @@ pub const EVENTS: [EventSpec; 8] = [
         at: Vec2::new(62.0, -8.0),
         hours: (9.0, 17.0),
         weather: Some(Kind::Clear),
-        prompt: Some("[E] Guarda nel tronco cavo"),
+        prompt: None,
         flag: "tronco-delle-farfalle",
         reach: 2.5,
     },
@@ -104,6 +105,12 @@ pub const EVENTS: [EventSpec; 8] = [
         reach: 2.5,
     },
 ];
+
+/// Gli eventi con un mobile vero da aprire (la cassa del relitto, il tronco cavo): si completano
+/// quando il mobile è stato aperto (`containers`), e dentro c'è quel che racconta la trama.
+pub fn container_key(id: &str) -> Option<String> {
+    matches!(id, "ec01" | "ec09").then(|| format!("evento:{id}"))
+}
 
 /// Fin dove si vede la cosa di un evento (oltre, non c'è).
 const SHOW_RANGE: f32 = 90.0;
@@ -155,12 +162,18 @@ pub struct EventWatch {
     pub shown: std::collections::HashMap<&'static str, f32>,
 }
 
+/// Chi sta in `from` guardando verso `facing` (in piano) vede `target`? Entro 50° circa.
+pub fn looks_at(facing: Vec2, from: Vec2, target: Vec2) -> bool {
+    let to = (target - from).normalize_or_zero();
+    to == Vec2::ZERO || facing.dot(to) > 0.64
+}
+
 /// Secondi da guardare perché un evento sia «visto».
 pub fn watch_needed(id: &str) -> f32 {
     match id {
         "ec03" => 7.0,
         "ec06" => 9.0,
-        "ec10" => 24.0,
+        "ec10" => 10.0,
         _ => 0.0,
     }
 }
@@ -175,12 +188,17 @@ pub fn island_events(
         Res<crate::daynight::GameClock>,
         Res<crate::weather::WeatherState>,
     ),
-    keys: Res<ButtonInput<KeyCode>>,
-    missions: Res<Missions>,
-    karma: Res<crate::karma::Karma>,
-    dialog: Res<crate::entities::DialogState>,
+    (keys, missions, karma, dialog): (
+        Res<ButtonInput<KeyCode>>,
+        Res<Missions>,
+        Res<crate::karma::Karma>,
+        Res<crate::entities::DialogState>,
+    ),
     field: Option<Res<crate::terrain::TerrainField>>,
     inventory: Res<crate::inventory::Inventory>,
+    containers: Res<crate::containers::Containers>,
+    cameras: Query<(&Camera, &GlobalTransform), With<Camera3d>>,
+    roots: Query<&GlobalTransform, With<EventProp>>,
     players: Query<&GlobalTransform, With<crate::player::Player>>,
     caves: Query<&GlobalTransform, With<crate::places::CaveMouth>>,
     props: Query<(Entity, &EventProp)>,
@@ -191,6 +209,10 @@ pub fn island_events(
         &mut Visibility,
     )>,
     mut assets: (ResMut<Assets<Mesh>>, ResMut<Assets<StandardMaterial>>),
+    (sounds, audio): (
+        Option<Res<crate::sfx::SfxSounds>>,
+        Res<crate::audio::AudioSettings>,
+    ),
     mut watch: ResMut<EventWatch>,
     mut nearest: ResMut<crate::entities::NearestInteract>,
 ) {
@@ -226,7 +248,20 @@ pub fn island_events(
         }
         if present.is_empty() {
             let cave = caves.iter().next().map(|c| c.compute_transform());
-            spawn_event(&mut commands, &mut assets, &field, spec, cave);
+            let root = spawn_event(&mut commands, &mut assets, &field, spec, cave);
+            // Il lampione azzurro ronza davvero, dal vetro.
+            if spec.id == "ec07"
+                && let Some(sounds) = &sounds
+            {
+                let hum = commands
+                    .spawn((
+                        AudioPlayer::new(sounds.hum()),
+                        crate::audio::spatial_loop(audio.ambient_volume * 0.6),
+                        Transform::from_xyz(0.0, 3.3, 0.0),
+                    ))
+                    .id();
+                commands.entity(root).add_child(hum);
+            }
             info!("[EVENTI] {}: compare nel mondo", spec.id);
         }
         *watch.shown.entry(spec.id).or_default() += dt;
@@ -246,8 +281,28 @@ pub fn island_events(
                     }
                 }
             }
+            None if let Some(key) = container_key(spec.id) => {
+                if containers.was_opened(&key) {
+                    crate::karma::flag(spec.flag);
+                    info!("[EVENTI] {}: aperto ({})", spec.id, spec.flag);
+                }
+            }
             None => {
-                if dist <= spec.reach {
+                // Conta solo il tempo in cui la camera è girata verso la cosa (la nave si muove).
+                let target = if spec.id == "ec10" {
+                    present
+                        .first()
+                        .and_then(|e| roots.get(*e).ok())
+                        .map_or(spec.at, |t| t.translation().xz())
+                } else {
+                    spec.at
+                };
+                let facing = cameras
+                    .iter()
+                    .find(|(c, _)| c.is_active)
+                    .map(|(_, t)| t.forward().xz().normalize_or_zero());
+                let looking = facing.is_some_and(|f| looks_at(f, me.xz(), target));
+                if dist <= spec.reach && looking {
                     let w = watch.watched.entry(spec.id).or_default();
                     *w += dt;
                     if *w >= watch_needed(spec.id) {
@@ -287,7 +342,8 @@ pub fn island_events(
                 });
             }
             Animated::Ship { from, to } => {
-                let k = (ship_t / 40.0).clamp(0.0, 1.0);
+                // Passa in 40 secondi, poi ricomincia dopo una pausa: chi l'ha persa la rivede.
+                let k = ((ship_t % 50.0) / 40.0).clamp(0.0, 1.0);
                 tf.translation = from.lerp(*to, k) + Vec3::Y * (t * 0.6).sin() * 0.08;
             }
             Animated::Pulse => {
@@ -316,7 +372,7 @@ fn spawn_event(
     field: &crate::terrain::TerrainField,
     spec: &EventSpec,
     cave: Option<Transform>,
-) {
+) -> Entity {
     let mut mat = |c: Color, glow: Option<LinearRgba>, alpha: bool| {
         materials.add(StandardMaterial {
             base_color: c,
@@ -362,6 +418,15 @@ fn spawn_event(
                     Transform::from_xyz(0.0, 0.18, 0.0).with_rotation(Quat::from_rotation_z(0.12)),
                 ),
             );
+            let e = commands
+                .spawn(crate::containers::bundle(
+                    crate::containers::ContainerKind::Crate,
+                    Vec3::new(0.0, 0.5, 0.0),
+                    "evento:ec01".to_string(),
+                    "relitto",
+                ))
+                .id();
+            commands.entity(root).add_child(e);
             for (x, z, yaw) in [(1.1, 0.4, 0.6), (-0.9, -0.6, 1.9), (0.3, 1.2, 2.6)] {
                 child(
                     commands,
@@ -479,6 +544,15 @@ fn spawn_event(
                     Transform::from_xyz(1.11, 0.32, 0.0).with_rotation(Quat::from_rotation_z(1.5)),
                 ),
             );
+            let e = commands
+                .spawn(crate::containers::bundle(
+                    crate::containers::ContainerKind::Crate,
+                    Vec3::new(1.1, 0.35, 0.0),
+                    "evento:ec09".to_string(),
+                    "tronco",
+                ))
+                .id();
+            commands.entity(root).add_child(e);
             let wing = mat(
                 Color::srgb(1.0, 0.55, 0.12),
                 Some(LinearRgba::rgb(0.4, 0.2, 0.0)),
@@ -584,6 +658,7 @@ fn spawn_event(
         }
         _ => {}
     }
+    root
 }
 
 /// Sistema: nella notte di neve la guardia di Porta Nord batte i denti, finché la ronda è aperta.
@@ -634,6 +709,15 @@ pub fn plugin(app: &mut App) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn watching_needs_the_camera_turned_to_the_thing() {
+        let me = Vec2::ZERO;
+        assert!(looks_at(Vec2::new(0.0, -1.0), me, Vec2::new(0.0, -10.0)));
+        assert!(looks_at(Vec2::new(0.0, -1.0), me, Vec2::new(5.0, -10.0)));
+        assert!(!looks_at(Vec2::new(0.0, -1.0), me, Vec2::new(0.0, 10.0)));
+        assert!(!looks_at(Vec2::new(1.0, 0.0), me, Vec2::new(0.0, -10.0)));
+    }
 
     #[test]
     fn hours_wrap_around_midnight() {

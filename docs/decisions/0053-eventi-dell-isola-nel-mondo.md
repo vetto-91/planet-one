@@ -33,8 +33,23 @@ il messaggio nella bottiglia.
   luogo, ora e meteo, come prima. Un test controlla che ogni sblocco sia chiesto dalla sua missione.
 - **Prova**: `prove/zzzzzzzzzzzzzzzzzzzzzz-eventi-2.txt`. `zz-ultime.txt` chiude questi eventi con la shell.
 
+## Aggiornamento: ciò che restava (2026-11-15)
+- **Mobili veri**: la cassa del relitto (ora sulla sabbia, a 38; 90,5) e il tronco cavo sono mobili da
+  aprire (`containers::bundle`, chiavi `evento:ec01` ed `evento:ec09`). Dentro c'è quel che racconta la
+  trama: monete bagnate e una boccetta nella cassa, un sacchetto con monete e frecce nel tronco
+  (`containers::starting_items`). L'evento si completa quando il mobile è stato aperto; i premi della
+  missione sono passati nel mobile.
+- **Guardare davvero**: per gli eventi da guardare conta solo il tempo in cui la camera è girata verso la
+  cosa (entro una cinquantina di gradi, `island_events::looks_at`). La nave fantasma basta guardarla 10
+  secondi, e ripassa ogni 50 secondi per chi l'ha persa.
+- **Il ronzio del lampione**: un suono sintetizzato in locale (`sfx::synth_hum`, 100 Hz con le armoniche e
+  un battito lento), in loop e posizionale dal vetro (`audio::spatial_loop`).
+- **Eventi che si ripetono**: la chiave `ripeti: <giorni>` in `eventi.txt`. Compiuto, l'evento segna il
+  giorno (`Missions::done_on`, salvato come `ripetuta:<id> = <giorno>`); passati i giorni torna da capo e le
+  risposte di allora si dimenticano, con i loro sblocchi. Il pedaggio del ponte torna ogni 7 giorni:
+  i banditi si ripresentano al tramonto e si sceglie di nuovo.
+
 ## Conseguenze
-- Il pedaggio del ponte (EC-05) succede ancora una volta sola.
-- Il lampione azzurro non ha un suono suo: il ronzio è nel pensiero.
-- La cassa del relitto e il tronco non sono mobili veri: il premio arriva dalla missione, come prima.
-- Gli eventi da guardare contano il tempo passato vicino, non se li si guarda davvero.
+- ~~Il pedaggio succede una volta sola; il lampione non ronza; cassa e tronco non sono mobili veri; si
+  conta il tempo passato vicino.~~ **Risolto**, vedi «Aggiornamento».
+- Gli altri eventi non si ripetono: capitano una volta, come vuole la trama.
