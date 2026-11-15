@@ -49,7 +49,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 - `src/player.rs`: movimento, salto, corsa, ground-check (in `FixedUpdate`, character controller kinematico).
 - `src/camera.rs`: orbita, terza e prima persona.
 - `src/entities.rs`: NPC, nemico, dialogo.
-- `src/inventory_ui.rs`: inventario (tasto I), filtri, icone egui; icone in `assets/textures/icone/` da `scripts/make_item_icons.py`.
+- `src/inventory_ui.rs`: inventario (tasto I), filtri, icone egui; icone in `assets/textures/icone/` da `scripts/make_item_icons.py`. Ricompense uniche delle secondarie (Lanterna di Tiro, Mantello, Guanti, Arco Maestro, Scudo dell'Orlo, forno di Marta) in `inventory.rs`/`shop.rs` (ADR 0051).
 - `src/combat.rs`, `src/inventory.rs`, `src/hud.rs`: combattimento, inventario, HUD.
 - `src/quests/mod.rs`: parser dei dialoghi, voci del diario, fumetti (barks), registro quest.
 - `src/quests/<quest>/mod.rs` + `assets/quests/<quest>/dialoghi.txt`: logica e testi (modificabili a mano) di ogni quest. Vedi ADR 0003.

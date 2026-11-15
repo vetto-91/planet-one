@@ -451,7 +451,7 @@ pub fn interact(
         dialog.result = None;
         dialog.finished = false;
         dialog.ai_offer = false;
-        dialog.shop = npc.shop;
+        dialog.shop = npc.shop.filter(|k| crate::shop::open_for(k));
         dialog.speaker_entity = Some(entity);
         info!("dialogo aperto con {}", npc.name);
     }

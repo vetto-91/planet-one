@@ -1122,7 +1122,10 @@ pub fn snapshot(world: &mut World) -> Value {
         .iter()
         .cloned()
         .collect();
-    let scudo = world.resource::<crate::inventory::Equipment>().shield;
+    let (scudo, scudo_orlo, lanterna) = {
+        let e = world.resource::<crate::inventory::Equipment>();
+        (e.shield, e.rim, e.lantern)
+    };
     let who = world.resource::<crate::character::Character>();
     let prompt = world
         .resource::<crate::entities::NearestInteract>()
@@ -1138,6 +1141,8 @@ pub fn snapshot(world: &mut World) -> Value {
         "parate": parate,
         "chiavi": chiavi.join(","),
         "scudo": scudo,
+        "scudo_orlo": scudo_orlo,
+        "lanterna": lanterna,
         "risveglio": who.awakening,
         "eta": who.age.key(),
         "classe": who.class.name(),

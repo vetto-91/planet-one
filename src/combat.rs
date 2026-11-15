@@ -83,6 +83,8 @@ pub struct SwingTimer(pub f32);
 pub struct Arrow {
     vel: Vec3,
     life: f32,
+    /// Forza dell'arco che l'ha scoccata (`inventory::arrow_power`).
+    power: f32,
 }
 
 /// Cose contro cui si ferma una freccia: terreno ed edifici.
@@ -169,7 +171,15 @@ pub fn player_attack(
         crate::vitals::spend(crate::vitals::SWING_COST);
         let dir = cam.forward();
         let start = p + Vec3::Y * 0.4 + *dir * 0.8;
-        loose(&mut commands, &mut meshes, &mut materials, start, dir);
+        let power = crate::inventory::arrow_power(equip.weapon);
+        loose(
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+            start,
+            dir,
+            power,
+        );
         return;
     }
 
@@ -248,12 +258,15 @@ pub fn loose(
     materials: &mut Assets<StandardMaterial>,
     start: Vec3,
     dir: Dir3,
+    power: f32,
 ) {
+    // Un arco più forte tira anche più teso (meno caduta sulla stessa distanza).
     commands.spawn((
         crate::scene::SceneNode,
         Arrow {
-            vel: *dir * ARROW_SPEED,
+            vel: *dir * ARROW_SPEED * power.sqrt(),
             life: 3.0,
+            power,
         },
         Mesh3d(meshes.add(Cuboid::new(0.04, 0.04, 0.7))),
         MeshMaterial3d(materials.add(StandardMaterial {
@@ -308,7 +321,7 @@ pub fn update_arrows(
         let mut hit = false;
         for (et, mut hp) in &mut enemies {
             if et.translation().distance(mid) < 1.1 {
-                let damage = ARROW_DAMAGE * (1.0 + 0.08 * skills::rank(Skill::Archery));
+                let damage = ARROW_DAMAGE * a.power * (1.0 + 0.08 * skills::rank(Skill::Archery));
                 hp.current = (hp.current - damage).max(0.0);
                 skills::train(Skill::Archery, 6.0);
                 info!("freccia su nemico: vita -> {:.0}", hp.current);
@@ -370,7 +383,7 @@ pub fn contact_damage(
                     combat.parries += 1;
                     info!("[COMBATTIMENTO] parata: controparata pronta");
                 }
-                crate::inventory::SHIELD_FACTOR * (1.0 - 0.1 * skills::rank(Skill::Defense))
+                equip.shield_factor() * (1.0 - 0.1 * skills::rank(Skill::Defense))
             } else {
                 1.0
             };
@@ -743,7 +756,7 @@ pub fn update_enemy_arrows(
             commands.entity(e).despawn();
             if !cheats.god && !cheats.invisible && combat.iframe <= 0.0 && hp.current > 0.0 {
                 let factor = if equip.shield {
-                    crate::inventory::SHIELD_FACTOR
+                    equip.shield_factor()
                 } else {
                     1.0
                 };

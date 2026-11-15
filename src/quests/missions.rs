@@ -144,11 +144,9 @@ pub struct Choice {
 }
 
 /// Oggetto dal nome italiano usato nei file («mela», «pesce», «pozione del mulo»…).
+/// Come nei salvataggi: senza badare a maiuscole e accenti, e singolare o plurale («freccia»).
 fn item(name: &str) -> Option<crate::inventory::ItemKind> {
-    let wanted = name.trim().to_lowercase();
-    crate::inventory::ItemKind::ALL
-        .into_iter()
-        .find(|k| k.name().to_lowercase() == wanted)
+    crate::inventory::ItemKind::from_name(name)
 }
 
 /// «<oggetto> <n>» (n = 1 se manca).
@@ -1100,6 +1098,42 @@ pub fn track_missions(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_item_in_the_mission_files_exists() {
+        // `dai:`, `prendi:` e gli effetti «dai …» delle scelte: un nome sbagliato sparirebbe in silenzio.
+        for file in [
+            include_str!("../../assets/quests/prologo/missioni.txt"),
+            include_str!("../../assets/quests/prologo/secondarie.txt"),
+            include_str!("../../assets/quests/prologo/eventi.txt"),
+        ] {
+            for line in file.lines().map(str::trim) {
+                let mut wanted: Vec<&str> = Vec::new();
+                if let Some(v) = line
+                    .strip_prefix("dai:")
+                    .or_else(|| line.strip_prefix("prendi:"))
+                {
+                    wanted.push(v);
+                }
+                if let Some((_, effects)) = line
+                    .strip_prefix("scegli:")
+                    .and_then(|l| l.split_once("=>"))
+                {
+                    wanted.extend(effects.split(';').filter_map(|e| {
+                        e.trim()
+                            .strip_prefix("dai ")
+                            .or_else(|| e.trim().strip_prefix("prendi "))
+                    }));
+                }
+                for w in wanted {
+                    assert!(
+                        item_qty(w).is_some(),
+                        "oggetto sconosciuto: «{w}» in «{line}»"
+                    );
+                }
+            }
+        }
+    }
 
     fn all() -> Missions {
         Missions {

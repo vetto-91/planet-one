@@ -43,6 +43,10 @@ pub enum ItemKind {
     LeatherArmor,
     MailArmor,
     PlateArmor,
+    /// L'Arco Maestro di Silvia (QS-14): frecce più forti e più tese.
+    MasterBow,
+    /// Lo Scudo dell'Orlo ricomposto da Ferruccio (QS-03): il miglior scudo dell'isola, più leggero.
+    RimShield,
     /// Oggetti di trama (ADR 0044).
     Relic(Relic),
 }
@@ -89,12 +93,18 @@ pub enum Relic {
     ApprodiPages,
     /// Il medaglione di Lauro per Rosa, nel baule in cima alla torre.
     LauroMedallion,
+    /// La Lanterna di Vetro di Tiro (QS-02): una luce portata, dalla barra.
+    TyreLantern,
+    /// Il Mantello del Navigatore (QS-11): si passa inosservati.
+    NavigatorCloak,
+    /// I Guanti Isolanti di rame e cuoio (QS-13): dita sicure sulle serrature.
+    CopperGloves,
 }
 
 impl Relic {
     /// Tutti gli oggetti di trama (serve ai test).
     #[cfg(test)]
-    pub const ALL: [Relic; 21] = [
+    pub const ALL: [Relic; 24] = [
         Relic::Tablet,
         Relic::MotherCoin,
         Relic::Quipu,
@@ -116,6 +126,9 @@ impl Relic {
         Relic::BrokenAstrolabe,
         Relic::ApprodiPages,
         Relic::LauroMedallion,
+        Relic::TyreLantern,
+        Relic::NavigatorCloak,
+        Relic::CopperGloves,
     ];
 
     fn name(self) -> &'static str {
@@ -141,6 +154,9 @@ impl Relic {
             Relic::BrokenAstrolabe => "Astrolabio spezzato",
             Relic::ApprodiPages => "Pagine antiche degli Approdi",
             Relic::LauroMedallion => "Medaglione di Lauro",
+            Relic::TyreLantern => "Lanterna di Vetro di Tiro",
+            Relic::NavigatorCloak => "Mantello del Navigatore",
+            Relic::CopperGloves => "Guanti Isolanti",
         }
     }
 
@@ -167,6 +183,9 @@ impl Relic {
             Relic::BrokenAstrolabe => "astrolabio",
             Relic::ApprodiPages => "pagine-antiche",
             Relic::LauroMedallion => "medaglione",
+            Relic::TyreLantern => "lanterna-tiro",
+            Relic::NavigatorCloak => "mantello",
+            Relic::CopperGloves => "guanti-rame",
         }
     }
 
@@ -199,6 +218,15 @@ impl Relic {
                 "Uccelli, occhi e lettere sconosciute: nomi più vecchi del paese."
             }
             Relic::LauroMedallion => "Una rosa incisa a mano e una data di quarant'anni fa.",
+            Relic::TyreLantern => {
+                "Vetro soffiato a Tiro: dalla barra si accende, e illumina il doppio di una torcia."
+            }
+            Relic::NavigatorCloak => {
+                "Lana tinta di porpora: pedinare e borseggiare riesce meglio a chi lo porta."
+            }
+            Relic::CopperGloves => {
+                "Rame e cuoio: le dita non tremano, la tacca dello scasso è più larga."
+            }
         }
     }
 
@@ -209,6 +237,9 @@ impl Relic {
             }
             Relic::Focaccia => Color::srgb(0.85, 0.65, 0.35),
             Relic::FeatherAmulet => Color::srgb(0.85, 0.9, 0.95),
+            Relic::TyreLantern => Color::srgb(1.0, 0.8, 0.4),
+            Relic::NavigatorCloak => Color::srgb(0.55, 0.15, 0.35),
+            Relic::CopperGloves => Color::srgb(0.75, 0.45, 0.25),
             _ => Color::srgb(0.7, 0.55, 0.35),
         }
     }
@@ -253,7 +284,7 @@ impl Category {
 
 impl ItemKind {
     /// Tutti i tipi di oggetto.
-    pub const ALL: [ItemKind; 44] = [
+    pub const ALL: [ItemKind; 49] = [
         ItemKind::HealthPotion,
         ItemKind::Coin,
         ItemKind::ShortSword,
@@ -277,6 +308,8 @@ impl ItemKind {
         ItemKind::LeatherArmor,
         ItemKind::MailArmor,
         ItemKind::PlateArmor,
+        ItemKind::MasterBow,
+        ItemKind::RimShield,
         ItemKind::Relic(Relic::Tablet),
         ItemKind::Relic(Relic::MotherCoin),
         ItemKind::Relic(Relic::Quipu),
@@ -298,6 +331,9 @@ impl ItemKind {
         ItemKind::Relic(Relic::BrokenAstrolabe),
         ItemKind::Relic(Relic::ApprodiPages),
         ItemKind::Relic(Relic::LauroMedallion),
+        ItemKind::Relic(Relic::TyreLantern),
+        ItemKind::Relic(Relic::NavigatorCloak),
+        ItemKind::Relic(Relic::CopperGloves),
     ];
 
     /// Peso reale di un'unità (kg). Monete e munizioni non pesano.
@@ -324,7 +360,12 @@ impl ItemKind {
             ItemKind::LeatherArmor => Some(5.0),
             ItemKind::MailArmor => Some(11.0),
             ItemKind::PlateArmor => Some(18.0),
+            ItemKind::MasterBow => Some(1.0),
+            ItemKind::RimShield => Some(2.5),
             ItemKind::Relic(Relic::Focaccia) => Some(0.3),
+            ItemKind::Relic(Relic::TyreLantern) => Some(0.8),
+            ItemKind::Relic(Relic::NavigatorCloak) => Some(1.2),
+            ItemKind::Relic(Relic::CopperGloves) => Some(0.3),
             ItemKind::Relic(_) => Some(0.05),
             ItemKind::Coin | ItemKind::Arrow => None,
         }
@@ -333,10 +374,13 @@ impl ItemKind {
     /// Categoria nell'inventario.
     pub fn category(self) -> Category {
         match self {
-            ItemKind::ShortSword | ItemKind::LongSword | ItemKind::Axe | ItemKind::Bow => {
-                Category::Weapons
-            }
+            ItemKind::ShortSword
+            | ItemKind::LongSword
+            | ItemKind::Axe
+            | ItemKind::Bow
+            | ItemKind::MasterBow => Category::Weapons,
             ItemKind::Shield
+            | ItemKind::RimShield
             | ItemKind::LeatherArmor
             | ItemKind::MailArmor
             | ItemKind::PlateArmor => Category::Defense,
@@ -354,6 +398,9 @@ impl ItemKind {
             | ItemKind::Stone => Category::Gear,
             ItemKind::Coin | ItemKind::MasterKey => Category::Valuables,
             ItemKind::Relic(Relic::Focaccia) => Category::Food,
+            ItemKind::Relic(Relic::TyreLantern | Relic::NavigatorCloak | Relic::CopperGloves) => {
+                Category::Gear
+            }
             ItemKind::Relic(_) => Category::Keepsakes,
         }
     }
@@ -384,6 +431,8 @@ impl ItemKind {
             ItemKind::LeatherArmor => "armatura-cuoio",
             ItemKind::MailArmor => "armatura-maglia",
             ItemKind::PlateArmor => "armatura-piastre",
+            ItemKind::MasterBow => "arco-maestro",
+            ItemKind::RimShield => "scudo-orlo",
             ItemKind::Relic(r) => r.icon(),
         }
     }
@@ -393,7 +442,11 @@ impl ItemKind {
         !matches!(
             self,
             ItemKind::Coin | ItemKind::MasterKey | ItemKind::Wood | ItemKind::Stone
-        ) && !matches!(self, ItemKind::Relic(r) if r != Relic::Focaccia && r != Relic::FeatherAmulet)
+        ) && !matches!(
+            self,
+            ItemKind::Relic(r)
+                if !matches!(r, Relic::Focaccia | Relic::FeatherAmulet | Relic::TyreLantern)
+        )
     }
 
     /// Nome mostrato nell'inventario.
@@ -422,6 +475,8 @@ impl ItemKind {
             ItemKind::LeatherArmor => "Armatura di cuoio",
             ItemKind::MailArmor => "Cotta di maglia",
             ItemKind::PlateArmor => "Armatura a piastre",
+            ItemKind::MasterBow => "Arco Maestro",
+            ItemKind::RimShield => "Scudo dell'Orlo",
             ItemKind::Relic(r) => r.name(),
         }
     }
@@ -452,6 +507,10 @@ impl ItemKind {
             ItemKind::LeatherArmor => "Subisci il 15% di danno in meno. Leggera.",
             ItemKind::MailArmor => "Subisci il 30% di danno in meno.",
             ItemKind::PlateArmor => "Subisci il 45% di danno in meno. Pesante: corri meno.",
+            ItemKind::MasterBow => "L'arco di Silvia: frecce più forti del 40% e più tese.",
+            ItemKind::RimShield => {
+                "Due città, le stagioni e l'Oceano: riduce il danno del 70%, più leggero."
+            }
             ItemKind::Relic(r) => r.description(),
         }
     }
@@ -516,8 +575,17 @@ impl ItemKind {
     pub fn is_weapon(self) -> bool {
         matches!(
             self,
-            ItemKind::ShortSword | ItemKind::LongSword | ItemKind::Axe | ItemKind::Bow
+            ItemKind::ShortSword
+                | ItemKind::LongSword
+                | ItemKind::Axe
+                | ItemKind::Bow
+                | ItemKind::MasterBow
         )
+    }
+
+    /// Scudo da imbracciare.
+    pub fn is_shield(self) -> bool {
+        matches!(self, ItemKind::Shield | ItemKind::RimShield)
     }
 
     /// Punti vita curati se si mangia/beve.
@@ -557,6 +625,8 @@ impl ItemKind {
             ItemKind::LeatherArmor => Color::srgb(0.55, 0.35, 0.2),
             ItemKind::MailArmor => Color::srgb(0.6, 0.62, 0.66),
             ItemKind::PlateArmor => Color::srgb(0.75, 0.77, 0.8),
+            ItemKind::MasterBow => Color::srgb(0.45, 0.28, 0.12),
+            ItemKind::RimShield => Color::srgb(0.7, 0.5, 0.25),
             ItemKind::Relic(r) => r.color(),
         }
     }
@@ -623,13 +693,19 @@ pub struct Equipment {
     pub charm: Option<ItemKind>,
     /// Armatura indossata (ADR 0049).
     pub armor: Option<ItemKind>,
+    /// Lo scudo imbracciato è lo Scudo dell'Orlo (con `shield`).
+    pub rim: bool,
+    /// La Lanterna di Vetro di Tiro è accesa.
+    pub lantern: bool,
 }
 
 impl Equipment {
     /// L'oggetto è impugnato o indossato?
     pub fn is_worn(&self, kind: ItemKind) -> bool {
         self.weapon == Some(kind)
-            || (kind == ItemKind::Shield && self.shield)
+            || (kind == ItemKind::Shield && self.shield && !self.rim)
+            || (kind == ItemKind::RimShield && self.shield && self.rim)
+            || (kind == ItemKind::Relic(Relic::TyreLantern) && self.lantern)
             || self.backpack == Some(kind)
             || self.charm == Some(kind)
             || self.armor == Some(kind)
@@ -644,13 +720,31 @@ impl Equipment {
             })
     }
 
+    /// Frazione di danno che passa dallo scudo imbracciato (talento Difesa a parte).
+    pub fn shield_factor(&self) -> f32 {
+        if self.rim {
+            RIM_SHIELD_FACTOR
+        } else {
+            SHIELD_FACTOR
+        }
+    }
+
     /// Toglie ciò che non si possiede più.
     pub fn drop_missing(&mut self, inventory: &Inventory) {
         if self.weapon.is_some_and(|k| inventory.qty(k) == 0) {
             self.weapon = None;
         }
-        if self.shield && inventory.qty(ItemKind::Shield) == 0 {
+        let shield = if self.rim {
+            ItemKind::RimShield
+        } else {
+            ItemKind::Shield
+        };
+        if self.shield && inventory.qty(shield) == 0 {
             self.shield = false;
+            self.rim = false;
+        }
+        if self.lantern && inventory.qty(ItemKind::Relic(Relic::TyreLantern)) == 0 {
+            self.lantern = false;
         }
         if self.backpack.is_some_and(|k| inventory.qty(k) == 0) {
             self.backpack = None;
@@ -681,6 +775,7 @@ pub fn weapon_stats(w: Option<ItemKind>) -> WeaponStats {
         Some(ItemKind::LongSword) => (14.0, 0.75, 3.2, false, false),
         Some(ItemKind::Axe) => (18.0, 0.95, 2.6, true, false),
         Some(ItemKind::Bow) => (10.0, 0.9, 60.0, false, true),
+        Some(ItemKind::MasterBow) => (14.0, 0.8, 75.0, false, true),
         _ => (4.0, 0.6, 2.5, false, false),
     };
     WeaponStats {
@@ -694,6 +789,30 @@ pub fn weapon_stats(w: Option<ItemKind>) -> WeaponStats {
 
 /// Quanto scudo riduce il danno subito (moltiplicatore).
 pub const SHIELD_FACTOR: f32 = 0.4;
+/// Lo Scudo dell'Orlo (QS-03).
+pub const RIM_SHIELD_FACTOR: f32 = 0.3;
+
+/// Ranghi di talento in più dati da un oggetto portato: i Guanti Isolanti allo scasso, il
+/// Mantello del Navigatore al borseggio e alla furtività (QS-13, QS-11).
+pub fn gear_perk(inventory: &Inventory, relic: Relic) -> f32 {
+    if inventory.qty(ItemKind::Relic(relic)) > 0 {
+        GEAR_PERK
+    } else {
+        0.0
+    }
+}
+
+/// Quanti ranghi vale un oggetto della trama portato con sé.
+pub const GEAR_PERK: f32 = 1.5;
+
+/// Forza delle frecce scoccate con quest'arma (l'Arco Maestro tira più forte).
+pub fn arrow_power(weapon: Option<ItemKind>) -> f32 {
+    if weapon == Some(ItemKind::MasterBow) {
+        1.4
+    } else {
+        1.0
+    }
+}
 
 impl Inventory {
     /// Aggiunge (o incrementa) una quantità di un tipo. Un oggetto nuovo prende il primo tasto libero.
@@ -854,9 +973,15 @@ pub fn use_item(
             Some(kind)
         };
         info!("[INVENTORY] arma impugnata: {:?}", equip.weapon);
-    } else if kind == ItemKind::Shield {
-        equip.shield = !equip.shield;
-        info!("[INVENTORY] scudo: {}", equip.shield);
+    } else if kind.is_shield() {
+        // Imbraccia questo scudo, o lo ripone se era già quello imbracciato.
+        let rim = kind == ItemKind::RimShield;
+        equip.shield = !(equip.shield && equip.rim == rim);
+        equip.rim = rim && equip.shield;
+        info!("[INVENTORY] scudo: {} (orlo {})", equip.shield, equip.rim);
+    } else if kind == ItemKind::Relic(Relic::TyreLantern) {
+        equip.lantern = !equip.lantern;
+        info!("[INVENTORY] lanterna: {}", equip.lantern);
     }
 }
 
@@ -1055,7 +1180,13 @@ mod tests {
             let k = ItemKind::Relic(r);
             assert_eq!(ItemKind::from_name(k.name()), Some(k), "{r:?}");
             assert!(ItemKind::ALL.contains(&k));
-            assert!(k.weight_kg().is_some_and(|w| w < 0.5));
+            // I ricordi pesano poco; l'equipaggiamento della trama (lanterna, mantello) un po' di più.
+            let max = if k.category() == Category::Gear {
+                1.5
+            } else {
+                0.5
+            };
+            assert!(k.weight_kg().is_some_and(|w| w < max), "{r:?}");
         }
         assert!(!ItemKind::Relic(Relic::Tablet).can_go_in_hotbar());
         assert!(ItemKind::Relic(Relic::Focaccia).can_go_in_hotbar());
@@ -1068,6 +1199,57 @@ mod tests {
     }
 
     use super::*;
+
+    #[test]
+    fn the_rim_shield_is_better_and_swaps_with_the_plain_one() {
+        let mut inv = Inventory::default();
+        inv.add(ItemKind::Shield, 1);
+        inv.add(ItemKind::RimShield, 1);
+        let mut equip = Equipment::default();
+        let mut fx = crate::character::ActiveEffects::default();
+        use_item(ItemKind::Shield, &mut inv, &mut equip, None, &mut fx);
+        assert!(equip.shield && !equip.rim);
+        assert_eq!(equip.shield_factor(), SHIELD_FACTOR);
+        // Lo Scudo dell'Orlo prende il posto dell'altro, e para di più.
+        use_item(ItemKind::RimShield, &mut inv, &mut equip, None, &mut fx);
+        assert!(equip.shield && equip.rim);
+        assert!(equip.shield_factor() < SHIELD_FACTOR);
+        assert!(equip.is_worn(ItemKind::RimShield) && !equip.is_worn(ItemKind::Shield));
+        // Gettato lo scudo imbracciato, non si para più.
+        inv.consume(ItemKind::RimShield, 1);
+        equip.drop_missing(&inv);
+        assert!(!equip.shield && !equip.rim);
+    }
+
+    #[test]
+    fn the_tyre_lantern_lights_from_the_bar_and_goes_out_when_lost() {
+        let lantern = ItemKind::Relic(Relic::TyreLantern);
+        assert!(lantern.can_go_in_hotbar());
+        let mut inv = Inventory::default();
+        inv.add(lantern, 1);
+        assert!(inv.hotbar_position(lantern).is_some());
+        let mut equip = Equipment::default();
+        let mut fx = crate::character::ActiveEffects::default();
+        use_item(lantern, &mut inv, &mut equip, None, &mut fx);
+        assert!(equip.lantern && equip.is_worn(lantern));
+        inv.consume(lantern, 1);
+        equip.drop_missing(&inv);
+        assert!(!equip.lantern);
+    }
+
+    #[test]
+    fn the_master_bow_shoots_harder_and_gear_adds_ranks() {
+        assert!(ItemKind::MasterBow.is_weapon());
+        assert!(weapon_stats(Some(ItemKind::MasterBow)).ranged);
+        assert!(arrow_power(Some(ItemKind::MasterBow)) > arrow_power(Some(ItemKind::Bow)));
+        let mut inv = Inventory::default();
+        assert_eq!(gear_perk(&inv, Relic::CopperGloves), 0.0);
+        inv.add(ItemKind::Relic(Relic::CopperGloves), 1);
+        assert_eq!(gear_perk(&inv, Relic::CopperGloves), GEAR_PERK);
+        assert!(
+            crate::thievery::zone_width(2, 10, GEAR_PERK) > crate::thievery::zone_width(2, 10, 0.0)
+        );
+    }
 
     #[test]
     fn names_accept_singular_and_plural() {

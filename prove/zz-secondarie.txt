@@ -47,7 +47,7 @@ verifica dialogo = true
 avanza
 aspetta 1
 verifica /missioni/qs01 = 4
-verifica HealthPotion >= 1
+verifica Relic(Focaccia) = 3
 tp gino
 aspetta 1
 attendi npc:gino:modo = Ready 90

@@ -459,6 +459,10 @@ fn main() -> AppExit {
         )
         .add_systems(
             Update,
+            equipment::carried_lantern.run_if(in_state(AppState::Playing)),
+        )
+        .add_systems(
+            Update,
             (
                 world_props::sync_world_props,
                 world_props::update_street_lamps,

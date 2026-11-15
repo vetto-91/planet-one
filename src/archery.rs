@@ -161,7 +161,7 @@ pub fn judge(
             crate::combat::ARROW_DROP,
         );
         if let Ok(dir) = Dir3::new(dir) {
-            crate::combat::loose(&mut commands, &mut meshes, &mut materials, from, dir);
+            crate::combat::loose(&mut commands, &mut meshes, &mut materials, from, dir, 1.0);
         }
     }
     // Solo vicino agli anelli: altrove le frecce non riguardano la prova.

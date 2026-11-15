@@ -395,11 +395,19 @@ pub fn inventory_window(
                                     } else {
                                         "Indossa"
                                     })
-                                } else if kind.is_weapon() || kind == ItemKind::Shield {
+                                } else if kind.is_weapon() || kind.is_shield() {
                                     Some(if is_equipped(kind, &equip) {
                                         "Riponi"
                                     } else {
                                         "Impugna"
+                                    })
+                                } else if kind
+                                    == ItemKind::Relic(crate::inventory::Relic::TyreLantern)
+                                {
+                                    Some(if is_equipped(kind, &equip) {
+                                        "Spegni"
+                                    } else {
+                                        "Accendi"
                                     })
                                 } else {
                                     None

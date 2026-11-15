@@ -67,6 +67,7 @@ pub fn tail_villagers(
     mut barks: ResMut<crate::quests::Barks>,
     players: Query<&GlobalTransform, With<crate::player::Player>>,
     villagers: Query<(Entity, &Transform, &crate::villagers::Villager)>,
+    inventory: Res<crate::inventory::Inventory>,
 ) {
     let Ok(player) = players.single() else {
         return;
@@ -74,7 +75,9 @@ pub fn tail_villagers(
     let me = player.translation().xz();
     let dt = time.delta_secs();
     let today = clock.date.day_key();
-    let stealth = crate::skills::rank(crate::skills::Skill::Stealth);
+    // Il Mantello del Navigatore (QS-11) vale qualche rango di Furtività in più.
+    let stealth = crate::skills::rank(crate::skills::Skill::Stealth)
+        + crate::inventory::gear_perk(&inventory, crate::inventory::Relic::NavigatorCloak);
     for (entity, tf, v) in &villagers {
         let Some(goal) = v.secret_walk() else {
             continue;

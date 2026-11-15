@@ -33,7 +33,8 @@ obiettivo: Riporta la farina a Marta
 quando: parla Marta
 > La farina! E pure in fretta. Aspetta, non andare via a mani vuote…
 > Questa è per te, e questa focaccia al miele… portala a Gino, ma non dirgli che ci ho inciso sopra una rosa dei venti. Se ne accorge da solo.
-dai: pozione di cura 1
+dai: focaccia del navigante 3
+sblocca: ricetta-focacce
 
 [tappa]
 obiettivo: Porta la focaccia di Marta a Gino
@@ -73,7 +74,7 @@ quando: ora 22 5
 > L'hai portato! Dammi… ecco. Uno, due, tre giri.
 > … Hai visto? Tre lampi. Tre! C'è qualcuno, di là. Qualcuno che conta come noi.
 > Tieni: le pozioni di chi veglia. A me non servono più, stanotte non dormo.
-dai: pozione del mulo 1
+dai: lanterna di vetro di tiro 1
 monete: 10
 
 [missione qs03]
@@ -99,8 +100,8 @@ quando: parla Ferruccio
 > È lui. Guarda come combacia… Dammi un giorno d'incudine.
 > No: dammi un'ora. Ecco. Lo scudo è tuo: l'hai rimesso insieme tu, io ho solo battuto.
 > Oppure… lo appendiamo sopra Porta Nord, dove lo vedono tutti quelli che partono. Decidi tu.
-scegli: Lo porto con me => dai scudo 1; fiducia Ferruccio 3
-scegli: Appendilo sopra Porta Nord => karma 4 hai donato lo scudo al paese; fiducia Ferruccio 8; fiducia Guardia Aldo 6; monete 30
+scegli: Lo porto con me => dai scudo dell'orlo 1; fiducia Ferruccio 3
+scegli: Appendilo sopra Porta Nord => karma 4 hai donato lo scudo al paese; fiducia Ferruccio 8; fiducia Guardia Aldo 6; monete 30; sblocca scudo-porta-nord
 
 [missione qs04]
 titolo: Tre Nomi per le Ombre
@@ -268,6 +269,7 @@ scegli: L'infuso del sogno, per vedere più lontano => stat saggezza 1; fiducia 
 scegli: L'infuso della memoria, per ricordare i segni => stat intelligenza 1; fiducia Agnese 4
 > … Dove l'hai trovata? Mi cadde il giorno in cui arrivai. Dal nord. Non lo sa nessuno.
 > Ecco l'infuso. E tieni la bocca chiusa, viaggiatore: certe cose si dicono a tempo.
+dai: pozione del mulo 1
 monete: 10
 
 [missione qs10]
@@ -320,7 +322,7 @@ obiettivo: Porta il registro a Tonio, il fruttivendolo
 quando: parla Tonio
 > Fammi vedere… Io i registri li so leggere, prima delle mele facevo altro. Questo è un porto del nord. Tiro-Scheria.
 > Qualcuno, dall'isola, mandava e riceveva. E non erano mele. Tieni, per la fatica: e la bocca cucita.
-dai: mela 2
+dai: mantello del navigatore 1
 monete: 18
 
 [missione qs13]
@@ -351,7 +353,7 @@ obiettivo: Racconta al Viandante dove finisce il cavo
 quando: parla Viandante
 > Sotto il mare, a nord. Lo sospettavo. Chi ha acceso i nostri lampioni non abita qui.
 > Tieni: non è una ricompensa, è una provvista. Quando sarai di là, guarda dove arrivano i fili.
-dai: pozione di cura 2
+dai: guanti isolanti 1
 monete: 15
 
 [missione qs09]
@@ -580,6 +582,7 @@ quando: parla Silvia
 > Li ho sentiti suonare da qui. Tre, senza pause. Non capita spesso.
 > C'era un re, dicono, che tornò a casa vestito da mendicante e fece passare una freccia in dodici anelli. Tu sei a un quarto della strada.
 > Tieni: frecce buone, e qualche moneta per l'incomodo.
+dai: arco maestro 1
 dai: freccia 20
 monete: 25
 

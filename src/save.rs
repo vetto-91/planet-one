@@ -120,6 +120,9 @@ pub struct SaveData {
     pub hotbar: [Option<ItemKind>; 10],
     pub weapon: Option<ItemKind>,
     pub shield: bool,
+    /// Lo scudo imbracciato è lo Scudo dell'Orlo; la Lanterna di Tiro è accesa.
+    pub rim: bool,
+    pub lantern: bool,
     pub backpack: Option<ItemKind>,
     pub charm: Option<ItemKind>,
     pub armor: Option<ItemKind>,
@@ -356,6 +359,8 @@ impl SaveData {
             hotbar: [None; 10],
             weapon: None,
             shield: false,
+            rim: false,
+            lantern: false,
             backpack: None,
             charm: None,
             armor: None,
@@ -535,6 +540,8 @@ impl SaveData {
         line("[equipaggiamento]".into());
         line(format!("arma = {}", item_or_none(self.weapon)));
         line(format!("scudo = {}", yes(self.shield)));
+        line(format!("scudo_orlo = {}", yes(self.rim)));
+        line(format!("lanterna = {}", yes(self.lantern)));
         line(format!("zaino = {}", item_or_none(self.backpack)));
         line(format!("incantato = {}", item_or_none(self.charm)));
         line(format!("armatura = {}", item_or_none(self.armor)));
@@ -897,6 +904,8 @@ impl SaveData {
                 match k {
                     "arma" => self.weapon = read_item_or_none(v)?,
                     "scudo" => self.shield = read_bool(v)?,
+                    "scudo_orlo" => self.rim = read_bool(v)?,
+                    "lanterna" => self.lantern = read_bool(v)?,
                     "zaino" => self.backpack = read_item_or_none(v)?,
                     "incantato" => self.charm = read_item_or_none(v)?,
                     "armatura" => self.armor = read_item_or_none(v)?,
@@ -1404,6 +1413,8 @@ fn collect(kind: SaveKind, session: &Session, hero: &HeroParams, world: &WorldPa
     d.hotbar = hero.inventory.hotbar;
     d.weapon = hero.equip.weapon;
     d.shield = hero.equip.shield;
+    d.rim = hero.equip.rim;
+    d.lantern = hero.equip.lantern;
     d.backpack = hero.equip.backpack;
     d.charm = hero.equip.charm;
     d.armor = hero.equip.armor;
@@ -1558,6 +1569,8 @@ fn apply(d: &SaveData, hero: &mut HeroParams, world: &mut WorldParams) {
     if has("equipaggiamento") {
         hero.equip.weapon = d.weapon;
         hero.equip.shield = d.shield;
+        hero.equip.rim = d.rim;
+        hero.equip.lantern = d.lantern;
         hero.equip.backpack = d.backpack;
         hero.equip.charm = d.charm;
         hero.equip.armor = d.armor;
@@ -2116,6 +2129,8 @@ mod tests {
         d.hotbar[9] = Some(ItemKind::Shield);
         d.weapon = Some(ItemKind::Axe);
         d.shield = true;
+        d.rim = true;
+        d.lantern = true;
         d.backpack = Some(ItemKind::LeatherPack);
         d.charm = Some(ItemKind::CarryBelt);
         d.effects = vec![

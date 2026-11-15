@@ -53,7 +53,7 @@ pub fn stow_weapon_while_running(
 }
 
 /// Arma, scudo e zaino dell'ultimo aggiornamento.
-type WornItems = (Option<ItemKind>, bool, Option<ItemKind>);
+type WornItems = (Option<ItemKind>, (bool, bool), Option<ItemKind>);
 
 /// Sistema: ricrea i modelli impugnati quando cambia l'equipaggiamento.
 #[allow(clippy::too_many_arguments)]
@@ -67,12 +67,12 @@ pub fn update_held_items(
     pbr: Res<crate::pbr::PbrMaterials>,
     mut last: Local<Option<WornItems>>,
 ) {
-    let state = (equip.weapon, equip.shield, equip.backpack);
+    let state = (equip.weapon, (equip.shield, equip.rim), equip.backpack);
     let Ok(visual) = visuals.single() else {
         return;
     };
     // Dopo un reset della scena il player è nuovo e senza modelli: si ricostruiscono.
-    let missing = held.is_empty() && (state.0.is_some() || state.1 || state.2.is_some());
+    let missing = held.is_empty() && (state.0.is_some() || equip.shield || state.2.is_some());
     if *last == Some(state) && !missing {
         return;
     }
@@ -158,7 +158,7 @@ pub fn update_held_items(
                     Quat::IDENTITY,
                 );
             }
-            ItemKind::Bow => {
+            ItemKind::Bow | ItemKind::MasterBow => {
                 add(
                     &mut commands,
                     meshes.add(Cuboid::new(0.05, 0.7, 0.05)),
@@ -192,7 +192,12 @@ pub fn update_held_items(
             let base = pbr.get(crate::pbr::Mat::Planks);
             let tinted = materials.get(&base).cloned();
             materials.add(StandardMaterial {
-                base_color: Color::srgb(0.55, 0.75, 1.3),
+                // Lo Scudo dell'Orlo è di bronzo: la stessa tavola, tinta calda.
+                base_color: if equip.rim {
+                    Color::srgb(1.3, 0.85, 0.45)
+                } else {
+                    Color::srgb(0.55, 0.75, 1.3)
+                },
                 ..tinted.unwrap_or_default()
             })
         };
@@ -235,4 +240,58 @@ pub fn update_held_items(
             .id();
         commands.entity(visual).add_child(body);
     }
+}
+
+/// La luce della Lanterna di Vetro di Tiro, portata al fianco (QS-02).
+#[derive(Component)]
+pub struct CarriedLantern;
+
+/// Potenza e portata della lanterna: il doppio di una lanterna da guardia, di notte e in grotta.
+const LANTERN_LUMENS: f32 = 160_000.0;
+const LANTERN_RANGE: f32 = 24.0;
+
+/// Sistema: la lanterna accesa (dalla barra o dall'inventario) segue il giocatore, all'altezza
+/// della cintura; spenta, o se non la si ha più, la luce sparisce.
+pub fn carried_lantern(
+    mut commands: Commands,
+    equip: Res<Equipment>,
+    players: Query<&GlobalTransform, With<crate::player::Player>>,
+    mut lights: Query<(Entity, &mut Transform), With<CarriedLantern>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let Ok(player) = players.single() else {
+        return;
+    };
+    let at = player.translation() + player.right() * 0.35 + Vec3::Y * 0.1;
+    if !equip.lantern {
+        for (e, _) in &lights {
+            commands.entity(e).despawn();
+        }
+        return;
+    }
+    if let Some((_, mut tf)) = lights.iter_mut().next() {
+        tf.translation = at;
+        return;
+    }
+    commands.spawn((
+        crate::scene::SceneNode,
+        CarriedLantern,
+        Mesh3d(meshes.add(Cylinder::new(0.07, 0.18))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::srgb(1.0, 0.85, 0.5),
+            emissive: LinearRgba::rgb(14.0, 8.0, 2.5),
+            ..default()
+        })),
+        PointLight {
+            color: Color::srgb(1.0, 0.82, 0.55),
+            intensity: LANTERN_LUMENS,
+            range: LANTERN_RANGE,
+            shadow_maps_enabled: false,
+            ..default()
+        },
+        Transform::from_translation(at),
+        bevy::light::NotShadowCaster,
+    ));
+    info!("[INVENTORY] lanterna di Tiro accesa");
 }

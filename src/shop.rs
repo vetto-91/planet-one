@@ -45,7 +45,48 @@ pub fn stock(key: &str) -> Vec<ShopItem> {
             i(ItemKind::PlateArmor, 360, 1),
         ],
         "arciere" => vec![i(ItemKind::Bow, 80, 1), i(ItemKind::Arrow, 15, 10)],
+        // Il forno di Marta, dopo la ricetta delle Focacce del Navigante (QS-01).
+        "forno" => vec![i(ItemKind::Relic(crate::inventory::Relic::Focaccia), 9, 1)],
         _ => Vec::new(),
+    }
+}
+
+/// Sblocchi delle missioni che toccano i negozi, letti da chi non ha le missioni (`karma::price`).
+static PERKS: std::sync::Mutex<Vec<&'static str>> = std::sync::Mutex::new(Vec::new());
+
+/// Gli sblocchi che contano per i negozi.
+const SHOP_FLAGS: [&str; 2] = ["ricetta-focacce", "scudo-porta-nord"];
+
+/// Sistema: copia gli sblocchi dei negozi dalle missioni.
+pub fn sync_perks(missions: Res<crate::quests::missions::Missions>) {
+    if !missions.is_changed() {
+        return;
+    }
+    let now: Vec<&'static str> = SHOP_FLAGS
+        .into_iter()
+        .filter(|f| missions.unlocked(f))
+        .collect();
+    if let Ok(mut p) = PERKS.lock() {
+        *p = now;
+    }
+}
+
+fn perk(flag: &str) -> bool {
+    PERKS.lock().is_ok_and(|p| p.contains(&flag))
+}
+
+/// Il negozio è aperto? Il forno vende solo dopo la ricetta delle focacce.
+pub fn open_for(key: &str) -> bool {
+    key != "forno" || perk("ricetta-focacce")
+}
+
+/// Fattore sui prezzi per un venditore: chi ha appeso lo Scudo dell'Orlo sopra Porta Nord ha lo
+/// sconto da Ferruccio (QS-03).
+pub fn vendor_factor(vendor: &str) -> f32 {
+    if vendor == "Ferruccio" && perk("scudo-porta-nord") {
+        0.9
+    } else {
+        1.0
     }
 }
 
@@ -195,12 +236,26 @@ pub fn shop_panel(
 
 pub fn plugin(app: &mut App) {
     app.init_resource::<ShopState>()
+        .add_systems(Update, sync_perks)
         .add_systems(Update, shop_buy.run_if(in_state(AppState::Shop)));
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_bakery_opens_with_the_recipe_and_ferruccio_thanks_the_shield() {
+        let saved = PERKS.lock().map(|p| p.clone()).unwrap_or_default();
+        *PERKS.lock().unwrap() = Vec::new();
+        assert!(!open_for("forno") && open_for("armaiolo"));
+        assert_eq!(vendor_factor("Ferruccio"), 1.0);
+        *PERKS.lock().unwrap() = vec!["ricetta-focacce", "scudo-porta-nord"];
+        assert!(open_for("forno"));
+        assert!(vendor_factor("Ferruccio") < 1.0);
+        assert_eq!(vendor_factor("Silvia"), 1.0);
+        *PERKS.lock().unwrap() = saved;
+    }
 
     #[test]
     fn stocks_exist_for_all_vendors() {
@@ -211,6 +266,7 @@ mod tests {
             "pesce",
             "armaiolo",
             "arciere",
+            "forno",
         ] {
             assert!(!stock(k).is_empty(), "{k}");
         }

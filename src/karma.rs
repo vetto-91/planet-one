@@ -328,6 +328,7 @@ pub fn price(stats: crate::character::Stats, base: u32, vendor: &str) -> u32 {
         .ok()
         .and_then(|k| k.as_ref().map(|k| k.price_factor(vendor)))
         .unwrap_or(1.0);
+    let factor = factor * crate::shop::vendor_factor(vendor);
     ((crate::skills::price(stats, base) as f32 * factor).round() as u32).max(1)
 }
 

@@ -140,7 +140,8 @@ pub struct Lockpicking {
 }
 
 impl Lockpicking {
-    pub fn begin(&mut self, c: &Container, lock: u8, grade: u8) {
+    /// `perk`: ranghi del talento Scassinare, più quelli dei Guanti Isolanti.
+    pub fn begin(&mut self, c: &Container, lock: u8, grade: u8, perk: f32) {
         *self = Self {
             key: c.key.clone(),
             building: c.building.clone(),
@@ -151,7 +152,7 @@ impl Lockpicking {
             needle: 0.0,
             dir: 1.0,
             zone: 0.0,
-            width: zone_width(lock, grade, skills::rank(Skill::Lockpick)),
+            width: zone_width(lock, grade, perk),
             message: String::new(),
             auto: false,
         };
@@ -220,7 +221,9 @@ pub fn open_or_pick(
         info!("[SCASSO] {}: chiuso, nessun grimaldello", c.key);
         return None;
     }
-    pick.begin(c, lock, grade);
+    let perk = skills::rank(Skill::Lockpick)
+        + crate::inventory::gear_perk(inventory, crate::inventory::Relic::CopperGloves);
+    pick.begin(c, lock, grade, perk);
     info!(
         "[SCASSO] {}: serratura {} ({} perni)",
         c.key,
@@ -503,7 +506,8 @@ pub fn pickpocket(
     let night = !(5.0..21.0).contains(&clock.hour);
     let chance = pocket_chance(
         progress.grade(Skill::Pickpocket),
-        skills::rank(Skill::Pickpocket),
+        skills::rank(Skill::Pickpocket)
+            + crate::inventory::gear_perk(&inventory, crate::inventory::Relic::NavigatorCloak),
         character.stats.get(crate::character::Stat::Agility),
         character.stats.get(crate::character::Stat::Luck),
         night,
@@ -666,7 +670,8 @@ pub fn pick_enemy_pockets(
     let night = !(5.0..21.0).contains(&clock.hour);
     let chance = pocket_chance(
         progress.grade(Skill::Pickpocket),
-        skills::rank(Skill::Pickpocket),
+        skills::rank(Skill::Pickpocket)
+            + crate::inventory::gear_perk(&inventory, crate::inventory::Relic::NavigatorCloak),
         character.stats.get(crate::character::Stat::Agility),
         character.stats.get(crate::character::Stat::Luck),
         night,
@@ -740,7 +745,7 @@ mod tests {
     #[test]
     fn a_lock_opens_one_pin_at_a_time() {
         let mut pick = Lockpicking::default();
-        pick.begin(&chest("casa"), 1, 1);
+        pick.begin(&chest("casa"), 1, 1, 0.0);
         assert_eq!((pick.pins, pick.done), (3, 0));
         // Fuori dalla tacca: sbagliato (con fortuna alta il grimaldello regge).
         pick.needle = if pick.zone > 0.5 { 0.0 } else { 1.0 };
@@ -755,7 +760,7 @@ mod tests {
     #[test]
     fn the_needle_sweeps_back_and_forth() {
         let mut pick = Lockpicking::default();
-        pick.begin(&chest("casa"), 1, 1);
+        pick.begin(&chest("casa"), 1, 1, 0.0);
         let mut seen = (1.0_f32, 0.0_f32);
         for _ in 0..400 {
             pick.sweep(0.02);

@@ -1,0 +1,93 @@
+# Le ricompense uniche delle secondarie (ADR 0051): ognuna si riceve parlando con chi la dà.
+# Il Pane del Vento (focacce e forno di Marta), il Segreto della Porpora (Mantello del Navigatore),
+# lo Scudo dell'Orlo, la Prova dell'Arco (Arco Maestro) e la Lanterna di Vetro di Tiro accesa.
+# Il nome comincia per z perché un copione nuovo non sposti le risoluzioni degli altri.
+god on
+ia off
+meteo sereno
+missioni on
+ora 10
+# QS-01: Marta dà le focacce e da allora vende quelle del forno.
+missione qs01 3
+tp marta
+aspetta 1
+attendi npc:marta:modo = Ready 60
+tp marta
+aspetta 1
+guarda marta
+aspetta 1
+premi e
+aspetta 1
+avanza
+aspetta 1
+verifica Relic(Focaccia) = 3
+premi e
+aspetta 1
+avanza
+verifica /dialogo/scelte contiene comprare
+scegli Arrivederci
+aspetta 1
+# QS-11: Tonio, letto il registro, dà il Mantello del Navigatore (viene dopo Il Nome sulla Sabbia).
+missione mp01 7
+missione qs11 3
+tp tonio
+aspetta 1
+attendi npc:tonio:modo = Ready 60
+tp tonio
+aspetta 1
+guarda tonio
+aspetta 1
+premi e
+aspetta 1
+avanza
+scegli Arrivederci
+aspetta 1
+verifica Relic(NavigatorCloak) = 1
+# QS-03: tenere lo scudo ricomposto.
+missione qs03 3
+tp ferruccio
+aspetta 1
+attendi npc:ferruccio:modo = Ready 60
+tp ferruccio
+aspetta 1
+guarda ferruccio
+aspetta 1
+premi e
+aspetta 1
+avanza
+scegli porto
+aspetta 1
+verifica RimShield = 1
+# QS-14: Silvia consegna l'Arco Maestro.
+missione qs14 4
+tp silvia
+aspetta 1
+attendi npc:silvia:modo = Ready 60
+tp silvia
+aspetta 1
+guarda silvia
+aspetta 1
+premi e
+aspetta 1
+avanza
+scegli Arrivederci
+aspetta 1
+verifica MasterBow = 1
+# Barra: 1 focacce, 2 Scudo dell'Orlo, 3 Arco Maestro, 4 frecce, 5 la lanterna.
+premi 2
+aspetta 0.5
+verifica /personaggio/scudo_orlo = true
+premi 3
+aspetta 0.5
+verifica arma contiene MasterBow
+# La Lanterna di Vetro di Tiro (QS-02) si accende dalla barra: di notte, nelle gallerie della grotta.
+dai lanterna di vetro di tiro 1
+ora 23
+tp 96.5 2.0 33.2
+aspetta 2
+foto grotta-senza-lanterna
+premi 5
+aspetta 1
+verifica /personaggio/lanterna = true
+foto grotta-con-lanterna
+esci

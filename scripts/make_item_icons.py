@@ -479,6 +479,83 @@ def relic_medallion():
     return im
 
 
+def master_bow():
+    """L'Arco Maestro di Silvia: legno scuro, fasce d'oro, corda chiara."""
+    im = layer()
+    d = ImageDraw.Draw(im)
+    pts = [(160 + 215 * math.sin(math.pi * k / 60), 30 + 452 * k / 60) for k in range(61)]
+    for w, col in [(34, (52, 30, 14, 255)), (22, (112, 66, 30, 255))]:
+        d.line(pts, fill=col, width=w, joint="curve")
+    for t in (0.18, 0.5, 0.82):
+        x, y = 160 + 215 * math.sin(math.pi * t), 30 + 452 * t
+        d.ellipse([x - 22, y - 14, x + 22, y + 14], fill=(226, 186, 80, 255), outline=(136, 98, 28, 255), width=4)
+    d.line([(160, 30), (160, 482)], fill=(240, 236, 222, 255), width=6)
+    return im
+
+
+def rim_shield():
+    """Lo Scudo dell'Orlo: bronzo tondo, anelli concentrici con due città e l'Oceano."""
+    im = layer()
+    d = ImageDraw.Draw(im)
+    c, r = S / 2, 200
+    d.ellipse([c - r, c - r, c + r, c + r], fill=(176, 120, 52, 255), outline=(96, 60, 24, 255), width=12)
+    d.ellipse([c - r + 26, c - r + 26, c + r - 26, c + r - 26], outline=(70, 110, 150, 255), width=16)
+    for k in range(24):
+        a = math.radians(k * 15)
+        x, y = c + math.cos(a) * (r - 64), c + math.sin(a) * (r - 64)
+        d.rectangle([x - 8, y - 8, x + 8, y + 8], fill=(224, 176, 96, 255))
+    d.ellipse([c - 70, c - 70, c + 70, c + 70], fill=(214, 168, 80, 255), outline=(120, 80, 30, 255), width=8)
+    for k in range(7):
+        a = math.radians(k * 51)
+        x, y = c + math.cos(a) * 36, c + math.sin(a) * 36
+        d.ellipse([x - 7, y - 7, x + 7, y + 7], fill=(250, 236, 180, 255))
+    return im
+
+
+def tyre_lantern():
+    """La Lanterna di Vetro di Tiro: telaio di bronzo, vetro ambra acceso."""
+    im = layer()
+    d = ImageDraw.Draw(im)
+    d.arc([196, 40, 316, 140], 180, 360, fill=(120, 84, 34, 255), width=12)
+    d.polygon([(176, 120), (336, 120), (310, 150), (202, 150)], fill=(150, 104, 44, 255))
+    d.rounded_rectangle([196, 150, 316, 380], 20, fill=(255, 196, 96, 235), outline=(120, 84, 34, 255), width=10)
+    d.ellipse([226, 210, 286, 300], fill=(255, 244, 200, 255))
+    for x in (236, 276):
+        d.line([(x, 150), (x, 380)], fill=(120, 84, 34, 255), width=6)
+    d.polygon([(186, 380), (326, 380), (346, 420), (166, 420)], fill=(150, 104, 44, 255))
+    return im
+
+
+def cloak():
+    """Il Mantello del Navigatore: lana porpora con fermaglio d'oro."""
+    im = layer()
+    d = ImageDraw.Draw(im)
+    body = [(206, 90), (306, 90), (420, 440), (92, 440)]
+    shaded_polygon(d, body, (150, 46, 96, 255), (104, 28, 66, 255))
+    d.polygon([(206, 90), (306, 90), (290, 150), (222, 150)], fill=(82, 20, 52, 255))
+    for x in (160, 220, 292, 352):
+        d.line([(256 + (x - 256) * 0.3, 160), (x, 436)], fill=(86, 22, 56, 255), width=6)
+    d.ellipse([234, 104, 278, 148], fill=(226, 186, 80, 255), outline=(136, 98, 28, 255), width=5)
+    return im
+
+
+def gloves():
+    """I Guanti Isolanti: cuoio e piastre di rame."""
+    im = layer()
+    d = ImageDraw.Draw(im)
+    for dx, flip in ((-70, -1), (70, 1)):
+        cx = S / 2 + dx
+        d.rounded_rectangle([cx - 56, 220, cx + 56, 420], 26, fill=(120, 76, 40, 255), outline=(70, 42, 20, 255), width=6)
+        for k in range(4):
+            x = cx - 42 + k * 28
+            d.rounded_rectangle([x - 11, 110 + abs(k - 1.5) * 18, x + 11, 240], 10, fill=(132, 84, 44, 255), outline=(70, 42, 20, 255), width=4)
+        tx = cx + flip * 62
+        d.rounded_rectangle([tx - 13, 230, tx + 13, 320], 10, fill=(132, 84, 44, 255), outline=(70, 42, 20, 255), width=4)
+        d.rectangle([cx - 56, 380, cx + 56, 420], fill=(196, 120, 64, 255))
+        d.ellipse([cx - 24, 270, cx + 24, 318], fill=(214, 136, 72, 255), outline=(140, 78, 36, 255), width=5)
+    return im
+
+
 ICONS = {
     "spada-corta": lambda: sword(310, 58, 124),
     "spada-lunga": lambda: sword(430, 46, 150),
@@ -524,6 +601,11 @@ ICONS = {
     "astrolabio": relic_astrolabe,
     "pagine-antiche": relic_pages,
     "medaglione": relic_medallion,
+    "arco-maestro": master_bow,
+    "scudo-orlo": rim_shield,
+    "lanterna-tiro": tyre_lantern,
+    "mantello": cloak,
+    "guanti-rame": gloves,
 }
 
 

@@ -2,6 +2,12 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Ricompense uniche delle secondarie** (ADR 0051): la **Lanterna di Vetro di Tiro** (una luce da portare, si accende dalla barra), il **Mantello del Navigatore** (borseggiare e pedinare riesce meglio), i **Guanti Isolanti** (scasso più facile), l'**Arco Maestro** di Silvia (frecce più forti) e lo **Scudo dell'Orlo** (il miglior scudo dell'isola, più leggero). Dopo «Il Pane del Vento» Marta vende le focacce del forno.
+- **Lo scudo appeso a Porta Nord** dà lo sconto da Ferruccio, come promesso dalla trama.
+- **Correzione: Silvia ora dà le frecce** all'inizio della Prova dell'Arco (il nome dell'oggetto nel file non veniva riconosciuto).
+
 ## v0.0.64.0 — Il Prologo rifinito: compagni, segreti, eventi vivi, partenza, età e voci (2026-11-15)
 
 - **Le battute del gioco hanno la voce** (ADR 0050): il saluto secondo la fama, il rifiuto di chi non ti parla, il grazie per un regalo, chi ti coglie a borseggiare, la guardia che ti multa, chi si accorge di essere pedinata, la lite di Tonio e Nina, il bandito del ponte e Lino il carrettiere. Ognuno con la sua voce (160 battute nuove, generate in locale con Piper). I testi sono in `assets/world/battute.txt`.

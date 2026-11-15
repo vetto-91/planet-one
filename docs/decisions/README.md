@@ -76,3 +76,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0048 | La storia principale del Prologo completa e la partenza a due vie | accettato |
 | 0049 | Armatura, talenti attivi, compagni, il letto di casa e la magia insegnata | accettato |
 | 0050 | Le voci delle battute del Prologo, i piccoli suoni e le ronde che si fermano | accettato |
+| 0051 | Le ricompense uniche delle missioni secondarie | accettato |

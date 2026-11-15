@@ -110,7 +110,7 @@ pub fn is_flying(grounded: bool, still_seconds: f32) -> bool {
 pub fn attack_for(weapon: Option<ItemKind>) -> Anim {
     match weapon {
         None => Anim::Punch,
-        Some(ItemKind::Bow) => Anim::BowShot,
+        Some(ItemKind::Bow | ItemKind::MasterBow) => Anim::BowShot,
         Some(_) => Anim::SwordAttack,
     }
 }
