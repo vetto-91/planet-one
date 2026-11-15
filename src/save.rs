@@ -815,7 +815,9 @@ impl SaveData {
             "casa" => {
                 let (k, v) = pair?;
                 match k {
-                    "stadio" => self.house.stage = v.parse::<u8>().ok()?.min(crate::house::BUILT),
+                    "stadio" => {
+                        self.house.stage = v.parse::<u8>().ok()?.min(crate::house::STONE_HOUSE)
+                    }
                     "legname" => self.house.wood = v.parse().ok()?,
                     "pietra" => self.house.stone = v.parse().ok()?,
                     "prova_arco" => self.archery_passed = read_bool(v)?,

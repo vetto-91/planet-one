@@ -8,7 +8,7 @@ meteo sereno
 missioni on
 ora 10
 # QS-01: Marta dà le focacce e da allora vende quelle del forno.
-missione qs01 3
+missione qs01 5
 tp marta
 aspetta 1
 attendi npc:marta:modo = Ready 60

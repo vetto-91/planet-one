@@ -853,15 +853,21 @@ fn holds(w: &When, f: &Facts, talked: &[(String, usize)], mission: usize) -> boo
 /// tappa nuova che corrisponde a ogni tappa vecchia (l'ultimo indice è «compiuta»).
 /// - v0.0.63: mp01 ha il risveglio prima di Gaspare; mp03 ha Agnese prima della torre; mp04 ha le
 ///   stele prima del cunicolo. Chi era fermo lì fa la tappa nuova.
-/// - v0.0.65: qs09 ha il duello e la difesa con Aldo dopo l'acqua; qs12 ha il campanile prima del
-///   pozzo; qs14 ha la grotta e il bracciale dopo la prova. Chi le aveva compiute resta a posto.
+/// - v0.0.65: qs01 ha i predoni del mulino e il sacco di farina dopo Gino; qs06 ha il pane di
+///   Marta prima del pesce; qs09 ha il duello e la difesa con Aldo dopo l'acqua; qs12 ha il campanile prima del
+///   pozzo e la Camera di Risonanza dopo; qs13 ha la chiave di Don Anselmo e il quadro di rame
+///   (chi era alla grata riparte dalla chiave); qs17 ha la casa di pietra prima del Viandante; qs14 ha la grotta e il bracciale dopo la prova. Chi le aveva compiute resta a posto.
 const MOVES: &[([u32; 4], &str, &[usize])] = &[
     ([0, 0, 63, 0], "mp01", &[0, 2, 4, 5, 6]),
     ([0, 0, 63, 0], "mp03", &[0, 1, 2, 3, 4, 6]),
     ([0, 0, 63, 0], "mp04", &[0, 1, 2, 3, 5]),
+    ([0, 0, 65, 0], "qs01", &[0, 1, 4, 5, 6]),
+    ([0, 0, 65, 0], "qs06", &[0, 1, 3, 4, 5]),
     ([0, 0, 65, 0], "qs09", &[0, 1, 2, 6]),
-    ([0, 0, 65, 0], "qs12", &[0, 1, 2, 3, 4, 6, 7]),
+    ([0, 0, 65, 0], "qs12", &[0, 1, 2, 3, 4, 6, 8]),
+    ([0, 0, 65, 0], "qs13", &[0, 1, 4, 5, 6]),
     ([0, 0, 65, 0], "qs14", &[0, 1, 2, 3, 7]),
+    ([0, 0, 65, 0], "qs17", &[0, 1, 2, 3, 4, 8]),
 ];
 
 /// La disposizione delle tappe di questa versione: un salvataggio riletto vale come questa.

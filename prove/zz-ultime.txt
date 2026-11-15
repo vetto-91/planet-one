@@ -171,7 +171,7 @@ aspetta 1
 verifica /missioni/qs12 = 2
 # Le quattro ronde sono dialoghi (zzzzzzzzzzzzzzzz-eventi), campanile e pozzo li prova
 # zzzzzzzzzzzzzzzzzzzz-scene: qui la missione si chiude con la shell.
-missione qs12 8
+missione qs12 9
 # qs15 Il Cantiere: Gaspare lo propone a chi ha aiutato almeno quattro abitanti, dopo la grotta.
 missione mp04 9
 missione mp05 9
@@ -192,7 +192,7 @@ scegli Arrivederci
 aspetta 1
 # Due sole secondarie compiute: Gaspare non parla ancora del cantiere.
 verifica /missioni/qs15 = 1
-missione qs01 9
+missione qs01 7
 missione qs03 9
 aspetta 1
 tp gaspare

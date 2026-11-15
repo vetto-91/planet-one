@@ -81,6 +81,14 @@ pub fn spot_is_free(
     p: Vec2,
     radius: f32,
 ) -> bool {
+    // Mai sopra un buco del terreno (il pozzetto della Camera di Risonanza), nemmeno col bordo.
+    let edge = [Vec2::ZERO, Vec2::X, -Vec2::X, Vec2::Y, -Vec2::Y];
+    if edge
+        .iter()
+        .any(|d| field.in_hole(p.x + d.x * radius, p.y + d.y * radius))
+    {
+        return false;
+    }
     let y = field.height_at(p.x, p.y);
     spatial
         .shape_intersections(

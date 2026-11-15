@@ -101,12 +101,14 @@ pub enum Relic {
     CopperGloves,
     /// Il bracciale del maestro di Silvia, nella prima sala della grotta (QS-14).
     MasterBracelet,
+    /// Il sacco di farina di Gino per Marta (QS-01): cinque chili.
+    FlourSack,
 }
 
 impl Relic {
     /// Tutti gli oggetti di trama (serve ai test).
     #[cfg(test)]
-    pub const ALL: [Relic; 25] = [
+    pub const ALL: [Relic; 26] = [
         Relic::Tablet,
         Relic::MotherCoin,
         Relic::Quipu,
@@ -132,6 +134,7 @@ impl Relic {
         Relic::NavigatorCloak,
         Relic::CopperGloves,
         Relic::MasterBracelet,
+        Relic::FlourSack,
     ];
 
     fn name(self) -> &'static str {
@@ -161,6 +164,7 @@ impl Relic {
             Relic::NavigatorCloak => "Mantello del Navigatore",
             Relic::CopperGloves => "Guanti Isolanti",
             Relic::MasterBracelet => "Bracciale del maestro",
+            Relic::FlourSack => "Sacco di farina",
         }
     }
 
@@ -191,6 +195,7 @@ impl Relic {
             Relic::NavigatorCloak => "mantello",
             Relic::CopperGloves => "guanti-rame",
             Relic::MasterBracelet => "bracciale",
+            Relic::FlourSack => "sacco-farina",
         }
     }
 
@@ -233,6 +238,7 @@ impl Relic {
                 "Rame e cuoio: le dita non tremano, la tacca dello scasso è più larga."
             }
             Relic::MasterBracelet => "Cuoio secco e bronzo, con un'aquila incisa storta.",
+            Relic::FlourSack => "La farina buona di Gino per il forno di Marta. Pesa cinque chili.",
         }
     }
 
@@ -290,7 +296,7 @@ impl Category {
 
 impl ItemKind {
     /// Tutti i tipi di oggetto.
-    pub const ALL: [ItemKind; 50] = [
+    pub const ALL: [ItemKind; 51] = [
         ItemKind::HealthPotion,
         ItemKind::Coin,
         ItemKind::ShortSword,
@@ -341,6 +347,7 @@ impl ItemKind {
         ItemKind::Relic(Relic::NavigatorCloak),
         ItemKind::Relic(Relic::CopperGloves),
         ItemKind::Relic(Relic::MasterBracelet),
+        ItemKind::Relic(Relic::FlourSack),
     ];
 
     /// Peso reale di un'unità (kg). Monete e munizioni non pesano.
@@ -373,6 +380,7 @@ impl ItemKind {
             ItemKind::Relic(Relic::TyreLantern) => Some(0.8),
             ItemKind::Relic(Relic::NavigatorCloak) => Some(1.2),
             ItemKind::Relic(Relic::CopperGloves) => Some(0.3),
+            ItemKind::Relic(Relic::FlourSack) => Some(5.0),
             ItemKind::Relic(_) => Some(0.05),
             ItemKind::Coin | ItemKind::Arrow => None,
         }
@@ -405,9 +413,9 @@ impl ItemKind {
             | ItemKind::Stone => Category::Gear,
             ItemKind::Coin | ItemKind::MasterKey => Category::Valuables,
             ItemKind::Relic(Relic::Focaccia) => Category::Food,
-            ItemKind::Relic(Relic::TyreLantern | Relic::NavigatorCloak | Relic::CopperGloves) => {
-                Category::Gear
-            }
+            ItemKind::Relic(
+                Relic::TyreLantern | Relic::NavigatorCloak | Relic::CopperGloves | Relic::FlourSack,
+            ) => Category::Gear,
             ItemKind::Relic(_) => Category::Keepsakes,
         }
     }
@@ -1188,10 +1196,10 @@ mod tests {
             assert_eq!(ItemKind::from_name(k.name()), Some(k), "{r:?}");
             assert!(ItemKind::ALL.contains(&k));
             // I ricordi pesano poco; l'equipaggiamento della trama (lanterna, mantello) un po' di più.
-            let max = if k.category() == Category::Gear {
-                1.5
-            } else {
-                0.5
+            let max = match r {
+                Relic::FlourSack => 5.5,
+                _ if k.category() == Category::Gear => 1.5,
+                _ => 0.5,
             };
             assert!(k.weight_kg().is_some_and(|w| w < max), "{r:?}");
         }

@@ -28,12 +28,19 @@ const GATHER_VIGOR: f32 = 10.0;
 
 pub const FOUNDATION: u8 = 1;
 pub const BUILT: u8 = 2;
+/// La casa ampliata in pietra, con Ferruccio e Gino (QS-17, ADR 0052).
+pub const STONE_HOUSE: u8 = 3;
+/// Lo sblocco della missione che permette l'ampliamento (dopo aver parlato con Ferruccio e Gino).
+pub const STONE_PERMIT: &str = "casa-pietra";
+/// La nota del piazzamento della casa di pietra (`world_props` sceglie il modello coi muri di pietra).
+pub const STONE_NOTE: &str = "pietra";
 
 /// Materiali (legname, pietra) per arrivare alla tappa `stage` dalla precedente.
 pub fn needs(stage: u8) -> Option<(u32, u32)> {
     match stage {
         FOUNDATION => Some((0, 10)),
         BUILT => Some((16, 6)),
+        STONE_HOUSE => Some((6, 12)),
         _ => None,
     }
 }
@@ -42,7 +49,8 @@ pub fn stage_name(stage: u8) -> &'static str {
     match stage {
         0 => "terreno libero",
         FOUNDATION => "fondamenta",
-        _ => "casa finita",
+        BUILT => "casa finita",
+        _ => "casa di pietra",
     }
 }
 
@@ -106,6 +114,7 @@ pub fn build(
     mut session: ResMut<crate::save::Session>,
     mut cooldown: Local<f32>,
     mut knack: Local<f32>,
+    missions: Res<crate::quests::missions::Missions>,
 ) {
     *cooldown = (*cooldown - time.delta_secs()).max(0.0);
     if dialog.open {
@@ -165,6 +174,10 @@ pub fn build(
     let Some((need_wood, need_stone)) = house.missing() else {
         return;
     };
+    // La casa di pietra si fa con l'aiuto di Ferruccio e Gino (QS-17): prima bisogna chiederglielo.
+    if house.stage + 1 == STONE_HOUSE && !missions.unlocked(STONE_PERMIT) {
+        return;
+    }
     let next = stage_name(house.stage + 1);
     hint(format!(
         "[R] Costruisci: {next} (mancano {need_wood} legname, {need_stone} pietra)"
@@ -204,9 +217,22 @@ pub fn knack_bonus(saved: f32, rank: f32) -> (u32, f32) {
 /// Sistema: la casa finita è un piazzamento in più (non scritto nel file dei piazzamenti).
 pub fn sync_placement(house: Res<House>, mut dbg: ResMut<crate::debug_place::DebugPlace>) {
     let wanted = house.stage >= BUILT && crate::region::current() == Region::Isola;
-    let present = dbg.items.iter().any(|p| p.kind == KIND);
-    if wanted != present {
+    let note = if house.stage >= STONE_HOUSE {
+        STONE_NOTE
+    } else {
+        ""
+    };
+    let present = dbg
+        .items
+        .iter()
+        .find(|p| p.kind == KIND)
+        .map(|p| p.note.clone());
+    let right = present.as_deref() == wanted.then_some(note);
+    if !right {
         dbg.set_runtime(KIND, wanted.then_some(PLOT));
+        if wanted && let Some(p) = dbg.items.iter_mut().find(|p| p.kind == KIND) {
+            p.note = note.to_string();
+        }
     }
 }
 
@@ -432,6 +458,11 @@ mod tests {
         assert_eq!(h.deliver(16, 2), (16, 2, false));
         assert_eq!(h.deliver(3, 9), (0, 4, true));
         assert_eq!(h.stage, BUILT);
+        // Poi la casa di pietra (QS-17): dodici pietre e sei tronchi.
+        assert_eq!(h.missing(), Some((6, 12)));
+        assert_eq!(h.deliver(10, 20), (6, 12, true));
+        assert_eq!(h.stage, STONE_HOUSE);
+        assert_eq!(stage_name(h.stage), "casa di pietra");
         assert_eq!(h.missing(), None);
         assert_eq!(h.deliver(10, 10), (0, 0, false));
     }

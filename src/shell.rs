@@ -416,9 +416,11 @@ pub fn parse(line: &str) -> Result<Cmd, String> {
         "casa" => args
             .first()
             .and_then(|a| a.parse::<u8>().ok())
-            .filter(|n| *n <= crate::house::BUILT)
+            .filter(|n| *n <= crate::house::STONE_HOUSE)
             .map(Cmd::House)
-            .ok_or_else(|| "uso: casa <0|1|2> (terreno, fondamenta, finita)".to_string()),
+            .ok_or_else(|| {
+                "uso: casa <0|1|2|3> (terreno, fondamenta, finita, di pietra)".to_string()
+            }),
         "incantesimo" if !args.is_empty() => crate::magic::Spell::parse(&args.join(" "))
             .map(Cmd::Cast)
             .ok_or_else(|| "incantesimi: luce, dardo, cura, passo, scudo".to_string()),

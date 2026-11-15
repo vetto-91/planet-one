@@ -24,13 +24,27 @@ quando: parla Marta
 [tappa]
 obiettivo: Vai da Gino al mulino, in fondo alla strada nord
 quando: parla Gino
-> La farina per Marta? È pronta da ieri. È il ramo nella pala che mi ha tenuto qui… l'ho tolto stamattina.
-> Tieni il sacco: pesa, ma tu hai buone spalle. E guarda qua, in confidenza: semi dorati e foglie incise. Li porta il vento del nord.
+> La farina per Marta? Pronta da ieri. Ma guarda la pala: un ramo spezzato dal vento, incastrato di traverso.
+> Per toglierlo devo salire, e lasciare il mulino. E nel bosco, qui dietro, ci sono due predoni che aspettano proprio questo.
+> Se li mandi via tu, io in un attimo libero la pala.
+
+[tappa]
+obiettivo: Scaccia i due predoni dal bosco attorno al mulino
+quando: sbloccato predoni-mulino-vinti
+pensiero: Il bosco attorno al mulino torna quieto. Sopra, la pala ricomincia a girare.
+
+[tappa]
+obiettivo: Torna da Gino
+quando: parla Gino
+> Sentito? Le pale girano. Il ramo l'ho tolto mentre tu tenevi lontani quei due.
+> Tieni il sacco: cinque chili, pesa, ma tu hai buone spalle. E guarda qua, in confidenza: semi dorati e foglie incise. Li porta il vento del nord.
 > Dille che il pane di domani sa già di tramontana.
+dai: sacco di farina 1
 
 [tappa]
 obiettivo: Riporta la farina a Marta
 quando: parla Marta
+prendi: sacco di farina 1
 > La farina! E pure in fretta. Aspetta, non andare via a mani vuote…
 > Questa è per te, e questa focaccia al miele… portala a Gino, ma non dirgli che ci ho inciso sopra una rosa dei venti. Se ne accorge da solo.
 dai: focaccia del navigante 3
@@ -188,11 +202,18 @@ quando: parla Agnese
 > E digli anche che una cena senza pesce e senza mele non è una cena.
 
 [tappa]
+obiettivo: Chiedi a Marta il pane per la cena di Osvaldo
+quando: parla Marta
+> Pane per la cena di Osvaldo? Stasera ne sforno una teglia in più, e la porto io, ancora calda.
+> Chi viene? Carlo, Bruno, Beppe e Gaspare… i più stanchi del paese. Allora ci vuole il pane buono.
+
+[tappa]
 obiettivo: Porta a Osvaldo due pesci e tre mele (da Nina e da Tonio)
 quando: parla Osvaldo
 quando: ha pesce 2
 quando: ha mela 3
 > Pesce di Nina e mele di Tonio! Adesso sì. Stasera, dopo le otto, vieni anche tu: si apre l'anfora.
+> Ho invitato Carlo e Bruno, che fanno la guardia da vent'anni, Beppe che non si ferma mai e Gaspare. Il pane lo porta Marta.
 prendi: pesce 2
 prendi: mela 3
 
@@ -200,6 +221,7 @@ prendi: mela 3
 obiettivo: Dopo le otto di sera, torna alla locanda
 quando: parla Osvaldo
 quando: ora 20 24
+> Eccoli, tutti a tavola. Carlo, Bruno, Beppe, Gaspare: stasera nessuno fa la guardia e nessuno lavora.
 > Eccola. Piano… piano… aperta! Senti che profumo: cent'anni, e sa ancora di sole.
 > Guarda dentro il sigillo: una lamina d'argento. Secche, correnti… è una carta dello Stretto. Tienila tu, che vai lontano.
 monete: 15
@@ -336,11 +358,24 @@ obiettivo: Chiedi a Ferruccio della Luce Viva
 quando: parla Ferruccio
 > I lampioni? Io li riparo, ma non li ho fatti. Dentro c'è rame, e una cosa che non è fuoco.
 > I fili partono tutti dal pozzo della piazza. Alla base c'è una grata: guarda da che parte va il cavo grosso.
+> E il Viandante, dietro la stufa, ha un quadro di rame chiuso a chiave. Le chiavi antiche le conosce Don Anselmo.
+
+[tappa]
+obiettivo: Chiedi a Don Anselmo di una chiave antica
+quando: parla Don Anselmo
+> Una chiave per il rame? Le chiavi della Luce Viva erano due, di rame verde. Una la trovò Pietro da bambino, l'altra è qui.
+> Prendila. Chi l'ha lasciata alla chiesa voleva che un giorno qualcuno capisse da dove viene la luce.
+dai: chiave di rame 1
 
 [tappa]
 obiettivo: Guarda la grata alla base del pozzo, in piazza
 quando: vicino -1.2 10 3
 pensiero: Sotto la grata, un cavo di rame grosso come un polso. Corre dritto verso est, sotto le case, verso la costa.
+
+[tappa]
+obiettivo: Apri con la chiave il quadro di rame dietro la stufa del Viandante
+quando: sbloccato quadro-rame
+pensiero: Dentro il quadro, tre fili scendono nel pavimento verso la piazza. Non c'è un fuoco, non c'è una ruota: la luce arriva già fatta, da qualche parte.
 
 [tappa]
 obiettivo: Segui il cavo fino in fondo alla grotta a est
@@ -451,8 +486,14 @@ pensiero: Da quassù le vedi tutte: la torre a nord e il faro, il santuario a ov
 obiettivo: Scendi al pozzo della piazza, dove le due linee si incrociano
 quando: vicino -1.2 10 3
 quando: ora 11.5 13.5
-pensiero: Chi ha costruito Fontevivo ha messo l'acqua al centro di una croce. Batti sulla pietra: sotto il pozzo qualcosa risuona, una camera vuota. La Camera di Risonanza.
+pensiero: Chi ha costruito Fontevivo ha messo l'acqua al centro di una croce. Batti sulla pietra: sotto il pozzo qualcosa risuona, una camera vuota. La grata accanto al pozzo cede.
 sblocca: camera-risonanza
+
+[tappa]
+obiettivo: Scendi nella Camera di Risonanza, dalla grata accanto al pozzo
+quando: vicino 0 11 5
+quando: sotto -2.2
+pensiero: Una stanza di pietra sotto la piazza. La colonna del pozzo scende in una vasca d'acqua ferma, e un cavo di rame corre verso est. Ogni passo torna indietro tre volte, più forte.
 monete: 20
 
 [missione qs15]
@@ -571,6 +612,24 @@ pensiero: Le fondamenta tengono. Ora servono il legname e altra pietra per i mur
 obiettivo: Alza la casa: sedici tronchi e sei pietre
 quando: conta casa 2
 pensiero: Ha una porta, un tetto e un focolare. È casa mia.
+
+[tappa]
+obiettivo: Chiedi a Ferruccio come farla di pietra
+quando: parla Ferruccio
+> Una casa di legno sul poggio? Al primo inverno il vento te la porta in paese a pezzi.
+> Pietra, ci vuole: dodici blocchi squadrati e qualche trave buona. Io ti forgio i cardini e le grappe. Chiedi a Gino per le travi: sa quali abeti stanno dritti.
+
+[tappa]
+obiettivo: Chiedi a Gino una mano con le travi
+quando: parla Gino
+> Le travi te le scelgo io, sei tronchi dritti come le pale del mulino. E vengo a darti una mano a tirarle su.
+> Così, quando tornerai dal nord, la troverai ancora in piedi.
+sblocca: casa-pietra
+
+[tappa]
+obiettivo: Amplia la casa in pietra: dodici pietre e sei tronchi (tasto R sul terreno)
+quando: conta casa 3
+pensiero: Muri di pietra, scuri alle finestre, il camino che tira e una luce con l'interruttore. Una casa da cui tornare.
 
 [tappa]
 obiettivo: Racconta al Viandante della casa

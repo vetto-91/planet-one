@@ -83,6 +83,22 @@ pub enum PropKind {
     Container,
     /// Oggetto gettato a terra dal giocatore.
     Pickup,
+    /// Il quadro di rame dietro la stufa del Viandante (QS-13): si apre con la chiave di rame.
+    CopperPanel,
+}
+
+/// Lo sportello del quadro di rame: ruota sul cardine quando il quadro è aperto.
+#[derive(Component)]
+pub struct CopperLid {
+    pub state: Entity,
+}
+
+/// Sistema: lo sportello del quadro di rame segue lo stato del quadro.
+pub fn copper_lid(states: Query<&PropState>, mut lids: Query<(&CopperLid, &mut Transform)>) {
+    for (lid, mut tf) in &mut lids {
+        let open = states.get(lid.state).is_ok_and(|s| s.on);
+        tf.rotation = Quat::from_rotation_y(if open { -1.9 } else { 0.0 });
+    }
 }
 
 /// Identificativo stabile di un oggetto con stato, per i salvataggi.
@@ -1180,6 +1196,55 @@ pub fn spawn_hut(
                 ));
             })
             .id();
+        // Il quadro di rame dietro la stufa (QS-13): si apre con la chiave di rame; dentro, i fili della
+        // Luce Viva scendono nel pavimento verso la piazza.
+        let panel_copper = solid(materials, Color::srgb(0.66, 0.38, 0.2), 0.9, 0.35);
+        let panel_at = Vec3::new(1.95, Y0 + 1.6, CHIMNEY_XZ.y);
+        add_box(
+            c,
+            meshes,
+            &panel_copper,
+            Vec3::new(0.03, 0.5, 0.4),
+            panel_at,
+            false,
+        );
+        for dz in [-0.1f32, 0.0, 0.1] {
+            add_box(
+                c,
+                meshes,
+                &panel_copper,
+                Vec3::new(0.02, 1.35, 0.025),
+                Vec3::new(1.97, Y0 + 0.675, CHIMNEY_XZ.y + dz),
+                false,
+            );
+        }
+        let panel = c
+            .spawn((
+                PropKind::CopperPanel,
+                PropId("casetta:quadro".to_string()),
+                PropState { on: false },
+                Interactable {
+                    prompt: "[E] Apri il quadro di rame".to_string(),
+                    range: 2.5,
+                    aim: Some(0.3),
+                    use_from: None,
+                },
+                Transform::from_translation(panel_at - Vec3::X * 0.08),
+            ))
+            .id();
+        // Lo sportello, incernierato sul bordo verso il fondo della casa.
+        c.spawn((
+            CopperLid { state: panel },
+            Transform::from_translation(panel_at + Vec3::new(-0.04, 0.0, -0.2)),
+            Visibility::default(),
+        ))
+        .with_children(|l| {
+            l.spawn((
+                Mesh3d(meshes.add(Cuboid::new(0.025, 0.48, 0.4))),
+                MeshMaterial3d(panel_copper.clone()),
+                Transform::from_xyz(0.0, 0.0, 0.2),
+            ));
+        });
         // Mensola con pentole e barattoli.
         add_box(
             c,
@@ -1569,6 +1634,17 @@ pub fn handle_prop_toggle(
         let Ok((kind, mut st)) = states.get_mut(target) else {
             continue;
         };
+        // Il quadro di rame si apre solo con la chiave di rame (QS-13).
+        if *kind == PropKind::CopperPanel && !st.on {
+            let key = crate::inventory::ItemKind::Relic(crate::inventory::Relic::CopperKey);
+            if carried.qty(key) == 0 {
+                picking.notify("Il quadro è chiuso: serve una chiave antica di rame");
+                continue;
+            }
+            crate::karma::flag("quadro-rame");
+            crate::sfx::play(crate::sfx::Sfx::Unlock);
+            info!("[HUT] quadro di rame aperto con la chiave");
+        }
         // Porta chiusa a chiave: senza accesso non si apre (chiudere è sempre possibile).
         if !st.on
             && let (Ok((lock, door, key)), Ok(player)) = (locks.get(target), players.single())
@@ -1629,6 +1705,8 @@ pub fn update_prop_prompts(
             (PropKind::Stove, false) => "[E] Accendi stufa",
             (PropKind::Hearth, true) => "[E] Spegni il fuoco",
             (PropKind::Hearth, false) => "[E] Accendi il fuoco",
+            (PropKind::CopperPanel, true) => "[E] Chiudi il quadro di rame",
+            (PropKind::CopperPanel, false) => "[E] Apri il quadro di rame",
             (PropKind::Light, true) => "[E] Spegni luce",
             (PropKind::Light, false) => "[E] Accendi luce",
             (PropKind::Shutter, true) => "[E] Abbassa serranda",

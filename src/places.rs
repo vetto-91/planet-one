@@ -393,6 +393,183 @@ fn sunken_passage(b: &mut B, int: &mut Interior) {
     b.force = None;
 }
 
+/// La Camera di Risonanza sotto il pozzo della piazza (QS-12, ADR 0052): il pozzetto con la scala
+/// a chiocciola, accanto al pozzo (minimo e massimo locali x, z), dove il terreno non c'è.
+pub const WELL_HOLE: (Vec2, Vec2) = (Vec2::new(1.6, 1.6), Vec2::new(4.0, 4.0));
+/// Pavimento e soffitto della camera (quote locali del pozzo).
+const RES_FLOOR: f32 = -3.4;
+const RES_CEIL: f32 = -0.6;
+const COPPER_COL: Col = [0.42, 0.2, 0.09, 1.0];
+
+/// La camera sotto il pozzo: una stanza di pietra con la colonna del pozzo che scende in una vasca,
+/// il cavo di rame della Luce Viva che corre verso est (QS-13) e la scala a chiocciola nel pozzetto.
+pub fn resonance_chamber(b: &mut B, int: &mut Interior) {
+    let v = Vec3::new;
+    let (x0, x1, z0, z1) = (-3.0, 4.0, -3.0, 4.0);
+    let (hx0, hz0) = (WELL_HOLE.0.x, WELL_HOLE.0.y);
+    cave_floor(b, int, v(x0, RES_FLOOR - 0.3, z0), v(x1, RES_FLOOR, z1));
+    // Muri e soffitto (il soffitto ha il vano del pozzetto).
+    for (min, max) in [
+        (
+            v(x0 - 0.5, RES_FLOOR - 0.3, z0 - 0.5),
+            v(x0, RES_CEIL, z1 + 0.5),
+        ),
+        (
+            v(x1, RES_FLOOR - 0.3, z0 - 0.5),
+            v(x1 + 0.5, RES_CEIL, z1 + 0.5),
+        ),
+        (v(x0, RES_FLOOR - 0.3, z0 - 0.5), v(x1, RES_CEIL, z0)),
+        (v(x0, RES_FLOOR - 0.3, z1), v(x1, RES_CEIL, z1 + 0.5)),
+        (v(x0 - 0.5, RES_CEIL, z0 - 0.5), v(x1 + 0.5, -0.05, hz0)),
+        (v(x0 - 0.5, RES_CEIL, hz0), v(hx0, -0.05, z1 + 0.5)),
+    ] {
+        b.cuboid(min, max, STONE);
+        int.walls.push(((min + max) / 2.0, max - min));
+    }
+    // Il pozzetto: pareti sotto il bordo del buco nel terreno, poi la chiocciola fino al pavimento.
+    for (min, max) in [
+        (v(x1, RES_CEIL, hz0), v(x1 + 0.5, 0.0, z1 + 0.5)),
+        (v(hx0, RES_CEIL, z1), v(x1, 0.0, z1 + 0.5)),
+    ] {
+        b.cuboid(min, max, STONE_DARK);
+        int.walls.push(((min + max) / 2.0, max - min));
+    }
+    rooms::square_helix(b, int, (hx0, x1, hz0, z1), RES_FLOOR, 0.06, 0.8);
+    // La colonna del pozzo scende fino a una vasca d'acqua ferma.
+    rock(b, int, v(-1.0, RES_FLOOR, -1.0), v(1.0, RES_CEIL, 1.0));
+    b.cuboid(
+        v(-1.8, RES_FLOOR, -1.8),
+        v(1.8, RES_FLOOR + 0.35, 1.8),
+        STONE_DARK,
+    );
+    int.walls
+        .push((v(0.0, RES_FLOOR + 0.17, 0.0), v(3.6, 0.35, 3.6)));
+    b.force = Some(Mat::Plain);
+    b.cuboid_c(
+        v(0.0, RES_FLOOR + 0.3, 0.0),
+        v(3.3, 0.04, 3.3),
+        [0.05, 0.18, 0.26, 1.0],
+    );
+    // Il cavo di rame: esce dalla colonna e corre verso est, dentro il muro.
+    b.cuboid_c(
+        v((1.0 + x1) / 2.0, -1.7, 0.0),
+        v(x1 - 1.0, 0.12, 0.12),
+        COPPER_COL,
+    );
+    // Segni di rame sui muri: spirali come quelle della Porta Sommersa.
+    for (x, z) in [(x0 + 0.03, 0.5), (x0 + 0.03, -1.8), (-1.5, z0 + 0.03)] {
+        for k in 0..7 {
+            let a = k as f32 * 0.9;
+            let r = 0.05 + k as f32 * 0.03;
+            let along_x = z == z0 + 0.03;
+            let p = if along_x {
+                v(x + a.cos() * r, -1.8 + a.sin() * r, z)
+            } else {
+                v(x, -1.8 + a.sin() * r, z + a.cos() * r)
+            };
+            b.cuboid_c(p, v(0.06, 0.06, 0.06), COPPER_COL);
+        }
+    }
+    b.force = None;
+}
+
+/// Segna il pozzo della piazza: sotto c'è la Camera di Risonanza.
+#[derive(Component)]
+pub struct WellMouth;
+
+/// La grata sul pozzetto: chiusa finché la Croce delle Quattro Ronde non scopre la camera.
+#[derive(Component)]
+pub struct WellGrate;
+
+/// Sistema: la grata sul pozzetto accanto al pozzo, e la luce dell'acqua nella camera. Si apre (la
+/// grata si appoggia al pozzo) quando la camera è scoperta (`camera-risonanza`, QS-12).
+#[allow(clippy::too_many_arguments)]
+pub fn well_grate(
+    mut commands: Commands,
+    wells: Query<(Entity, &Children), With<WellMouth>>,
+    mut grates: Query<(Entity, &mut Transform, Has<avian3d::prelude::Collider>), With<WellGrate>>,
+    missions: Res<crate::quests::missions::Missions>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut iron: Local<Option<Handle<StandardMaterial>>>,
+) {
+    let open = missions.unlocked("camera-risonanza");
+    let size = WELL_HOLE.1 - WELL_HOLE.0;
+    let center = (WELL_HOLE.0 + WELL_HOLE.1) / 2.0;
+    let closed_tf = Transform::from_xyz(center.x, 0.08, center.y);
+    // Aperta: alzata e appoggiata al pozzo, di taglio.
+    let open_tf =
+        Transform::from_xyz(1.3, 1.1, center.y).with_rotation(Quat::from_rotation_z(1.25));
+    for (well, children) in &wells {
+        if children.iter().any(|c| grates.contains(c)) {
+            continue;
+        }
+        let iron = iron
+            .get_or_insert_with(|| {
+                materials.add(StandardMaterial {
+                    base_color: Color::srgb(0.12, 0.12, 0.13),
+                    metallic: 0.8,
+                    perceptual_roughness: 0.6,
+                    ..default()
+                })
+            })
+            .clone();
+        commands.entity(well).with_children(|c| {
+            let mut grate = c.spawn((
+                WellGrate,
+                Mesh3d(meshes.add(Cuboid::new(size.x, 0.05, 0.08))),
+                MeshMaterial3d(iron.clone()),
+                if open { open_tf } else { closed_tf },
+                Visibility::default(),
+            ));
+            if !open {
+                grate.insert(avian3d::prelude::Collider::cuboid(size.x, 0.1, size.y));
+            }
+            grate.with_children(|g| {
+                // Le sbarre: sette di traverso, più la cornice.
+                for k in 0..7 {
+                    let z = -size.y / 2.0 + (k as f32 + 0.5) * size.y / 7.0;
+                    g.spawn((
+                        Mesh3d(meshes.add(Cuboid::new(size.x, 0.05, 0.06))),
+                        MeshMaterial3d(iron.clone()),
+                        Transform::from_xyz(0.0, 0.0, z),
+                    ));
+                }
+                for x in [-size.x / 2.0, size.x / 2.0] {
+                    g.spawn((
+                        Mesh3d(meshes.add(Cuboid::new(0.08, 0.06, size.y))),
+                        MeshMaterial3d(iron.clone()),
+                        Transform::from_xyz(x, 0.0, 0.0),
+                    ));
+                }
+            });
+            // La luce dell'acqua, giù nella camera.
+            c.spawn((
+                PointLight {
+                    color: Color::srgb(0.4, 0.7, 0.85),
+                    intensity: 25_000.0,
+                    range: 9.0,
+                    shadow_maps_enabled: false,
+                    ..default()
+                },
+                Transform::from_xyz(0.0, RES_FLOOR + 1.2, 2.0),
+            ));
+        });
+        info!(
+            "[MONDO] grata del pozzo {}",
+            if open { "aperta" } else { "chiusa" }
+        );
+    }
+    for (e, mut tf, solid) in &mut grates {
+        if open && solid {
+            commands.entity(e).remove::<avian3d::prelude::Collider>();
+            *tf = open_tf;
+            crate::sfx::play(crate::sfx::Sfx::Grind);
+            info!("[MONDO] la grata del pozzo si apre: si scende nella Camera di Risonanza");
+        }
+    }
+}
+
 /// Segna la grotta piazzata: lì sotto c'è la Porta Sommersa.
 #[derive(Component)]
 pub struct CaveMouth;
@@ -1102,7 +1279,7 @@ pub fn fast_travel(
 }
 
 pub fn plugin(app: &mut App) {
-    app.add_systems(Update, (sunken_door, sunken_glow).chain());
+    app.add_systems(Update, ((sunken_door, sunken_glow).chain(), well_grate));
     app.init_resource::<Known>()
         .init_resource::<FastTravel>()
         .init_resource::<Exploration>()

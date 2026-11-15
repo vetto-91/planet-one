@@ -243,6 +243,11 @@ pub struct PickParams<'w> {
 }
 
 impl PickParams<'_> {
+    /// Un avviso al giocatore.
+    pub fn notify(&mut self, text: &str) {
+        self.session.notify(text);
+    }
+
     /// Si ha la chiave (sfilata a un abitante) di questa porta?
     pub fn has_key(&self, key: &str) -> bool {
         self.thievery.keys.contains(key)

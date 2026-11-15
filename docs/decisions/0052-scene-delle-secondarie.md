@@ -47,10 +47,41 @@ Secondo passo del piano per completare isola e Prologo (dopo le ricompense, ADR 
   Silvia e il bracciale, il paese al molo). `zz-ultime.txt` era rimasto indietro dalla v0.0.64 (eventi e
   ronde cambiati): ora salta con la shell ciò che provano i copioni più nuovi.
 
+## Aggiornamento: ciò che restava fuori (2026-11-15)
+- **Dino e Aldo combattono** sulla strada del Sud: il loro posto della storia segue il predone vivo più
+  vicino (entro 14 m, fermandosi a 1,5 m; `side_scenes::guard_spot`) e lo colpiscono come un compagno
+  (`companions::strike`: Dino 11 ogni 1,2 s). Finita la difesa tornano al loro posto.
+- **La Camera di Risonanza si visita** (`places::resonance_chamber`, nel modello del pozzo):
+  - una stanza di pietra 7×7 m sotto la piazza, a 3,4 m di profondità, con la colonna del pozzo che
+    scende in una vasca d'acqua, il cavo di rame che corre verso est e spirali di rame sui muri;
+  - ci si scende da un pozzetto accanto al pozzo, con una scala a chiocciola: lì il terreno ha un buco
+    (`places::WELL_HOLE`, come all'imbocco della grotta);
+  - il pozzetto è chiuso da una grata di ferro su cui si cammina; quando QS-12 scopre la camera
+    (`camera-risonanza`) la grata si alza e si appoggia al pozzo (`places::well_grate`);
+  - festa e saluto al molo non mettono nessuno sopra il pozzetto (`lanterns::spot_is_free`);
+  - QS-12 ha una tappa in più: scendere nella camera.
+- **QS-01, il mulino**: il ramo è ancora nella pala e Gino non lascia il mulino per via di due predoni nel
+  bosco. Escono quando arrivi (`side_scenes::mill_raiders`); a terra tutti e due, Gino libera la pala e
+  ti dà il **sacco di farina** (5 kg, `Relic::FlourSack`) da portare a Marta.
+- **QS-06, la cena dell'anfora**: una tappa nuova per chiedere il pane a Marta. La sera dell'anfora (dalle
+  19:30) Carlo, Bruno, Beppe, Gaspare e Marta col pane si mettono davanti alla locanda, girati verso
+  Osvaldo (`side_scenes::dinner_at_the_inn`); Osvaldo li saluta a tavola.
+- **QS-13, la chiave e il quadro**: Don Anselmo dà la seconda chiave di rame della Luce Viva; dietro la
+  stufa del Viandante c'è un **quadro di rame** vero (`PropKind::CopperPanel`) che si apre con `E` solo
+  con la chiave (`quadro-rame`), con i fili che scendono nel pavimento.
+- **QS-17, la casa di pietra**: dopo la casa finita, Ferruccio (cardini e grappe) e Gino (travi) ti
+  aiutano ad ampliarla (`sblocca: casa-pietra`): dodici pietre e sei tronchi, terza tappa della casa
+  (`house::STONE_HOUSE`). La casa diventa di pietra: stesso modello con i muri di pietra
+  (`casa-naufrago-pietra`, nota «pietra» del piazzamento), con scuri, camino e interruttore.
+- **Migrazione**: in `missions::MOVES` anche qs01, qs06, qs13 e qs17; chi era alla grata di QS-13
+  riparte dalla chiave; chi doveva tornare dal Viandante in QS-17 fa prima la casa di pietra.
+- **Prova**: `prove/zzzzzzzzzzzzzzzzzzzzz-scene-2.txt`.
+
 ## Conseguenze
-- La Camera di Risonanza si scopre ma non si visita: non c'è ancora una stanza sotto il pozzo.
-- Nella difesa della strada Dino e Aldo stanno fermi: non combattono (non sono compagni).
+- ~~La Camera di Risonanza si scopre ma non si visita.~~ **Risolto**, vedi «Aggiornamento».
+- ~~Nella difesa della strada Dino e Aldo stanno fermi.~~ **Risolto**, vedi «Aggiornamento».
 - Il campanile conta se ci si arriva in cima, anche cadendo dall'alto con la shell.
 - La promessa di Silvia (`silvia-promessa`) aspetta l'Atto I: ora resta solo segnata.
-- Restano da fare, delle scene della trama: QS-06 (il pane e i quattro ospiti), QS-01 (la pala e i
-  predoni), QS-13 (la chiave antica e il quadro di rame), QS-17 (la casa di pietra).
+- ~~Restano da fare QS-06, QS-01, QS-13, QS-17.~~ **Risolto**, vedi «Aggiornamento».
+- La Camera di Risonanza per ora è solo da vedere: niente da raccogliere né da fare laggiù.
+- Gli ospiti della cena stanno in piedi davanti alla locanda: non ci sono tavole apparecchiate.

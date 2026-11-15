@@ -326,13 +326,18 @@ pub fn update_terrain(
         .map(|d| {
             d.items
                 .iter()
-                .filter(|p| p.kind == "grotta")
-                .flat_map(|p| {
+                .filter_map(|p| match p.kind.as_str() {
+                    "grotta" => Some((p, crate::places::CAVE_HOLE)),
+                    // Il pozzetto della Camera di Risonanza, accanto al pozzo della piazza.
+                    "pozzo" => Some((p, crate::places::WELL_HOLE)),
+                    _ => None,
+                })
+                .flat_map(|(p, (min, max))| {
                     p.points.iter().enumerate().map(move |(j, q)| TerrainHole {
                         center: *q,
                         yaw: p.yaw(j),
-                        min: crate::places::CAVE_HOLE.0,
-                        max: crate::places::CAVE_HOLE.1,
+                        min,
+                        max,
                     })
                 })
                 .collect()

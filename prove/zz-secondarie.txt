@@ -7,7 +7,7 @@ meteo sereno
 ora 10
 missioni on
 aspetta 2
-# qs01 Il Pane del Vento: Marta, Gino, Marta, Gino
+# qs01 Il Pane del Vento: Marta, Gino, i predoni del mulino, Gino, Marta, Gino
 tp marta
 aspetta 1
 attendi npc:marta:modo = Ready 90
@@ -34,20 +34,15 @@ verifica dialogo = true
 avanza
 aspetta 1
 verifica /missioni/qs01 = 3
-tp marta
+# Due predoni nel bosco tengono Gino chiuso nel mulino: si scacciano, poi Gino dà il sacco.
+tp 0.5 3 -58
+aspetta 3
+verifica vicini contiene nemico
+uccidi 40
 aspetta 1
-attendi npc:marta:modo = Ready 90
-tp marta
-aspetta 1
-guarda marta
-aspetta 1
-premi e
-aspetta 1
-verifica dialogo = true
-avanza
-aspetta 1
+uccidi 40
+aspetta 2
 verifica /missioni/qs01 = 4
-verifica Relic(Focaccia) = 3
 tp gino
 aspetta 1
 attendi npc:gino:modo = Ready 90
@@ -61,6 +56,34 @@ verifica dialogo = true
 avanza
 aspetta 1
 verifica /missioni/qs01 = 5
+verifica Relic(FlourSack) = 1
+tp marta
+aspetta 1
+attendi npc:marta:modo = Ready 90
+tp marta
+aspetta 1
+guarda marta
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs01 = 6
+verifica Relic(Focaccia) = 3
+tp gino
+aspetta 1
+attendi npc:gino:modo = Ready 90
+tp gino
+aspetta 1
+guarda gino
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs01 = 7
 verifica monete >= 42
 # qs03 Lo Scudo dell'Orlo Spezzato: Ferruccio, le rovine, Ferruccio
 tp ferruccio
@@ -95,7 +118,7 @@ scegli Appendilo
 aspetta 1
 verifica /missioni/qs03 = 4
 verifica /karma >= 4
-# qs06 L'Anfora dei Cent'Anni: Osvaldo, Agnese, pesci e mele, la sera alla locanda
+# qs06 L'Anfora dei Cent'Anni: Osvaldo, Agnese, il pane di Marta, pesci e mele, la sera alla locanda
 tp osvaldo
 aspetta 1
 attendi npc:osvaldo:modo = Ready 90
@@ -123,6 +146,20 @@ avanza
 scegli Arrivederci
 aspetta 1
 verifica /missioni/qs06 = 3
+tp marta
+aspetta 1
+attendi npc:marta:modo = Ready 90
+tp marta
+aspetta 1
+guarda marta
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+scegli Arrivederci
+aspetta 1
+verifica /missioni/qs06 = 4
 tp osvaldo
 aspetta 1
 attendi npc:osvaldo:modo = Ready 90
@@ -135,7 +172,7 @@ aspetta 1
 verifica dialogo = true
 avanza
 aspetta 1
-verifica /missioni/qs06 = 3
+verifica /missioni/qs06 = 4
 dai pesce 2
 dai mela 3
 aspetta 1
@@ -151,7 +188,7 @@ aspetta 1
 verifica dialogo = true
 avanza
 aspetta 1
-verifica /missioni/qs06 = 4
+verifica /missioni/qs06 = 5
 foto osvaldo-ingredienti
 ora 20.5
 aspetta 2
@@ -167,7 +204,7 @@ aspetta 1
 verifica dialogo = true
 avanza
 aspetta 1
-verifica /missioni/qs06 = 5
+verifica /missioni/qs06 = 6
 # qs10 La Promessa sulla Torre Antica: Rosa, la cima della torre, Rosa
 ora 10
 aspetta 2

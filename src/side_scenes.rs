@@ -63,14 +63,46 @@ pub struct DinoScenes {
     swinging: bool,
     /// Dino ha già detto «in guardia».
     greeted: bool,
+    /// Nella difesa, dove Dino e Aldo vanno incontro al predone più vicino.
+    dino_chase: Option<(Vec2, Vec2)>,
+    aldo_chase: Option<(Vec2, Vec2)>,
+    /// Secondi prima del prossimo colpo di Dino e di Aldo.
+    dino_cd: f32,
+    aldo_cd: f32,
+}
+
+/// Fin dove la guardia va incontro a un predone, e a che distanza gli si ferma davanti.
+const GUARD_CHASE: f32 = 14.0;
+const GUARD_STAND: f32 = 1.5;
+
+/// Dove si mette una guardia che difende `post`: davanti al predone vivo più vicino (entro
+/// `GUARD_CHASE`), girata verso di lui; senza predoni, al suo posto. Non si sposta per meno di un
+/// metro e mezzo, per non cambiare strada a ogni passo del predone.
+pub fn guard_spot(
+    post: (Vec2, Vec2),
+    raiders: &[Vec2],
+    previous: Option<(Vec2, Vec2)>,
+) -> (Vec2, Vec2) {
+    let Some(r) = raiders
+        .iter()
+        .filter(|r| r.distance(post.0) <= GUARD_CHASE)
+        .min_by(|a, b| a.distance(post.0).total_cmp(&b.distance(post.0)))
+    else {
+        return post;
+    };
+    let dir = (*r - post.0).normalize_or(post.1);
+    let spot = (*r - dir * GUARD_STAND, dir);
+    match previous {
+        Some(p) if p.0.distance(spot.0) < 1.5 => p,
+        _ => spot,
+    }
 }
 
 /// Sistema: QS-09, il duello con Dino e la difesa della strada del Sud.
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 fn dino_scenes(
     mut commands: Commands,
-    missions: Res<Missions>,
-    clock: Res<crate::daynight::GameClock>,
+    (missions, clock, time): (Res<Missions>, Res<crate::daynight::GameClock>, Res<Time>),
     karma: Res<crate::karma::Karma>,
     swing: Res<crate::combat::SwingTimer>,
     equip: Res<crate::inventory::Equipment>,
@@ -81,7 +113,10 @@ fn dino_scenes(
     places: Query<&GlobalTransform>,
     players: Query<&GlobalTransform, With<crate::player::Player>>,
     visuals: Query<&GlobalTransform, With<crate::player::PlayerVisual>>,
-    raiders: Query<(Entity, &crate::combat::EnemyHealth), With<SouthRaider>>,
+    mut raiders: Query<
+        (Entity, &GlobalTransform, &mut crate::combat::EnemyHealth),
+        With<SouthRaider>,
+    >,
     mut barks: ResMut<crate::quests::Barks>,
     mut session: ResMut<crate::save::Session>,
 ) {
@@ -94,25 +129,70 @@ fn dino_scenes(
     let duel = step == Some(3) && !karma.unlocks.contains("duello-dino");
     let dusk = (18.0..22.5).contains(&clock.hour);
     let defense = step == Some(4) && dusk && !karma.unlocks.contains("predoni-sud-vinti");
+    // Nella difesa Dino e Aldo vanno incontro ai predoni vivi.
+    let live: Vec<Vec2> = raiders
+        .iter()
+        .filter(|(_, _, hp)| hp.current > 0.0)
+        .map(|(_, t, _)| t.translation().xz())
+        .collect();
+    let old = (state.dino_chase, state.aldo_chase);
+    state.dino_chase = defense.then(|| guard_spot(ROAD_DINO, &live, state.dino_chase));
+    state.aldo_chase = defense.then(|| guard_spot(ROAD_ALDO, &live, state.aldo_chase));
     let dino_spot = if duel {
         Some(DUEL_SPOT)
-    } else if defense {
-        Some(ROAD_DINO)
     } else {
-        None
+        state.dino_chase
     };
-    call(
-        &mut villagers,
-        "Guardia Dino",
-        dino_spot,
-        &[DUEL_SPOT, ROAD_DINO],
-    );
-    call(
-        &mut villagers,
-        "Guardia Aldo",
-        (step == Some(4) && dusk || step == Some(5)).then_some(ROAD_ALDO),
-        &[ROAD_ALDO],
-    );
+    let mut dino_mine = vec![DUEL_SPOT, ROAD_DINO];
+    dino_mine.extend(old.0);
+    call(&mut villagers, "Guardia Dino", dino_spot, &dino_mine);
+    let mut aldo_mine = vec![ROAD_ALDO];
+    aldo_mine.extend(old.1);
+    let aldo_spot = state
+        .aldo_chase
+        .or((step == Some(4) && dusk || step == Some(5)).then_some(ROAD_ALDO));
+    call(&mut villagers, "Guardia Aldo", aldo_spot, &aldo_mine);
+    // I loro colpi: come quelli di un compagno (`companions::strike`), al predone più vicino a portata.
+    let dt = time.delta_secs();
+    state.dino_cd = (state.dino_cd - dt).max(0.0);
+    state.aldo_cd = (state.aldo_cd - dt).max(0.0);
+    if defense {
+        for who in ["Guardia Dino", "Guardia Aldo"] {
+            let ready = if who == "Guardia Dino" {
+                state.dino_cd == 0.0
+            } else {
+                state.aldo_cd == 0.0
+            };
+            let Some(at) = villagers
+                .iter()
+                .find(|(_, v)| v.name() == who)
+                .and_then(|(e, _)| places.get(e).ok().map(|t| t.translation()))
+            else {
+                continue;
+            };
+            let (damage, every, reach) = crate::companions::strike(who);
+            if !ready {
+                continue;
+            }
+            if let Some((_, _, mut hp)) = raiders
+                .iter_mut()
+                .filter(|(_, t, hp)| hp.current > 0.0 && t.translation().distance(at) <= reach)
+                .min_by(|a, b| {
+                    a.1.translation()
+                        .distance(at)
+                        .total_cmp(&b.1.translation().distance(at))
+                })
+            {
+                hp.current = (hp.current - damage).max(0.0);
+                info!("[SCENE] {who} colpisce un predone: vita {:.0}", hp.current);
+                if who == "Guardia Dino" {
+                    state.dino_cd = every;
+                } else {
+                    state.aldo_cd = every;
+                }
+            }
+        }
+    }
     let Ok(player) = players.single() else {
         return;
     };
@@ -169,7 +249,7 @@ fn dino_scenes(
     };
     if !defense {
         if state.fight > 0 && state.fight < 3 {
-            for (e, _) in &raiders {
+            for (e, ..) in &raiders {
                 commands.entity(e).despawn();
             }
         }
@@ -198,12 +278,147 @@ fn dino_scenes(
             state.fight = 1;
         }
         1 if !raiders.is_empty() => state.fight = 2,
-        2 if raiders.iter().all(|(_, hp)| hp.current <= 0.0) => {
+        2 if raiders.iter().all(|(.., hp)| hp.current <= 0.0) => {
             crate::karma::flag("predoni-sud-vinti");
             info!("[SCENE] strada del Sud: i predoni sono a terra");
             state.fight = 3;
         }
         _ => {}
+    }
+}
+
+/// QS-01: il mulino in fondo alla strada nord, e da dove escono i due predoni del bosco.
+pub const MILL: Vec2 = Vec2::new(0.5, -66.0);
+const MILL_RAIDERS: [(Vec2, Vec2); 2] = [
+    (Vec2::new(-14.0, -74.0), Vec2::new(-3.0, -68.0)),
+    (Vec2::new(13.0, -76.0), Vec2::new(4.0, -69.0)),
+];
+const MILL_RANGE: f32 = 40.0;
+
+/// Uno dei predoni del bosco attorno al mulino.
+#[derive(Component)]
+pub struct MillRaider;
+
+/// Sistema: QS-01, i due predoni che tengono Gino chiuso nel mulino. Escono quando arrivi; a terra
+/// tutti e due, `predoni-mulino-vinti`. Se la tappa cambia prima, se ne vanno.
+#[allow(clippy::too_many_arguments)]
+fn mill_raiders(
+    mut commands: Commands,
+    missions: Res<Missions>,
+    karma: Res<crate::karma::Karma>,
+    server: Res<AssetServer>,
+    field: Option<Res<crate::terrain::TerrainField>>,
+    players: Query<&GlobalTransform, With<crate::player::Player>>,
+    raiders: Query<(Entity, &crate::combat::EnemyHealth), With<MillRaider>>,
+    mut session: ResMut<crate::save::Session>,
+    mut fight: Local<u8>,
+) {
+    let (Some(field), Ok(player)) = (field, players.single()) else {
+        return;
+    };
+    let active = crate::region::current() == Region::Isola
+        && missions.enabled
+        && missions.step_of("qs01") == Some(2)
+        && !karma.unlocks.contains("predoni-mulino-vinti");
+    if !active {
+        if *fight > 0 && *fight < 3 {
+            for (e, _) in &raiders {
+                commands.entity(e).despawn();
+            }
+        }
+        *fight = 0;
+        return;
+    }
+    match *fight {
+        0 if player.translation().xz().distance(MILL) <= MILL_RANGE => {
+            for (from, to) in MILL_RAIDERS {
+                let start = Vec3::new(from.x, field.height_at(from.x, from.y) + 1.0, from.y);
+                let end = Vec3::new(to.x, field.height_at(to.x, to.y) + 1.0, to.y);
+                let e = crate::entities::spawn_enemy(&mut commands, &server, start, end);
+                commands
+                    .entity(e)
+                    .insert((MillRaider, crate::combat::NoRespawn));
+            }
+            session.notify("Dal bosco attorno al mulino escono due predoni!");
+            info!("[SCENE] mulino: arrivano i predoni");
+            *fight = 1;
+        }
+        1 if !raiders.is_empty() => *fight = 2,
+        2 if raiders.iter().all(|(_, hp)| hp.current <= 0.0) => {
+            crate::karma::flag("predoni-mulino-vinti");
+            info!("[SCENE] mulino: i predoni sono a terra");
+            *fight = 3;
+        }
+        _ => {}
+    }
+}
+
+/// QS-06: la cena davanti alla locanda di Osvaldo, e chi ci viene.
+const DINNER: Vec2 = Vec2::new(20.0, 10.6);
+const DINNER_GUESTS: [&str; 5] = [
+    "Guardia Carlo",
+    "Guardia Bruno",
+    "Beppe",
+    "Gaspare",
+    "Marta",
+];
+
+/// Chi è a cena da Osvaldo.
+#[derive(Resource, Default)]
+pub struct Dinner {
+    pub guests: Vec<Entity>,
+}
+
+/// Sistema: QS-06, la sera dell'anfora (dalle 19:30, alla tappa della cena) gli invitati e Marta
+/// col pane si mettono davanti alla locanda, girati verso Osvaldo.
+#[allow(clippy::too_many_arguments)]
+fn dinner_at_the_inn(
+    missions: Res<Missions>,
+    clock: Res<crate::daynight::GameClock>,
+    field: Option<Res<crate::terrain::TerrainField>>,
+    spatial: SpatialQuery,
+    grounds: Query<(), With<crate::scene::Ground>>,
+    movers: Query<(), crate::lanterns::Movers>,
+    mut villagers: Query<(Entity, &mut Villager)>,
+    mut dinner: ResMut<Dinner>,
+) {
+    let Some(field) = field else {
+        return;
+    };
+    let want = crate::region::current() == Region::Isola
+        && missions.enabled
+        && missions.step_of("qs06") == Some(4)
+        && (19.5..24.0).contains(&clock.hour);
+    if want && dinner.guests.is_empty() {
+        let who: Vec<Entity> = DINNER_GUESTS
+            .iter()
+            .filter_map(|name| {
+                villagers
+                    .iter()
+                    .find(|(_, v)| v.name() == *name && v.called().is_none())
+                    .map(|(e, _)| e)
+            })
+            .collect();
+        let spots = crowd_spots(DINNER, Vec2::new(0.0, -1.0), who.len(), 3, 1.2, |p| {
+            crate::lanterns::spot_is_free(&spatial, &field, &grounds, &movers, p, 0.4)
+        });
+        for (e, spot) in who.iter().zip(&spots) {
+            if let Ok((_, mut v)) = villagers.get_mut(*e) {
+                v.call_to(Some(*spot));
+                dinner.guests.push(*e);
+            }
+        }
+        info!(
+            "[SCENE] cena alla locanda: {} invitati",
+            dinner.guests.len()
+        );
+    } else if !want && !dinner.guests.is_empty() {
+        for e in std::mem::take(&mut dinner.guests) {
+            if let Ok((_, mut v)) = villagers.get_mut(e) {
+                v.call_to(None);
+            }
+        }
+        info!("[SCENE] la cena è finita");
     }
 }
 
@@ -315,9 +530,16 @@ fn farewell_at_the_pier(
 pub fn plugin(app: &mut App) {
     app.init_resource::<DinoScenes>()
         .init_resource::<Farewell>()
+        .init_resource::<Dinner>()
         .add_systems(
             Update,
-            (dino_scenes, silvia_at_cave, farewell_at_the_pier)
+            (
+                dino_scenes,
+                silvia_at_cave,
+                farewell_at_the_pier,
+                mill_raiders,
+                dinner_at_the_inn,
+            )
                 .run_if(in_state(crate::AppState::Playing)),
         );
 }
@@ -325,6 +547,24 @@ pub fn plugin(app: &mut App) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn guards_meet_the_nearest_raider_and_go_back_to_their_post() {
+        let post = ROAD_DINO;
+        assert_eq!(guard_spot(post, &[], None), post);
+        let raider = post.0 + Vec2::new(0.0, 8.0);
+        let (spot, look) = guard_spot(post, &[raider], None);
+        assert!((spot.distance(raider) - GUARD_STAND).abs() < 1e-3);
+        assert!(look.dot(Vec2::Y) > 0.99);
+        // Troppo lontano: resta al suo posto.
+        assert_eq!(
+            guard_spot(post, &[post.0 + Vec2::new(0.0, 30.0)], None),
+            post
+        );
+        // Un passo del predone non gli fa cambiare strada.
+        let moved = guard_spot(post, &[raider + Vec2::new(0.5, 0.0)], Some((spot, look)));
+        assert_eq!(moved.0, spot);
+    }
 
     #[test]
     fn the_crowd_stands_in_rows_behind_the_front_facing_the_sea() {

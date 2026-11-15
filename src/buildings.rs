@@ -12,7 +12,7 @@ use bevy::prelude::*;
 /// Semi-lati dell'impronta degli edifici visitabili (`None` per gli altri).
 pub fn interior_half(kind: &str) -> Option<Vec2> {
     Some(match kind {
-        "casa-piccola" | "casa-naufrago" => Vec2::new(2.5, 2.0),
+        "casa-piccola" | "casa-naufrago" | "casa-naufrago-pietra" => Vec2::new(2.5, 2.0),
         "casa-grande" => Vec2::new(3.5, 3.0),
         "locanda" => Vec2::new(5.0, 3.25),
         "caserma" => Vec2::new(4.0, 3.0),
@@ -43,6 +43,7 @@ pub fn is_building(kind: &str) -> bool {
         "casa"
             | "casa-piccola"
             | "casa-naufrago"
+            | "casa-naufrago-pietra"
             | "casa-media"
             | "casa-grande"
             | "locanda"
@@ -766,7 +767,13 @@ fn house(
     seed: u32,
 ) -> f32 {
     use crate::interiors as rooms;
-    let wall = r.pick(&WALLS);
+    // La casa di pietra del giocatore (QS-17): stessa casa, muri di pietra (il resto come prima).
+    let picked = r.pick(&WALLS);
+    let wall = if STONE_WALLS.with(|f| f.get()) {
+        STONE
+    } else {
+        picked
+    };
     let roof = r.pick(&ROOFS);
     let shutter = r.pick(&SHUTTERS);
     let (hw, hd) = (w / 2.0, d / 2.0);
@@ -1869,6 +1876,11 @@ fn well(b: &mut B) -> Vec<(Vec3, Vec3)> {
     vec![(Vec3::new(0.0, 0.5, 0.0), Vec3::new(2.4, 2.0, 2.4))]
 }
 
+thread_local! {
+    /// `house` alza muri di pietra invece che d'intonaco (la casa di pietra del giocatore).
+    static STONE_WALLS: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 /// Costruisce l'edificio `kind` con la variante data dal `seed`.
 pub fn model(kind: &str, seed: u32) -> Building {
     use crate::interiors as rooms;
@@ -1879,7 +1891,25 @@ pub fn model(kind: &str, seed: u32) -> Building {
     }
     let mut int = Interior::default();
     let (w, d, colliders): (f32, f32, Vec<(Vec3, Vec3)>) = match kind {
-        // La casa del giocatore è una casa piccola come le altre (ADR 0042).
+        // La casa del giocatore è una casa piccola come le altre (ADR 0042); ampliata, ha i muri di
+        // pietra (ADR 0052).
+        "casa-naufrago-pietra" => {
+            STONE_WALLS.with(|f| f.set(true));
+            house(
+                &mut b,
+                &mut r,
+                &mut int,
+                "casa-piccola",
+                5.0,
+                4.0,
+                2,
+                false,
+                1,
+                seed,
+            );
+            STONE_WALLS.with(|f| f.set(false));
+            (5.0, 4.0, Vec::new())
+        }
         "casa-piccola" | "casa-naufrago" => {
             house(
                 &mut b,
@@ -2141,7 +2171,11 @@ pub fn model(kind: &str, seed: u32) -> Building {
             church(&mut b, &mut r, &mut int);
             (7.4, 17.0, Vec::new())
         }
-        "pozzo" => (2.4, 2.4, well(&mut b)),
+        "pozzo" => {
+            // Sotto il pozzo della piazza, la Camera di Risonanza (QS-12, ADR 0052).
+            crate::places::resonance_chamber(&mut b, &mut int);
+            (2.4, 2.4, well(&mut b))
+        }
         "mulino" => {
             house(&mut b, &mut r, &mut int, kind, 5.4, 5.4, 2, false, 0, seed);
             // Albero delle pale: esce dalla facciata, sopra il tetto della porta.

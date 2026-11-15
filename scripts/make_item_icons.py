@@ -567,6 +567,22 @@ def bracelet():
     return im
 
 
+def flour_sack():
+    """Il sacco di farina: tela grezza legata in cima, con una spiga stampata."""
+    im = layer()
+    d = ImageDraw.Draw(im)
+    body = [(150, 170), (362, 170), (400, 440), (112, 440)]
+    shaded_polygon(d, body, (226, 212, 180, 255), (190, 174, 140, 255))
+    d.polygon([(190, 110), (322, 110), (362, 170), (150, 170)], fill=(206, 190, 156, 255))
+    d.rectangle([180, 150, 332, 176], fill=(120, 86, 50, 255))
+    d.line([(256, 250), (256, 400)], fill=(170, 130, 60, 255), width=8)
+    for k in range(5):
+        y = 270 + k * 26
+        d.ellipse([226, y - 10, 252, y + 10], fill=(200, 160, 70, 255))
+        d.ellipse([260, y - 10, 286, y + 10], fill=(200, 160, 70, 255))
+    return im
+
+
 ICONS = {
     "spada-corta": lambda: sword(310, 58, 124),
     "spada-lunga": lambda: sword(430, 46, 150),
@@ -618,6 +634,7 @@ ICONS = {
     "mantello": cloak,
     "guanti-rame": gloves,
     "bracciale": bracelet,
+    "sacco-farina": flour_sack,
 }
 
 

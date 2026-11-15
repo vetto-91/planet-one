@@ -296,7 +296,14 @@ pub fn sync_world_props(
             if crate::buildings::is_building(&pl.kind) {
                 let seed =
                     (p.x * 100.0) as i32 as u32 ^ ((p.y * 100.0) as i32 as u32).rotate_left(11);
-                let model = crate::buildings::model(&pl.kind, seed);
+                // La casa del giocatore ampliata ha i muri di pietra (ADR 0052).
+                let model_kind =
+                    if pl.kind == crate::house::KIND && pl.note == crate::house::STONE_NOTE {
+                        "casa-naufrago-pietra"
+                    } else {
+                        pl.kind.as_str()
+                    };
+                let model = crate::buildings::model(model_kind, seed);
                 // Molo e barche stanno sul mare (quota fissa), il resto si appoggia al terreno.
                 let fixed_y = match pl.kind.as_str() {
                     "molo" | "palafitta" => Some(crate::terrain::SEA_LEVEL),
@@ -383,6 +390,9 @@ pub fn sync_world_props(
                 }
                 if kind == "grotta" {
                     e.insert(crate::places::CaveMouth);
+                }
+                if kind == "pozzo" {
+                    e.insert(crate::places::WellMouth);
                 }
                 e.with_children(|c| {
                     if model.snow.count_vertices() > 0 {

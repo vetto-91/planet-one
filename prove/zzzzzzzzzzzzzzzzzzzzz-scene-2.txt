@@ -1,0 +1,153 @@
+# Le scene delle secondarie, seconda parte (ADR 0052): i predoni del mulino e il sacco di farina
+# (QS-01), la cena dell'anfora con gli ospiti (QS-06), la chiave e il quadro di rame (QS-13), la
+# Camera di Risonanza sotto il pozzo (QS-12) e la casa di pietra (QS-17).
+# Il nome comincia per z perché un copione nuovo non sposti le risoluzioni degli altri.
+god on
+ia off
+meteo sereno
+missioni on
+missione mp01 7
+missione mp03 9
+# Don Anselmo e Ferruccio propongono prima le loro missioni (grotta, scudo, ombre, bauli): chiuse qui.
+missione mp04 6
+missione qs03 4
+missione qs04 5
+missione qs16 7
+ora 10
+# QS-01: due predoni tengono Gino chiuso nel mulino.
+missione qs01 3
+tp 0.5 3 -58
+aspetta 3
+verifica vicini contiene nemico
+uccidi 40
+aspetta 1
+uccidi 40
+aspetta 2
+verifica /missioni/qs01 = 4
+tp gino
+aspetta 1
+attendi npc:gino:modo = Ready 90
+tp gino
+aspetta 1
+guarda gino
+aspetta 1
+premi e
+aspetta 1
+avanza
+aspetta 1
+verifica Relic(FlourSack) = 1
+verifica /missioni/qs01 = 5
+tp marta
+aspetta 1
+attendi npc:marta:modo = Ready 90
+tp marta
+aspetta 1
+guarda marta
+aspetta 1
+premi e
+aspetta 1
+avanza
+aspetta 1
+verifica /missioni/qs01 = 6
+# La focaccia per Gino la prova zz-secondarie: qui si chiude.
+missione qs01 7
+# QS-13: la chiave di Don Anselmo apre il quadro di rame dietro la stufa del Viandante.
+missione qs13 2
+tp don anselmo
+aspetta 1
+attendi npc:anselmo:modo = Ready 90
+tp don anselmo
+aspetta 1
+guarda don anselmo
+aspetta 1
+premi e
+aspetta 1
+avanza
+aspetta 1
+verifica Relic(CopperKey) = 1
+tp -1.2 3 10
+aspetta 2
+verifica /missioni/qs13 = 4
+# Davanti alla stufa del Viandante (la casetta è ruotata: il quadro è sulla parete dietro la stufa).
+tp 8.95 2 0.0
+aspetta 2
+mira quadro
+aspetta 1
+premi e
+aspetta 1
+verifica /missioni/qs13 = 5
+foto quadro-di-rame
+# QS-12: dalla grata aperta si scende nella Camera di Risonanza.
+missione qs12 8
+tp 1.6 3 14.5
+aspetta 2
+camera 300 35 6
+foto grata-aperta
+tp 1.6 -1.0 12.8
+aspetta 3
+verifica /missioni/qs12 = 9
+tp -2.8 -3.2 7.2
+aspetta 3
+verifica /giocatore/pos/1 < -2
+giro-foto camera-di-risonanza 4 5 2
+# QS-17: con Ferruccio e Gino la casa diventa di pietra.
+missione qs17 5
+tp ferruccio
+aspetta 1
+attendi npc:ferruccio:modo = Ready 90
+tp ferruccio
+aspetta 1
+guarda ferruccio
+aspetta 1
+premi e
+aspetta 1
+avanza
+scegli Arrivederci
+aspetta 1
+verifica /missioni/qs17 = 6
+tp gino
+aspetta 1
+attendi npc:gino:modo = Ready 90
+tp gino
+aspetta 1
+guarda gino
+aspetta 1
+premi e
+aspetta 1
+avanza
+aspetta 1
+verifica /missioni/qs17 = 7
+casa 2
+dai pietra 12
+dai legname 6
+aspetta 3
+tp -40 4 44.5
+aspetta 2
+premi r
+aspetta 3
+verifica /casa = 3
+verifica /missioni/qs17 = 8
+tp -40 4 47
+aspetta 3
+camera 0 15 12
+foto casa-di-pietra
+# QS-06: la sera dell'anfora gli ospiti sono davanti alla locanda.
+missione qs06 5
+ora 19.6
+tp 20 3 14
+aspetta 90
+camera 180 25 9
+foto cena-alla-locanda
+tp osvaldo
+aspetta 1
+attendi npc:osvaldo:modo = Ready 90
+tp osvaldo
+aspetta 1
+guarda osvaldo
+aspetta 1
+premi e
+aspetta 1
+avanza
+aspetta 1
+verifica /missioni/qs06 = 6
+esci
