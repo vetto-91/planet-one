@@ -363,16 +363,136 @@ const DINNER_GUESTS: [&str; 5] = [
     "Marta",
 ];
 
+/// La tavola della cena, tra Osvaldo e gli invitati.
+const DINNER_TABLE: Vec2 = Vec2::new(20.0, 9.4);
+
 /// Chi è a cena da Osvaldo.
 #[derive(Resource, Default)]
 pub struct Dinner {
     pub guests: Vec<Entity>,
 }
 
+/// La tavola apparecchiata della cena dell'anfora (sparisce a cena finita).
+#[derive(Component)]
+pub struct DinnerTable;
+
+/// Apparecchia la tavola: piano e gambe di legno, l'anfora, il pane di Marta, il pesce di Nina, le
+/// mele di Tonio, due brocche e una lanterna accesa.
+fn lay_the_table(
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+    wood: Handle<StandardMaterial>,
+    ground: f32,
+) {
+    let mut paint = |c: Color| {
+        materials.add(StandardMaterial {
+            base_color: c,
+            perceptual_roughness: 0.7,
+            ..default()
+        })
+    };
+    let clay = paint(Color::srgb(0.66, 0.38, 0.24));
+    let bread = paint(Color::srgb(0.78, 0.55, 0.28));
+    let fish = paint(Color::srgb(0.55, 0.62, 0.68));
+    let apple = paint(Color::srgb(0.75, 0.12, 0.1));
+    let flame = materials.add(StandardMaterial {
+        base_color: Color::srgb(1.0, 0.8, 0.45),
+        emissive: LinearRgba::rgb(8.0, 4.5, 1.4),
+        ..default()
+    });
+    let top = 0.78;
+    commands
+        .spawn((
+            DinnerTable,
+            crate::scene::SceneNode,
+            Transform::from_xyz(DINNER_TABLE.x, ground, DINNER_TABLE.y),
+            Visibility::default(),
+            RigidBody::Static,
+            Collider::cuboid(3.2, 1.5, 0.9),
+        ))
+        .with_children(|t| {
+            t.spawn((
+                Mesh3d(meshes.add(Cuboid::new(3.2, 0.08, 0.9))),
+                MeshMaterial3d(wood.clone()),
+                Transform::from_xyz(0.0, top, 0.0),
+            ));
+            for (x, z) in [(-1.45, -0.35), (1.45, -0.35), (-1.45, 0.35), (1.45, 0.35)] {
+                t.spawn((
+                    Mesh3d(meshes.add(Cuboid::new(0.08, top, 0.08))),
+                    MeshMaterial3d(wood.clone()),
+                    Transform::from_xyz(x, top / 2.0, z),
+                ));
+            }
+            // L'anfora aperta, al centro.
+            t.spawn((
+                Mesh3d(meshes.add(Capsule3d::new(0.17, 0.3))),
+                MeshMaterial3d(clay.clone()),
+                Transform::from_xyz(0.0, top + 0.36, 0.0),
+            ));
+            t.spawn((
+                Mesh3d(meshes.add(Cylinder::new(0.07, 0.18))),
+                MeshMaterial3d(clay.clone()),
+                Transform::from_xyz(0.0, top + 0.72, 0.0),
+            ));
+            for x in [-1.1f32, -0.55] {
+                t.spawn((
+                    Mesh3d(meshes.add(Sphere::new(0.14))),
+                    MeshMaterial3d(bread.clone()),
+                    Transform::from_xyz(x, top + 0.1, 0.1).with_scale(Vec3::new(1.4, 0.6, 1.0)),
+                ));
+            }
+            for z in [-0.18f32, 0.18] {
+                t.spawn((
+                    Mesh3d(meshes.add(Capsule3d::new(0.06, 0.3))),
+                    MeshMaterial3d(fish.clone()),
+                    Transform::from_xyz(0.7, top + 0.07, z)
+                        .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
+                ));
+            }
+            for (x, z) in [(1.2, 0.05), (1.32, -0.12), (1.1, -0.16)] {
+                t.spawn((
+                    Mesh3d(meshes.add(Sphere::new(0.06))),
+                    MeshMaterial3d(apple.clone()),
+                    Transform::from_xyz(x, top + 0.07, z),
+                ));
+            }
+            for x in [-0.3f32, 0.35] {
+                t.spawn((
+                    Mesh3d(meshes.add(Cylinder::new(0.06, 0.2))),
+                    MeshMaterial3d(clay.clone()),
+                    Transform::from_xyz(x, top + 0.14, -0.28),
+                ));
+            }
+            t.spawn((
+                Mesh3d(meshes.add(Cuboid::new(0.14, 0.2, 0.14))),
+                MeshMaterial3d(flame),
+                Transform::from_xyz(-1.4, top + 0.14, -0.3),
+                PointLight {
+                    color: Color::srgb(1.0, 0.72, 0.4),
+                    intensity: 35_000.0,
+                    range: 7.0,
+                    shadow_maps_enabled: false,
+                    ..default()
+                },
+            ));
+        });
+}
+
+/// Mesh, materiali e materiali PBR per apparecchiare la tavola.
+type TableAssets<'w> = (
+    ResMut<'w, Assets<Mesh>>,
+    ResMut<'w, Assets<StandardMaterial>>,
+    Option<Res<'w, crate::pbr::PbrMaterials>>,
+);
+
 /// Sistema: QS-06, la sera dell'anfora (dalle 19:30, alla tappa della cena) gli invitati e Marta
 /// col pane si mettono davanti alla locanda, girati verso Osvaldo.
 #[allow(clippy::too_many_arguments)]
 fn dinner_at_the_inn(
+    mut commands: Commands,
+    (mut meshes, mut materials, pbr): TableAssets,
+    tables: Query<Entity, With<DinnerTable>>,
     missions: Res<Missions>,
     clock: Res<crate::daynight::GameClock>,
     field: Option<Res<crate::terrain::TerrainField>>,
@@ -389,6 +509,24 @@ fn dinner_at_the_inn(
         && missions.enabled
         && missions.step_of("qs06") == Some(4)
         && (19.5..24.0).contains(&clock.hour);
+    // La tavola c'è finché dura la cena.
+    if want
+        && tables.is_empty()
+        && let Some(pbr) = &pbr
+    {
+        let ground = field.height_at(DINNER_TABLE.x, DINNER_TABLE.y);
+        lay_the_table(
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+            pbr.get(crate::pbr::Mat::Planks),
+            ground,
+        );
+    } else if !want {
+        for e in &tables {
+            commands.entity(e).despawn();
+        }
+    }
     if want && dinner.guests.is_empty() {
         let who: Vec<Entity> = DINNER_GUESTS
             .iter()

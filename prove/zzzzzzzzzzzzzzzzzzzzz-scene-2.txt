@@ -51,6 +51,31 @@ aspetta 1
 verifica /missioni/qs01 = 6
 # La focaccia per Gino la prova zz-secondarie: qui si chiude.
 missione qs01 7
+# QS-06: la sera dell'anfora gli ospiti sono davanti alla locanda.
+missione qs06 5
+ora 19.6
+tp 20 3 14
+aspetta 90
+camera 180 25 9
+foto cena-alla-locanda
+tp 20 3 13
+aspetta 5
+guarda osvaldo
+aspetta 1
+foto tavola-della-cena
+tp osvaldo
+aspetta 1
+attendi npc:osvaldo:modo = Ready 90
+tp osvaldo
+aspetta 1
+guarda osvaldo
+aspetta 1
+premi e
+aspetta 1
+avanza
+aspetta 1
+verifica /missioni/qs06 = 6
+ora 10
 # QS-13: la chiave di Don Anselmo apre il quadro di rame dietro la stufa del Viandante.
 missione qs13 2
 tp don anselmo
@@ -90,6 +115,14 @@ tp -2.8 -3.2 7.2
 aspetta 3
 verifica /giocatore/pos/1 < -2
 giro-foto camera-di-risonanza 4 5 2
+# Toccata l'acqua della vasca, la stanza risuona e lascia la lamina di rame.
+tp 1.1 -3.2 10
+aspetta 2
+premi e
+aspetta 2
+verifica Relic(ResonancePlate) = 1
+verifica /missioni/qs12 = 10
+foto vasca-che-risuona
 # QS-17: con Ferruccio e Gino la casa diventa di pietra.
 missione qs17 5
 tp ferruccio
@@ -131,23 +164,4 @@ tp -40 4 47
 aspetta 3
 camera 0 15 12
 foto casa-di-pietra
-# QS-06: la sera dell'anfora gli ospiti sono davanti alla locanda.
-missione qs06 5
-ora 19.6
-tp 20 3 14
-aspetta 90
-camera 180 25 9
-foto cena-alla-locanda
-tp osvaldo
-aspetta 1
-attendi npc:osvaldo:modo = Ready 90
-tp osvaldo
-aspetta 1
-guarda osvaldo
-aspetta 1
-premi e
-aspetta 1
-avanza
-aspetta 1
-verifica /missioni/qs06 = 6
 esci

@@ -473,6 +473,97 @@ pub fn resonance_chamber(b: &mut B, int: &mut Interior) {
     b.force = None;
 }
 
+/// Dove si tocca l'acqua della vasca nella Camera di Risonanza (dal centro del pozzo, in piano).
+const BASIN_REACH: f32 = 2.8;
+
+/// Il bagliore del cavo di rame quando la camera risuona: si spegne da solo.
+#[derive(Component)]
+pub struct ResonancePulse {
+    left: f32,
+}
+
+/// Sistema: nella Camera di Risonanza, `E` vicino alla vasca fa risuonare la stanza (QS-12): un
+/// accordo, il cavo di rame che si accende verso est e, la prima volta, la lamina di rame con la
+/// rotta del cavo verso nord (`risonanza`).
+#[allow(clippy::too_many_arguments)]
+pub fn resonance_basin(
+    mut commands: Commands,
+    keys: Res<ButtonInput<KeyCode>>,
+    dialog: Res<crate::entities::DialogState>,
+    karma: Res<crate::karma::Karma>,
+    players: Query<&GlobalTransform, With<crate::player::Player>>,
+    wells: Query<&GlobalTransform, With<WellMouth>>,
+    mut nearest: ResMut<crate::entities::NearestInteract>,
+    mut session: ResMut<crate::save::Session>,
+) {
+    if dialog.open || crate::region::current() != crate::region::Region::Isola {
+        return;
+    }
+    let (Ok(player), Some(well)) = (players.single(), wells.iter().next()) else {
+        return;
+    };
+    let p = player.translation();
+    let w = well.translation();
+    let below = p.y < w.y + RES_FLOOR + 2.2;
+    if !below || p.xz().distance(w.xz()) > BASIN_REACH {
+        return;
+    }
+    let hint = "[E] Tocca l'acqua della vasca".to_string();
+    nearest.prompt = Some(match nearest.prompt.take() {
+        Some(prompt) => format!("{prompt} · {hint}"),
+        None => hint,
+    });
+    if !keys.just_pressed(KeyCode::KeyE) {
+        return;
+    }
+    crate::sfx::play(crate::sfx::Sfx::Ring);
+    // Il cavo verso est si accende per qualche secondo, dalla colonna al muro.
+    let rot = well.rotation();
+    for x in [1.6f32, 2.6, 3.6] {
+        commands.spawn((
+            crate::scene::SceneNode,
+            ResonancePulse { left: 3.0 },
+            PointLight {
+                color: Color::srgb(1.0, 0.62, 0.3),
+                intensity: 40_000.0,
+                range: 4.0,
+                shadow_maps_enabled: false,
+                ..default()
+            },
+            Transform::from_translation(w + rot * Vec3::new(x, -1.55, 0.0)),
+        ));
+    }
+    if karma.unlocks.contains("risonanza") {
+        session.notify("La stanza risuona ancora: il cavo si accende verso est");
+        return;
+    }
+    crate::karma::flag("risonanza");
+    crate::inventory::grant(
+        crate::inventory::ItemKind::Relic(crate::inventory::Relic::ResonancePlate),
+        1,
+    );
+    crate::skills::train(crate::skills::Skill::Lore, 30.0);
+    session.notify(
+        "L'acqua trema, la stanza canta. Nella vasca, una lamina di rame incisa: il cavo, e una linea verso nord",
+    );
+    info!("[MONDO] la Camera di Risonanza risuona");
+}
+
+/// Sistema: il bagliore del cavo si spegne in pochi secondi.
+pub fn resonance_pulse(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut pulses: Query<(Entity, &mut ResonancePulse, &mut PointLight)>,
+) {
+    for (e, mut pulse, mut light) in &mut pulses {
+        pulse.left -= time.delta_secs();
+        light.intensity = 40_000.0 * (pulse.left / 3.0).max(0.0);
+        if pulse.left <= 0.0 {
+            commands.entity(e).despawn();
+        }
+    }
+}
+
 /// Segna il pozzo della piazza: sotto c'è la Camera di Risonanza.
 #[derive(Component)]
 pub struct WellMouth;
@@ -1280,6 +1371,14 @@ pub fn fast_travel(
 
 pub fn plugin(app: &mut App) {
     app.add_systems(Update, ((sunken_door, sunken_glow).chain(), well_grate));
+    app.add_systems(
+        Update,
+        (
+            resonance_basin.after(crate::entities::interact),
+            resonance_pulse,
+        )
+            .run_if(in_state(crate::AppState::Playing)),
+    );
     app.init_resource::<Known>()
         .init_resource::<FastTravel>()
         .init_resource::<Exploration>()

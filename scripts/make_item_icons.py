@@ -583,6 +583,22 @@ def flour_sack():
     return im
 
 
+def resonance_plate():
+    """La lamina della Risonanza: rame inciso, il cavo e una linea verso nord."""
+    im = layer()
+    d = ImageDraw.Draw(im)
+    d.rounded_rectangle([110, 130, 402, 382], 18, fill=(186, 110, 60, 255), outline=(110, 60, 28, 255), width=10)
+    d.ellipse([150, 270, 200, 320], outline=(90, 46, 20, 255), width=8)
+    d.line([(200, 295), (300, 295), (300, 170)], fill=(90, 46, 20, 255), width=8)
+    d.polygon([(300, 150), (322, 190), (278, 190)], fill=(90, 46, 20, 255))
+    for k in range(5):
+        a = k * 0.9
+        r = 8 + k * 6
+        x, y = 350 + math.cos(a) * r, 320 + math.sin(a) * r
+        d.ellipse([x - 5, y - 5, x + 5, y + 5], fill=(240, 196, 120, 255))
+    return im
+
+
 ICONS = {
     "spada-corta": lambda: sword(310, 58, 124),
     "spada-lunga": lambda: sword(430, 46, 150),
@@ -635,6 +651,7 @@ ICONS = {
     "guanti-rame": gloves,
     "bracciale": bracelet,
     "sacco-farina": flour_sack,
+    "lamina-risonanza": resonance_plate,
 }
 
 

@@ -103,12 +103,14 @@ pub enum Relic {
     MasterBracelet,
     /// Il sacco di farina di Gino per Marta (QS-01): cinque chili.
     FlourSack,
+    /// La lamina di rame della vasca, nella Camera di Risonanza (QS-12).
+    ResonancePlate,
 }
 
 impl Relic {
     /// Tutti gli oggetti di trama (serve ai test).
     #[cfg(test)]
-    pub const ALL: [Relic; 26] = [
+    pub const ALL: [Relic; 27] = [
         Relic::Tablet,
         Relic::MotherCoin,
         Relic::Quipu,
@@ -135,6 +137,7 @@ impl Relic {
         Relic::CopperGloves,
         Relic::MasterBracelet,
         Relic::FlourSack,
+        Relic::ResonancePlate,
     ];
 
     fn name(self) -> &'static str {
@@ -165,6 +168,7 @@ impl Relic {
             Relic::CopperGloves => "Guanti Isolanti",
             Relic::MasterBracelet => "Bracciale del maestro",
             Relic::FlourSack => "Sacco di farina",
+            Relic::ResonancePlate => "Lamina della Risonanza",
         }
     }
 
@@ -196,6 +200,7 @@ impl Relic {
             Relic::CopperGloves => "guanti-rame",
             Relic::MasterBracelet => "bracciale",
             Relic::FlourSack => "sacco-farina",
+            Relic::ResonancePlate => "lamina-risonanza",
         }
     }
 
@@ -239,6 +244,9 @@ impl Relic {
             }
             Relic::MasterBracelet => "Cuoio secco e bronzo, con un'aquila incisa storta.",
             Relic::FlourSack => "La farina buona di Gino per il forno di Marta. Pesa cinque chili.",
+            Relic::ResonancePlate => {
+                "Rame inciso: il cavo della Luce Viva, il pozzo, e una linea dritta verso nord, oltre il mare."
+            }
         }
     }
 
@@ -296,7 +304,7 @@ impl Category {
 
 impl ItemKind {
     /// Tutti i tipi di oggetto.
-    pub const ALL: [ItemKind; 51] = [
+    pub const ALL: [ItemKind; 52] = [
         ItemKind::HealthPotion,
         ItemKind::Coin,
         ItemKind::ShortSword,
@@ -348,6 +356,7 @@ impl ItemKind {
         ItemKind::Relic(Relic::CopperGloves),
         ItemKind::Relic(Relic::MasterBracelet),
         ItemKind::Relic(Relic::FlourSack),
+        ItemKind::Relic(Relic::ResonancePlate),
     ];
 
     /// Peso reale di un'unità (kg). Monete e munizioni non pesano.

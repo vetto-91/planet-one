@@ -75,6 +75,13 @@ Secondo passo del piano per completare isola e Prologo (dopo le ricompense, ADR 
   (`casa-naufrago-pietra`, nota «pietra» del piazzamento), con scuri, camino e interruttore.
 - **Migrazione**: in `missions::MOVES` anche qs01, qs06, qs13 e qs17; chi era alla grata di QS-13
   riparte dalla chiave; chi doveva tornare dal Viandante in QS-17 fa prima la casa di pietra.
+- **La vasca della camera** (`places::resonance_basin`): giù nella camera, `E` vicino alla vasca la fa
+  risuonare: un accordo, il cavo di rame che si accende verso est per qualche secondo e, la prima volta,
+  la **Lamina della Risonanza** (`Relic::ResonancePlate`, il cavo e una linea verso nord: un indizio per
+  l'Atto I) con Sapienza +30 (`risonanza`). È l'ultima tappa della Croce delle Quattro Ronde.
+- **La tavola della cena**: la sera dell'anfora davanti alla locanda c'è una tavola lunga apparecchiata,
+  con l'anfora aperta, il pane, il pesce, le mele, due brocche e una lanterna (`side_scenes::DinnerTable`);
+  a cena finita sparisce.
 - **Prova**: `prove/zzzzzzzzzzzzzzzzzzzzz-scene-2.txt`.
 
 ## Conseguenze
@@ -83,5 +90,5 @@ Secondo passo del piano per completare isola e Prologo (dopo le ricompense, ADR 
 - Il campanile conta se ci si arriva in cima, anche cadendo dall'alto con la shell.
 - La promessa di Silvia (`silvia-promessa`) aspetta l'Atto I: ora resta solo segnata.
 - ~~Restano da fare QS-06, QS-01, QS-13, QS-17.~~ **Risolto**, vedi «Aggiornamento».
-- La Camera di Risonanza per ora è solo da vedere: niente da raccogliere né da fare laggiù.
-- Gli ospiti della cena stanno in piedi davanti alla locanda: non ci sono tavole apparecchiate.
+- ~~La Camera di Risonanza è solo da vedere.~~ **Risolto**: la vasca risuona e lascia la lamina.
+- ~~Non ci sono tavole apparecchiate alla cena.~~ **Risolto**; gli ospiti però restano in piedi.

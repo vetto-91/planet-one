@@ -494,6 +494,11 @@ obiettivo: Scendi nella Camera di Risonanza, dalla grata accanto al pozzo
 quando: vicino 0 11 5
 quando: sotto -2.2
 pensiero: Una stanza di pietra sotto la piazza. La colonna del pozzo scende in una vasca d'acqua ferma, e un cavo di rame corre verso est. Ogni passo torna indietro tre volte, più forte.
+
+[tappa]
+obiettivo: Tocca l'acqua della vasca, sotto il pozzo (E)
+quando: sbloccato risonanza
+pensiero: Tutta la camera ha cantato, e il cavo si è acceso fino al muro. La lamina dice dove va: a nord, sotto il mare. Le ronde vedevano la croce; qui sotto c'è la strada.
 monete: 20
 
 [missione qs15]
