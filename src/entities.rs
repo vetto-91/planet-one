@@ -432,7 +432,13 @@ pub fn interact(
             dialog.voices = if npc.name == "Viandante" {
                 vec![Vec::new(); dialog.lines.len()]
             } else {
-                crate::voice::greeting_clips(npc.name, dialog.lines.len())
+                // Prima la voce della battuta (`battute.txt`), poi i saluti generati per l'abitante.
+                let greetings = crate::voice::greeting_clips(npc.name, dialog.lines.len());
+                crate::voice::dialog_clips(npc.name, &dialog.lines)
+                    .into_iter()
+                    .zip(greetings)
+                    .map(|(own, greeting)| if own.is_empty() { greeting } else { own })
+                    .collect()
             };
         } else {
             dialog.lines = lines;

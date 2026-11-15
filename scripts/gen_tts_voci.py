@@ -63,8 +63,34 @@ def parse_voci_file(path: Path) -> list[tuple[str, str, str]]:
     return items
 
 
+LEXICON = Path(__file__).resolve().parent.parent / "assets" / "audio" / "voci" / "pronuncia.txt"
+
+
+def lexicon() -> list[tuple[str, str]]:
+    """Le coppie (parola, come leggerla) di `assets/audio/voci/pronuncia.txt`."""
+    pairs = []
+    if LEXICON.is_file():
+        for raw in LEXICON.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if line and not line.startswith("#") and "=>" in line:
+                word, said = (p.strip() for p in line.split("=>", 1))
+                if word and said:
+                    pairs.append((word, said))
+    return pairs
+
+
+def respell(text: str) -> str:
+    """Applica il lessico di pronuncia, a parole intere."""
+    import re
+
+    for word, said in lexicon():
+        text = re.sub(rf"(?<!\w){re.escape(word)}(?!\w)", said, text)
+    return text
+
+
 def synthesize(piper: Path, model: Path, length_scale: float, text: str, out_wav: Path):
-    """Piper locale: testo su stdin, WAV su file (nessuna rete)."""
+    """Piper locale: testo su stdin, WAV su file (nessuna rete). Il lessico di pronuncia si applica qui."""
+    text = respell(text)
     subprocess.run(
         [str(piper), "--model", str(model), "--length_scale", f"{length_scale:.2f}", "--output_file", str(out_wav)],
         input=text.encode("utf-8"), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True,

@@ -89,6 +89,40 @@ fn clip_exists(name: &str) -> bool {
     roots.iter().any(|r| r.join(&rel).is_file())
 }
 
+/// Fumetti appena detti (chi, voce): `bark_voice` fa sentire l'ultimo.
+static BARKS: std::sync::Mutex<Vec<(Entity, Vec<String>)>> = std::sync::Mutex::new(Vec::new());
+
+/// Chiede la voce di un fumetto, se la battuta ne ha una generata (ADR 0050).
+pub fn request_bark(entity: Entity, speaker: &str, text: &str) {
+    let clips = line_clip(speaker, text);
+    if !clips.is_empty()
+        && let Ok(mut q) = BARKS.lock()
+    {
+        q.push((entity, clips));
+    }
+}
+
+/// Sistema: la voce dell'ultimo fumetto, da chi lo dice. Non copre la voce di un dialogo aperto.
+pub fn bark_voice(mut queue: ResMut<VoiceQueue>, dialog: Res<DialogState>) {
+    let Some((entity, clips)) = BARKS
+        .lock()
+        .ok()
+        .and_then(|mut q| std::mem::take(&mut *q).pop())
+    else {
+        return;
+    };
+    if dialog.open && queue.kind == Some(VoiceKind::Dialog) {
+        return;
+    }
+    queue.play_from(clips, VoiceKind::Bark, Some(entity));
+}
+
+/// Voci per le righe di un dialogo scritto nel gioco (non di missione): la clip della riga detta da
+/// `speaker`, se c'è.
+pub fn dialog_clips(speaker: &str, lines: &[String]) -> Vec<Vec<String>> {
+    lines.iter().map(|l| line_clip(speaker, l)).collect()
+}
+
 /// Quanti congedi diversi ci sono per sesso.
 const FAREWELLS: u32 = 6;
 
@@ -236,11 +270,24 @@ mod tests {
 
     #[test]
     fn every_bark_line_has_its_voice() {
-        for (name, key, text) in crate::awakening::bark_lines() {
-            assert!(
-                !line_clip(name, text).is_empty(),
-                "{name} «{key}»: voce mancante (scripts/gen_voci_prologo.py)"
-            );
+        // La sezione [tutti] vale per ogni abitante di abitanti.txt, ognuno con la sua voce.
+        let villagers: Vec<&str> = include_str!("../assets/world/abitanti.txt")
+            .lines()
+            .filter_map(|l| l.trim().strip_prefix('[')?.strip_suffix(']'))
+            .collect();
+        assert!(villagers.len() > 10);
+        for (name, key, text) in crate::quests::bark_lines() {
+            let speakers: Vec<&str> = if name == "tutti" {
+                villagers.clone()
+            } else {
+                vec![name.as_str()]
+            };
+            for who in speakers {
+                assert!(
+                    !line_clip(who, text).is_empty(),
+                    "{who} «{key}»: voce mancante (scripts/gen_voci_prologo.py)"
+                );
+            }
         }
     }
 

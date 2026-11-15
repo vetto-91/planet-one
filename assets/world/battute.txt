@@ -1,9 +1,49 @@
-# Battute dette dagli abitanti fuori dai dialoghi (fumetti con voce). Modificabile a mano: letto
-# alla compilazione. Una sezione per abitante, una riga «chiave: battuta» per ogni momento.
-#   Ettore  arrivo   quando arrivi al molo e lui è sceso dal faro (Il Nome sulla Sabbia)
-#           ritorno  quando, saputo il tuo nome, torna su al faro
+# Battute dette dagli abitanti fuori dalle missioni: fumetti e dialoghi scritti nel gioco (ADR 0050).
+# Modificabile a mano: letto alla compilazione. Una sezione per chi parla, una riga «chiave: battuta».
+# La sezione [tutti] vale per ogni abitante di assets/world/abitanti.txt: la voce si genera con la
+# voce di ciascuno.
 # Le voci si generano in locale con scripts/gen_voci_prologo.py (rigenerare dopo ogni modifica).
 
+[tutti]
+# Primo saluto secondo la fama (karma.rs, ADR 0045).
+fama-buona: Ah, sei tu. In paese si parla bene di te, sai?
+fama-cattiva: Tieni le mani dove posso vederle, forestiero.
+# Chi tiene all'onestà o alla pietà non parla con chi ha una fama pessima.
+freddo: Non ho niente da dirti. Lasciami in pace.
+# Un regalo (tasto G).
+regalo: Per me? Grazie, davvero.
+# Colto a borseggiare.
+borseggio: Ehi! Giù le mani dalle mie tasche!
+# Una guardia che ha visto il borseggio (la multa la dice l'avviso).
+multa: Ti ho visto! E questa ti costa un'altra multa.
+
 [Ettore]
+# Il Nome sulla Sabbia: quando arrivi al molo e lui è sceso dal faro, e quando torna su.
 arrivo: Eccolo, il naufrago! Ti ho visto io, dalla lanterna: un puntino tra i legni, prima che il sole toccasse l'acqua.
 ritorno: Torno su al faro. Di giorno si dorme, ma per vederti in piedi ne valeva la pena.
+
+[Marta]
+# Pedinata la sera, si accorge di te.
+pedinata: Mi stai seguendo? Va' per la tua strada.
+
+[Agnese]
+pedinata: Mi stai seguendo? Va' per la tua strada.
+
+# EC-08, la lite al mercato: le battute vanno in ordine di numero, alternando chi parla.
+[Tonio]
+lite-1: Una mela al giorno, e il marinaio torna a casa!
+lite-3: Il pesce puzza dopo un giorno. Le mie mele durano un inverno!
+lite-5: Chiediamolo a qualcuno che non è di parte!
+
+[Nina]
+lite-2: Col pesce, Tonio! Il marinaio vive di pesce!
+lite-4: E chi l'ha mai visto un melo in mezzo al mare?
+lite-6: Ecco, chiediamolo! Tu, sì, tu: vieni qui!
+
+[Bandito del ponte]
+# EC-05, il pedaggio: quello che dicono se gli parli.
+dialogo: Il ponte è nostro, stanotte.
+
+[Lino il carrettiere]
+# EC-02, prima di parlargli per la missione.
+dialogo: La ruota è nel fango fino al mozzo.

@@ -233,8 +233,46 @@ fn mock_wav() -> Vec<u8> {
     pcm_to_wav(&pcm, rate)
 }
 
+/// Lessico di pronuncia (`assets/audio/voci/pronuncia.txt`): (parola, come leggerla).
+fn lexicon() -> &'static [(String, String)] {
+    static PAIRS: std::sync::OnceLock<Vec<(String, String)>> = std::sync::OnceLock::new();
+    PAIRS.get_or_init(|| parse_lexicon(include_str!("../../assets/audio/voci/pronuncia.txt")))
+}
+
+fn parse_lexicon(text: &str) -> Vec<(String, String)> {
+    text.lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        .filter_map(|l| l.split_once("=>"))
+        .map(|(w, s)| (w.trim().to_string(), s.trim().to_string()))
+        .filter(|(w, s)| !w.is_empty() && !s.is_empty())
+        .collect()
+}
+
+/// Applica il lessico a parole intere (come `scripts/gen_tts_voci.py::respell`).
+pub fn respell(text: &str) -> String {
+    let mut out = text.to_string();
+    for (word, said) in lexicon() {
+        let mut result = String::with_capacity(out.len());
+        let mut rest = out.as_str();
+        while let Some(i) = rest.find(word.as_str()) {
+            let before = rest[..i].chars().next_back();
+            let after = rest[i + word.len()..].chars().next();
+            let whole = !before.is_some_and(char::is_alphanumeric)
+                && !after.is_some_and(char::is_alphanumeric);
+            result.push_str(&rest[..i]);
+            result.push_str(if whole { said } else { word });
+            rest = &rest[i + word.len()..];
+        }
+        result.push_str(rest);
+        out = result;
+    }
+    out
+}
+
 /// Esegue Piper (processo locale, senza rete) e restituisce il WAV.
 fn synthesize(exe: &Path, model: &Path, length_scale: f32, text: &str) -> Result<Vec<u8>, String> {
+    let text = respell(text);
     let mut child = Command::new(exe)
         .arg("--model")
         .arg(model)
@@ -373,6 +411,14 @@ pub fn tts_pump(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_lexicon_respells_whole_words_only() {
+        assert_eq!(
+            respell("Il Quipu di Fontevivo, Fontevivolo."),
+            "Il Kìpu di Fontevìvo, Fontevivolo."
+        );
+    }
 
     #[test]
     fn wav_header_is_valid() {

@@ -140,21 +140,11 @@ pub fn line(name: &str, key: &str) -> Option<&'static str> {
 }
 
 /// Il compagno dice la sua battuta: fumetto sopra la testa e voce (se generata).
-fn say(
-    barks: &mut crate::quests::Barks,
-    voice: &mut crate::voice::VoiceQueue,
-    entity: Entity,
-    name: &str,
-    key: &str,
-) {
+fn say(barks: &mut crate::quests::Barks, entity: Entity, name: &str, key: &str) {
     let Some(text) = line(name, key) else {
         return;
     };
     barks.say(entity, name, text.to_string());
-    let clips = crate::voice::line_clip(name, text);
-    if !clips.is_empty() {
-        voice.play_from(clips, crate::voice::VoiceKind::Bark, Some(entity));
-    }
 }
 
 /// Distanza di `p` dal segmento `a`–`b`.
@@ -190,7 +180,6 @@ pub fn apply_requests(
     names: Query<&crate::entities::Npc>,
     mut session: ResMut<crate::save::Session>,
     mut barks: ResMut<crate::quests::Barks>,
-    mut voice: ResMut<crate::voice::VoiceQueue>,
 ) {
     let Some((entity, follow)) = state.request.take() else {
         return;
@@ -202,12 +191,12 @@ pub fn apply_requests(
         }
         commands.entity(entity).insert(Companion::default());
         session.notify(format!("{name} viene con te"));
-        say(&mut barks, &mut voice, entity, name, "segui");
+        say(&mut barks, entity, name, "segui");
         info!("[COMPAGNI] {name} ti segue");
     } else {
         commands.entity(entity).remove::<Companion>();
         session.notify(format!("{name} torna a casa"));
-        say(&mut barks, &mut voice, entity, name, "casa");
+        say(&mut barks, entity, name, "casa");
         info!("[COMPAGNI] {name} torna alla sua giornata");
     }
 }
@@ -303,7 +292,6 @@ pub fn companions_hurt(
     mut state: ResMut<CompanionState>,
     mut session: ResMut<crate::save::Session>,
     mut barks: ResMut<crate::quests::Barks>,
-    mut voice: ResMut<crate::voice::VoiceQueue>,
     mut companions: Query<(
         Entity,
         &GlobalTransform,
@@ -355,7 +343,7 @@ pub fn companions_hurt(
         let said = c.hurt(damage * toughness(npc.name) + test);
         info!("[COMPAGNI] {} colpito: vita {:.0}", npc.name, c.hp);
         if let Some(key) = said {
-            say(&mut barks, &mut voice, entity, npc.name, key);
+            say(&mut barks, entity, npc.name, key);
         }
         if c.hp <= 0.0 {
             commands.entity(entity).remove::<Companion>();

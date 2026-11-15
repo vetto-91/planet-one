@@ -243,6 +243,57 @@ pub struct Bark {
     pub remaining: f32,
 }
 
+/// Le battute fuori dalle missioni (`assets/world/battute.txt`): (chi parla, chiave, battuta).
+pub fn bark_lines() -> &'static [(String, String, String)] {
+    static LINES: std::sync::OnceLock<Vec<(String, String, String)>> = std::sync::OnceLock::new();
+    LINES.get_or_init(|| {
+        crate::companions::parse_lines(include_str!("../../assets/world/battute.txt"))
+    })
+}
+
+/// La battuta di `who` per un momento (`tutti` = quella che può dire ogni abitante).
+pub fn bark_line(who: &str, key: &str) -> Option<&'static str> {
+    bark_lines()
+        .iter()
+        .find(|(n, k, _)| n == who && k == key)
+        .map(|(_, _, s)| s.as_str())
+}
+
+/// Una battuta che può dire chiunque (sezione `[tutti]`); vuota se manca dal file.
+pub fn common_line(key: &str) -> &'static str {
+    bark_line("tutti", key).unwrap_or("")
+}
+
+/// Le battute numerate `<prefisso>-<n>` di tutte le sezioni, in ordine: (chi parla, battuta).
+pub fn numbered_lines(prefix: &str) -> Vec<(&'static str, &'static str)> {
+    let mut out: Vec<(u32, &'static str, &'static str)> = bark_lines()
+        .iter()
+        .filter_map(|(who, key, text)| {
+            let n = key.strip_prefix(prefix)?.strip_prefix('-')?.parse().ok()?;
+            Some((n, who.as_str(), text.as_str()))
+        })
+        .collect();
+    out.sort_by_key(|(n, ..)| *n);
+    out.into_iter().map(|(_, w, t)| (w, t)).collect()
+}
+
+/// La battuta di dialogo `dialogo` di `who`, come elenco statico per `entities::Npc::lines`.
+pub fn talker_lines(who: &str) -> &'static [&'static str] {
+    static LISTS: std::sync::OnceLock<Vec<(String, Vec<&'static str>)>> =
+        std::sync::OnceLock::new();
+    LISTS
+        .get_or_init(|| {
+            bark_lines()
+                .iter()
+                .filter(|(_, k, _)| k == "dialogo")
+                .map(|(w, _, t)| (w.clone(), vec![t.as_str()]))
+                .collect()
+        })
+        .iter()
+        .find(|(w, _)| w == who)
+        .map_or(&[], |(_, v)| v.as_slice())
+}
+
 /// Fumetti attivi (disegnati da `menu::draw_barks`).
 #[derive(Resource, Default)]
 pub struct Barks(pub Vec<Bark>);
@@ -253,7 +304,10 @@ impl Barks {
         self.0.iter().any(|b| b.entity == entity)
     }
 
+    /// Un fumetto sopra `entity`; se la battuta ha la sua voce generata, si sente anche
+    /// (`voice::bark_voice`).
     pub fn say(&mut self, entity: Entity, speaker: &str, text: String) {
+        crate::voice::request_bark(entity, speaker, &text);
         self.0.retain(|b| b.entity != entity);
         self.0.push(Bark {
             entity,

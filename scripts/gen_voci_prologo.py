@@ -31,6 +31,7 @@ MISSIONS = [ROOT / f"assets/quests/prologo/{n}.txt" for n in ("missioni", "secon
 SECRETS = ROOT / "assets/world/segreti.txt"
 COMPANIONS = ROOT / "assets/world/compagni.txt"
 BARKS = ROOT / "assets/world/battute.txt"
+VILLAGERS = ROOT / "assets/world/abitanti.txt"
 PERSONE = ROOT / "assets/ai"
 OUT = ROOT / "assets/audio/voci/prologo"
 MALE = "it_IT-riccardo-x_low"
@@ -101,6 +102,27 @@ def companion_lines(path: Path):
     return out
 
 
+def villagers() -> list[str]:
+    """Nomi degli abitanti (sezioni di `abitanti.txt`)."""
+    names = []
+    for raw in VILLAGERS.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if line.startswith("[") and line.endswith("]"):
+            names.append(line[1:-1].strip())
+    return names
+
+
+def bark_lines(path: Path):
+    """Come `companion_lines`, ma la sezione [tutti] vale per ogni abitante, con la sua voce."""
+    out = []
+    for speaker, line in companion_lines(path):
+        if speaker == "tutti":
+            out.extend((name, line) for name in villagers())
+        else:
+            out.append((speaker, line))
+    return out
+
+
 def persona(speaker: str):
     voce, scale = MALE, 1.0
     path = PERSONE / f"{slug(speaker)}.txt"
@@ -127,7 +149,7 @@ def main():
     ap.add_argument("--piper")
     ap.add_argument("--elenco", action="store_true", help="mostra le battute senza generare nulla")
     args = ap.parse_args()
-    pairs = [p for path in MISSIONS for p in mission_lines(path)] + secret_lines(SECRETS) + companion_lines(COMPANIONS) + companion_lines(BARKS)
+    pairs = [p for path in MISSIONS for p in mission_lines(path)] + secret_lines(SECRETS) + companion_lines(COMPANIONS) + bark_lines(BARKS)
     wanted = {clip_name(s, l): (s, l) for s, l in pairs}
     if args.elenco:
         for name, (s, l) in sorted(wanted.items()):

@@ -448,8 +448,8 @@ pub fn meet_and_confide(
         && let Some(secret) = secrets.of(&name)
         && refuses(karma.global, karma.bond(&name), &secret.values)
     {
-        dialog.lines = vec![COLD_LINE.to_string()];
-        dialog.voices = vec![Vec::new()];
+        dialog.lines = vec![crate::quests::common_line("freddo").to_string()];
+        dialog.voices = crate::voice::dialog_clips(&name, &dialog.lines);
         dialog.index = 0;
         dialog.cold = true;
         info!("[KARMA] {name} non ti parla");
@@ -468,7 +468,9 @@ pub fn meet_and_confide(
     // Il saluto cambia con la fama: il paese sa che cosa hai fatto (ADR 0045).
     if let Some(line) = reputation_line(karma.global, karma.bond(&name)) {
         dialog.lines.insert(0, line.to_string());
-        dialog.voices.insert(0, Vec::new());
+        dialog
+            .voices
+            .insert(0, crate::voice::line_clip(&name, line));
     }
     use crate::character::Stat;
     let insight = [Stat::Charisma, Stat::Wisdom, Stat::Intelligence]
@@ -494,7 +496,6 @@ pub fn meet_and_confide(
 }
 
 /// Che cosa dice chi non vuole parlarti.
-pub const COLD_LINE: &str = "Non ho niente da dirti. Lasciami in pace.";
 /// Sotto questa fama i più onesti e pietosi non ti parlano più.
 pub const SHUNNED: i32 = -40;
 
@@ -530,8 +531,8 @@ pub fn reputation_line(global: i32, bond: Bond) -> Option<&'static str> {
         return None;
     }
     match global {
-        g if g >= 25 => Some("Ah, sei tu. In paese si parla bene di te, sai?"),
-        g if g <= -25 => Some("Tieni le mani dove posso vederle, forestiero."),
+        g if g >= 25 => Some(crate::quests::common_line("fama-buona")),
+        g if g <= -25 => Some(crate::quests::common_line("fama-cattiva")),
         _ => None,
     }
 }
@@ -657,7 +658,11 @@ pub fn give_gift(
     inventory.consume(gift, 1);
     karma.gifted.insert(key, day);
     trust(npc.name, GIFT_TRUST);
-    barks.say(entity, npc.name, "Per me? Grazie, davvero.".into());
+    barks.say(
+        entity,
+        npc.name,
+        crate::quests::common_line("regalo").to_string(),
+    );
     info!("[KARMA] regalo a {}: {}", npc.name, gift.name());
 }
 

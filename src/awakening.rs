@@ -518,21 +518,6 @@ pub fn shell_answers(
     }
 }
 
-/// Le battute fuori dai dialoghi (`assets/world/battute.txt`): (abitante, chiave, battuta).
-pub fn bark_lines() -> &'static [(String, String, String)] {
-    static LINES: std::sync::OnceLock<Vec<(String, String, String)>> = std::sync::OnceLock::new();
-    LINES
-        .get_or_init(|| crate::companions::parse_lines(include_str!("../assets/world/battute.txt")))
-}
-
-/// La battuta di `who` per un momento.
-pub fn bark_line(who: &str, key: &str) -> Option<&'static str> {
-    bark_lines()
-        .iter()
-        .find(|(n, k, _)| n == who && k == key)
-        .map(|(_, _, s)| s.as_str())
-}
-
 /// Dove aspetta Ettore, sceso dal faro: accanto a Gaspare sul molo, girato verso la spiaggia.
 pub const ETTORE_ON_PIER: (Vec2, Vec2) = (Vec2::new(10.2, 102.0), Vec2::new(-0.6, -0.8));
 /// A che distanza ti saluta.
@@ -551,7 +536,6 @@ fn ettore_comes_down(
     mut villagers: Query<(Entity, &mut crate::villagers::Villager, &GlobalTransform)>,
     players: Query<&GlobalTransform, With<crate::player::Player>>,
     mut barks: ResMut<crate::quests::Barks>,
-    mut voice: ResMut<crate::voice::VoiceQueue>,
     mut state: Local<(bool, bool)>,
 ) {
     let island = crate::region::current() == crate::region::Region::Isola;
@@ -563,13 +547,8 @@ fn ettore_comes_down(
         .single()
         .is_ok_and(|p| p.translation().distance(t.translation()) <= ETTORE_HAIL);
     let mut say = |key: &str| {
-        if let Some(line) = bark_line("Ettore", key) {
+        if let Some(line) = crate::quests::bark_line("Ettore", key) {
             barks.say(e, "Ettore", line.to_string());
-            voice.play_from(
-                crate::voice::line_clip("Ettore", line),
-                crate::voice::VoiceKind::Bark,
-                Some(e),
-            );
         }
     };
     if want && !state.0 {

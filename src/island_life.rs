@@ -45,18 +45,7 @@ const RAIDERS: [(Vec2, Vec2); 2] = [
 /// Da quanto lontano compare la scena del carretto.
 const CART_RANGE: f32 = 45.0;
 
-/// EC-08: le battute della lite (chi parla, che cosa), a turno ogni [`QUARREL_EVERY`] secondi.
-const QUARREL: [(&str, &str); 6] = [
-    ("Tonio", "Una mela al giorno, e il marinaio torna a casa!"),
-    ("Nina", "Col pesce, Tonio! Il marinaio vive di pesce!"),
-    (
-        "Tonio",
-        "Il pesce puzza dopo un giorno. Le mie mele durano un inverno!",
-    ),
-    ("Nina", "E chi l'ha mai visto un melo in mezzo al mare?"),
-    ("Tonio", "Chiediamolo a qualcuno che non è di parte!"),
-    ("Nina", "Ecco, chiediamolo! Tu, sì, tu: vieni qui!"),
-];
+/// EC-08: secondi fra una battuta della lite e l'altra (battute `lite-<n>` in `battute.txt`).
 const QUARREL_EVERY: f32 = 4.5;
 
 /// Una cassa delle mareggiate.
@@ -261,7 +250,7 @@ pub fn bridge_toll(
             &server,
             TOLLER,
             "ladro",
-            &["Il ponte è nostro, stanotte."],
+            crate::quests::talker_lines(TOLLER),
             Vec3::new(post.x, y, post.y),
             BRIDGE - post,
         );
@@ -349,7 +338,7 @@ pub fn cart_in_the_mud(
             &server,
             CARTER,
             "civile-m-ocra",
-            &["La ruota è nel fango fino al mozzo."],
+            crate::quests::talker_lines(CARTER),
             ground(CARTER_AT),
             CART - CARTER_AT,
         );
@@ -431,7 +420,11 @@ pub fn market_quarrel(
     if beat.0 > 0.0 {
         return;
     }
-    let (who, line) = QUARREL[beat.1 % QUARREL.len()];
+    let quarrel = crate::quests::numbered_lines("lite");
+    if quarrel.is_empty() {
+        return;
+    }
+    let (who, line) = quarrel[beat.1 % quarrel.len()];
     let Some((e, t, npc)) = npcs.iter().find(|(.., n)| n.name == who) else {
         return;
     };

@@ -107,7 +107,9 @@ pub fn tail_villagers(
                 barks.say(
                     entity,
                     &name,
-                    "Mi stai seguendo? Va' per la tua strada.".into(),
+                    crate::quests::bark_line(&name, "pedinata")
+                        .unwrap_or("Mi stai seguendo?")
+                        .to_string(),
                 );
                 session.notify(format!("{name} si è accorta di te"));
                 info!("[PEDINA] {name} ti ha notato");

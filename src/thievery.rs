@@ -535,8 +535,12 @@ pub fn pickpocket(
             barks.say(
                 guard_entity,
                 guard.name,
-                format!("Ti ho visto! Sono altre {extra} monete."),
+                crate::quests::common_line("multa").to_string(),
             );
+            session.notify(format!(
+                "{} ti ha visto: altre {extra} monete di multa",
+                guard.name
+            ));
             info!(
                 "[BORSEGGIO] {} ha visto il furto (multa {extra})",
                 guard.name
@@ -545,7 +549,7 @@ pub fn pickpocket(
         barks.say(
             entity,
             npc.name,
-            "Ehi! Giù le mani dalle mie tasche!".into(),
+            crate::quests::common_line("borseggio").to_string(),
         );
         session.notify(if fine > 0 {
             format!("{} se n'è accorto: {fine} monete di multa", npc.name)

@@ -1,0 +1,11 @@
+# Lessico di pronuncia per Piper (ADR 0050): come si scrive => come lo legge la voce.
+# Vale per le voci generate (scripts/gen_tts_voci.py, gen_voci_abitanti.py, gen_voci_prologo.py) e
+# per la voce dal vivo dei dialoghi con l'IA (src/ai/tts.rs). Solo parole intere; maiuscole come scritte.
+# Le grafie sono state scelte facendo leggere a Piper le varianti e trascrivendole con whisper.cpp
+# locale: si tiene la grafia del gioco se la variante non suona meglio.
+# Dopo una modifica: rigenerare le voci con --force (le clip non cambiano nome: il testo è lo stesso).
+
+Quipu => Kìpu
+Ermes => Èrmes
+Fontevivo => Fontevìvo
+Calliope => Callìope

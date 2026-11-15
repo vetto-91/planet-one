@@ -4,6 +4,8 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **Le battute del gioco hanno la voce** (ADR 0050): il saluto secondo la fama, il rifiuto di chi non ti parla, il grazie per un regalo, chi ti coglie a borseggiare, la guardia che ti multa, chi si accorge di essere pedinata, la lite di Tonio e Nina, il bandito del ponte e Lino il carrettiere. Ognuno con la sua voce (160 battute nuove, generate in locale con Piper). I testi sono in `assets/world/battute.txt`.
+- **Pronuncia dei nomi**: un piccolo lessico (`assets/audio/voci/pronuncia.txt`) corregge come la voce legge Quipu, Ermes, Fontevivo e Calliope, anche nei dialoghi dal vivo con l'IA.
 - **L'età si sente nei dialoghi** (ADR 0047): Gaspare e Don Anselmo parlano in modo diverso a un giovane, a un adulto e a una persona matura (nove battute nuove, con voce).
 - **Ettore scende dal faro**: quando arrivi da Gaspare il guardiano del faro è lì al molo, ti saluta, e dopo che hai detto il tuo nome torna su.
 - **Due talenti nuovi** (ADR 0049): la **Controparata di Atena** (dopo un colpo parato con lo scudo il fendente successivo fa il doppio) e le **Dita di Mercurio** (frugare nelle tasche dei nemici che non ti hanno visto, e sfilare la chiave di casa con le monete di un abitante: la chiave apre quella porta).
