@@ -196,6 +196,21 @@ pub const CLUES: [(crate::inventory::Relic, &str, &str); 7] = [
     ),
 ];
 
+/// Indizi che si portano in tasca: con le Dita di Mercurio vengono via insieme alle monete (ADR 0055).
+pub const POCKET_CLUES: [(crate::inventory::Relic, &str); 3] = [
+    (crate::inventory::Relic::MartaNote, "Gino"),
+    (crate::inventory::Relic::LeatherProfile, "Guardia Gino"),
+    (crate::inventory::Relic::PoemBook, "Guardia Mario"),
+];
+
+/// L'indizio in tasca a `owner`, se ne ha uno.
+pub fn pocket_clue(owner: &str) -> Option<crate::inventory::Relic> {
+    POCKET_CLUES
+        .iter()
+        .find(|(_, o)| o.eq_ignore_ascii_case(owner))
+        .map(|(r, _)| *r)
+}
+
 /// L'indizio che sta nel primo mobile di un edificio (se ce n'è uno): per tipo («faro») o per casa
 /// precisa («casa-media 0»).
 pub fn clue_in(building: &str) -> Option<crate::inventory::Relic> {
@@ -577,7 +592,8 @@ pub fn read_clues(
     if !inventory.is_changed() {
         return;
     }
-    for (relic, owner, _) in CLUES {
+    let clues = CLUES.iter().map(|(r, o, _)| (*r, *o)).chain(POCKET_CLUES);
+    for (relic, owner) in clues {
         if inventory.qty(ItemKind::Relic(relic)) == 0
             || karma.knows_secret(owner)
             || secrets.of(owner).is_none()

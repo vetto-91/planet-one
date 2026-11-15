@@ -50,3 +50,8 @@ luogo: Rovine antiche | -56 62
 luogo: Grotta | 90.5 18
 luogo: Campo dei banditi | 76 40
 luogo: Santuario | -66 22
+luogo: Faro | -14 94
+luogo: Porticciolo | 8.5 96.3
+luogo: Laghetto | 68 -18
+luogo: Ponte sul ruscello | 81 -8
+luogo: Poggio del Naufrago | -40 40

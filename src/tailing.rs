@@ -114,7 +114,7 @@ pub fn tail_villagers(
                         .unwrap_or("Mi stai seguendo?")
                         .to_string(),
                 );
-                session.notify(format!("{name} si è accorta di te"));
+                session.notify(format!("{name} ti ha notato"));
                 info!("[PEDINA] {name} ti ha notato");
             } else if d < FOLLOW_MAX {
                 w.followed += dt;

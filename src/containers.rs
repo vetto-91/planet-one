@@ -226,6 +226,8 @@ pub fn starting_items(
     match key {
         "evento:ec01" => return vec![(Coin, 8), (HealthPotion, 1)],
         "evento:ec09" => return vec![(Coin, 12), (Arrow, 6)],
+        // La cassa sommersa al largo della spiaggia del relitto, da aprire in apnea (ADR 0055).
+        crate::diving::SUNKEN_KEY => return vec![(Coin, 45), (HealthPotion, 2), (Lockpick, 2)],
         _ => {}
     }
     match key.split(':').next() {

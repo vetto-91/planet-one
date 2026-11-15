@@ -906,3 +906,19 @@ quantità: 1   seed: 39680
 nota: rottami
 punti: (27.50,85.50)
 rotazioni: 20
+
+[P-1290] tipo: legnaia | modalità: singolo
+quando: pedinata di Pietro (ADR 0045)
+punto: x -20.61, z 17.97
+quantità: 1   seed: 1
+nota: legnaia
+punti: (-20.61,17.97)
+rotazioni: 134
+
+[P-1291] tipo: porticina | modalità: singolo
+quando: pedinata di Pietro (ADR 0045)
+punto: x -20.00, z 21.30
+quantità: 1   seed: 1
+nota: porticina
+punti: (-20.00,21.30)
+rotazioni: 134

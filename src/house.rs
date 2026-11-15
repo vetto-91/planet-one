@@ -470,7 +470,11 @@ mod tests {
     #[test]
     fn the_plot_is_outside_the_walls_and_away_from_the_places() {
         let world = include_str!("../assets/world/isola.txt");
-        for line in world.lines().filter(|l| l.starts_with("luogo:")) {
+        // Il Poggio del Naufrago è il nome del luogo della casa stessa (ADR 0055).
+        for line in world
+            .lines()
+            .filter(|l| l.starts_with("luogo:") && !l.contains("Poggio del Naufrago"))
+        {
             let nums: Vec<f32> = line
                 .rsplit('|')
                 .next()

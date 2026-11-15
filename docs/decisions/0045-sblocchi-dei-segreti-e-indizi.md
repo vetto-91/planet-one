@@ -63,8 +63,8 @@ possa scoprire anche con gli indizi, e che ognuno giudichi secondo i propri valo
     scopre il segreto, e allena la Furtività.
   - Più vicino di 2,5 m, o davanti entro 9 m (meno con la Furtività), si viene notati: per quel giorno è
     fallito, e la fiducia scende di uno.
-  - Pietro e la legnaia restano fuori: nel mondo la legnaia non c'è e il suo posto serale è a tre metri dal
-    pozzo.
+  - ~~Pietro e la legnaia restano fuori: nel mondo la legnaia non c'è e il suo posto serale è a tre metri dal
+    pozzo.~~ **Risolto** (ADR 0055): la legnaia c'è, e la sera Pietro ci va di nascosto.
 - **La fama**:
   - i prezzi la seguivano già (ADR 0040);
   - sotto −40 chi tiene all'onestà o alla pietà e non è ancora tuo conoscente non ti parla («Non ho niente da

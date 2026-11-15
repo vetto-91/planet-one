@@ -107,12 +107,17 @@ pub enum Relic {
     ResonancePlate,
     /// La bottiglia verde trovata sulla riva all'alba (EC-12).
     BottleMessage,
+    /// Indizi da sfilare dalle tasche con le Dita di Mercurio (ADR 0055): il biglietto di Gino per
+    /// Marta, il profilo delle montagne della Guardia Gino, le poesie della Guardia Mario.
+    MartaNote,
+    LeatherProfile,
+    PoemBook,
 }
 
 impl Relic {
     /// Tutti gli oggetti di trama (serve ai test).
     #[cfg(test)]
-    pub const ALL: [Relic; 28] = [
+    pub const ALL: [Relic; 31] = [
         Relic::Tablet,
         Relic::MotherCoin,
         Relic::Quipu,
@@ -141,6 +146,9 @@ impl Relic {
         Relic::FlourSack,
         Relic::ResonancePlate,
         Relic::BottleMessage,
+        Relic::MartaNote,
+        Relic::LeatherProfile,
+        Relic::PoemBook,
     ];
 
     fn name(self) -> &'static str {
@@ -173,6 +181,9 @@ impl Relic {
             Relic::FlourSack => "Sacco di farina",
             Relic::ResonancePlate => "Lamina della Risonanza",
             Relic::BottleMessage => "Messaggio nella bottiglia",
+            Relic::MartaNote => "Biglietto per Marta",
+            Relic::LeatherProfile => "Profilo di cuoio",
+            Relic::PoemBook => "Taccuino di poesie",
         }
     }
 
@@ -206,6 +217,9 @@ impl Relic {
             Relic::FlourSack => "sacco-farina",
             Relic::ResonancePlate => "lamina-risonanza",
             Relic::BottleMessage => "bottiglia",
+            Relic::MartaNote => "lettera",
+            Relic::LeatherProfile => "mappa-secche",
+            Relic::PoemBook => "taccuino",
         }
     }
 
@@ -254,6 +268,15 @@ impl Relic {
             }
             Relic::BottleMessage => {
                 "Una riga in una scrittura sconosciuta, e un disegno: un'isola, uno stretto, una terra grande."
+            }
+            Relic::MartaNote => {
+                "Piegato in quattro e mai consegnato: «Il tuo dolce con la rosa dei venti…». Firmato Gino."
+            }
+            Relic::LeatherProfile => {
+                "Un pezzo di cuoio graffiato col coltello: le montagne del continente, viste dal muro nord."
+            }
+            Relic::PoemBook => {
+                "Versi sul mare e sull'ombra del santuario, che all'equinozio punta dritta al pozzo."
             }
         }
     }
@@ -312,7 +335,7 @@ impl Category {
 
 impl ItemKind {
     /// Tutti i tipi di oggetto.
-    pub const ALL: [ItemKind; 53] = [
+    pub const ALL: [ItemKind; 56] = [
         ItemKind::HealthPotion,
         ItemKind::Coin,
         ItemKind::ShortSword,
@@ -366,6 +389,9 @@ impl ItemKind {
         ItemKind::Relic(Relic::FlourSack),
         ItemKind::Relic(Relic::ResonancePlate),
         ItemKind::Relic(Relic::BottleMessage),
+        ItemKind::Relic(Relic::MartaNote),
+        ItemKind::Relic(Relic::LeatherProfile),
+        ItemKind::Relic(Relic::PoemBook),
     ];
 
     /// Peso reale di un'unità (kg). Monete e munizioni non pesano.

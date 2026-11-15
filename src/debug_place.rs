@@ -29,7 +29,7 @@ pub fn file() -> &'static str {
     crate::region::current().placements_file()
 }
 /// Tipi predefiniti.
-const KINDS: [&str; 46] = [
+const KINDS: [&str; 48] = [
     "albero",
     "roccia",
     "cespuglio",
@@ -65,6 +65,8 @@ const KINDS: [&str; 46] = [
     "casse",
     "panni",
     "reti",
+    "legnaia",
+    "porticina",
     "mulino",
     "campo-ladro",
     "banditi",
@@ -224,6 +226,8 @@ pub fn footprint(kind: &str) -> f32 {
         "carretto" => 1.5,
         "botti" | "casse" => 1.0,
         "panni" | "reti" => 2.3,
+        "legnaia" => 2.0,
+        "porticina" => 0.7,
         "mulino" | "torre-rovina" | "santuario" => 3.2,
         "campo-ladro" => 2.6,
         "banditi" | "rovine" | "grotta" => 6.0,

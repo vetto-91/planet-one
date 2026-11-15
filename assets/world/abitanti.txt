@@ -53,6 +53,8 @@ modello: civile-m-verde
 lavoro: -3.8 13.0 1 0
 sera: 1.2 8.6 -1 0
 orari: 8 19 21
+# Di nascosto da Beppe, la sera va alla legnaia vicino alle mura e guarda la porticina.
+pedina: 19.6 20.9 -22.2 16.3 0.41 0.91
 
 [Beppe]
 casa: casa-media 0 1

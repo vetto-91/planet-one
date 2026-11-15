@@ -1164,6 +1164,8 @@ pub fn snapshot(world: &mut World) -> Value {
             "terreno": terrain,
             "sopra_terreno": terrain.map(|h| pos.y - h),
             "anim": anim,
+            "fiato": (crate::diving::breath() * 10.0).round() / 10.0,
+            "sott_acqua": crate::diving::under(),
         },
         "arma": arma,
         "quest": quest,

@@ -32,5 +32,6 @@ missioni a tappe (ADR 0034) reggeva solo la storia principale.
 - Rispetto alla trama le undici sono semplificate: niente scelte finali (lo scudo si tiene, i tre nomi si
   pronunciano), gli oggetti di trama (disco, campanaccio, bussola, registro, gemma) sono raccontati nei
   pensieri e non stanno nell'inventario, la mucca non si segue davvero, i premi sono monete e oggetti esistenti.
-- Le battute non hanno voce registrata. Sei missioni (qs02, qs05, qs07, qs08, qs11, qs13) non sono coperte
-  da un copione: le controlla solo il test sul formato del file.
+- Le battute non hanno voce registrata. ~~Sei missioni (qs02, qs05, qs07, qs08, qs11, qs13) non sono
+  coperte da un copione: le controlla solo il test sul formato del file.~~ **Risolto** (ADR 0055): copione
+  `zzzzzzzzzzzzzzzzzzzzzzzz-secondarie-2`.

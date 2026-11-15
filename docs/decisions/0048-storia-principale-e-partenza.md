@@ -17,8 +17,9 @@ pensieri. Per la trama (`Trama-Planet-One/06`, sezioni 1–2, e `09`, sezione 1.
 - **Salti di tempo**: effetto `tempo <ora> [giorni] [meteo]` (anche come riga di tappa `tempo:`).
   - Alla prima tappa di MP-03 si va avanti di 10 giorni, alle 9, col sereno.
   - In MP-04 di 20 giorni, alle 10, con la pioggia che gonfia il Cenote.
-  - In MP-05 di 25 giorni, alle 19:30.
-  - Il Prologo passa così dal 21 marzo a metà maggio.
+  - ~~In MP-05 di 25 giorni, alle 19:30.~~ In MP-05 fino al 21 giugno, alle 19:30 (`tempo: 19.5 estate`,
+    ADR 0055).
+  - Il Prologo passa così dal 21 marzo all'inizio dell'estate.
   - Il meteo di scena (`WeatherState::scene`) vale solo per quel giorno e cede a un meteo forzato.
 - **MP-03**: una tappa nuova con Agnese, che riconosce nella pietra del santuario un'Intihuatana. In cima alla
   torre si trova il **Disco di Tiro**.

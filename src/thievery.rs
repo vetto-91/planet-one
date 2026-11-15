@@ -602,6 +602,19 @@ pub fn pickpocket(
             ));
             info!("[BORSEGGIO] {}: sfilata la chiave {key}", npc.name);
         }
+        // Con le monete viene via anche una lettera, una mappa o un taccuino (ADR 0055).
+        if skills::active_talent(Skill::Pickpocket)
+            && let Some(relic) = crate::karma::pocket_clue(npc.name)
+            && inventory.qty(ItemKind::Relic(relic)) == 0
+        {
+            inventory.add(ItemKind::Relic(relic), 1);
+            crate::karma::deed_as("onesta", -1, format!("le carte di {}", npc.name));
+            session.notify(format!(
+                "Con le monete viene via anche: {}",
+                ItemKind::Relic(relic).name()
+            ));
+            info!("[BORSEGGIO] {}: sfilato {:?}", npc.name, relic);
+        }
     }
 }
 

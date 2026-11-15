@@ -1,0 +1,333 @@
+# Le sei secondarie che non avevano un copione (ADR 0055): qs02 la luce nella nebbia, qs05 il campanaccio
+# del santuario, qs07 il compleanno di Pietro, qs08 la gemma del laghetto, qs11 la porpora, qs13 i fili
+# sotto le pietre. Le altre missioni sono già chiuse, così ogni abitante parla della sua.
+# Il nome comincia per z perché un copione nuovo non sposti le risoluzioni degli altri.
+god on
+ia off
+meteo sereno
+ora 10
+missioni on
+aspetta 2
+missione mp01 7
+missione mp03 7
+missione mp04 6
+missione qs01 7
+missione qs03 4
+missione qs04 5
+missione qs06 6
+missione qs09 7
+missione qs10 4
+missione qs12 10
+missione qs14 8
+missione qs15 7
+missione qs16 7
+missione qs17 9
+missione qs18 4
+missione ec08 3
+aspetta 1
+# qs02 La Luce che Risponde nella Nebbia: Ettore la sera, Carlo di turno al mattino, Ferruccio; Ettore
+# dopo le dieci di sera, alla fine.
+ora 18
+aspetta 2
+tp ettore
+aspetta 1
+attendi npc:ettore:modo = Ready 90
+tp ettore
+aspetta 1
+guarda ettore
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs02 = 2
+ora 8
+aspetta 2
+tp guardia carlo
+aspetta 1
+# Le guardie di turno non sono mai «Ready»: dopo il salto d'ora Carlo cammina fino a Porta Sud.
+aspetta 90
+tp guardia carlo
+aspetta 1
+guarda guardia carlo
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs02 = 3
+tp ferruccio
+aspetta 1
+attendi npc:ferruccio:modo = Ready 90
+tp ferruccio
+aspetta 1
+guarda ferruccio
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+scegli Arrivederci
+aspetta 1
+verifica /missioni/qs02 = 4
+ora 10
+aspetta 2
+# qs07 Il Compleanno di Pietro: Pietro, Beppe, il Viandante, di nuovo Beppe e la scelta.
+tp pietro
+aspetta 1
+attendi npc:pietro:modo = Ready 90
+tp pietro
+aspetta 1
+guarda pietro
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs07 = 2
+tp beppe
+aspetta 1
+attendi npc:beppe:modo = Ready 90
+tp beppe
+aspetta 1
+guarda beppe
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs07 = 3
+tp viandante
+aspetta 1
+attendi npc:viandante:modo = Ready 90
+tp viandante
+aspetta 1
+guarda viandante
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+scegli Arrivederci
+aspetta 1
+verifica /missioni/qs07 = 4
+tp beppe
+aspetta 1
+attendi npc:beppe:modo = Ready 90
+tp beppe
+aspetta 1
+guarda beppe
+aspetta 1
+premi e
+aspetta 1
+avanza
+aspetta 1
+scegli insieme
+aspetta 1
+verifica /missioni/qs07 = 5
+verifica Relic(CopperKey) >= 1
+# qs08 Il Sogno della Farfalla: Agnese, Rosa, il laghetto di giorno, Agnese e l'infuso.
+tp agnese
+aspetta 1
+attendi npc:agnese:modo = Ready 90
+tp agnese
+aspetta 1
+guarda agnese
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+scegli Arrivederci
+aspetta 1
+verifica /missioni/qs08 = 2
+tp rosa
+aspetta 1
+attendi npc:rosa:modo = Ready 90
+tp rosa
+aspetta 1
+guarda rosa
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs08 = 3
+tp 66 3 -12
+aspetta 3
+verifica /missioni/qs08 = 4
+camera 200 15 7
+aspetta 1
+foto laghetto-della-gemma
+tp agnese
+aspetta 1
+attendi npc:agnese:modo = Ready 90
+tp agnese
+aspetta 1
+guarda agnese
+aspetta 1
+premi e
+aspetta 1
+avanza
+aspetta 1
+scegli sogno
+aspetta 1
+verifica /missioni/qs08 = 5
+# qs11 Il Segreto della Porpora: Nina, gli scogli a est del porticciolo, Tonio e il mantello.
+tp nina
+aspetta 1
+attendi npc:nina:modo = Ready 90
+tp nina
+aspetta 1
+guarda nina
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+scegli Arrivederci
+aspetta 1
+verifica /missioni/qs11 = 2
+tp 50 3 86
+aspetta 3
+verifica /missioni/qs11 = 3
+tp tonio
+aspetta 1
+attendi npc:tonio:modo = Ready 90
+tp tonio
+aspetta 1
+guarda tonio
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+scegli Arrivederci
+aspetta 1
+verifica Relic(NavigatorCloak) = 1
+verifica /missioni/qs11 = 4
+# qs13 I Fili Sotto le Pietre: Ferruccio, Don Anselmo, la grata, il quadro, la grotta, il Viandante.
+tp ferruccio
+aspetta 1
+attendi npc:ferruccio:modo = Ready 90
+tp ferruccio
+aspetta 1
+guarda ferruccio
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+scegli Arrivederci
+aspetta 1
+verifica /missioni/qs13 = 2
+tp don anselmo
+aspetta 1
+attendi npc:anselmo:modo = Ready 90
+tp don anselmo
+aspetta 1
+guarda don anselmo
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs13 = 3
+tp -1.2 3 10
+aspetta 2
+verifica /missioni/qs13 = 4
+tp 8.95 2 0.0
+aspetta 2
+mira quadro
+aspetta 1
+premi e
+aspetta 1
+verifica /missioni/qs13 = 5
+tp 87 1.5 38.4
+aspetta 3
+verifica /missioni/qs13 = 6
+foto il-cavo-sotto-il-mare
+tp viandante
+aspetta 1
+attendi npc:viandante:modo = Ready 90
+tp viandante
+aspetta 1
+guarda viandante
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+scegli Arrivederci
+aspetta 1
+verifica Relic(CopperGloves) = 1
+verifica /missioni/qs13 = 7
+# qs05 Il Pascolo del Sole: Ida, il santuario al tramonto, il campanaccio e l'amuleto.
+tp ida
+aspetta 1
+attendi npc:ida:modo = Ready 90
+tp ida
+aspetta 1
+guarda ida
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica /missioni/qs05 = 2
+ora 18
+aspetta 2
+tp -60 8 22
+aspetta 3
+verifica /missioni/qs05 = 3
+verifica Relic(Cowbell) = 1
+camera 90 12 7
+aspetta 1
+foto santuario-al-tramonto
+tp ida
+aspetta 1
+attendi npc:ida:modo = Ready 90
+tp ida
+aspetta 1
+guarda ida
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica Relic(FeatherAmulet) = 1
+verifica /missioni/qs05 = 4
+# qs02, la fine: dopo le dieci Ettore accende la lanterna di Tiro.
+ora 22.5
+aspetta 2
+tp ettore
+aspetta 1
+attendi npc:ettore:modo = Ready 90
+tp ettore
+aspetta 1
+guarda ettore
+aspetta 1
+premi e
+aspetta 1
+verifica dialogo = true
+avanza
+aspetta 1
+verifica Relic(TyreLantern) = 1
+verifica /missioni/qs02 = 5
+foto ettore-di-notte
+esci

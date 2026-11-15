@@ -12,6 +12,8 @@ use bevy_egui::egui;
 
 /// Colori delle tre riserve: (pieno, scuro di fondo).
 const HEALTH_COLOR: egui::Color32 = egui::Color32::from_rgb(196, 58, 52);
+/// Il fiato in apnea: azzurro chiaro.
+const BREATH_COLOR: egui::Color32 = egui::Color32::from_rgb(120, 200, 235);
 const VIGOR_COLOR: egui::Color32 = egui::Color32::from_rgb(98, 172, 84);
 const MAGIC_COLOR: egui::Color32 = egui::Color32::from_rgb(72, 118, 214);
 const COMPANION_COLOR: egui::Color32 = egui::Color32::from_rgb(214, 150, 64);
@@ -199,6 +201,23 @@ pub fn draw_hud(
             crate::companions::MAX_HP,
             COMPANION_COLOR,
             false,
+        );
+    }
+    // Il fiato (apnea, ADR 0055): sopra la vita, solo quando cala.
+    let (breath, breath_max) = (crate::diving::breath(), crate::diving::breath_max());
+    if crate::diving::under() || breath < breath_max - 0.05 {
+        let rect = egui::Rect::from_min_size(
+            egui::pos2(left + side_w + gap + mid_w * 0.25, bars_y - BAR_H - 6.0),
+            egui::vec2(mid_w * 0.5, BAR_H),
+        );
+        reserve_bar(
+            &painter,
+            rect,
+            "Fiato",
+            breath,
+            breath_max,
+            BREATH_COLOR,
+            breath <= 0.0,
         );
     }
     reserve_bar(

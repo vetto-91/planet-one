@@ -43,8 +43,8 @@ sezione 2.4C, e `04`):
 
 ## Conseguenze
 - ~~Mancano gli altri talenti con nome della trama (controparata, borseggio dei nemici e di chiavi).~~
-  **Risolto**, vedi «Aggiornamento: Controparata e Dita di Mercurio». Restano l'apnea (non si nuota
-  sott'acqua) e il borseggio delle lettere.
+  **Risolto**, vedi «Aggiornamento: Controparata e Dita di Mercurio». ~~Restano l'apnea (non si nuota
+  sott'acqua) e il borseggio delle lettere.~~ **Risolti** anche questi (ADR 0055).
 - L'armatura non si vede sul modello del personaggio.
 - ~~I compagni non si salvano e non ricevono danno dai nemici~~: risolto, vedi «Aggiornamento» sotto. Non
   viaggiano ancora sul continente: arriverà con l'Atto I.

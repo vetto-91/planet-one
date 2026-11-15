@@ -67,6 +67,8 @@ pub fn is_building(kind: &str) -> bool {
             | "casse"
             | "panni"
             | "reti"
+            | "legnaia"
+            | "porticina"
             | "mulino"
             | "campo-ladro"
             | "banditi"
@@ -1370,6 +1372,112 @@ fn cart(b: &mut B, int: &mut Interior) -> Vec<(Vec3, Vec3)> {
     vec![(Vec3::new(0.0, 0.75, -0.05), Vec3::new(1.6, 1.5, 2.3))]
 }
 
+/// Legnaia: tettoia a uno spiovente su quattro pali, con la legna spaccata accatastata sotto e una
+/// scaletta sul fianco (Pietro ci sale la sera per guardare la porticina, ADR 0045).
+fn woodshed(b: &mut B, r: &mut Rng) -> Vec<(Vec3, Vec3)> {
+    const W: f32 = 1.6;
+    const D: f32 = 1.0;
+    const BACK: f32 = 2.1;
+    const FRONT: f32 = 1.75;
+    // La corteccia sul legno vero; la faccia tagliata, chiara, a colore pieno.
+    let wood: Col = [0.42, 0.28, 0.14, 1.0];
+    let bark: Col = [0.3, 0.21, 0.13, 1.0];
+    for (x, z, h) in [(-W, -D, BACK), (W, -D, BACK), (-W, D, FRONT), (W, D, FRONT)] {
+        b.cuboid_c(Vec3::new(x, h / 2.0, z), Vec3::new(0.12, h, 0.12), TIMBER);
+    }
+    // Il tetto di assi, inclinato verso il davanti, che sporge un poco.
+    let tilt = ((BACK - FRONT) / (2.0 * D)).atan();
+    let roof = Transform::from_xyz(0.0, (BACK + FRONT) / 2.0 + 0.06, 0.0)
+        .with_rotation(Quat::from_rotation_x(tilt));
+    for k in 0..9 {
+        let x = -W - 0.15 + k as f32 * (2.0 * W + 0.3) / 8.5;
+        let c = roof.transform_point(Vec3::new(x + 0.18, 0.0, 0.0));
+        b.cuboid_c(c, Vec3::new(0.34, 0.04, 2.0 * D + 0.4), TIMBER);
+    }
+    // Le cataste: tronchetti di testa, file sfalsate, contro la parete di fondo.
+    let mut z = -D + 0.25;
+    for row in 0..2 {
+        let layers = 7 - row * 2;
+        for layer in 0..layers {
+            let y = 0.13 + layer as f32 * 0.22;
+            let shift = if layer % 2 == 0 { 0.0 } else { 0.11 };
+            let mut x = -W + 0.2 + shift;
+            while x < W - 0.15 {
+                let len = 0.42 + (r.next() % 10) as f32 / 100.0;
+                b.force = Some(Mat::Planks);
+                b.cuboid_c(Vec3::new(x, y, z), Vec3::new(0.2, 0.2, len), bark);
+                // La faccia tagliata, più chiara, verso il davanti.
+                b.force = Some(Mat::Plain);
+                b.cuboid_c(
+                    Vec3::new(x, y, z + len / 2.0 + 0.005),
+                    Vec3::new(0.17, 0.17, 0.01),
+                    wood,
+                );
+                b.force = None;
+                x += 0.23;
+            }
+        }
+        z += 0.55;
+    }
+    // Il ceppo con l'accetta piantata, davanti.
+    b.force = Some(Mat::Planks);
+    b.cuboid_c(
+        Vec3::new(1.0, 0.25, D + 0.7),
+        Vec3::new(0.5, 0.5, 0.5),
+        bark,
+    );
+    b.force = None;
+    b.beam(
+        Vec3::new(1.0, 0.5, D + 0.7),
+        Vec3::new(1.15, 0.95, D + 0.55),
+        0.025,
+        TIMBER,
+    );
+    // La scaletta appoggiata al fianco destro, fino al tetto.
+    for s in [-0.22f32, 0.22] {
+        b.beam(
+            Vec3::new(W + 0.55, 0.0, s),
+            Vec3::new(W + 0.12, BACK - 0.1, s - 0.2),
+            0.03,
+            TIMBER,
+        );
+    }
+    for k in 1..7 {
+        let t = k as f32 / 7.0;
+        let at = Vec3::new(W + 0.55 - 0.43 * t, (BACK - 0.1) * t, -0.2 * t);
+        b.cuboid_c(at, Vec3::new(0.04, 0.04, 0.48), TIMBER);
+    }
+    vec![
+        (Vec3::new(0.0, 0.8, -D + 0.55), Vec3::new(2.0 * W, 1.6, 1.1)),
+        (Vec3::new(1.0, 0.25, D + 0.7), Vec3::new(0.5, 0.5, 0.5)),
+    ]
+}
+
+/// Porticina nelle mura: una piccola porta di assi ferrate con lo stipite di pietra, da appoggiare al
+/// muro dal lato del paese (di notte ci passa chi esce di nascosto, ADR 0045).
+fn postern(b: &mut B) -> Vec<(Vec3, Vec3)> {
+    let stone: Col = [0.55, 0.53, 0.5, 1.0];
+    let iron: Col = [0.2, 0.2, 0.22, 1.0];
+    for x in [-0.55f32, 0.55] {
+        b.cuboid_c(Vec3::new(x, 0.95, 0.0), Vec3::new(0.2, 1.9, 0.24), stone);
+    }
+    b.cuboid_c(Vec3::new(0.0, 2.0, 0.0), Vec3::new(1.3, 0.22, 0.24), stone);
+    b.cuboid_c(
+        Vec3::new(0.0, 0.92, 0.04),
+        Vec3::new(0.9, 1.84, 0.08),
+        TIMBER,
+    );
+    for y in [0.4f32, 1.45] {
+        b.cuboid_c(Vec3::new(0.0, y, 0.09), Vec3::new(0.86, 0.07, 0.02), iron);
+    }
+    b.cuboid_c(
+        Vec3::new(0.3, 0.95, 0.11),
+        Vec3::new(0.06, 0.06, 0.04),
+        iron,
+    );
+    Vec::new()
+}
+
 /// Filo con i panni stesi tra due pali.
 fn laundry(b: &mut B, r: &mut Rng) -> Vec<(Vec3, Vec3)> {
     const SPAN: f32 = 2.3;
@@ -2203,6 +2311,8 @@ pub fn model(kind: &str, seed: u32) -> Building {
         }
         "panni" => (4.8, 0.5, laundry(&mut b, &mut r)),
         "reti" => (3.6, 0.5, nets(&mut b)),
+        "legnaia" => (3.4, 2.2, woodshed(&mut b, &mut r)),
+        "porticina" => (1.2, 0.3, postern(&mut b)),
         // "casa" e "casa-media"
         _ => {
             let timber = r.next().is_multiple_of(2);
@@ -2350,6 +2460,8 @@ mod tests {
             "faro",
             "molo",
             "barca",
+            "legnaia",
+            "porticina",
         ] {
             assert!(is_building(k), "{k} non riconosciuto");
             let m = model(k, 7);

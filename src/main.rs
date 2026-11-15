@@ -27,6 +27,7 @@ mod cutscene;
 mod daynight;
 mod debug_place;
 mod devtools;
+mod diving;
 mod entities;
 mod equipment;
 mod figure;
@@ -255,6 +256,7 @@ fn main() -> AppExit {
         .add_plugins(side_scenes::plugin)
         .add_plugins(island_events::plugin)
         .add_plugins(crossing::plugin)
+        .add_plugins(diving::plugin)
         .add_systems(Update, hut::copper_lid)
         .add_systems(Update, voice::bark_voice.before(voice::drive_voice))
         .add_plugins(awakening::plugin)

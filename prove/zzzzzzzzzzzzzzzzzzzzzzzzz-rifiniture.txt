@@ -1,0 +1,112 @@
+# Le rifiniture dell'isola (ADR 0055): i cinque luoghi nuovi, la legnaia e la porticina, la pedinata di
+# Pietro, il biglietto sfilato alla Guardia Mario, l'apnea con la cassa sommersa e il salto all'estate.
+# Il nome comincia per z perché un copione nuovo non sposti le risoluzioni degli altri.
+god on
+ia off
+meteo sereno
+ora 10
+aspetta 2
+# I luoghi nuovi si scoprono avvicinandosi.
+tp -14 4 86
+aspetta 2
+verifica /esplorati contiene Faro
+tp 6 3 90
+aspetta 2
+verifica /esplorati contiene Porticciolo
+tp 66 3 -11
+aspetta 2
+verifica /esplorati contiene Laghetto
+tp 84 4 -2
+aspetta 2
+verifica /esplorati contiene Ponte sul ruscello
+tp -40 4 33
+aspetta 2
+verifica /esplorati contiene Poggio del Naufrago
+# La legnaia e la porticina contro le mura a sud-ovest, dietro la chiesa.
+tp -16.5 3 15.5
+aspetta 2
+camera 127 15 6
+aspetta 1
+foto legnaia-e-porticina
+# Le carte in tasca: con le Dita di Mercurio, dietro la Guardia Mario viene via il suo taccuino.
+abilita borseggio 100
+ora 23
+aspetta 2
+dietro guardia mario
+aspetta 0.3
+premi f
+aspetta 1
+verifica Relic(PoemBook) = 1
+verifica /segreti contiene guardia mario
+# L'apnea: con il Nuoto al grado 30, Ctrl porta giù fino alla cassa sommersa.
+abilita nuoto 30
+# La cassa è chiusa a chiave: serve un grimaldello.
+dai grimaldello 1
+ora 12
+aspetta 1
+tp 36 0 110
+aspetta 3
+verifica /giocatore/sott_acqua = false
+tieni ctrl 6
+aspetta 5
+verifica /giocatore/sott_acqua = true
+verifica /giocatore/fiato < 20
+foto in-apnea
+mira container
+aspetta 0.5
+premi e
+aspetta 1
+verifica app = Lockpick
+scassina
+attendi app = Container 40
+prendi
+aspetta 1
+chiudi
+aspetta 1
+verifica Lockpick >= 2
+verifica Coin >= 45
+aspetta 4
+verifica /giocatore/sott_acqua = false
+# La pedinata di Pietro: la sera va alla legnaia, e a 8 m alle sue spalle non ti vede.
+ora 19.5
+aspetta 2
+tp 14 3 12
+aspetta 1
+attendi npc:pietro:fase = Secret 60
+aspetta 2
+dietro pietro 8
+aspetta 2
+dietro pietro 8
+aspetta 2
+dietro pietro 8
+aspetta 2
+dietro pietro 8
+aspetta 2
+dietro pietro 8
+aspetta 2
+dietro pietro 8
+aspetta 2
+dietro pietro 8
+aspetta 2
+dietro pietro 8
+aspetta 2
+dietro pietro 8
+aspetta 2
+dietro pietro 8
+aspetta 2
+dietro pietro 8
+aspetta 2
+dietro pietro 8
+aspetta 2
+dietro pietro 8
+aspetta 2
+dietro pietro 8
+aspetta 2
+aspetta 4
+incantesimo luce
+aspetta 1
+guarda pietro
+aspetta 1
+foto pietro-alla-legnaia
+verifica /segreti contiene pietro
+esci

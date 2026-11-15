@@ -149,7 +149,7 @@ dopo: mp04
 [tappa]
 obiettivo: Parla con Gaspare al molo della traversata
 quando: parla Gaspare
-tempo: 19.5 25 sereno
+tempo: 19.5 estate sereno
 > L'hai vista davvero, la terra a nord? Allora è deciso, {nome}. La barca regge: Ferruccio ha fissato lo scafo col bronzo, niente ferro per gli scogli che tirano.
 > Gino porta la vela, Ettore terrà acceso il faro tutta la notte. Si parte prima dell'alba, quando lo Stretto respira.
 > Stasera però resta in paese: accendono le lanterne in piazza. Una partenza senza un saluto porta male.

@@ -4,6 +4,12 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **Cinque luoghi nuovi sulla mappa** (ADR 0055): il Faro, il Porticciolo, il Laghetto, il Ponte sul ruscello e il Poggio del Naufrago si scoprono avvicinandosi e poi si raggiungono col viaggio veloce.
+- **La legnaia e la porticina**: vicino alla casa di Beppe c'è una legnaia con le cataste e una scaletta, e nelle mura ovest una piccola porta. La sera Pietro ci va di nascosto: seguilo senza farti vedere e ne scoprirai il segreto.
+- **Apnea dei Pescatori di Perle**, il talento attivo del Nuoto: in acqua profonda, tenendo premuto Ctrl, ti immergi fino al fondale. Il fiato è contato (una barra compare sopra la vita) e al largo della spiaggia del relitto c'è una cassa sommersa da aprire.
+- **Le carte nelle tasche**: con le Dita di Mercurio, insieme alle monete, sfili anche il biglietto di Gino per Marta, il profilo di cuoio della Guardia Gino o il taccuino di poesie della Guardia Mario. Leggerli ne rivela il segreto.
+- **Si parte d'estate**: l'ultima missione del Prologo porta il calendario al 21 giugno, come vuole la trama.
+- **Correzione**: l'avviso di una pedinata scoperta diceva sempre «si è accorta di te», anche per un uomo.
 - **La traversata** (ADR 0054): chi passa per la via sotto il mare sbuca da un'antica fonte di pietra a gradoni tra le radici di una quercia gigante, a pochi passi dall'Approdo delle Brume; la barca attracca al molo. La via sotto il mare ora si prende davvero, in tutti e due i sensi: in fondo ai gradini oltre la Porta Sommersa, e nella fonte sul continente per tornare sull'isola. **I compagni partono con te**: Silvia o Dino vengono sul continente e, congedati, ti aspettano all'approdo.
 - **Gli eventi dell'isola si vedono** (ADR 0053): la cassa del relitto sulla spiaggia, la bottiglia verde (con il suo messaggio), il tronco cavo con le farfalle, il lampione che pulsa d'azzurro sotto la pioggia, la mela da lasciare alla guardia che batte i denti nella notte di neve; e da guardare, la scintilla azzurra in cima alla torre, il serpente di luce sui gradoni della grotta all'alba e la nave fantasma che passa nella nebbia.
 - La **cassa del relitto** (ora sulla sabbia) e il **tronco cavo** sono mobili veri da aprire; il **lampione azzurro ronza**; la scintilla, il serpente di luce e la nave contano solo se li guardi; il **pedaggio del ponte torna ogni settimana**.
@@ -51,7 +57,7 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 - **Il letto di casa**: nella tua casa, `R` vicino al letto fa dormire fino al mattino; vita, vigore e magia tornano pieni.
 - **L'Accordo**: Agnese insegna gli incantesimi avanzati (missione secondaria nuova, in tutto sono 18), e c'è il sesto incantesimo, **Calma**, che placa i nemici vicini per mezzo minuto.
 
-- **Il tempo della storia** (ADR 0048): le missioni principali fanno avanzare il calendario e il meteo della scena. Il Prologo va dall'equinozio di marzo a metà maggio, e la discesa nella grotta avviene sotto la pioggia.
+- **Il tempo della storia** (ADR 0048): le missioni principali fanno avanzare il calendario e il meteo della scena. Il Prologo va dall'equinozio di marzo all'inizio dell'estate (ADR 0055), e la discesa nella grotta avviene sotto la pioggia.
 - **Le Voci delle Pietre Antiche**: Agnese riconosce la pietra del santuario, e in cima alla torre trovi il **Disco di Tiro**.
 - **Sotto l'Arco dei Sei Gradoni**: nel laghetto sotterraneo un incantesimo fa risuonare le quattro stele. In fondo al cunicolo trovi il **Quipu Maestro**, e la **Porta Sommersa** è aperta.
 - **Oltre il Velo del Nord**: alla Sera delle Lanterne chi hai aiutato ti porta un dono. Prima dell'alba scegli come partire: **la via del mare** con la barca di Gaspare (al timone, se ti ha confidato il suo segreto) o **la via delle profondità**, per la Porta Sommersa. La partenza è raccontata, e poi sei sul continente.

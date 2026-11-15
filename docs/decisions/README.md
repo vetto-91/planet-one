@@ -80,3 +80,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0052 | Le scene delle missioni secondarie | accettato |
 | 0053 | Gli eventi dell'isola nel mondo | accettato |
 | 0054 | La traversata e l'arrivo all'Approdo delle Brume | accettato |
+| 0055 | Le rifiniture dell'isola | accettato |

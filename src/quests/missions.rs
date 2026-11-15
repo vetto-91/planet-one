@@ -113,7 +113,11 @@ impl Effect {
             "tempo" => {
                 let mut w = rest.split_whitespace();
                 let hour: f32 = w.next()?.replace(',', ".").parse().ok()?;
-                let days: u32 = w.next().map_or(Some(0), |d| d.parse().ok())?;
+                // «estate» al posto dei giorni: fino al primo giorno d'estate (ADR 0055).
+                let days: u32 = w.next().map_or(Some(0), |d| match d {
+                    "estate" => Some(UNTIL_SUMMER),
+                    d => d.parse().ok(),
+                })?;
                 let weather = match w.next() {
                     Some(k) => Some(crate::weather::Kind::parse(k)?),
                     None => None,
@@ -130,6 +134,24 @@ impl Effect {
             _ => return None,
         })
     }
+}
+
+/// Giorni di `tempo:` che vogliono dire «fino all'inizio dell'estate».
+pub const UNTIL_SUMMER: u32 = u32::MAX;
+
+/// La data dopo un salto di `days` giorni ([`UNTIL_SUMMER`]: il primo giorno d'estate, se non lo è già).
+pub fn jump(mut date: crate::daynight::GameDate, days: u32) -> crate::daynight::GameDate {
+    if days == UNTIL_SUMMER {
+        // Solo in avanti nello stesso anno: d'estate o d'autunno il salto non serve.
+        while date.month <= 6 && date.season() != crate::daynight::Season::Summer {
+            date.next_day();
+        }
+    } else {
+        for _ in 0..days {
+            date.next_day();
+        }
+    }
+    date
 }
 
 /// Una risposta fra cui scegliere alla fine del dialogo della tappa.
@@ -1076,10 +1098,7 @@ pub fn track_missions(
         for effect in &step.effects {
             match effect {
                 Effect::Time(hour, days, kind) => {
-                    let mut date = clock.date;
-                    for _ in 0..*days {
-                        date.next_day();
-                    }
+                    let date = jump(clock.date, *days);
                     clock.set(date, *hour);
                     weather.scene = kind.map(|k| (date.day_key(), k));
                     info!("[MISSIONE] il tempo passa: {} alle {hour:.1}", date.label());
@@ -1154,6 +1173,28 @@ pub fn track_missions(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_last_crossing_waits_for_summer() {
+        use crate::daynight::{GameDate, Season};
+        let may = GameDate {
+            year: 0,
+            month: 5,
+            day: 12,
+        };
+        let june = jump(may, UNTIL_SUMMER);
+        assert_eq!((june.month, june.day), (6, 21));
+        assert_eq!(june.season(), Season::Summer);
+        // Già d'estate, o più tardi, non si salta.
+        assert_eq!(jump(june, UNTIL_SUMMER), june);
+        let october = GameDate { month: 10, ..may };
+        assert_eq!(jump(october, UNTIL_SUMMER), october);
+        assert_eq!(jump(may, 2).day, 14);
+        assert!(matches!(
+            Effect::parse("tempo 19.5 estate sereno"),
+            Some(Effect::Time(_, UNTIL_SUMMER, Some(_)))
+        ));
+    }
 
     #[test]
     fn a_repeating_event_comes_back_after_its_days() {

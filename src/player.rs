@@ -324,10 +324,25 @@ pub fn movement(
 
     for (mut velocity, mut state, mut buffer, transform) in &mut players {
         // In acqua si va più piano; dove è profonda si nuota (galleggia, Spazio per salire).
-        let (drag, swim_target) = field
+        let water = field
             .as_ref()
-            .and_then(|f| water_depth(f, transform.translation))
-            .map_or((1.0, None), |(depth, level)| swim_factors(depth, level));
+            .and_then(|f| water_depth(f, transform.translation));
+        let (drag, swim_target) =
+            water.map_or((1.0, None), |(depth, level)| swim_factors(depth, level));
+        // Apnea (ADR 0055): con il talento del Nuoto, Ctrl in acqua profonda porta giù fino al fondale.
+        let diving = swim_target.is_some()
+            && (keys.pressed(KeyCode::ControlLeft) || keys.pressed(KeyCode::ControlRight))
+            && crate::diving::can_dive();
+        let swim_target = match (swim_target, water) {
+            (Some(_), Some((depth, level))) if diving => {
+                Some(level - depth + crate::diving::FLOOR_CLEAR)
+            }
+            (target, _) => target,
+        };
+        // La testa sta circa 0,7 m sopra il centro del corpo.
+        crate::diving::set_under(
+            water.is_some_and(|(_, level)| transform.translation.y + 0.7 < level - 0.1),
+        );
         let drag = if swim_target.is_some() {
             drag * (1.0 + 0.08 * skills::rank(Skill::Swimming))
         } else {
@@ -350,12 +365,14 @@ pub fn movement(
             skills::train(Skill::Carrying, walked * 0.05);
         }
         if let Some(target) = swim_target {
-            let stroke = if keys.pressed(KeyCode::Space) {
+            let stroke = if keys.pressed(KeyCode::Space) && !diving {
                 0.5
             } else {
                 0.0
             };
-            velocity.y = ((target + stroke - transform.translation.y) * 4.0).clamp(-2.5, 2.5);
+            // Si scende più piano di quanto si risalga.
+            let pull = if diving { 1.6 } else { 2.5 };
+            velocity.y = ((target + stroke - transform.translation.y) * 4.0).clamp(-pull, 2.5);
             state.coyote_left = 0.0;
             continue;
         }
