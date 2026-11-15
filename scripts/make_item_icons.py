@@ -599,6 +599,19 @@ def resonance_plate():
     return im
 
 
+def bottle():
+    """Il messaggio nella bottiglia: vetro verde, tappo di sughero, un foglio arrotolato dentro."""
+    im = layer()
+    d = ImageDraw.Draw(im)
+    d.rounded_rectangle([170, 190, 342, 440], 40, fill=(70, 150, 100, 220), outline=(30, 90, 60, 255), width=8)
+    d.rectangle([226, 110, 286, 200], fill=(70, 150, 100, 220), outline=(30, 90, 60, 255), width=8)
+    d.rectangle([232, 80, 280, 118], fill=(170, 130, 80, 255))
+    d.rounded_rectangle([210, 250, 302, 380], 12, fill=(236, 222, 186, 255))
+    for y in (280, 305, 330):
+        d.line([(222, y), (290, y)], fill=(120, 100, 70, 255), width=5)
+    return im
+
+
 ICONS = {
     "spada-corta": lambda: sword(310, 58, 124),
     "spada-lunga": lambda: sword(430, 46, 150),
@@ -652,6 +665,7 @@ ICONS = {
     "bracciale": bracelet,
     "sacco-farina": flour_sack,
     "lamina-risonanza": resonance_plate,
+    "bottiglia": bottle,
 }
 
 

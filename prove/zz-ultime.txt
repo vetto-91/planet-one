@@ -20,58 +20,20 @@ verifica z < -50
 veloce fontevivo
 aspetta 2
 verifica z > -5
-# Eventi: capitano passando di lì nel momento giusto.
+# Eventi: le cose nel mondo (la cassa, la bottiglia, il tronco, il lampione, la torre, i gradoni, la
+# nave, la mela alla ronda) le prova zzzzzzzzzzzzzzzzzzzzzz-eventi-2; il carretto e la pecora
+# zzzzzzzzzzzzzzzz-eventi. Qui si chiudono con la shell.
 missione mp01 7
-aspetta 1
-ora 6
-aspetta 1
-tp 38 3 86
-aspetta 2
-verifica /missioni/ec01 = 2
-tp 14 3 99
-aspetta 2
-verifica /missioni/ec12 = 2
-# Il carretto con Lino e i predoni (EC-02) e la pecora smarrita (EC-04) hanno persone e animali veri:
-# li prova zzzzzzzzzzzzzzzz-eventi. Qui si chiudono con la shell.
+missione ec01 2
+missione ec12 2
 missione ec02 4
 missione ec04 3
-ora 10
-aspetta 1
-tp 62 4 -8
-aspetta 2
-verifica /missioni/ec09 = 2
-# Il lampione ronza solo con la pioggia.
-tp 0.4 3 52
-aspetta 2
-verifica /missioni/ec07 = 1
-meteo pioggia
-aspetta 3
-tp 0.4 3 52
-aspetta 2
-verifica /missioni/ec07 = 2
-foto lampione-pioggia
-meteo sereno
-ora 6.5
-aspetta 3
-tp 91 4 20
-aspetta 2
-verifica /missioni/ec06 = 2
-ora 1
-aspetta 1
-tp 50 18 -45
-aspetta 2
-verifica /missioni/ec03 = 2
-meteo nebbia
-ora 23
-aspetta 3
-tp 0.5 4 -78
-aspetta 2
-verifica /missioni/ec10 = 2
-meteo neve
-aspetta 3
-dai mela 1
-tp 0.2 3 -7.6
-aspetta 2
+missione ec09 2
+missione ec07 2
+missione ec06 2
+missione ec03 2
+missione ec10 2
+missione ec11 2
 verifica /missioni/ec11 = 2
 meteo sereno
 ora 11

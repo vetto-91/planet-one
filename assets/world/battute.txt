@@ -16,6 +16,8 @@ regalo: Per me? Grazie, davvero.
 borseggio: Ehi! Giù le mani dalle mie tasche!
 # Una guardia che ha visto il borseggio (la multa la dice l'avviso).
 multa: Ti ho visto! E questa ti costa un'altra multa.
+# La guardia di Porta Nord nella notte di neve (evento della ronda infreddolita).
+freddo-ronda: Brr… stanotte il vento taglia le orecchie.
 
 [Ettore]
 # Il Nome sulla Sabbia: quando arrivi al molo e lui è sceso dal faro, e quando torna su.

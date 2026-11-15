@@ -78,3 +78,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0050 | Le voci delle battute del Prologo, i piccoli suoni e le ronde che si fermano | accettato |
 | 0051 | Le ricompense uniche delle missioni secondarie | accettato |
 | 0052 | Le scene delle missioni secondarie | accettato |
+| 0053 | Gli eventi dell'isola nel mondo | accettato |

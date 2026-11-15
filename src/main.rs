@@ -36,6 +36,7 @@ mod hut;
 mod interiors;
 mod inventory;
 mod inventory_ui;
+mod island_events;
 mod island_life;
 mod karma;
 mod lanterns;
@@ -251,6 +252,7 @@ fn main() -> AppExit {
         .add_plugins(island_life::plugin)
         .add_plugins(lanterns::plugin)
         .add_plugins(side_scenes::plugin)
+        .add_plugins(island_events::plugin)
         .add_systems(Update, hut::copper_lid)
         .add_systems(Update, voice::bark_voice.before(voice::drive_voice))
         .add_plugins(awakening::plugin)

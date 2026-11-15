@@ -12,9 +12,10 @@ tipo: evento
 dopo: mp01
 
 [tappa]
-obiettivo: La spiaggia a est del molo, al mattino presto
+obiettivo: La spiaggia a est del molo, al mattino presto: apri la cassa del relitto
 quando: vicino 38 86 8
 quando: ora 5 8.5
+quando: sbloccato relitto-aperto
 pensiero: Tra i gabbiani, una cassa sigillata che ieri non c'era. Dentro, monete bagnate e una boccetta intatta. Il mare ogni tanto restituisce.
 dai: pozione di cura 1
 monete: 8
@@ -53,6 +54,7 @@ obiettivo: L'altura della torre antica, a notte fonda e col cielo sereno
 quando: vicino 58.5 -58.5 26
 quando: ora 0 3.5
 quando: meteo sereno
+quando: sbloccato scintilla-torre
 pensiero: In cima alla torre si accende una scintilla azzurra: tre lampi, una pausa, tre lampi. Qualcuno, lassù, sta parlando col nord. Quando arrivi sotto le mura, non c'è più nessuno.
 
 [missione ec04]
@@ -80,9 +82,10 @@ tipo: evento
 
 [tappa]
 obiettivo: La rampa della grotta, all'alba col cielo sereno
-quando: vicino 91 20 9
+quando: vicino 90.5 5 9
 quando: ora 5.5 7.5
 quando: meteo sereno
+quando: sbloccato serpente-di-luce
 pensiero: Il sole esce dal mare e accende i sei gradoni uno dopo l'altro: un serpente di luce che scende verso l'ingresso. Dura il tempo di dieci respiri. Chi ha tagliato questa pietra sapeva dove sorge il sole.
 monete: 10
 
@@ -92,9 +95,10 @@ sommario: Sotto la pioggia, un lampione brilla d'azzurro.
 tipo: evento
 
 [tappa]
-obiettivo: La strada fuori da Porta Sud, sotto la pioggia
+obiettivo: La strada fuori da Porta Sud, sotto la pioggia: il lampione azzurro
 quando: vicino 0.4 52 6
 quando: meteo pioggia
+quando: sbloccato lampione-azzurro
 pensiero: Un lampione ronza e brilla azzurro, più forte degli altri. Avvicini la mano: il vetro è tiepido, e batte piano, come un polso. La Luce Viva sente la pioggia.
 
 [missione ec08]
@@ -126,10 +130,11 @@ sommario: Tre farfalle che volano insieme, sempre nello stesso verso.
 tipo: evento
 
 [tappa]
-obiettivo: Il margine del bosco vicino al laghetto, col sole
+obiettivo: Il margine del bosco vicino al laghetto, col sole: segui le farfalle
 quando: vicino 62 -8 8
 quando: ora 9 17
 quando: meteo sereno
+quando: sbloccato tronco-delle-farfalle
 pensiero: Tre farfalle volano insieme verso un tronco cavo. Dentro, asciutto, un sacchetto di tela: qualcuno lo nascose qui molto tempo fa, e non tornò a prenderlo.
 monete: 12
 
@@ -143,6 +148,7 @@ obiettivo: La costa nord dietro il mulino, di notte con la nebbia
 quando: vicino 0.5 -78 12
 quando: ora 21 4
 quando: meteo nebbia
+quando: sbloccato nave-fantasma
 pensiero: Dal mare, nella nebbia, un battere di remi lento e regolare. E un canto, senza parole. Passa da ovest a est e si perde. Nessuna barca dell'isola ha tanti remi.
 
 [missione ec11]
@@ -156,6 +162,7 @@ quando: vicino 0.2 -7.6 6
 quando: ora 20 6
 quando: meteo neve
 quando: ha mela 1
+quando: sbloccato mela-alla-ronda
 pensiero: La guardia di turno batte i denti. Le lasci una mela sul parapetto, senza dire niente. Fa un cenno col mento: da queste parti vuol dire grazie.
 prendi: mela 1
 monete: 5
@@ -166,10 +173,12 @@ sommario: Vetro verde tra la schiuma, all'alba.
 tipo: evento
 
 [tappa]
-obiettivo: La riva accanto al molo, all'alba
+obiettivo: La riva accanto al molo, all'alba: la bottiglia tra la schiuma
 quando: vicino 14 99 5
 quando: ora 5 7
+quando: sbloccato bottiglia-raccolta
 pensiero: Una bottiglia di vetro verde, sigillata. Dentro, un foglio con una riga sola, in una scrittura che non conosci, e sotto un disegno: un'isola piccola, uno stretto, una terra grande. E una freccia.
+dai: messaggio nella bottiglia 1
 monete: 5
 
 

@@ -1,0 +1,88 @@
+# Gli eventi dell'isola nel mondo (ADR 0053): la cassa del relitto, la bottiglia, il tronco delle
+# farfalle, il lampione azzurro, la mela alla ronda (da toccare con E); la scintilla sulla torre, il
+# serpente di luce, la nave fantasma (da guardare per intero).
+# Il nome comincia per z perché un copione nuovo non sposti le risoluzioni degli altri.
+god on
+ia off
+missioni on
+missione mp01 7
+# EC-01, il relitto: all'alba una cassa vera sulla spiaggia.
+meteo sereno
+ora 6
+tp 37 3 84.5
+aspetta 2
+camera 214 55 5
+foto relitto
+verifica /missioni/ec01 = 1
+tp 38 3 86.8
+aspetta 1
+premi e
+aspetta 2
+verifica /missioni/ec01 = 2
+# EC-12, la bottiglia verde tra la schiuma.
+ora 5.5
+tp 14 3 98
+aspetta 2
+camera 180 50 3
+foto bottiglia
+tp 14 3 99.6
+aspetta 1
+premi e
+aspetta 2
+verifica /missioni/ec12 = 2
+verifica Relic(BottleMessage) = 1
+# EC-06, il serpente di luce sui gradoni della grotta.
+ora 6
+tp 90.5 3 0
+aspetta 12
+camera 180 30 6
+foto serpente-di-luce
+verifica /missioni/ec06 = 2
+# EC-09, le farfalle e il tronco cavo.
+ora 12
+tp 62 3 -6.2
+aspetta 3
+camera 0 40 3
+foto farfalle
+premi e
+aspetta 2
+verifica /missioni/ec09 = 2
+# EC-03, la scintilla in cima alla torre antica (prima della pioggia: serve il cielo sereno).
+ora 1
+tp 50 18 -45
+aspetta 12
+camera 328 -20 4
+foto scintilla
+verifica /missioni/ec03 = 2
+# EC-07, il lampione azzurro sotto la pioggia.
+meteo pioggia
+aspetta 2
+tp 1.6 3 51
+aspetta 3
+camera 180 10 5
+foto lampione-azzurro
+premi e
+aspetta 2
+verifica /missioni/ec07 = 2
+# EC-10, la nave fantasma nella nebbia.
+meteo nebbia
+ora 23
+tp 0.5 4 -86
+aspetta 14
+camera 0 5 4
+foto nave-fantasma
+tp 0.5 4 -78
+aspetta 14
+verifica /missioni/ec10 = 2
+# EC-11, la ronda infreddolita: una mela sul parapetto.
+meteo neve
+ora 23
+dai mela 1
+aspetta 3
+tp 0.2 3 -6.4
+aspetta 3
+foto ronda-al-freddo
+premi e
+aspetta 2
+verifica /missioni/ec11 = 2
+esci
