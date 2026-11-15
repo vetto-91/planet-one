@@ -4,6 +4,8 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **Scene delle secondarie** (ADR 0052): Dino ti aspetta fuori da Porta Sud per un duello amichevole e, al tramonto, ferma con te due predoni sulla strada del Sud sotto gli occhi di Aldo; nella Croce delle Quattro Ronde si sale in cima al campanile a mezzogiorno e si scopre la Camera di Risonanza; dopo la Prova dell'Arco Silvia ti porta all'imbocco della grotta, dove ritrovi il bracciale del suo maestro, e promette di venire con te al nord; se hai completato il Cantiere, il giorno della partenza tutto il paese scende al molo a salutarti.
+- I salvataggi della v0.0.64 ritrovano la tappa giusta delle missioni che hanno tappe nuove.
 - **Ricompense uniche delle secondarie** (ADR 0051): la **Lanterna di Vetro di Tiro** (una luce da portare, si accende dalla barra), il **Mantello del Navigatore** (borseggiare e pedinare riesce meglio), i **Guanti Isolanti** (scasso più facile), l'**Arco Maestro** di Silvia (frecce più forti) e lo **Scudo dell'Orlo** (il miglior scudo dell'isola, più leggero). Dopo «Il Pane del Vento» Marta vende le focacce del forno.
 - **Lo scudo appeso a Porta Nord** dà lo sconto da Ferruccio, come promesso dalla trama.
 - **Correzione: Silvia ora dà le frecce** all'inizio della Prova dell'Arco (il nome dell'oggetto nel file non veniva riconosciuto).

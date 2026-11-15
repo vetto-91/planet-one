@@ -1,0 +1,109 @@
+# Le scene delle secondarie (ADR 0052): il duello con Dino e la strada del Sud con Aldo (QS-09), il
+# campanile e la Camera di Risonanza (QS-12), Silvia e il bracciale nella grotta (QS-14), il paese
+# al molo prima della partenza (QS-15).
+# Il nome comincia per z perché un copione nuovo non sposti le risoluzioni degli altri.
+god on
+ia off
+meteo sereno
+missioni on
+ora 15
+# QS-09: il duello, fuori da Porta Sud.
+missione qs09 4
+dai spada corta
+aspetta 0.5
+premi 1
+tp 0.4 3 44.8
+aspetta 2
+attendi npc:dino:dist < 3 150
+aspetta 3
+guarda guardia dino
+aspetta 0.5
+foto duello
+# Il primo clic dopo «guarda» a volte va perso: un fendente in più.
+premi click
+aspetta 1
+premi click
+aspetta 1
+premi click
+aspetta 1
+premi click
+aspetta 1.5
+verifica /missioni/qs09 = 5
+# Al tramonto, i predoni sulla strada del Sud.
+ora 18.5
+tp 0.4 3 45
+aspetta 3
+verifica vicini contiene nemico
+aspetta 4
+camera 180 25 9
+foto strada-del-sud
+uccidi 40
+aspetta 1
+uccidi 40
+aspetta 2
+verifica /missioni/qs09 = 6
+attendi npc:guardia_aldo:modo = Ready 60
+tp guardia aldo
+aspetta 1
+guarda guardia aldo
+aspetta 1
+premi e
+aspetta 1
+avanza
+aspetta 1
+verifica /missioni/qs09 = 7
+# QS-12: in cima al campanile a mezzogiorno, poi giù al pozzo.
+missione qs12 6
+ora 12
+tp -8.8 10.6 12
+aspetta 3
+verifica /missioni/qs12 = 7
+prima-persona
+camera 90 -8 1
+foto dal-campanile
+prima-persona off
+tp -1.2 5 10
+aspetta 2
+verifica /missioni/qs12 = 8
+# QS-14: Silvia all'imbocco della grotta, il bracciale nella prima sala.
+missione qs14 5
+ora 10
+tp 90.5 3 0
+aspetta 2
+attendi npc:silvia:dist < 6 180
+aspetta 3
+camera 180 15 6
+foto silvia-alla-grotta
+tp silvia
+aspetta 1
+guarda silvia
+aspetta 1
+premi e
+aspetta 1
+avanza
+scegli Arrivederci
+aspetta 1
+verifica /missioni/qs14 = 6
+tp 90.5 4 21
+aspetta 2
+verifica Relic(MasterBracelet) = 1
+verifica /missioni/qs14 = 7
+tp silvia
+aspetta 1
+guarda silvia
+aspetta 1
+premi e
+aspetta 1
+avanza
+scegli Arrivederci
+aspetta 1
+verifica /missioni/qs14 = 8
+# QS-15: compiuto il cantiere, prima dell'alba della partenza il paese è al molo.
+missione qs15 7
+missione mp05 3
+ora 5
+tp 8.5 3 90
+aspetta 120
+camera 180 25 12
+foto il-paese-al-molo
+esci

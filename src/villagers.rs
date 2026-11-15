@@ -216,6 +216,8 @@ pub struct Villager {
     /// Posto a cui lo chiama la storia (punto e sguardo): la Sera delle Lanterne (`lanterns.rs`),
     /// Ettore che scende al molo (`awakening.rs`). Finché c'è, vale più della routine.
     called: Option<(Vec2, Vec2)>,
+    /// Il posto della storia è appena cambiato: chi è per strada cambia subito direzione.
+    recall: bool,
 }
 
 /// Stato di un abitante nel salvataggio.
@@ -274,8 +276,21 @@ impl Villager {
             && self.indoor.is_empty()
     }
 
+    /// Guardia di ronda sulle mura (la sua routine non segue i posti della storia).
+    pub fn on_wall_patrol(&self) -> bool {
+        self.def.wall.is_some()
+    }
+
+    /// Il posto a cui lo chiama la storia, se c'è.
+    pub fn called(&self) -> Option<(Vec2, Vec2)> {
+        self.called
+    }
+
     /// Assegna (o toglie) il posto a cui lo chiama la storia.
     pub fn call_to(&mut self, spot: Option<(Vec2, Vec2)>) {
+        if self.called != spot {
+            self.recall = true;
+        }
         self.called = spot;
     }
 
@@ -527,6 +542,7 @@ pub fn spawn_villagers(
                     resume: false,
                     chore: None,
                     called: None,
+                    recall: false,
                 },
                 RigidBody::Kinematic,
                 Collider::capsule(0.35, 1.0),
@@ -822,6 +838,22 @@ pub fn villager_routine(
         } else {
             desired_phase(&v.def, hour, weather.shelter)
         };
+        // Chiamato altrove (o lasciato libero) mentre era per strada: non finisce il percorso vecchio,
+        // riparte da qui verso il posto nuovo. La fase finta fa scattare il cambio di fase qui sotto.
+        if std::mem::take(&mut v.recall)
+            && v.placed
+            && !v.hidden
+            && v.indoor.is_empty()
+            && v.def.wall.is_none()
+            && (v.phase == Phase::Called || want == Phase::Called)
+        {
+            v.path.clear();
+            v.phase = if matches!(want, Phase::Night | Phase::Rest) {
+                Phase::Work
+            } else {
+                Phase::Night
+            };
+        }
         let here = Vec2::new(tf.translation.x, tf.translation.z);
         // Guardie di ronda: percorrono l'anello delle mura senza fermarsi, salvo quando parlano.
         // Hanno un turno: a fine turno entrano nella torre più vicina sul loro cammino e vanno a

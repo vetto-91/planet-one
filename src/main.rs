@@ -58,6 +58,7 @@ mod settings_ui;
 mod sfx;
 mod shell;
 mod shop;
+mod side_scenes;
 mod skills;
 mod sky;
 mod tailing;
@@ -249,6 +250,7 @@ fn main() -> AppExit {
         .add_plugins(archery::plugin)
         .add_plugins(island_life::plugin)
         .add_plugins(lanterns::plugin)
+        .add_plugins(side_scenes::plugin)
         .add_systems(Update, voice::bark_voice.before(voice::drive_voice))
         .add_plugins(awakening::plugin)
         .add_plugins(cutscene::plugin)

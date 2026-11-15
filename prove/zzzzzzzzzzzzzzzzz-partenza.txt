@@ -6,6 +6,8 @@ god on
 ia off
 meteo sereno
 missioni on
+# Il Nome sulla Sabbia chiusa: Ettore resta al faro (scende al molo solo durante quelle tappe).
+missione mp01 7
 ora 10
 missione mp04 4
 # La porta chiusa in fondo alla nicchia.

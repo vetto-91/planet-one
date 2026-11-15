@@ -733,8 +733,8 @@ impl SaveData {
             }
         }
         // Spostate una volta sola: le regioni annidate si riscrivono con la loro versione.
-        if crate::quests::missions::upgrade_step(&d.game_version, "mp01", 1) != 1 {
-            d.game_version = "v0.0.63.0".into();
+        if crate::quests::missions::older_layout(&d.game_version) {
+            d.game_version = crate::quests::missions::STEP_LAYOUT.into();
         }
         Ok(d)
     }
@@ -2105,7 +2105,7 @@ mod tests {
     fn sample() -> SaveData {
         let mut d = SaveData::blank();
         d.kind = SaveKind::Quick;
-        d.game_version = "v0.0.63.0".into();
+        d.game_version = crate::quests::missions::STEP_LAYOUT.into();
         d.saved_at = "2026-11-09 12:30".into();
         d.played_secs = 321.0;
         d.place = "Fontevivo".into();
@@ -2227,6 +2227,21 @@ mod tests {
         let twice = SaveData::parse(&once.to_text()).unwrap();
         assert_eq!(twice.missions, moved);
         assert_eq!(twice.elsewhere[0].1.missions, moved);
+    }
+
+    #[test]
+    fn a_save_from_0_0_64_keeps_finished_side_missions_finished() {
+        let mut d = sample();
+        d.game_version = "v0.0.64.0".into();
+        // qs09 e qs14 compiute (3 e 4 tappe allora), qs12 ferma al pozzo (tappa 6 di 6).
+        d.missions = vec![("qs09".into(), 3), ("qs12".into(), 5), ("qs14".into(), 4)];
+        let once = SaveData::parse(&d.to_text()).unwrap();
+        assert_eq!(
+            once.missions,
+            vec![("qs09".into(), 6), ("qs12".into(), 6), ("qs14".into(), 7)]
+        );
+        let twice = SaveData::parse(&once.to_text()).unwrap();
+        assert_eq!(twice.missions, once.missions);
     }
 
     #[test]

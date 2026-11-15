@@ -99,12 +99,14 @@ pub enum Relic {
     NavigatorCloak,
     /// I Guanti Isolanti di rame e cuoio (QS-13): dita sicure sulle serrature.
     CopperGloves,
+    /// Il bracciale del maestro di Silvia, nella prima sala della grotta (QS-14).
+    MasterBracelet,
 }
 
 impl Relic {
     /// Tutti gli oggetti di trama (serve ai test).
     #[cfg(test)]
-    pub const ALL: [Relic; 24] = [
+    pub const ALL: [Relic; 25] = [
         Relic::Tablet,
         Relic::MotherCoin,
         Relic::Quipu,
@@ -129,6 +131,7 @@ impl Relic {
         Relic::TyreLantern,
         Relic::NavigatorCloak,
         Relic::CopperGloves,
+        Relic::MasterBracelet,
     ];
 
     fn name(self) -> &'static str {
@@ -157,6 +160,7 @@ impl Relic {
             Relic::TyreLantern => "Lanterna di Vetro di Tiro",
             Relic::NavigatorCloak => "Mantello del Navigatore",
             Relic::CopperGloves => "Guanti Isolanti",
+            Relic::MasterBracelet => "Bracciale del maestro",
         }
     }
 
@@ -186,6 +190,7 @@ impl Relic {
             Relic::TyreLantern => "lanterna-tiro",
             Relic::NavigatorCloak => "mantello",
             Relic::CopperGloves => "guanti-rame",
+            Relic::MasterBracelet => "bracciale",
         }
     }
 
@@ -227,6 +232,7 @@ impl Relic {
             Relic::CopperGloves => {
                 "Rame e cuoio: le dita non tremano, la tacca dello scasso è più larga."
             }
+            Relic::MasterBracelet => "Cuoio secco e bronzo, con un'aquila incisa storta.",
         }
     }
 
@@ -284,7 +290,7 @@ impl Category {
 
 impl ItemKind {
     /// Tutti i tipi di oggetto.
-    pub const ALL: [ItemKind; 49] = [
+    pub const ALL: [ItemKind; 50] = [
         ItemKind::HealthPotion,
         ItemKind::Coin,
         ItemKind::ShortSword,
@@ -334,6 +340,7 @@ impl ItemKind {
         ItemKind::Relic(Relic::TyreLantern),
         ItemKind::Relic(Relic::NavigatorCloak),
         ItemKind::Relic(Relic::CopperGloves),
+        ItemKind::Relic(Relic::MasterBracelet),
     ];
 
     /// Peso reale di un'unità (kg). Monete e munizioni non pesano.

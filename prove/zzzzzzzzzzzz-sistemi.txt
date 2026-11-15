@@ -30,7 +30,7 @@ verifica /magia < 35
 god on
 # Silvia diventa compagna dopo la Prova dell'Arco.
 missioni on
-missione qs14 5
+missione qs14 8
 aspetta 1
 tp silvia
 aspetta 1

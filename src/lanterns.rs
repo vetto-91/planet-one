@@ -64,6 +64,33 @@ pub struct LanternEvening {
     elapsed: f32,
     /// Quanti abitanti hanno un posto in piazza.
     pub gathered: usize,
+    /// Chi è stato chiamato alla festa (da rimandare a casa alla fine).
+    guests: Vec<Entity>,
+}
+
+/// Chi si muove (abitanti e giocatore): non conta come ostacolo per un posto libero.
+pub type Movers = Or<(With<crate::entities::Npc>, With<crate::player::Player>)>;
+
+/// Il punto è libero? Niente di solido (bancarelle, lampioni, muri) in un cilindro alto quanto una
+/// persona; il suolo e chi si muove non contano. Serve anche a `side_scenes`.
+pub fn spot_is_free(
+    spatial: &SpatialQuery,
+    field: &crate::terrain::TerrainField,
+    grounds: &Query<(), With<crate::scene::Ground>>,
+    movers: &Query<(), Movers>,
+    p: Vec2,
+    radius: f32,
+) -> bool {
+    let y = field.height_at(p.x, p.y);
+    spatial
+        .shape_intersections(
+            &Collider::cylinder(radius, 1.2),
+            Vec3::new(p.x, y + 1.0, p.y),
+            Quat::IDENTITY,
+            &SpatialQueryFilter::default(),
+        )
+        .into_iter()
+        .all(|e| grounds.contains(e) || movers.contains(e))
 }
 
 /// Materiali delle lanterne: carta spenta e carta accesa.
@@ -87,7 +114,7 @@ fn lantern_evening(
     mut state: ResMut<LanternEvening>,
     mut villagers: Query<(Entity, &mut Villager)>,
     grounds: Query<(), With<crate::scene::Ground>>,
-    movers: Query<(), Or<(With<crate::entities::Npc>, With<crate::player::Player>)>>,
+    movers: Query<(), Movers>,
     mut lanterns: Query<(Entity, &mut FestLantern, &Children)>,
     mut lights: Query<&mut PointLight>,
     mut papers: Query<&mut MeshMaterial3d<StandardMaterial>>,
@@ -106,18 +133,8 @@ fn lantern_evening(
         let plaza = info.spec.plaza;
         // Libero: niente di solido (bancarelle, lampioni, muri) in un cilindro alto quanto una
         // persona; il suolo e chi si muove non contano.
-        let free = |p: Vec2, radius: f32| {
-            let y = field.height_at(p.x, p.y);
-            spatial
-                .shape_intersections(
-                    &Collider::cylinder(radius, 1.2),
-                    Vec3::new(p.x, y + 1.0, p.y),
-                    Quat::IDENTITY,
-                    &SpatialQueryFilter::default(),
-                )
-                .into_iter()
-                .all(|e| grounds.contains(e) || movers.contains(e))
-        };
+        let free =
+            |p: Vec2, radius: f32| spot_is_free(&spatial, &field, &grounds, &movers, p, radius);
         let look = look.get_or_insert_with(|| LanternLook {
             pole: materials.add(StandardMaterial {
                 base_color: Color::srgb(0.32, 0.22, 0.14),
@@ -197,16 +214,18 @@ fn lantern_evening(
             .collect();
         let mut guests: Vec<(Entity, String)> = villagers
             .iter()
-            .filter(|(_, v)| v.joins_festival())
+            .filter(|(_, v)| v.joins_festival() && v.called().is_none())
             .map(|(e, v)| (e, v.name().to_string()))
             .collect();
         guests.sort_by(|a, b| a.1.cmp(&b.1));
         let spots = ring_spots(plaza, guests.len(), |p| {
             free(p, 0.4) && lantern_spots.iter().all(|l| l.distance(p) > 0.9)
         });
+        state.guests.clear();
         for ((e, _), spot) in guests.iter().zip(spots.iter()) {
             if let Ok((_, mut v)) = villagers.get_mut(*e) {
                 v.call_to(Some(*spot));
+                state.guests.push(*e);
             }
         }
         state.gathered = spots.len().min(guests.len());
@@ -217,8 +236,11 @@ fn lantern_evening(
     } else if !want && state.on {
         state.on = false;
         state.gathered = 0;
-        for (_, mut v) in &mut villagers {
-            v.call_to(None);
+        // Solo chi era stato chiamato alla festa: gli altri posti della storia restano.
+        for e in std::mem::take(&mut state.guests) {
+            if let Ok((_, mut v)) = villagers.get_mut(e) {
+                v.call_to(None);
+            }
         }
         for (e, ..) in &lanterns {
             commands.entity(e).despawn();

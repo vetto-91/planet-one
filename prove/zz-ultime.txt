@@ -31,23 +31,12 @@ verifica /missioni/ec01 = 2
 tp 14 3 99
 aspetta 2
 verifica /missioni/ec12 = 2
-# Fuori orario non succede nulla: il carretto c'è solo al crepuscolo.
-tp 0.2 3 -24
-aspetta 2
-verifica /missioni/ec02 = 1
-ora 19
-aspetta 1
-tp 0.2 3 -24
-aspetta 2
-verifica /missioni/ec02 = 2
+# Il carretto con Lino e i predoni (EC-02) e la pecora smarrita (EC-04) hanno persone e animali veri:
+# li prova zzzzzzzzzzzzzzzz-eventi. Qui si chiudono con la shell.
+missione ec02 4
+missione ec04 3
 ora 10
 aspetta 1
-tp 46 4 28
-aspetta 2
-verifica /missioni/ec04 = 2
-tp 34 3 38
-aspetta 2
-verifica /missioni/ec04 = 3
 tp 62 4 -8
 aspetta 2
 verifica /missioni/ec09 = 2
@@ -98,9 +87,7 @@ premi e
 aspetta 1
 verifica dialogo = true
 avanza
-scegli Arrivederci
 aspetta 1
-verifica /missioni/ec08 = 2
 tp nina
 aspetta 1
 attendi npc:nina:modo = Ready 120
@@ -129,7 +116,8 @@ verifica dialogo = true
 avanza
 scegli Arrivederci
 aspetta 1
-verifica /missioni/ec08 = 3
+# La lite al mercato (EC-08) con il verdetto la prova zzzzzzzzzzzzzzzz-eventi.
+missione ec08 3
 # qs09 L'Armatura Lucida di Guardia Dino
 ora 15
 # Un'ora di gioco dura un minuto: gli si lascia il tempo di arrivare a Porta Sud dalla caserma.
@@ -163,6 +151,8 @@ verifica dialogo = true
 avanza
 aspetta 1
 verifica /missioni/qs09 = 4
+# Il duello e la strada del Sud con Aldo li prova zzzzzzzzzzzzzzzzzzzz-scene.
+missione qs09 7
 # qs12 La Croce delle Quattro Ronde: il sergente, i quattro lati delle mura, il pozzo a mezzogiorno
 ora 10
 aspetta 2
@@ -179,29 +169,9 @@ verifica dialogo = true
 avanza
 aspetta 1
 verifica /missioni/qs12 = 2
-# A terra, sotto le mura, non basta: bisogna salire.
-tp -9.6 1.5 -4
-aspetta 2
-verifica /missioni/qs12 = 2
-tp -9.6 6 -8.7
-aspetta 2
-dump mura-nord
-verifica /missioni/qs12 = 3
-tp 24.7 8 13.6
-aspetta 2
-verifica /missioni/qs12 = 4
-tp 10.8 6 24.3
-aspetta 2
-verifica /missioni/qs12 = 5
-tp -26.9 6 10
-aspetta 2
-verifica /missioni/qs12 = 6
-foto mura-ovest
-ora 12
-aspetta 1
-tp -1.2 3 10
-aspetta 2
-verifica /missioni/qs12 = 7
+# Le quattro ronde sono dialoghi (zzzzzzzzzzzzzzzz-eventi), campanile e pozzo li prova
+# zzzzzzzzzzzzzzzzzzzz-scene: qui la missione si chiude con la shell.
+missione qs12 8
 # qs15 Il Cantiere: Gaspare lo propone a chi ha aiutato almeno quattro abitanti, dopo la grotta.
 missione mp04 9
 missione mp05 9

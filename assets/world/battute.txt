@@ -47,3 +47,13 @@ dialogo: Il ponte è nostro, stanotte.
 [Lino il carrettiere]
 # EC-02, prima di parlargli per la missione.
 dialogo: La ruota è nel fango fino al mozzo.
+
+[Guardia Dino]
+# L'Armatura Lucida (QS-09): il duello fuori da Porta Sud e la difesa al tramonto.
+duello-inizio: In guardia! Piano, eh: è solo una prova.
+duello-colpo: Ahi! Bel colpo. Un'altra volta!
+duello-fine: Basta, basta! Così si impara. Adesso so dove sbaglio.
+difesa: Arrivano dal bosco! Stammi vicino, io tengo la strada!
+
+[Guardia Aldo]
+difesa: Avanti, ragazzo! Tienila, quella strada!

@@ -33,9 +33,16 @@ impl Cutscene {
         self.notices.push(text);
     }
 
-    /// La partenza dall'isola: `how` è `mare` o `profonda`.
-    pub fn start_travel(&mut self, to: Region, how: &str, karma: &crate::karma::Karma) {
-        self.lines = departure_lines(how, karma.unlocks.contains("gaspare-timoniere"));
+    /// La partenza dall'isola: `how` è `mare` o `profonda`; `farewell`: il paese è sceso al molo a
+    /// salutarti («Il Cantiere di Fontevivo» compiuto).
+    pub fn start_travel(
+        &mut self,
+        to: Region,
+        how: &str,
+        karma: &crate::karma::Karma,
+        farewell: bool,
+    ) {
+        self.lines = departure_lines(how, karma.unlocks.contains("gaspare-timoniere"), farewell);
         self.elapsed = 0.0;
         self.travel = Some(to);
         info!("[VIAGGIO] scena della partenza ({how})");
@@ -47,18 +54,30 @@ impl Cutscene {
 }
 
 /// Le righe della partenza.
-pub fn departure_lines(how: &str, helmsman: bool) -> Vec<String> {
+pub fn departure_lines(how: &str, helmsman: bool, farewell: bool) -> Vec<String> {
     let mut lines: Vec<&str> = if how == "profonda" {
-        vec![
+        let mut v = Vec::new();
+        if farewell {
+            v.push(
+                "Prima di scendere ti volti: sul molo c'è tutto il paese, con le lanterne, ad aspettare che tu sparisca.",
+            );
+        }
+        v.extend([
             "Scendi nel cunicolo con la Sfera di luce davanti a te. La lastra di pietra e rame è aperta.",
             "Oltre la soglia, una via lastricata corre sotto il mare. Lungo le pareti, i cavi della Luce Viva.",
             "Cammini per ore seguendo il filo di rame, tra colonne e segni che nessuno legge più.",
             "Poi i gradini salgono, e dall'alto cade una luce grigia di nebbia.",
-        ]
+        ]);
+        v
     } else {
         let mut v = vec![
             "Prima dell'alba la barca scivola fuori dal porticciolo. Le lanterne di Fontevivo si fanno piccole.",
         ];
+        if farewell {
+            v.push(
+                "Sul molo c'è tutto il paese: nessuno parla, ma tutti alzano una mano finché la nebbia non vi chiude.",
+            );
+        }
         v.push(if helmsman {
             "Gaspare tiene il timone: conosce le correnti dello Stretto, e i tenoni di bronzo non temono gli scogli."
         } else {
@@ -153,15 +172,28 @@ mod tests {
 
     #[test]
     fn the_departure_tells_the_way_and_the_helmsman() {
-        let sea = departure_lines("mare", true);
+        let sea = departure_lines("mare", true, false);
         assert!(sea.iter().any(|l| l.contains("Gaspare tiene il timone")));
         assert!(
-            !departure_lines("mare", false)
+            !departure_lines("mare", false, false)
                 .iter()
                 .any(|l| l.contains("tiene il timone"))
         );
-        let deep = departure_lines("profonda", true);
+        let deep = departure_lines("profonda", true, false);
         assert!(deep.iter().any(|l| l.contains("sotto il mare")));
         assert_eq!(sea.last(), deep.last());
+        // Con «Il Cantiere di Fontevivo» compiuto il paese è al molo, per tutte e due le vie.
+        for how in ["mare", "profonda"] {
+            assert!(
+                departure_lines(how, false, true)
+                    .iter()
+                    .any(|l| l.contains("tutto il paese"))
+            );
+            assert!(
+                !departure_lines(how, false, false)
+                    .iter()
+                    .any(|l| l.contains("tutto il paese"))
+            );
+        }
     }
 }

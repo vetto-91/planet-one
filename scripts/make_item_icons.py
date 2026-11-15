@@ -556,6 +556,17 @@ def gloves():
     return im
 
 
+def bracelet():
+    """Il bracciale del maestro: fascia di cuoio con placca di bronzo e un'aquila."""
+    im = layer()
+    d = ImageDraw.Draw(im)
+    d.ellipse([86, 150, 426, 380], outline=(96, 60, 30, 255), width=58)
+    d.ellipse([96, 160, 416, 370], outline=(140, 92, 48, 255), width=34)
+    d.rounded_rectangle([196, 300, 316, 400], 18, fill=(196, 140, 60, 255), outline=(120, 80, 30, 255), width=8)
+    d.polygon([(256, 318), (296, 352), (276, 352), (256, 384), (236, 352), (216, 352)], fill=(120, 80, 30, 255))
+    return im
+
+
 ICONS = {
     "spada-corta": lambda: sword(310, 58, 124),
     "spada-lunga": lambda: sword(430, 46, 150),
@@ -606,6 +617,7 @@ ICONS = {
     "lanterna-tiro": tyre_lantern,
     "mantello": cloak,
     "guanti-rame": gloves,
+    "bracciale": bracelet,
 }
 
 

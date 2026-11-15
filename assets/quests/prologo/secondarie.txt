@@ -378,8 +378,28 @@ obiettivo: Torna da Dino con la risposta
 quando: parla Guardia Dino
 > Si tocca? Per venti passi? … Allora domattina, prima del turno, ci vado. Senza corazza.
 > Grazie. Quando ci sarà bisogno, sulla porta, di te mi ricordo. Tieni: sono le mie, ma a te servono di più.
+> Però l'acqua è metà del problema. L'altra metà è la lancia: mi aspetti fuori dalla porta, per due colpi di prova? Piano, eh.
 dai: frecce 10
 monete: 8
+
+[tappa]
+obiettivo: Duello amichevole con Dino fuori da Porta Sud: tre colpi a segno, senza fargli male
+quando: sbloccato duello-dino
+pensiero: Dino para tardi e ride presto. Al terzo colpo abbassa la lancia: ha capito dove sbaglia, e anche tu.
+
+[tappa]
+obiettivo: Al tramonto, aiuta Dino a fermare i predoni sulla strada del Sud, sotto gli occhi di Aldo
+quando: sbloccato predoni-sud-vinti
+pensiero: Due predoni a terra, e Dino ancora in piedi accanto a te. Il sergente ha visto tutto.
+
+[tappa]
+obiettivo: Parla con la Guardia Aldo
+quando: parla Guardia Aldo
+> Ho visto. Il ragazzo ha tenuto la strada, e tu l'hai tenuta con lui.
+> Non glielo dirò, perché si monterebbe la testa. Ma da stasera le guardie di Fontevivo sanno chi chiamare, e chi coprire.
+fiducia: Guardia Dino 6
+fiducia: Guardia Aldo 4
+karma: 3 #aiuto hai difeso la strada del Sud con Dino
 
 [missione qs12]
 titolo: La Croce delle Quattro Ronde
@@ -421,10 +441,18 @@ quando: parla Guardia Mario
 fiducia: Guardia Mario 3
 
 [tappa]
-obiettivo: A mezzogiorno, mettiti accanto al pozzo della piazza
-quando: vicino -1.2 10 3
+obiettivo: A mezzogiorno, sali in cima al campanile della chiesa
+quando: vicino -8.8 12 3.5
+quando: sopra 8
 quando: ora 11.5 13
-pensiero: Le due linee si incrociano qui, sul pozzo. Chi ha costruito Fontevivo ha messo l'acqua esattamente al centro di una croce. E sotto, il pozzo risuona.
+pensiero: Da quassù le vedi tutte: la torre a nord e il faro, il santuario a ovest e la grotta a est. Due linee dritte, e si incrociano giù in piazza, proprio sul pozzo.
+
+[tappa]
+obiettivo: Scendi al pozzo della piazza, dove le due linee si incrociano
+quando: vicino -1.2 10 3
+quando: ora 11.5 13.5
+pensiero: Chi ha costruito Fontevivo ha messo l'acqua al centro di una croce. Batti sulla pietra: sotto il pozzo qualcosa risuona, una camera vuota. La Camera di Risonanza.
+sblocca: camera-risonanza
 monete: 20
 
 [missione qs15]
@@ -582,9 +610,33 @@ quando: parla Silvia
 > Li ho sentiti suonare da qui. Tre, senza pause. Non capita spesso.
 > C'era un re, dicono, che tornò a casa vestito da mendicante e fece passare una freccia in dodici anelli. Tu sei a un quarto della strada.
 > Tieni: frecce buone, e qualche moneta per l'incomodo.
+> E un'altra cosa. Il mio maestro, anni fa, entrò nella grotta a est e non ne uscì. Mi accompagni all'imbocco? Da sola non ci vado.
 dai: arco maestro 1
 dai: freccia 20
 monete: 25
+
+[tappa]
+obiettivo: Raggiungi Silvia all'imbocco della grotta a est
+quando: parla Silvia
+> Eccola. Lui si fermava qui, a guardare dentro, prima di ogni caccia. Diceva che la grotta respira.
+> Entra tu nella prima sala: io resto sulla soglia con l'arco. Se c'è qualcosa di suo, lo riconoscerai: bronzo e cuoio, con un'aquila incisa.
+
+[tappa]
+obiettivo: Cerca nella prima sala della grotta
+quando: vicino 90.5 21 4.5
+quando: sopra 2.4
+pensiero: Tra le pietre, accanto al vecchio fuoco: un bracciale di cuoio e bronzo, con un'aquila incisa. Il cuoio è secco, il bronzo no.
+dai: bracciale del maestro 1
+
+[tappa]
+obiettivo: Riporta il bracciale a Silvia
+quando: parla Silvia
+prendi: bracciale del maestro 1
+> È il suo. L'aquila l'aveva incisa lui, storta, la prima sera che mi insegnò a tirare.
+> Allora è arrivato fin qui, e poi è andato oltre. Verso nord, come tutti quelli che contano.
+> Ascolta, {nome}: quando partirai, nelle foreste del nord io vengo con te. Due archi vedono più lontano di uno.
+sblocca: silvia-promessa
+fiducia: Silvia 6
 
 
 [missione qs18]

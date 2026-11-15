@@ -849,36 +849,46 @@ fn holds(w: &When, f: &Facts, talked: &[(String, usize)], mission: usize) -> boo
     }
 }
 
-/// Tappe aggiunte con la v0.0.63.0 (ADR 0047, 0048): per ogni missione cambiata, la tappa nuova che
-/// corrisponde a ogni tappa vecchia (l'indice è il numero di tappe fatte, l'ultimo è «compiuta»).
-/// - mp01: la pozza e i rottami prendono il posto di «Guarda i rottami», e il nome si dice a Gaspare
-///   dopo il primo dialogo: chi gli aveva già parlato salta la tappa del nome.
-/// - mp03: Agnese viene prima della torre; mp04: le stele vengono prima del cunicolo. Chi era fermo lì
-///   fa la tappa nuova.
-const MOVED_IN_0_0_63: &[(&str, &[usize])] = &[
-    ("mp01", &[0, 2, 4, 5, 6]),
-    ("mp03", &[0, 1, 2, 3, 4, 6]),
-    ("mp04", &[0, 1, 2, 3, 5]),
+/// Tappe aggiunte nelle versioni del gioco: per i salvataggi fatti **prima** di quella versione, la
+/// tappa nuova che corrisponde a ogni tappa vecchia (l'ultimo indice è «compiuta»).
+/// - v0.0.63: mp01 ha il risveglio prima di Gaspare; mp03 ha Agnese prima della torre; mp04 ha le
+///   stele prima del cunicolo. Chi era fermo lì fa la tappa nuova.
+/// - v0.0.65: qs09 ha il duello e la difesa con Aldo dopo l'acqua; qs12 ha il campanile prima del
+///   pozzo; qs14 ha la grotta e il bracciale dopo la prova. Chi le aveva compiute resta a posto.
+const MOVES: &[([u32; 4], &str, &[usize])] = &[
+    ([0, 0, 63, 0], "mp01", &[0, 2, 4, 5, 6]),
+    ([0, 0, 63, 0], "mp03", &[0, 1, 2, 3, 4, 6]),
+    ([0, 0, 63, 0], "mp04", &[0, 1, 2, 3, 5]),
+    ([0, 0, 65, 0], "qs09", &[0, 1, 2, 6]),
+    ([0, 0, 65, 0], "qs12", &[0, 1, 2, 3, 4, 6, 7]),
+    ([0, 0, 65, 0], "qs14", &[0, 1, 2, 3, 7]),
 ];
 
-/// Riallinea la tappa salvata da una versione precedente del gioco (`vA.B.C.D`; vuota = molto
-/// vecchia). Le missioni esistono dalla v0.0.62.0: prima non c'è nulla da spostare.
-pub fn upgrade_step(game_version: &str, id: &str, step: usize) -> usize {
-    let parts: Vec<u32> = game_version
+/// La disposizione delle tappe di questa versione: un salvataggio riletto vale come questa.
+pub const STEP_LAYOUT: &str = "v0.0.65.0";
+
+fn version_parts(game_version: &str) -> Vec<u32> {
+    game_version
         .trim()
         .trim_start_matches('v')
         .split('.')
         .map(|p| p.parse().unwrap_or(0))
-        .collect();
-    let older = parts.as_slice() < [0, 0, 63, 0].as_slice();
-    if !older {
-        return step;
-    }
-    MOVED_IN_0_0_63
+        .collect()
+}
+
+/// Il salvataggio ha le tappe di una versione più vecchia di `STEP_LAYOUT`?
+pub fn older_layout(game_version: &str) -> bool {
+    version_parts(game_version) < version_parts(STEP_LAYOUT)
+}
+
+/// Riallinea la tappa salvata da una versione precedente del gioco (`vA.B.C.D`; vuota = molto
+/// vecchia), passando per ogni versione che ha aggiunto tappe. Le missioni esistono dalla v0.0.62.0.
+pub fn upgrade_step(game_version: &str, id: &str, step: usize) -> usize {
+    let saved = version_parts(game_version);
+    MOVES
         .iter()
-        .find(|(m, _)| *m == id)
-        .map(|(_, map)| map.get(step).copied().unwrap_or(step))
-        .unwrap_or(step)
+        .filter(|(since, m, _)| *m == id && saved.as_slice() < since.as_slice())
+        .fold(step, |s, (_, _, map)| map.get(s).copied().unwrap_or(s))
 }
 
 /// I doni della Sera delle Lanterne: chi ti aveva affidato una missione secondaria compiuta ti
@@ -1043,7 +1053,10 @@ pub fn track_missions(
                         format!("Doni da chi hai aiutato: {}", givers.join(", "))
                     });
                 }
-                Effect::Travel(region, how) => cutscene.start_travel(*region, how, &karma),
+                Effect::Travel(region, how) => {
+                    let farewell = missions.done("qs15");
+                    cutscene.start_travel(*region, how, &karma, farewell);
+                }
                 other => apply_effect(other, &mut inventory, &mut character),
             }
         }
