@@ -5,7 +5,7 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 ## v0.0.65.0 — Isola, Prologo e traversata completi: ricompense, scene, eventi, l'approdo e le rifiniture (2026-11-15)
 
 - **Cinque luoghi nuovi sulla mappa** (ADR 0055): il Faro, il Porticciolo, il Laghetto, il Ponte sul ruscello e il Poggio del Naufrago si scoprono avvicinandosi e poi si raggiungono col viaggio veloce.
-- **La legnaia e la porticina**: vicino alla casa di Beppe c'è una legnaia con le cataste e una scaletta, e nelle mura ovest una piccola porta. La sera Pietro ci va di nascosto: seguilo senza farti vedere e ne scoprirai il segreto.
+- **La legnaia e la porticina**: dietro la chiesa, contro le mura a sud-ovest, c'è una legnaia con le cataste e una scaletta, e nel muro una piccola porta. La sera Pietro ci va di nascosto: seguilo senza farti vedere e ne scoprirai il segreto.
 - **Apnea dei Pescatori di Perle**, il talento attivo del Nuoto: in acqua profonda, tenendo premuto Ctrl, ti immergi fino al fondale. Il fiato è contato (una barra compare sopra la vita) e al largo della spiaggia del relitto c'è una cassa sommersa da aprire.
 - **Le carte nelle tasche**: con le Dita di Mercurio, insieme alle monete, sfili anche il biglietto di Gino per Marta, il profilo di cuoio della Guardia Gino o il taccuino di poesie della Guardia Mario. Leggerli ne rivela il segreto.
 - **Si parte d'estate**: l'ultima missione del Prologo porta il calendario al 21 giugno, come vuole la trama.
