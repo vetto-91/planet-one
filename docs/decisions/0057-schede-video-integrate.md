@@ -18,10 +18,13 @@ Vincoli:
 - con le impostazioni di oggi, una scheda dedicata vede la stessa grafica;
 - FPS, RAM e VRAM sulla RTX 3080 Ti non peggiorano rispetto all'ADR 0056.
 
-Sulla macchina di prova (Core Ultra 9 285K) l'Arc integrata (8086:7d67) non è riconosciuta da Mesa 23:
-serve Mesa 24.1 o più recente. Il caso peggiore si è quindi simulato con **llvmpipe**, il rendering
-Vulkan sulla CPU (`WGPU_ADAPTER_NAME=llvmpipe`, tipo di scheda `Cpu`), senza toccare i driver. AMD non è
-provabile qui.
+Sulla macchina di prova (Core Ultra 9 285K) si è misurato su due schede:
+- l'**Arc integrata** «Intel(R) Graphics (ARL)», con Mesa 25.0.7 (il driver Intel open source), scelta
+  con `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/intel_icd.x86_64.json`;
+- **llvmpipe**, il rendering Vulkan sulla CPU (`WGPU_ADAPTER_NAME=llvmpipe`, tipo di scheda `Cpu`), come
+  caso peggiore.
+
+AMD non è provabile qui.
 
 ## Decisione
 - **Riconoscimento della scheda** (`graphics::pick_preset_for_adapter`, in `PreStartup`):
@@ -68,6 +71,30 @@ provabile qui.
 - Le foto fuori soglia sono le stesse cinque note dall'ADR 0056: tre della piazza in `giro-camera`, la
   spiaggia del risveglio e la fonte sotto la quercia.
 
+**Arc integrata (Intel Graphics ARL, Mesa 25.0.7), copioni `fps`, `giro` e `meteo`**, ogni corsa con la
+sua cartella dati (FPS medio / 1% peggiore):
+| Copione | Alta, 720p | Integrata (scelta da sola), 720p | Alta, 1080p | Integrata, 1080p |
+|---|---|---|---|---|
+| `fps` | si chiude (segfault) | 90 / 38 | si chiude (segfault) | 80 / 3 |
+| `giro` | 20 / 6 | 76 / 38 | si chiude (segfault) | 99 / 37 |
+| `meteo` | 45 / 3 | 71 / 35 | 45 / 2 | 81 / 4 |
+| RAM massima | 5263–6826 MB | 1112–1215 MB | 5246–6054 MB | 1126–1206 MB |
+
+- Il rilevamento funziona: `Intel(R) Graphics (ARL) (IntegratedGpu) → preset Integrata`.
+- Con Alta il gioco si chiude per un errore di segmentazione nel driver in 3 corse su 6; con Integrata
+  mai, nelle 6 corse e nelle prove a parte.
+- Su una scheda integrata la memoria video sta nella RAM di sistema. Con Alta il processo arriva a 5–7 GB,
+  con Integrata a 1,1–1,2 GB.
+- Con Integrata gli FPS medi sono 4–5 volte quelli di Alta, e sul HUD delle foto si legge 80–100 contro
+  18–30. Il preset non va quindi ritoccato.
+- **Il 1% peggiore senza finestra non è affidabile sull'Arc.** I copioni girano senza finestra: la camera
+  disegna in un'immagine, senza sincronia verticale. Sull'Arc la coda della GPU si riempie e circa quattro
+  volte al secondo un fotogramma aspetta 150–250 ms. Lo stesso copione di prova con la finestra vera non ha
+  nessun fotogramma lento. Il medio misura il lavoro davvero fatto; i 3–4 del 1% a 1080p vengono da queste
+  attese.
+- Le ombre dei personaggi al sole mancano con Integrata, come già con Bassa anche sulla RTX: è il
+  comportamento delle ombre leggere, non del driver.
+
 **llvmpipe, copione `fps` a 1280x720** (rendering sulla CPU, 24 core):
 | Misura | Alta (prima) | Integrata, scelta da sola |
 |---|---|---|
@@ -77,17 +104,19 @@ provabile qui.
 
 - llvmpipe è troppo lento per misurare gli FPS: con nessuno dei due preset arriva ai 120 fotogrammi che il
   pilota aspetta prima del primo comando.
-- Il rilevamento e la RAM sono provati, la fluidità no: va misurata su una scheda integrata vera.
+- Su llvmpipe il rilevamento e la RAM sono provati, la fluidità no; la fluidità è misurata sull'Arc.
 
 ## Conseguenze
 - Su una scheda dedicata non cambia nulla: stesso preset, stesse foto, stesse prestazioni.
 - Un giocatore con una scheda integrata al primo avvio parte dal preset leggero, e dal menu Esc può
   sempre alzarlo.
 - Dopo un cambio delle texture PBR va rilanciato `scripts/make_half_textures.py`.
-- Restano da misurare, sulla macchina vera:
-  - l'Arc integrata con Mesa 24.1 o più recente;
+- Restano da misurare:
   - una Radeon integrata AMD;
-  - con le schede vere vanno rivisti i valori del preset (cascata, distanza dell'erba).
+  - l'Arc con la finestra vera, per il 1% peggiore;
+  - su Windows, con il driver Intel ufficiale.
+- Sull'Arc ci sono margini per alzare un po' il preset (per esempio SMAA o ombre più grandi), ma non è stato
+  fatto: va deciso guardando il gioco con la finestra.
 - Scartati:
   - **scala di rendering** (disegnare a 75% o 50% e ingrandire): bevy_egui 0.43 aggancia l'interfaccia
     alla prima camera, quindi spostare la scena su un'immagine intermedia avrebbe cambiato camera a egui.
