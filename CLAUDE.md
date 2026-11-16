@@ -61,7 +61,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 - `src/figure.rs`: personaggi glTF CC0 con scheletro comune in `assets/models/characters/` (composti da `scripts/build_characters.py` partendo da `assets_src/`, non in git), clip di riposo e oggetti agganciati alle ossa delle mani (ADR 0015).
 - `src/pbr.rs`: materiali PBR condivisi (texture CC0 Poly Haven in `assets/textures/pbr/`, `scripts/fetch_pbr_textures.py`); `src/trees.rs`: abeti con corteccia e rami a carte (ADR 0016).
 - `src/par.rs`: calcolo in parallelo deterministico (`par::map`, `par::collect`) per la generazione all'avvio; mesh e texture solo GPU con `pbr::gpu_only`/`pbr::load_gpu` (ADR 0056).
-- `src/graphics.rs`: impostazioni grafiche del menu Esc (`GfxOptions` in `AudioSettings`), applicate a camera, sole e particelle.
+- `src/graphics.rs`: impostazioni grafiche del menu Esc (`GfxOptions` in `AudioSettings`), applicate a camera, sole e particelle; preset «Integrata» scelto da solo sulle schede integrate e su llvmpipe, se la grafica non è mai stata scelta (ADR 0057); texture ridotte in `assets/textures/pbr/half/` da `scripts/make_half_textures.py`.
 - `src/animation.rs`: macchina a stati delle animazioni per tutti i personaggi, velocità misurata dallo spostamento (ADR 0017).
 - `src/nature.rs`: boschi, cespugli, rocce, fiori ed erba a riquadri, da `assets/world/isola.txt` (ADR 0027).
 - `src/ambience.rs`: suoni d'ambiente e passi per superficie, sintetizzati in locale (ADR 0028); `src/animals.rs`: mucche, pecore, galline, gabbiani, uccelli, pesci, farfalle, dati in `assets/world/isola.txt`; modelli da `scripts/build_animals_trees.py` (Blender) partendo da `assets_src/`.

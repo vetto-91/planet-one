@@ -82,3 +82,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0054 | La traversata e l'arrivo all'Approdo delle Brume | accettato |
 | 0055 | Le rifiniture dell'isola | accettato |
 | 0056 | Ottimizzazione del codice | accettato |
+| 0057 | Schede video integrate | accettato |

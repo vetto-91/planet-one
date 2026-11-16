@@ -4,6 +4,10 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 ## Non rilasciato
 
+- **Schede video integrate** (ADR 0057):
+  - al primo avvio su una scheda integrata Intel o AMD, o senza scheda video, il gioco sceglie da solo il preset grafico **Integrata**: ombre minime, niente effetti, meno erba e texture a metà risoluzione;
+  - chi ha già scelto la grafica dal menu la ritrova com'era, e su una scheda dedicata non cambia nulla;
+  - nel menu Esc → Grafica ci sono il preset nuovo, le ombre di stufa, lumi e lanterne, la distanza di erba e fiori e le texture ridotte.
 - **Gioco più leggero** (ADR 0056), senza cambiare nulla di quello che si vede e si gioca. Sui 53 copioni di prova:
   - circa il 19% di fotogrammi al secondo in più in media (da 46 a 55);
   - il copione più pesante passa da 21 a 29;
