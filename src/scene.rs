@@ -41,7 +41,15 @@ pub fn spawn_camera(
     asset_server: Res<AssetServer>,
 ) {
     // Panoramica del cielo: convertita in cubemap da `sky::apply_sky_texture`.
-    commands.insert_resource(sky::SkyTexture(asset_server.load("textures/sky.png")));
+    // La panoramica si legge solo sulla CPU (diventa la cubemap): non va caricata sulla GPU.
+    commands.insert_resource(sky::SkyTexture(
+        asset_server
+            .load_builder()
+            .with_settings(|s: &mut bevy::image::ImageLoaderSettings| {
+                s.asset_usage = bevy::asset::RenderAssetUsages::MAIN_WORLD;
+            })
+            .load("textures/sky.png"),
+    ));
     // Cielo: cubemap procedurale generata a runtime (senza asset HDRI).
     let skybox = images.add(sky::gradient_skybox());
 

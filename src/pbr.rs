@@ -3,6 +3,7 @@
 //! Ogni materiale ha colore, normal (convenzione OpenGL) e una mappa ARM (occlusione, ruvidità, metallo).
 //! Le UV degli edifici sono in metri: `scale_m` dice quanti metri copre una ripetizione della texture.
 
+use bevy::asset::RenderAssetUsages;
 use bevy::image::{
     ImageAddressMode, ImageFilterMode, ImageLoaderSettings, ImageSampler, ImageSamplerDescriptor,
 };
@@ -56,6 +57,8 @@ pub fn load_tex(server: &AssetServer, path: String, srgb: bool) -> Handle<Image>
         .load_builder()
         .with_settings(move |s: &mut ImageLoaderSettings| {
             s.is_srgb = srgb;
+            // Solo sulla GPU: nessuno rilegge queste texture, la copia in RAM era sprecata (ADR 0056).
+            s.asset_usage = RenderAssetUsages::RENDER_WORLD;
             s.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
                 address_mode_u: ImageAddressMode::Repeat,
                 address_mode_v: ImageAddressMode::Repeat,
@@ -67,6 +70,22 @@ pub fn load_tex(server: &AssetServer, path: String, srgb: bool) -> Handle<Image>
             });
         })
         .load(path)
+}
+
+/// Carica una texture con il campionatore predefinito, solo sulla GPU (ADR 0056).
+pub fn load_gpu(server: &AssetServer, path: impl Into<String>) -> Handle<Image> {
+    server
+        .load_builder()
+        .with_settings(|s: &mut ImageLoaderSettings| {
+            s.asset_usage = RenderAssetUsages::RENDER_WORLD;
+        })
+        .load(path.into())
+}
+
+/// Mesh solo per la GPU: grandi mesh generate che nessuno rilegge (ADR 0056).
+pub fn gpu_only(mut mesh: Mesh) -> Mesh {
+    mesh.asset_usage = RenderAssetUsages::RENDER_WORLD;
+    mesh
 }
 
 /// Mesh di una primitiva con le tangenti, necessarie alle normal map.

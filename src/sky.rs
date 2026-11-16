@@ -184,8 +184,9 @@ pub fn equirect_to_cubemap(src: &Image) -> Option<Image> {
         return None;
     }
     let n = SKY_FACE_SIZE;
-    let mut out = Vec::with_capacity((n * n * 6 * 4) as usize);
-    for face in 0..6 {
+    // Le sei facce sono indipendenti: si calcolano in parallelo (ADR 0056).
+    let faces = crate::par::map(6, |face| {
+        let mut out = Vec::with_capacity((n * n * 4) as usize);
         for y in 0..n {
             let v = (y as f32 + 0.5) / n as f32 * 2.0 - 1.0;
             for x in 0..n {
@@ -205,7 +206,9 @@ pub fn equirect_to_cubemap(src: &Image) -> Option<Image> {
                 out.extend_from_slice(&[c[0] as u8, c[1] as u8, c[2] as u8, 255]);
             }
         }
-    }
+        out
+    });
+    let out: Vec<u8> = faces.concat();
     let mut image = Image::new(
         Extent3d {
             width: n,
@@ -215,7 +218,8 @@ pub fn equirect_to_cubemap(src: &Image) -> Option<Image> {
         TextureDimension::D2,
         out,
         TextureFormat::Rgba8Unorm,
-        RenderAssetUsages::default(),
+        // Serve solo alla GPU: nessuna copia in RAM (ADR 0056).
+        RenderAssetUsages::RENDER_WORLD,
     );
     image.texture_view_descriptor = Some(TextureViewDescriptor {
         dimension: Some(TextureViewDimension::Cube),
@@ -241,7 +245,10 @@ pub fn apply_sky_texture(
         return;
     };
     *done = true;
-    let Some(cube) = equirect_to_cubemap(src) else {
+    let cube = equirect_to_cubemap(src);
+    // La panoramica serve solo a questa conversione: lasciarla libera la RAM (ADR 0056).
+    commands.remove_resource::<SkyTexture>();
+    let Some(cube) = cube else {
         warn!("[SKY] formato della panoramica non supportato: resta il gradiente");
         return;
     };

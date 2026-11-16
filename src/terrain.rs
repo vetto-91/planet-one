@@ -430,7 +430,9 @@ pub fn update_terrain(
         lake: water.0.lake,
     });
 
-    let mesh_handle = meshes.add(mesh);
+    // Terreno e strati vivono solo sulla GPU: le quote si leggono da `TerrainField` (ADR 0056).
+    let gpu = crate::pbr::gpu_only;
+    let mesh_handle = meshes.add(gpu(mesh));
     assets.built_mesh = Some(mesh_handle.clone());
 
     for e in &extras {
@@ -440,7 +442,7 @@ pub fn update_terrain(
         SceneNode,
         TerrainExtra,
         crate::seasons::SeasonGround { sand: true },
-        Mesh3d(meshes.add(sand_mesh)),
+        Mesh3d(meshes.add(gpu(sand_mesh))),
         MeshMaterial3d(materials.add(StandardMaterial {
             alpha_mode: AlphaMode::Blend,
             depth_bias: 0.5,
@@ -452,7 +454,7 @@ pub fn update_terrain(
     commands.spawn((
         SceneNode,
         TerrainExtra,
-        Mesh3d(meshes.add(road_mesh)),
+        Mesh3d(meshes.add(gpu(road_mesh))),
         MeshMaterial3d(materials.add(StandardMaterial {
             alpha_mode: AlphaMode::Blend,
             depth_bias: 1.5,
@@ -466,7 +468,7 @@ pub fn update_terrain(
         SceneNode,
         TerrainExtra,
         crate::seasons::SeasonSnowGround,
-        Mesh3d(meshes.add(snow_mesh)),
+        Mesh3d(meshes.add(gpu(snow_mesh))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: Color::srgba(0.93, 0.96, 1.0, 0.0),
             emissive: LinearRgba::rgb(0.22, 0.24, 0.27),
@@ -483,7 +485,7 @@ pub fn update_terrain(
     commands.spawn((
         SceneNode,
         TerrainExtra,
-        Mesh3d(meshes.add(dirt_mesh)),
+        Mesh3d(meshes.add(gpu(dirt_mesh))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: Color::srgb(0.62, 0.48, 0.34),
             alpha_mode: AlphaMode::Blend,
@@ -496,7 +498,7 @@ pub fn update_terrain(
     commands.spawn((
         SceneNode,
         TerrainExtra,
-        Mesh3d(meshes.add(rock_mesh)),
+        Mesh3d(meshes.add(gpu(rock_mesh))),
         MeshMaterial3d(materials.add(StandardMaterial {
             alpha_mode: AlphaMode::Blend,
             depth_bias: 0.8,
@@ -506,12 +508,15 @@ pub fn update_terrain(
         bevy::light::NotShadowCaster,
     ));
     // Mare, ruscello e schiuma condividono la stessa mappa delle onde.
-    let waves = images.add(crate::water::wave_normals(256));
+    let mut wave_map = crate::water::wave_normals(256);
+    // La mappa delle onde serve solo alla GPU (ADR 0056).
+    wave_map.asset_usage = bevy::asset::RenderAssetUsages::RENDER_WORLD;
+    let waves = images.add(wave_map);
     commands.spawn((
         SceneNode,
         TerrainExtra,
         crate::water::SeaSurface,
-        Mesh3d(meshes.add(sea_mesh)),
+        Mesh3d(meshes.add(gpu(sea_mesh))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: Color::srgba(0.05, 0.22, 0.33, 0.86),
             reflectance: 0.6,
@@ -530,7 +535,7 @@ pub fn update_terrain(
         SceneNode,
         TerrainExtra,
         crate::water::StreamSurface,
-        Mesh3d(meshes.add(crate::water::water_mesh(&water.0))),
+        Mesh3d(meshes.add(gpu(crate::water::water_mesh(&water.0)))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: Color::srgba(0.1, 0.3, 0.36, 0.78),
             // Liscia e opaca di luce: con superficie lucida e normali fitte il sole fa brillantini.
@@ -548,7 +553,7 @@ pub fn update_terrain(
         SceneNode,
         TerrainExtra,
         crate::water::ShoreFoam,
-        Mesh3d(meshes.add(foam_mesh)),
+        Mesh3d(meshes.add(gpu(foam_mesh))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: Color::srgba(0.95, 0.97, 1.0, 0.6),
             alpha_mode: AlphaMode::Blend,
@@ -564,6 +569,8 @@ pub fn update_terrain(
     // Ponti sul ruscello: tavolato arcuato da sponda a sponda.
     let planks = pbr.get(crate::pbr::Mat::Planks);
     let ground_at = |p: Vec2| field_height(&field, p);
+    // Il palo è uguale per tutti i ponti: una sola mesh condivisa.
+    let post = meshes.add(crate::pbr::with_tangents(Cuboid::new(0.09, 0.8, 0.09)));
     for (a, b) in &island.bridges {
         let (a3, b3) = (
             Vec3::new(a.x, ground_at(*a) + 0.1, a.y),
@@ -589,7 +596,6 @@ pub fn update_terrain(
                 0.08,
                 length + 0.05,
             )));
-            let post = meshes.add(crate::pbr::with_tangents(Cuboid::new(0.09, 0.8, 0.09)));
             commands.entity(root).with_children(|c| {
                 c.spawn((
                     Ground,
@@ -876,18 +882,19 @@ fn build_field(
     island: &crate::water::IslandSpec,
 ) -> (Field, (crate::water::WaterPlan, Vec<bool>)) {
     let n = (size() / step()) as usize + 1;
-    let mut h = Vec::with_capacity(n * n);
-    for iz in 0..n {
-        for ix in 0..n {
-            let x = -size() / 2.0 + ix as f32 * step();
-            let z = -size() / 2.0 + iz as f32 * step();
-            h.push(if island.coast.is_some() {
-                continent_height(x, z, island, &village.poly)
-            } else {
-                island_height(image, x, z, island, &village.poly)
-            });
+    // Ogni vertice dipende solo dalla sua posizione: si calcolano su tutti i core (ADR 0056).
+    // Misura e passo si leggono qui, sul thread che costruisce la regione.
+    let (origin, st) = (-size() / 2.0, step());
+    let mut h = crate::par::collect(n * n, |i| {
+        let (ix, iz) = (i % n, i / n);
+        let x = origin + ix as f32 * st;
+        let z = origin + iz as f32 * st;
+        if island.coast.is_some() {
+            continent_height(x, z, island, &village.poly)
+        } else {
+            island_height(image, x, z, island, &village.poly)
         }
-    }
+    });
     flatten_village(&mut h, n, &village.poly);
     // Il ruscello scende sul terreno già definitivo e scava solo fuori dal paese.
     let field = Field { n, h };
@@ -909,35 +916,33 @@ fn field_height(field: &Field, p: Vec2) -> f32 {
 /// Peso della roccia: dove il terreno è ripido.
 fn rock_weights(field: &Field) -> Vec<f32> {
     let n = field.n;
-    (0..n * n)
-        .map(|i| {
-            let (x, z) = (i % n, i / n);
-            let dx = field.at((x + 1).min(n - 1), z) - field.at(x.saturating_sub(1), z);
-            let dz = field.at(x, (z + 1).min(n - 1)) - field.at(x, z.saturating_sub(1));
-            let slope = (dx * dx + dz * dz).sqrt() / (2.0 * step());
-            smooth(0.55, 0.95, slope)
-        })
-        .collect()
+    let st = step();
+    crate::par::collect(n * n, |i| {
+        let (x, z) = (i % n, i / n);
+        let dx = field.at((x + 1).min(n - 1), z) - field.at(x.saturating_sub(1), z);
+        let dz = field.at(x, (z + 1).min(n - 1)) - field.at(x, z.saturating_sub(1));
+        let slope = (dx * dx + dz * dz).sqrt() / (2.0 * st);
+        smooth(0.55, 0.95, slope)
+    })
 }
 
 /// Oltre il ciglio delle scogliere non si passa: nessuno resta incastrato ai piedi della parete.
 fn cliff_fence(field: &Field, island: &crate::water::IslandSpec) -> Vec<bool> {
     let n = field.n;
-    (0..n * n)
-        .map(|i| {
-            let x = -size() / 2.0 + (i % n) as f32 * step();
-            let z = -size() / 2.0 + (i / n) as f32 * step();
-            // Terraferma: il recinto è il confine percorribile (a ovest, a est e a nord).
-            if island.coast.is_some() {
-                return island
-                    .bounds
-                    .is_some_and(|(xb, zb)| x.abs() > xb + 6.0 || z < -zb - 6.0);
-            }
-            let angle = z.atan2(x);
-            let m = (x * x + z * z).sqrt() / island_radius(angle);
-            island.cliff_at(angle).0 > 0.5 && m > 0.925
-        })
-        .collect()
+    let (origin, st) = (-size() / 2.0, step());
+    crate::par::collect(n * n, |i| {
+        let x = origin + (i % n) as f32 * st;
+        let z = origin + (i / n) as f32 * st;
+        // Terraferma: il recinto è il confine percorribile (a ovest, a est e a nord).
+        if island.coast.is_some() {
+            return island
+                .bounds
+                .is_some_and(|(xb, zb)| x.abs() > xb + 6.0 || z < -zb - 6.0);
+        }
+        let angle = z.atan2(x);
+        let m = (x * x + z * z).sqrt() / island_radius(angle);
+        island.cliff_at(angle).0 > 0.5 && m > 0.925
+    })
 }
 
 /// Schiuma: una striscia sul mare lungo la riva, alta sul livello dell'acqua.
@@ -1160,26 +1165,23 @@ fn build_terrain_mesh(field: &Field) -> Mesh {
 /// nascondono la ripetizione della texture.
 fn add_ground_detail(mesh: &mut Mesh, field: &Field) {
     let n = field.n;
-    let tangents: Vec<[f32; 4]> = (0..n * n)
-        .map(|i| {
-            let x = i % n;
-            let z = i / n;
-            let left = field.h[z * n + x.saturating_sub(1)];
-            let right = field.h[z * n + (x + 1).min(n - 1)];
-            let t = Vec3::new(2.0 * step(), right - left, 0.0).normalize();
-            [t.x, t.y, t.z, TANGENT_W]
-        })
-        .collect();
+    let st = step();
+    let tangents: Vec<[f32; 4]> = crate::par::collect(n * n, |i| {
+        let x = i % n;
+        let z = i / n;
+        let left = field.h[z * n + x.saturating_sub(1)];
+        let right = field.h[z * n + (x + 1).min(n - 1)];
+        let t = Vec3::new(2.0 * st, right - left, 0.0).normalize();
+        [t.x, t.y, t.z, TANGENT_W]
+    });
     mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, tangents);
-    let colors: Vec<[f32; 4]> = (0..n * n)
-        .map(|i| {
-            let (x, z) = ((i % n) as f32 * step(), (i / n) as f32 * step());
-            let low = (x * 0.041).sin() * (z * 0.033).cos() + (x * 0.013 + z * 0.021).sin();
-            let high = (x * 0.31 + 1.3).sin() * (z * 0.27).cos();
-            let k = 1.0 + low * 0.12 + high * 0.04;
-            [k * 0.97, k * (1.04 + 0.05 * high), k * 0.92, 1.0]
-        })
-        .collect();
+    let colors: Vec<[f32; 4]> = crate::par::collect(n * n, |i| {
+        let (x, z) = ((i % n) as f32 * st, (i / n) as f32 * st);
+        let low = (x * 0.041).sin() * (z * 0.033).cos() + (x * 0.013 + z * 0.021).sin();
+        let high = (x * 0.31 + 1.3).sin() * (z * 0.27).cos();
+        let k = 1.0 + low * 0.12 + high * 0.04;
+        [k * 0.97, k * (1.04 + 0.05 * high), k * 0.92, 1.0]
+    });
     mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
 }
 
@@ -1292,22 +1294,18 @@ fn sand_weights(field: &Field, ocean: &[bool]) -> Vec<f32> {
             visit(i + n);
         }
     }
-    (0..n * n)
-        .map(|i| {
-            if dist[i] == u16::MAX {
-                return 0.0;
-            }
-            let (x, z) = (
-                -size() / 2.0 + (i % n) as f32 * step(),
-                -size() / 2.0 + (i / n) as f32 * step(),
-            );
-            // Bordo irregolare: la distanza è modulata da rumore.
-            let d = dist[i] as f32 * step() + (noise2(x * 0.09 + 5.0, z * 0.09 + 9.0) - 0.5) * 7.0;
-            let by_dist = 1.0 - smooth(9.0, 23.0, d);
-            let by_height = 1.0 - smooth(SEA_LEVEL + 3.0, SEA_LEVEL + 5.5, field.h[i]);
-            by_dist * by_height
-        })
-        .collect()
+    let (origin, st) = (-size() / 2.0, step());
+    crate::par::collect(n * n, |i| {
+        if dist[i] == u16::MAX {
+            return 0.0;
+        }
+        let (x, z) = (origin + (i % n) as f32 * st, origin + (i / n) as f32 * st);
+        // Bordo irregolare: la distanza è modulata da rumore.
+        let d = dist[i] as f32 * st + (noise2(x * 0.09 + 5.0, z * 0.09 + 9.0) - 0.5) * 7.0;
+        let by_dist = 1.0 - smooth(9.0, 23.0, d);
+        let by_height = 1.0 - smooth(SEA_LEVEL + 3.0, SEA_LEVEL + 5.5, field.h[i]);
+        by_dist * by_height
+    })
 }
 
 /// Peso della neve per vertice: a chiazze, non sul mare, ridotta su sabbia e strade.
@@ -1326,19 +1324,91 @@ fn snow_weights(field: &Field, ocean: &[bool], sand_w: &[f32], road_w: &[f32]) -
 }
 
 /// Mesh della sabbia: gli stessi vertici del terreno, solo i triangoli con sabbia, alfa = peso.
+///
+/// Tiene solo i vertici usati dai triangoli rimasti (prima ogni strato copiava l'intera griglia
+/// del terreno): stessi triangoli, nello stesso ordine, con gli stessi valori.
 fn build_sand_mesh(terrain: &Mesh, weights: &[f32]) -> Mesh {
-    let mut mesh = terrain.clone();
-    let colors: Vec<[f32; 4]> = weights.iter().map(|w| [1.0, 1.0, 1.0, *w]).collect();
-    mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
-    if let Some(Indices::U32(idx)) = terrain.indices() {
-        let mut keep: Vec<u32> = Vec::new();
-        for t in idx.as_chunks::<3>().0 {
-            if t.iter().any(|v| weights[*v as usize] > 0.02) {
-                keep.extend_from_slice(&t[..]);
+    // Strato vuoto o senza indici: come prima, la griglia intera senza triangoli.
+    let whole = |keep: Vec<u32>| {
+        let mut mesh = terrain.clone();
+        let colors: Vec<[f32; 4]> = weights.iter().map(|w| [1.0, 1.0, 1.0, *w]).collect();
+        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
+        if terrain.indices().is_some() {
+            mesh.insert_indices(Indices::U32(keep));
+        }
+        mesh
+    };
+    let Some(Indices::U32(idx)) = terrain.indices() else {
+        return whole(Vec::new());
+    };
+    // Vertici tenuti, nell'ordine in cui i triangoli li incontrano.
+    let mut remap = vec![u32::MAX; weights.len()];
+    let mut used: Vec<u32> = Vec::new();
+    let mut keep: Vec<u32> = Vec::new();
+    for t in idx.as_chunks::<3>().0 {
+        if t.iter().any(|v| weights[*v as usize] > 0.02) {
+            for &v in t {
+                let slot = &mut remap[v as usize];
+                if *slot == u32::MAX {
+                    *slot = used.len() as u32;
+                    used.push(v);
+                }
+                keep.push(*slot);
             }
         }
-        mesh.insert_indices(Indices::U32(keep));
     }
+    if keep.is_empty() {
+        return whole(keep);
+    }
+    // Bevy ordina le superfici trasparenti dal centro del riquadro della mesh, calcolato su tutti
+    // i vertici: i vertici estremi della griglia restano (senza triangoli), così il riquadro e
+    // l'ordine di disegno fra mare, schiuma e strati sono quelli di prima.
+    if let Some(VertexAttributeValues::Float32x3(p)) = terrain.attribute(Mesh::ATTRIBUTE_POSITION) {
+        for axis in 0..3 {
+            let by_axis =
+                |a: &(usize, &[f32; 3]), b: &(usize, &[f32; 3])| a.1[axis].total_cmp(&b.1[axis]);
+            for (i, _) in [
+                p.iter().enumerate().min_by(by_axis),
+                p.iter().enumerate().max_by(by_axis),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                used.push(i as u32);
+            }
+        }
+    }
+    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList, terrain.asset_usage);
+    for attr in [
+        Mesh::ATTRIBUTE_POSITION,
+        Mesh::ATTRIBUTE_NORMAL,
+        Mesh::ATTRIBUTE_UV_0,
+        Mesh::ATTRIBUTE_TANGENT,
+    ] {
+        let gather = |src: &VertexAttributeValues| -> Option<VertexAttributeValues> {
+            Some(match src {
+                VertexAttributeValues::Float32x2(v) => {
+                    VertexAttributeValues::Float32x2(used.iter().map(|&i| v[i as usize]).collect())
+                }
+                VertexAttributeValues::Float32x3(v) => {
+                    VertexAttributeValues::Float32x3(used.iter().map(|&i| v[i as usize]).collect())
+                }
+                VertexAttributeValues::Float32x4(v) => {
+                    VertexAttributeValues::Float32x4(used.iter().map(|&i| v[i as usize]).collect())
+                }
+                _ => return None,
+            })
+        };
+        if let Some(values) = terrain.attribute(attr).and_then(gather) {
+            mesh.insert_attribute(attr, values);
+        }
+    }
+    let colors: Vec<[f32; 4]> = used
+        .iter()
+        .map(|&i| [1.0, 1.0, 1.0, weights[i as usize]])
+        .collect();
+    mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
+    mesh.insert_indices(Indices::U32(keep));
     mesh
 }
 
@@ -1477,6 +1547,105 @@ mod tests {
         let spec = crate::water::load_spec();
         crate::region::set(crate::region::Region::Isola);
         spec
+    }
+
+    /// I triangoli di una mesh espansi con tutti i loro attributi, per confrontare due mesh.
+    fn expanded(mesh: &Mesh) -> Vec<Vec<u32>> {
+        let Some(Indices::U32(idx)) = mesh.indices() else {
+            panic!("indici attesi");
+        };
+        let attr = |a| match mesh.attribute(a) {
+            Some(VertexAttributeValues::Float32x2(v)) => {
+                v.iter().map(|x| x.map(f32::to_bits).to_vec()).collect()
+            }
+            Some(VertexAttributeValues::Float32x3(v)) => {
+                v.iter().map(|x| x.map(f32::to_bits).to_vec()).collect()
+            }
+            Some(VertexAttributeValues::Float32x4(v)) => {
+                v.iter().map(|x| x.map(f32::to_bits).to_vec()).collect()
+            }
+            _ => Vec::<Vec<u32>>::new(),
+        };
+        let all = [
+            attr(Mesh::ATTRIBUTE_POSITION),
+            attr(Mesh::ATTRIBUTE_NORMAL),
+            attr(Mesh::ATTRIBUTE_UV_0),
+            attr(Mesh::ATTRIBUTE_TANGENT),
+            attr(Mesh::ATTRIBUTE_COLOR),
+        ];
+        idx.iter()
+            .map(|&i| {
+                all.iter()
+                    .flat_map(|a| a[i as usize].iter().copied())
+                    .collect()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn compact_overlay_draws_the_same_triangles() {
+        let n = 21usize;
+        let mut mesh = Plane3d::default()
+            .mesh()
+            .subdivisions_x(n as u32 - 2)
+            .subdivisions_z(n as u32 - 2)
+            .build();
+        if let Some(VertexAttributeValues::Float32x3(p)) =
+            mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION)
+        {
+            for (i, v) in p.iter_mut().enumerate() {
+                v[1] = (i as f32 * 0.3).sin();
+            }
+        }
+        mesh.compute_normals();
+        let field = Field {
+            n,
+            h: vec![0.0; n * n],
+        };
+        add_ground_detail(&mut mesh, &field);
+        // Una macchia di sabbia in un angolo, con pesi sotto e sopra la soglia.
+        let weights: Vec<f32> = (0..n * n)
+            .map(|i| {
+                if i % n < 6 && i / n < 7 {
+                    ((i * 7) % 13) as f32 / 40.0
+                } else {
+                    0.0
+                }
+            })
+            .collect();
+        // Riferimento: la vecchia costruzione (griglia intera, solo gli indici filtrati).
+        let mut old = mesh.clone();
+        let colors: Vec<[f32; 4]> = weights.iter().map(|w| [1.0, 1.0, 1.0, *w]).collect();
+        old.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
+        if let Some(Indices::U32(idx)) = mesh.indices() {
+            let keep: Vec<u32> = idx
+                .as_chunks::<3>()
+                .0
+                .iter()
+                .filter(|t| t.iter().any(|v| weights[*v as usize] > 0.02))
+                .flatten()
+                .copied()
+                .collect();
+            old.insert_indices(Indices::U32(keep));
+        }
+        let new = build_sand_mesh(&mesh, &weights);
+        assert!(new.count_vertices() < old.count_vertices());
+        assert_eq!(expanded(&new), expanded(&old));
+        // Stesso riquadro della mesh: l'ordine dei trasparenti non cambia.
+        let bounds = |m: &Mesh| {
+            let Some(VertexAttributeValues::Float32x3(p)) = m.attribute(Mesh::ATTRIBUTE_POSITION)
+            else {
+                panic!("posizioni mancanti");
+            };
+            p.iter()
+                .fold((Vec3::INFINITY, Vec3::NEG_INFINITY), |(lo, hi), v| {
+                    (lo.min(Vec3::from(*v)), hi.max(Vec3::from(*v)))
+                })
+        };
+        assert_eq!(bounds(&new), bounds(&old));
+        // Strato vuoto: come prima.
+        let empty = build_sand_mesh(&mesh, &vec![0.0; n * n]);
+        assert_eq!(empty.indices().map(Indices::len), Some(0));
     }
 
     #[test]

@@ -48,6 +48,7 @@ mod main_menu;
 mod map;
 mod menu;
 mod nature;
+mod par;
 mod pbr;
 mod places;
 mod player;

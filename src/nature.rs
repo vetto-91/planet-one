@@ -190,7 +190,8 @@ fn merge(proto: &Proto, places: &[Place]) -> Mesh {
     }
     let mut m = Mesh::new(
         PrimitiveTopology::TriangleList,
-        RenderAssetUsages::default(),
+        // Mesh unite: nessuno le rilegge, vivono solo sulla GPU (ADR 0056).
+        RenderAssetUsages::RENDER_WORLD,
     );
     m.insert_attribute(Mesh::ATTRIBUTE_POSITION, pos);
     m.insert_attribute(Mesh::ATTRIBUTE_NORMAL, nor);
@@ -654,12 +655,18 @@ fn make_kit(
         }
         broad_bark[v] = materials.add(StandardMaterial {
             base_color: Color::srgb(0.95, 0.9, 0.82),
-            base_color_texture: Some(server.load(format!("textures/alberi/{bark}"))),
+            base_color_texture: Some(crate::pbr::load_gpu(
+                server,
+                format!("textures/alberi/{bark}"),
+            )),
             perceptual_roughness: 0.92,
             ..default()
         });
         leaves[v] = materials.add(StandardMaterial {
-            base_color_texture: Some(server.load(format!("textures/alberi/{leaf}"))),
+            base_color_texture: Some(crate::pbr::load_gpu(
+                server,
+                format!("textures/alberi/{leaf}"),
+            )),
             perceptual_roughness: 0.7,
             alpha_mode: AlphaMode::Mask(0.3),
             cull_mode: None,
@@ -733,14 +740,70 @@ fn make_kit(
 }
 
 /// Costruisce i riquadri.
+/// Mesh unite di un gruppo di alberi (vicini o lontani) per variante.
+struct TreeMeshes {
+    firs: [Option<Mesh>; 3],
+    bark: [Option<Mesh>; 3],
+    broad: [Option<Mesh>; 3],
+}
+
+/// Tutte le mesh unite di un riquadro, calcolate prima dello spawn.
+struct ChunkMeshes {
+    fir_trunk: Option<Mesh>,
+    rocks: [Option<Mesh>; 3],
+    groups: [TreeMeshes; 2],
+    bushes: [Option<Mesh>; 3],
+    grass: Option<Mesh>,
+    flowers: [Option<Mesh>; 4],
+}
+
+/// Fonde le copie se ce ne sono (come i controlli `is_empty` dello spawn).
+fn merge_some(proto: &Proto, places: &[Place]) -> Option<Mesh> {
+    (!places.is_empty()).then(|| merge(proto, places))
+}
+
+impl ChunkMeshes {
+    fn of(p: &Protos, c: &Chunk) -> Self {
+        let firs: Vec<Place> = c.firs.iter().flatten().copied().collect();
+        let trees =
+            |fir_set: &[Proto; 3], broad_set: &[Proto; 3], bark_set: &[Proto; 3]| TreeMeshes {
+                firs: [0, 1, 2].map(|v| merge_some(&fir_set[v], &c.firs[v])),
+                bark: [0, 1, 2].map(|v| merge_some(&bark_set[v], &c.broad[v])),
+                broad: [0, 1, 2].map(|v| merge_some(&broad_set[v], &c.broad[v])),
+            };
+        Self {
+            fir_trunk: merge_some(&p.fir_trunk, &firs),
+            rocks: [0, 1, 2].map(|v| merge_some(&p.rock[v], &c.rocks[v])),
+            groups: [
+                trees(&p.fir, &p.broad, &p.broad_bark),
+                trees(&p.fir_far, &p.broad_far, &p.broad_bark_far),
+            ],
+            bushes: [0, 1, 2].map(|v| merge_some(&p.bush[v], &c.bushes[v])),
+            grass: merge_some(&p.grass, &c.grass),
+            flowers: [0, 1, 2, 3].map(|v| merge_some(&p.flowers[v], &c.flowers[v])),
+        }
+    }
+}
+
 fn spawn_chunks(
     commands: &mut Commands,
     meshes: &mut Assets<Mesh>,
     kit: &Kit,
     chunks: BTreeMap<(i32, i32), Chunk>,
 ) {
-    let p = &kit.protos;
-    for ((cx, cz), c) in chunks {
+    // Le mesh unite di ogni riquadro sono indipendenti: si fondono su tutti i core, poi si
+    // aggiungono e si creano le entità in serie, nello stesso ordine di prima (ADR 0056).
+    let list: Vec<((i32, i32), Chunk)> = chunks.into_iter().collect();
+    let merged = crate::par::map(list.len(), |i| ChunkMeshes::of(&kit.protos, &list[i].1));
+    for (((cx, cz), c), m) in list.into_iter().zip(merged) {
+        let ChunkMeshes {
+            fir_trunk,
+            rocks,
+            groups,
+            bushes,
+            grass,
+            flowers,
+        } = m;
         let center = Vec2::new((cx as f32 + 0.5) * CHUNK, (cz as f32 + 0.5) * CHUNK);
         commands
             .spawn((
@@ -762,36 +825,25 @@ fn spawn_chunks(
                     }
                 }
                 // Tronchi e rocce si vedono sempre.
-                let firs: Vec<Place> = c.firs.iter().flatten().copied().collect();
-                if !firs.is_empty() {
-                    root.spawn((
-                        Mesh3d(meshes.add(merge(&p.fir_trunk, &firs))),
-                        MeshMaterial3d(kit.bark.clone()),
-                    ));
+                if let Some(mesh) = fir_trunk {
+                    root.spawn((Mesh3d(meshes.add(mesh)), MeshMaterial3d(kit.bark.clone())));
                 }
-                for v in 0..3 {
-                    if !c.rocks[v].is_empty() {
-                        root.spawn((
-                            Mesh3d(meshes.add(merge(&p.rock[v], &c.rocks[v]))),
-                            MeshMaterial3d(kit.stone.clone()),
-                        ));
-                    }
+                for mesh in rocks.into_iter().flatten() {
+                    root.spawn((Mesh3d(meshes.add(mesh)), MeshMaterial3d(kit.stone.clone())));
                 }
-                for (group, fir_set, broad_set, bark_set) in [
-                    (NatureGroup::NearTrees, &p.fir, &p.broad, &p.broad_bark),
-                    (
-                        NatureGroup::FarTrees,
-                        &p.fir_far,
-                        &p.broad_far,
-                        &p.broad_bark_far,
-                    ),
-                ] {
+                for (group, trees) in [NatureGroup::NearTrees, NatureGroup::FarTrees]
+                    .into_iter()
+                    .zip(groups)
+                {
                     let far = group == NatureGroup::FarTrees;
+                    let TreeMeshes { firs, bark, broad } = trees;
                     root.spawn((group, Transform::default(), Visibility::Hidden))
                         .with_children(|g| {
-                            for v in 0..3 {
-                                if !c.firs[v].is_empty() {
-                                    let mesh = meshes.add(merge(&fir_set[v], &c.firs[v]));
+                            for (v, ((fir, bark), broad)) in
+                                firs.into_iter().zip(bark).zip(broad).enumerate()
+                            {
+                                if let Some(fir) = fir {
+                                    let mesh = meshes.add(fir);
                                     let mut e = g.spawn((
                                         SeasonLeaf(v),
                                         Mesh3d(mesh.clone()),
@@ -813,9 +865,9 @@ fn spawn_chunks(
                                         NotShadowCaster,
                                     ));
                                 }
-                                if !c.broad[v].is_empty() {
+                                if let (Some(bark), Some(broad)) = (bark, broad) {
                                     let mut trunk = g.spawn((
-                                        Mesh3d(meshes.add(merge(&bark_set[v], &c.broad[v]))),
+                                        Mesh3d(meshes.add(bark)),
                                         MeshMaterial3d(kit.broad_bark[v].clone()),
                                     ));
                                     if far {
@@ -824,7 +876,7 @@ fn spawn_chunks(
                                     let mut e = g.spawn((
                                         SeasonLeaf(v),
                                         SeasonGate::Leaves,
-                                        Mesh3d(meshes.add(merge(&broad_set[v], &c.broad[v]))),
+                                        Mesh3d(meshes.add(broad)),
                                         MeshMaterial3d(if far {
                                             kit.leaves_far[v].clone()
                                         } else {
@@ -844,32 +896,30 @@ fn spawn_chunks(
                     Visibility::Hidden,
                 ))
                 .with_children(|g| {
-                    for v in 0..3 {
-                        if !c.bushes[v].is_empty() {
+                    for (v, mesh) in bushes.into_iter().enumerate() {
+                        if let Some(mesh) = mesh {
                             g.spawn((
                                 SeasonLeaf(v),
-                                Mesh3d(meshes.add(merge(&p.bush[v], &c.bushes[v]))),
+                                Mesh3d(meshes.add(mesh)),
                                 MeshMaterial3d(kit.needles[v].clone()),
                             ));
                         }
                     }
-                    if !c.grass.is_empty() {
+                    if let Some(mesh) = grass {
                         g.spawn((
                             SeasonGround { sand: false },
-                            Mesh3d(meshes.add(merge(&p.grass, &c.grass))),
+                            Mesh3d(meshes.add(mesh)),
                             MeshMaterial3d(kit.grass.clone()),
                             NotShadowCaster,
                         ));
                     }
-                    for v in 0..4 {
-                        if !c.flowers[v].is_empty() {
-                            g.spawn((
-                                SeasonGate::Blooms,
-                                Mesh3d(meshes.add(merge(&p.flowers[v], &c.flowers[v]))),
-                                MeshMaterial3d(kit.flowers.clone()),
-                                NotShadowCaster,
-                            ));
-                        }
+                    for mesh in flowers.into_iter().flatten() {
+                        g.spawn((
+                            SeasonGate::Blooms,
+                            Mesh3d(meshes.add(mesh)),
+                            MeshMaterial3d(kit.flowers.clone()),
+                            NotShadowCaster,
+                        ));
                     }
                 });
             });
