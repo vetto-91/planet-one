@@ -318,7 +318,12 @@ pub fn drive_animations(
                 active.replay();
             }
             a.current = next;
-        } else if let Some(active) = player.animation_mut(node) {
+        } else if player
+            .animation(node)
+            .is_some_and(|active| active.speed() != clip_speed)
+            && let Some(active) = player.animation_mut(node)
+        {
+            // Solo se la velocità cambia: il lettore non risulta modificato a ogni frame (ADR 0056).
             active.set_speed(clip_speed);
         }
     }

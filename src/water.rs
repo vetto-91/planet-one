@@ -568,30 +568,36 @@ pub fn animate_water(
 ) {
     let on = settings.gfx.waves;
     let t = time.elapsed_secs();
+    // Il materiale torna alla GPU solo se la trasformazione cambia: con le onde spente
+    // resta fermo invece di ricaricarsi a ogni fotogramma (ADR 0056).
+    let mut set_uv = |handle: &Handle<StandardMaterial>, uv: Affine2| {
+        if materials.get(handle).is_some_and(|m| m.uv_transform != uv)
+            && let Some(mut mat) = materials.get_mut(handle)
+        {
+            mat.uv_transform = uv;
+        }
+    };
+    // Due moti sovrapposti: la corrente che scorre e un lento respiro della scala delle onde.
+    let sea_uv = if on {
+        let swell = 1.0 + 0.06 * (t * 0.35).sin();
+        Affine2::from_scale_angle_translation(
+            Vec2::splat(swell),
+            0.04 * (t * 0.1).sin(),
+            Vec2::new(t * 0.035, t * 0.022),
+        )
+    } else {
+        Affine2::IDENTITY
+    };
     for m in &sea {
-        if let Some(mut mat) = materials.get_mut(&m.0) {
-            // Due moti sovrapposti: la corrente che scorre e un lento respiro della scala delle onde.
-            mat.uv_transform = if on {
-                let swell = 1.0 + 0.06 * (t * 0.35).sin();
-                Affine2::from_scale_angle_translation(
-                    Vec2::splat(swell),
-                    0.04 * (t * 0.1).sin(),
-                    Vec2::new(t * 0.035, t * 0.022),
-                )
-            } else {
-                Affine2::IDENTITY
-            };
-        }
+        set_uv(&m.0, sea_uv);
     }
+    let offset = if on {
+        Vec2::new(0.0, -t * 0.25)
+    } else {
+        Vec2::ZERO
+    };
     for m in &stream {
-        if let Some(mut mat) = materials.get_mut(&m.0) {
-            let offset = if on {
-                Vec2::new(0.0, -t * 0.25)
-            } else {
-                Vec2::ZERO
-            };
-            mat.uv_transform = Affine2::from_translation(offset);
-        }
+        set_uv(&m.0, Affine2::from_translation(offset));
     }
     for (m, mut vis) in &mut foam {
         let wanted = if on {

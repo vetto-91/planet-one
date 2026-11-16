@@ -353,7 +353,10 @@ fn light_torches(
                 } else {
                     Visibility::Hidden
                 });
-                t.scale = Vec3::new(flicker, flicker * 1.6, flicker);
+                // Di giorno la fiamma è nascosta: niente scala da ripropagare (ADR 0056).
+                if dark {
+                    t.scale = Vec3::new(flicker, flicker * 1.6, flicker);
+                }
             }
             if let Ok(mut light) = lights.get_mut(child) {
                 let target = if dark && settings.gfx.interior_lights {

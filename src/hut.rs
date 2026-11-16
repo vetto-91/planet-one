@@ -97,7 +97,11 @@ pub struct CopperLid {
 pub fn copper_lid(states: Query<&PropState>, mut lids: Query<(&CopperLid, &mut Transform)>) {
     for (lid, mut tf) in &mut lids {
         let open = states.get(lid.state).is_ok_and(|s| s.on);
-        tf.rotation = Quat::from_rotation_y(if open { -1.9 } else { 0.0 });
+        let rotation = Quat::from_rotation_y(if open { -1.9 } else { 0.0 });
+        // Scritto solo al cambio: niente propagazione delle trasformazioni a ogni fotogramma.
+        if tf.rotation != rotation {
+            tf.rotation = rotation;
+        }
     }
 }
 
@@ -749,7 +753,7 @@ pub fn spawn_hut(
 ) -> Entity {
     let hut_mat = materials.add(StandardMaterial {
         base_color: Color::WHITE,
-        base_color_texture: Some(asset_server.load("textures/capanna.png")),
+        base_color_texture: Some(crate::pbr::load_gpu(asset_server, "textures/capanna.png")),
         alpha_mode: AlphaMode::Mask(0.5),
         double_sided: true,
         cull_mode: None,
@@ -768,6 +772,7 @@ pub fn spawn_hut(
                 anisotropy_clamp: 16,
                 ..Default::default()
             });
+            s.asset_usage = RenderAssetUsages::RENDER_WORLD;
         })
         .load("textures/pietra.png");
     let stone_mat = materials.add(StandardMaterial {
@@ -778,7 +783,7 @@ pub fn spawn_hut(
     });
     let door_mat = materials.add(StandardMaterial {
         base_color: Color::WHITE,
-        base_color_texture: Some(asset_server.load("textures/porta.png")),
+        base_color_texture: Some(crate::pbr::load_gpu(asset_server, "textures/porta.png")),
         double_sided: true,
         cull_mode: None,
         perceptual_roughness: 0.9,
@@ -786,13 +791,13 @@ pub fn spawn_hut(
     });
     let shutter_mat = materials.add(StandardMaterial {
         base_color: Color::WHITE,
-        base_color_texture: Some(asset_server.load("textures/serranda.png")),
+        base_color_texture: Some(crate::pbr::load_gpu(asset_server, "textures/serranda.png")),
         perceptual_roughness: 0.9,
         ..default()
     });
     let shutters_mat = materials.add(StandardMaterial {
         base_color: Color::WHITE,
-        base_color_texture: Some(asset_server.load("textures/imposte.png")),
+        base_color_texture: Some(crate::pbr::load_gpu(asset_server, "textures/imposte.png")),
         double_sided: true,
         cull_mode: None,
         perceptual_roughness: 0.9,
@@ -1824,20 +1829,37 @@ pub fn apply_house_light(
     else {
         return;
     };
+    // Si scrive solo ciò che cambia: luce, materiale e levetta restano fermi finché
+    // l'interruttore non scatta (prima si ricaricavano a ogni fotogramma, ADR 0056).
+    let intensity = if on { 180_000.0 } else { 0.0 };
     for mut l in &mut lights {
-        l.intensity = if on { 180_000.0 } else { 0.0 };
-    }
-    for m in &lamps {
-        if let Some(mut mat) = materials.get_mut(&m.0) {
-            mat.emissive = if on {
-                LinearRgba::new(1.4, 0.9, 0.35, 1.0)
-            } else {
-                LinearRgba::BLACK
-            };
+        if l.intensity != intensity {
+            l.intensity = intensity;
+        }
+        // La lampada spenta non disegna ombre.
+        if l.shadow_maps_enabled != on {
+            l.shadow_maps_enabled = on;
         }
     }
+    let emissive = if on {
+        LinearRgba::new(1.4, 0.9, 0.35, 1.0)
+    } else {
+        LinearRgba::BLACK
+    };
+    for m in &lamps {
+        if materials
+            .get(&m.0)
+            .is_some_and(|mat| mat.emissive != emissive)
+            && let Some(mut mat) = materials.get_mut(&m.0)
+        {
+            mat.emissive = emissive;
+        }
+    }
+    let rotation = Quat::from_rotation_x(if on { 0.5 } else { -0.5 });
     for mut tf in &mut levers {
-        tf.rotation = Quat::from_rotation_x(if on { 0.5 } else { -0.5 });
+        if tf.rotation != rotation {
+            tf.rotation = rotation;
+        }
     }
 }
 
@@ -1854,11 +1876,18 @@ pub fn stove_light(
         }
         for child in children.iter() {
             if let Ok(mut l) = lights.get_mut(child) {
-                l.intensity = if st.on {
+                let intensity = if st.on {
                     60_000.0 * (1.0 + 0.2 * (t * 9.0).sin() * (t * 3.7).cos())
                 } else {
                     0.0
                 };
+                if l.intensity != intensity {
+                    l.intensity = intensity;
+                }
+                // La stufa spenta non disegna ombre (ADR 0056).
+                if l.shadow_maps_enabled != st.on {
+                    l.shadow_maps_enabled = st.on;
+                }
             }
         }
     }
@@ -1938,13 +1967,15 @@ pub fn update_smoke(
         let k = puff.age / puff.life;
         tf.translation += Vec3::new(puff.drift.x, 0.8, puff.drift.y) * dt;
         tf.scale = Vec3::splat((0.15 + 0.6 * k) * puff.size);
-        if let Some(mut m) = materials.get_mut(&mat.0) {
-            m.base_color = Color::srgba(
-                puff.grey,
-                puff.grey,
-                puff.grey + 0.03,
-                puff.alpha * (1.0 - k),
-            );
+        // Il materiale torna alla GPU solo quando l'alfa si sposta di almeno un gradino a 8 bit
+        // (1/255): prima ogni sbuffo si ricaricava a ogni fotogramma (ADR 0056).
+        let alpha = puff.alpha * (1.0 - k);
+        if materials.get(&mat.0).is_some_and(|m| {
+            let c = m.base_color.to_srgba();
+            c.red != puff.grey || (c.alpha - alpha).abs() >= 1.0 / 255.0
+        }) && let Some(mut m) = materials.get_mut(&mat.0)
+        {
+            m.base_color = Color::srgba(puff.grey, puff.grey, puff.grey + 0.03, alpha);
         }
     }
 }

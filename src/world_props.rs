@@ -107,6 +107,21 @@ impl HomeEntry {
     pub fn key(&self) -> String {
         format!("{} {}", self.kind, self.occurrence)
     }
+
+    /// `key == self.key()`, senza costruire la stringa (si chiede a ogni frame, ADR 0056).
+    pub fn key_is(&self, key: &str) -> bool {
+        let Some(rest) = key
+            .strip_prefix(self.kind.as_str())
+            .and_then(|r| r.strip_prefix(' '))
+        else {
+            return false;
+        };
+        // Solo cifre decimali senza zeri in testa: la stessa forma che scrive `format!`.
+        !rest.is_empty()
+            && rest.bytes().all(|b| b.is_ascii_digit())
+            && (rest == "0" || !rest.starts_with('0'))
+            && rest.parse::<usize>() == Ok(self.occurrence)
+    }
 }
 
 /// Case del paese: gli abitanti vi dormono (`casa:` in `abitanti.txt`).
@@ -243,6 +258,16 @@ pub fn sync_world_props(
     let pole_mesh = meshes.add(crate::pbr::with_tangents(Cylinder::new(0.06, 3.4)));
     let base_mesh = meshes.add(crate::pbr::with_tangents(Cylinder::new(0.15, 0.7)));
     let lantern_mesh = meshes.add(Cuboid::new(0.28, 0.4, 0.28));
+    // Cartelli: palo, tabella e faccia uguali per tutti; un materiale per scritta (ADR 0056).
+    let sign_post = meshes.add(crate::pbr::with_tangents(Cuboid::new(0.12, 2.9, 0.12)));
+    let sign_board = meshes.add(crate::pbr::with_tangents(Cuboid::new(1.74, 0.68, 0.07)));
+    let sign_face = meshes.add(Rectangle::new(1.66, 0.62));
+    let shop_sign_face = meshes.add(Rectangle::new(
+        crate::buildings::SIGN_SIZE.x,
+        crate::buildings::SIGN_SIZE.y,
+    ));
+    let mut sign_mats: std::collections::HashMap<String, Handle<StandardMaterial>> =
+        std::collections::HashMap::new();
     let cap_mesh = meshes.add(crate::pbr::with_tangents(Cone::new(0.26, 0.22)));
 
     let building_mat = materials.add(StandardMaterial {
@@ -258,6 +283,9 @@ pub fn sync_world_props(
     homes.list.clear();
     let defs = crate::villagers::load_defs();
     let mut occurrences: std::collections::HashMap<String, usize> = Default::default();
+    // I modelli procedurali degli edifici dipendono solo da tipo e seme: si costruiscono tutti
+    // insieme su tutti i core; lo spawn qui sotto li prende già pronti (ADR 0056).
+    let mut models = building_models(&dbg.items);
     for pl in &dbg.items {
         if matches!(pl.kind.as_str(), "campo" | "orto") {
             // Campo coltivato: una sola mesh per tutto il piazzamento.
@@ -294,16 +322,10 @@ pub fn sync_world_props(
             }
             let yaw = pl.yaw(j);
             if crate::buildings::is_building(&pl.kind) {
-                let seed =
-                    (p.x * 100.0) as i32 as u32 ^ ((p.y * 100.0) as i32 as u32).rotate_left(11);
-                // La casa del giocatore ampliata ha i muri di pietra (ADR 0052).
-                let model_kind =
-                    if pl.kind == crate::house::KIND && pl.note == crate::house::STONE_NOTE {
-                        "casa-naufrago-pietra"
-                    } else {
-                        pl.kind.as_str()
-                    };
-                let model = crate::buildings::model(model_kind, seed);
+                let (model_kind, seed) = model_key(pl, p);
+                let model = models
+                    .remove(&(model_kind, seed))
+                    .unwrap_or_else(|| crate::buildings::model(model_kind, seed));
                 // Molo e barche stanno sul mare (quota fissa), il resto si appoggia al terreno.
                 let fixed_y = match pl.kind.as_str() {
                     "molo" | "palafitta" => Some(crate::terrain::SEA_LEVEL),
@@ -583,19 +605,24 @@ pub fn sync_world_props(
                     }
                     for (at, key) in &interior.signs {
                         // Tabella con la scritta della bottega sulla targa accanto alla porta.
-                        let sign_mat = materials.add(StandardMaterial {
-                            base_color: Color::WHITE,
-                            base_color_texture: Some(
-                                asset_server.load(format!("textures/cartelli/{key}.png")),
-                            ),
-                            perceptual_roughness: 0.9,
-                            ..default()
-                        });
-                        let size = crate::buildings::SIGN_SIZE;
+                        let sign_mat = sign_mats
+                            .entry(key.to_string())
+                            .or_insert_with(|| {
+                                materials.add(StandardMaterial {
+                                    base_color: Color::WHITE,
+                                    base_color_texture: Some(crate::pbr::load_gpu(
+                                        &asset_server,
+                                        format!("textures/cartelli/{key}.png"),
+                                    )),
+                                    perceptual_roughness: 0.9,
+                                    ..default()
+                                })
+                            })
+                            .clone();
                         c.spawn((
                             // Un rettangolo come nei cartelli (la faccia davanti del `Cuboid`
                             // mostra la texture capovolta).
-                            Mesh3d(meshes.add(Rectangle::new(size.x, size.y))),
+                            Mesh3d(shop_sign_face.clone()),
                             MeshMaterial3d(sign_mat),
                             Transform::from_translation(*at),
                         ));
@@ -780,38 +807,36 @@ pub fn sync_world_props(
                     } else {
                         pl.note.as_str()
                     };
-                    let sign_mat = materials.add(StandardMaterial {
-                        base_color: Color::WHITE,
-                        base_color_texture: Some(
-                            asset_server.load(format!("textures/cartelli/{key}.png")),
-                        ),
-                        perceptual_roughness: 0.9,
-                        ..default()
-                    });
+                    let sign_mat = sign_mats
+                        .entry(key.to_string())
+                        .or_insert_with(|| {
+                            materials.add(StandardMaterial {
+                                base_color: Color::WHITE,
+                                base_color_texture: Some(crate::pbr::load_gpu(
+                                    &asset_server,
+                                    format!("textures/cartelli/{key}.png"),
+                                )),
+                                perceptual_roughness: 0.9,
+                                ..default()
+                            })
+                        })
+                        .clone();
                     commands
                         .spawn((root, RigidBody::Static))
                         .with_children(|c| {
                             c.spawn((
                                 // Il palo sta dietro la tabella: non copre la scritta.
-                                Mesh3d(
-                                    meshes.add(crate::pbr::with_tangents(Cuboid::new(
-                                        0.12, 2.9, 0.12,
-                                    ))),
-                                ),
+                                Mesh3d(sign_post.clone()),
                                 MeshMaterial3d(wood.clone()),
                                 Transform::from_xyz(0.0, 1.25, -0.1),
                             ));
                             c.spawn((
-                                Mesh3d(
-                                    meshes.add(crate::pbr::with_tangents(Cuboid::new(
-                                        1.74, 0.68, 0.07,
-                                    ))),
-                                ),
+                                Mesh3d(sign_board.clone()),
                                 MeshMaterial3d(wood.clone()),
                                 Transform::from_xyz(0.0, 2.05, 0.0),
                             ));
                             c.spawn((
-                                Mesh3d(meshes.add(Rectangle::new(1.66, 0.62))),
+                                Mesh3d(sign_face.clone()),
                                 MeshMaterial3d(sign_mat),
                                 Transform::from_xyz(0.0, 2.05, 0.04),
                             ));
@@ -1031,6 +1056,38 @@ pub fn update_interior_lights(
     }
 }
 
+/// Tipo di modello e seme di un edificio nel punto `p` del piazzamento.
+fn model_key(pl: &crate::debug_place::Placement, p: Vec2) -> (&str, u32) {
+    let seed = (p.x * 100.0) as i32 as u32 ^ ((p.y * 100.0) as i32 as u32).rotate_left(11);
+    // La casa del giocatore ampliata ha i muri di pietra (ADR 0052).
+    let model_kind = if pl.kind == crate::house::KIND && pl.note == crate::house::STONE_NOTE {
+        "casa-naufrago-pietra"
+    } else {
+        pl.kind.as_str()
+    };
+    (model_kind, seed)
+}
+
+/// Tutti i modelli di edificio dei piazzamenti, costruiti in parallelo. Un doppione (stesso tipo
+/// e seme) resta fuori dalla mappa e si ricostruisce allo spawn, identico.
+fn building_models(
+    items: &[crate::debug_place::Placement],
+) -> std::collections::HashMap<(&str, u32), crate::buildings::Building> {
+    let keys: Vec<(&str, u32)> = items
+        .iter()
+        .filter(|pl| crate::buildings::is_building(&pl.kind))
+        .flat_map(|pl| pl.points.iter().map(move |&p| model_key(pl, p)))
+        .collect();
+    let built = crate::par::map(keys.len(), |i| {
+        crate::buildings::model(keys[i].0, keys[i].1)
+    });
+    let mut out = std::collections::HashMap::with_capacity(keys.len());
+    for (key, model) in keys.into_iter().zip(built) {
+        out.entry(key).or_insert(model);
+    }
+    out
+}
+
 /// Potenza dei lampioni (lm), calibrata sulla resa HDR.
 const LAMP_LUMENS: f32 = 50_000.0;
 
@@ -1045,6 +1102,7 @@ pub fn update_street_lamps(
     cameras: Query<&GlobalTransform, With<Camera3d>>,
     bulbs: Query<&LampBulb>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut dists: Local<Vec<f32>>,
 ) {
     // Accesi anche con il cielo molto scuro (temporale).
     let on = clock.lamps_on() || weather.cloud > 0.95;
@@ -1055,25 +1113,32 @@ pub fn update_street_lamps(
         .single()
         .map(|c| c.translation())
         .unwrap_or_default();
-    let mut dists: Vec<f32> = lights
-        .iter()
-        .map(|(t, _)| t.translation().distance(cam))
-        .collect();
+    dists.clear();
+    dists.extend(lights.iter().map(|(t, _)| t.translation().distance(cam)));
     dists.sort_by(|a, b| a.total_cmp(b));
     let limit = dists.get(2).copied().unwrap_or(f32::MAX).min(30.0);
     for (t, mut l) in &mut lights {
-        let shadows = settings.gfx.lamp_shadows && t.translation().distance(cam) <= limit;
+        let target = if on { LAMP_LUMENS } else { 0.0 };
+        let intensity = l.intensity + (target - l.intensity) * k;
+        // Un lampione spento (meno di 1 lm su 50 000) non disegna ombre: sei facce in meno
+        // per lampione di giorno, a schermo non cambia nulla (ADR 0056).
+        let shadows =
+            settings.gfx.lamp_shadows && t.translation().distance(cam) <= limit && intensity > 1.0;
         if l.shadow_maps_enabled != shadows {
             l.shadow_maps_enabled = shadows;
         }
-        let target = if on { LAMP_LUMENS } else { 0.0 };
-        l.intensity += (target - l.intensity) * k;
-        level = l.intensity / LAMP_LUMENS;
+        if l.intensity != intensity {
+            l.intensity = intensity;
+        }
+        level = intensity / LAMP_LUMENS;
     }
+    // Il materiale delle lampadine si ricarica sulla GPU solo quando la luce cambia davvero.
+    let emissive = LinearRgba::rgb(0.2 + 6.0 * level, 0.15 + 4.2 * level, 0.05 + 1.8 * level);
     if let Some(b) = bulbs.iter().next()
+        && materials.get(&b.0).is_some_and(|m| m.emissive != emissive)
         && let Some(mut m) = materials.get_mut(&b.0)
     {
-        m.emissive = LinearRgba::rgb(0.2 + 6.0 * level, 0.15 + 4.2 * level, 0.05 + 1.8 * level);
+        m.emissive = emissive;
     }
 }
 
@@ -1103,6 +1168,46 @@ pub fn update_lighthouse(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn key_is_matches_key_exactly() {
+        let home = |kind: &str, occurrence| HomeEntry {
+            kind: kind.into(),
+            occurrence,
+            door: Vec2::ZERO,
+            door_point: Vec3::ZERO,
+            beds: Vec::new(),
+            windows: Vec::new(),
+            state: None,
+            npc_open: false,
+            idle: 0.0,
+            was_open: false,
+        };
+        let candidates = [
+            "casa 1",
+            "casa 0",
+            "casa 10",
+            "casa 01",
+            "casa +1",
+            "casa  1",
+            "casa",
+            "casa ",
+            "casa 1 ",
+            "bottega 1",
+            "casa grande 3",
+            "casa 12",
+        ];
+        for h in [
+            home("casa", 1),
+            home("casa", 0),
+            home("casa", 10),
+            home("casa grande", 3),
+        ] {
+            for k in candidates {
+                assert_eq!(h.key_is(k), h.key() == k, "{} vs {k}", h.key());
+            }
+        }
+    }
 
     fn window(y: f32, x: f32, with_state: bool) -> HomeWindow {
         HomeWindow {
