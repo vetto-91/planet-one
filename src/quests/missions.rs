@@ -576,12 +576,16 @@ impl Missions {
             .min(ended.unwrap_or(usize::MAX))
     }
 
+    /// Somma delle tappe raggiunte: cambia ogni volta che una missione avanza o ricomincia.
+    fn progress_sum(&self) -> usize {
+        self.progress.iter().sum()
+    }
+
     pub fn unlocked(&self, what: &str) -> bool {
         let by_step = self.list.iter().enumerate().any(|(i, m)| {
-            m.steps[..self.reached(i)].iter().any(|s| {
-                s.unlocks.iter().any(|u| u == what)
-                    || s.effects.contains(&Effect::Unlock(what.to_string()))
-            })
+            m.steps[..self.reached(i)]
+                .iter()
+                .any(|s| s.unlocks.iter().any(|u| u == what) || unlocks(&s.effects, what))
         });
         by_step
             || self.chosen.iter().any(|((m, s), c)| {
@@ -589,7 +593,7 @@ impl Missions {
                     .steps
                     .get(*s)
                     .and_then(|step| step.choices.get(*c))
-                    .is_some_and(|ch| ch.effects.contains(&Effect::Unlock(what.to_string())))
+                    .is_some_and(|ch| unlocks(&ch.effects, what))
             })
     }
 
@@ -712,7 +716,10 @@ impl Missions {
         self.repeat_due(facts.day);
         facts.sides_done = self.sides_done();
         facts.unlocked.extend(self.unlocked_all());
-        self.counters = facts.counters.clone();
+        // Riusa la memoria dei contatori dell'ultimo frame invece di riallocarla (ADR 0056).
+        if self.counters != facts.counters {
+            self.counters.clone_from(&facts.counters);
+        }
         let facts = &*facts;
         for i in 0..self.list.len() {
             let Some(step) = self.list[i].steps.get(self.progress[i]) else {
@@ -1027,6 +1034,13 @@ fn apply_effect(
     }
 }
 
+/// `effects` contiene `Effect::Unlock(what)`? Senza costruire una `String` per confrontare.
+fn unlocks(effects: &[Effect], what: &str) -> bool {
+    effects
+        .iter()
+        .any(|e| matches!(e, Effect::Unlock(u) if u == what))
+}
+
 /// Sistema: valuta le condizioni, completa le tappe, dà i premi e avvisa il giocatore.
 #[allow(clippy::too_many_arguments)]
 pub fn track_missions(
@@ -1049,7 +1063,14 @@ pub fn track_missions(
     if cutscene.was_open && !dialog.open {
         missions.dialog_closed(dialog.finished, dialog.result);
     }
-    cutscene.was_open = dialog.open;
+    if cutscene.was_open != dialog.open {
+        cutscene.was_open = dialog.open;
+    }
+    // Missioni spente (prove automatiche): `advance` non farebbe nulla, inutile raccogliere i
+    // fatti del mondo a ogni frame (ADR 0056).
+    if !missions.enabled {
+        return;
+    }
     let Ok(player) = players.single() else {
         return;
     };
@@ -1084,7 +1105,25 @@ pub fn track_missions(
             .map(|(t, _)| t.translation())
             .collect(),
     };
-    for (i, step, finished) in missions.advance(&mut facts) {
+    // `advance` gira a ogni frame ma cambia le tappe solo di rado: la risorsa risulta cambiata
+    // (per `shop::sync_perks` e gli altri lettori) solo quando tappe o risposte si muovono.
+    let before = (
+        missions.progress_sum(),
+        missions.chosen.len(),
+        missions.done_on.len(),
+    );
+    let done = missions.bypass_change_detection().advance(&mut facts);
+    if !done.is_empty()
+        || before
+            != (
+                missions.progress_sum(),
+                missions.chosen.len(),
+                missions.done_on.len(),
+            )
+    {
+        missions.set_changed();
+    }
+    for (i, step, finished) in done {
         let title = missions.list[i].title.clone();
         if step.coins > 0 {
             inventory.add(crate::inventory::ItemKind::Coin, step.coins);
