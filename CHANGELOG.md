@@ -2,8 +2,9 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.66.0 — Gioco più leggero e schede video integrate (2026-11-16)
 
+- **Risoluzione della scena** (ADR 0058): nel menu Esc → Grafica si può disegnare il mondo al 100%, 75% o 50% della risoluzione dello schermo e poi ingrandirlo; interfaccia, mappa e foto restano nitide. Il preset **Integrata** parte al 75%: sull'Arc integrata Intel da 25 a 31 fotogrammi al secondo a 1080p e da 36 a 41 a 720p. Alta, Media e Bassa restano al 100% e non cambiano.
 - **Schede video integrate** (ADR 0057):
   - al primo avvio su una scheda integrata Intel o AMD, o senza scheda video, il gioco sceglie da solo il preset grafico **Integrata**: ombre minime, niente effetti, meno erba e texture a metà risoluzione;
   - chi ha già scelto la grafica dal menu la ritrova com'era, e su una scheda dedicata non cambia nulla;
