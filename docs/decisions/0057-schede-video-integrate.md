@@ -71,27 +71,32 @@ AMD non è provabile qui.
 - Le foto fuori soglia sono le stesse cinque note dall'ADR 0056: tre della piazza in `giro-camera`, la
   spiaggia del risveglio e la fonte sotto la quercia.
 
-**Arc integrata (Intel Graphics ARL, Mesa 25.0.7), copioni `fps`, `giro` e `meteo`**, ogni corsa con la
-sua cartella dati (FPS medio / 1% peggiore):
+**Arc integrata (Intel Graphics ARL, Mesa 25.0.7), copioni `fps`, `giro` e `meteo` con la finestra vera**
+(FPS medio / 1% peggiore, ogni corsa con la sua cartella dati):
 | Copione | Alta, 720p | Integrata (scelta da sola), 720p | Alta, 1080p | Integrata, 1080p |
 |---|---|---|---|---|
-| `fps` | si chiude (segfault) | 90 / 38 | si chiude (segfault) | 80 / 3 |
-| `giro` | 20 / 6 | 76 / 38 | si chiude (segfault) | 99 / 37 |
-| `meteo` | 45 / 3 | 71 / 35 | 45 / 2 | 81 / 4 |
-| RAM massima | 5263–6826 MB | 1112–1215 MB | 5246–6054 MB | 1126–1206 MB |
+| `fps` | 16 / 8 | 36 / 26 | 12 / 7 | 25 / 17 |
+| `giro` | 14 / 10 | 36 / 30 | 11 / 8 | 25 / 20 |
+| `meteo` | 16 / 14 | 36 / 25 | 12 / 10 | 26 / 20 |
+| Fotogrammi lenti (> 100 ms) | 0–83 per copione | 0 | 15–229 per copione | 0 |
+| RAM massima | 1924–2925 MB | 996–1016 MB | 1950–2841 MB | 994–1091 MB |
 
 - Il rilevamento funziona: `Intel(R) Graphics (ARL) (IntegratedGpu) → preset Integrata`.
-- Con Alta il gioco si chiude per un errore di segmentazione nel driver in 3 corse su 6; con Integrata
-  mai, nelle 6 corse e nelle prove a parte.
-- Su una scheda integrata la memoria video sta nella RAM di sistema. Con Alta il processo arriva a 5–7 GB,
-  con Integrata a 1,1–1,2 GB.
-- Con Integrata gli FPS medi sono 4–5 volte quelli di Alta, e sul HUD delle foto si legge 80–100 contro
-  18–30. Il preset non va quindi ritoccato.
-- **Il 1% peggiore senza finestra non è affidabile sull'Arc.** I copioni girano senza finestra: la camera
-  disegna in un'immagine, senza sincronia verticale. Sull'Arc la coda della GPU si riempie e circa quattro
-  volte al secondo un fotogramma aspetta 150–250 ms. Lo stesso copione di prova con la finestra vera non ha
-  nessun fotogramma lento. Il medio misura il lavoro davvero fatto; i 3–4 del 1% a 1080p vengono da queste
-  attese.
+- Con Integrata il gioco va 2–2,5 volte più veloce che con Alta, senza nessun fotogramma lento, con un terzo
+  della RAM.
+- Sulla macchina di prova gli schermi sono collegati alla RTX: ogni fotogramma disegnato dall'Arc viene
+  copiato sull'altra scheda per essere mostrato. Su un portatile, o su un PC con lo schermo collegato
+  all'integrata, questa copia non c'è e gli FPS dovrebbero essere un po' più alti.
+- Integrata è già vicino al pavimento delle opzioni: spegnendo anche le ombre del sole, `fps` a 1080p passa
+  solo da 25 a 28. Il resto è il costo del disegno a piena risoluzione (più la copia). La leva successiva è
+  la scala di rendering, scartata qui (vedi sotto).
+- **Senza finestra** (come girano di solito i copioni) i numeri dell'Arc non sono affidabili:
+  - gli FPS medi escono a 70–100;
+  - circa quattro volte al secondo un fotogramma aspetta 150–250 ms, perché la coda della GPU si riempie;
+  - con Alta il gioco si è chiuso per un errore di segmentazione nel driver in 3 corse su 6, mai con la
+    finestra né con Integrata.
+
+  Per le schede integrate si misura con `--con-finestra`.
 - Le ombre dei personaggi al sole mancano con Integrata, come già con Bassa anche sulla RTX: è il
   comportamento delle ombre leggere, non del driver.
 
@@ -113,10 +118,10 @@ sua cartella dati (FPS medio / 1% peggiore):
 - Dopo un cambio delle texture PBR va rilanciato `scripts/make_half_textures.py`.
 - Restano da misurare:
   - una Radeon integrata AMD;
-  - l'Arc con la finestra vera, per il 1% peggiore;
+  - l'Arc con lo schermo collegato all'integrata (senza copia sulla RTX);
   - su Windows, con il driver Intel ufficiale.
-- Sull'Arc ci sono margini per alzare un po' il preset (per esempio SMAA o ombre più grandi), ma non è stato
-  fatto: va deciso guardando il gioco con la finestra.
+- Per andare oltre i 25 FPS a 1080p sull'Arc serve la scala di rendering, da fare insieme al cambio di
+  egui.
 - Scartati:
   - **scala di rendering** (disegnare a 75% o 50% e ingrandire): bevy_egui 0.43 aggancia l'interfaccia
     alla prima camera, quindi spostare la scena su un'immagine intermedia avrebbe cambiato camera a egui.

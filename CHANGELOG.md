@@ -7,7 +7,7 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 - **Schede video integrate** (ADR 0057):
   - al primo avvio su una scheda integrata Intel o AMD, o senza scheda video, il gioco sceglie da solo il preset grafico **Integrata**: ombre minime, niente effetti, meno erba e texture a metà risoluzione;
   - chi ha già scelto la grafica dal menu la ritrova com'era, e su una scheda dedicata non cambia nulla;
-  - sull'Arc integrata Intel (Core Ultra 9 285K) da 20–45 a 70–100 fotogrammi al secondo, con 1,2 GB di RAM invece di 5–7, e senza le chiusure improvvise del driver viste con Alta;
+  - sull'Arc integrata Intel (Core Ultra 9 285K) da 11–16 a 25–36 fotogrammi al secondo (1080p e 720p), senza scatti e con un terzo della RAM;
   - nel menu Esc → Grafica ci sono il preset nuovo, le ombre di stufa, lumi e lanterne, la distanza di erba e fiori e le texture ridotte.
 - **Gioco più leggero** (ADR 0056), senza cambiare nulla di quello che si vede e si gioca. Sui 53 copioni di prova:
   - circa il 19% di fotogrammi al secondo in più in media (da 46 a 55);
