@@ -2,6 +2,18 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Gioco più leggero** (ADR 0056), senza cambiare nulla di quello che si vede e si gioca. Sui 53 copioni di prova:
+  - circa il 19% di fotogrammi al secondo in più in media (da 46 a 55);
+  - il copione più pesante passa da 21 a 29;
+  - il 17% di RAM in meno e il 12% di memoria video in meno;
+  - il cambio di regione (isola ↔ continente) si blocca per 0,3 secondi invece di 0,6–0,9.
+- La generazione del mondo all'avvio usa tutti i core: terreno, natura, edifici e cielo.
+- Terreno, texture e mesh restano solo sulla scheda video; gli strati del terreno non copiano più tutta la griglia.
+- Luci, materiali e particelle si aggiornano solo quando cambiano; lampioni, stufa e lume spenti non calcolano le ombre.
+- Nel log i movimenti del mouse non compaiono più (sono a livello `debug`).
+
 ## v0.0.65.0 — Isola, Prologo e traversata completi: ricompense, scene, eventi, l'approdo e le rifiniture (2026-11-15)
 
 - **Cinque luoghi nuovi sulla mappa** (ADR 0055): il Faro, il Porticciolo, il Laghetto, il Ponte sul ruscello e il Poggio del Naufrago si scoprono avvicinandosi e poi si raggiungono col viaggio veloce.

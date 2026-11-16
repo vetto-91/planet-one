@@ -81,3 +81,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0053 | Gli eventi dell'isola nel mondo | accettato |
 | 0054 | La traversata e l'arrivo all'Approdo delle Brume | accettato |
 | 0055 | Le rifiniture dell'isola | accettato |
+| 0056 | Ottimizzazione del codice | accettato |
