@@ -478,6 +478,7 @@ fn main() -> AppExit {
                 world_props::update_street_lamps,
                 world_props::update_lighthouse,
                 world_props::update_interior_lights,
+                world_props::interior_light_shadows,
             ),
         )
         // Toggle Esc: bidirezionale (Playing ↔ Paused), esclude Resetting.

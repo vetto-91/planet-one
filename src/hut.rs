@@ -1821,6 +1821,7 @@ pub fn apply_house_light(
     lamps: Query<&MeshMaterial3d<StandardMaterial>, With<HouseLamp>>,
     mut levers: Query<&mut Transform, With<SwitchLever>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    settings: Res<crate::audio::AudioSettings>,
 ) {
     let Some(on) = switches
         .iter()
@@ -1836,9 +1837,10 @@ pub fn apply_house_light(
         if l.intensity != intensity {
             l.intensity = intensity;
         }
-        // La lampada spenta non disegna ombre.
-        if l.shadow_maps_enabled != on {
-            l.shadow_maps_enabled = on;
+        // La lampada spenta non disegna ombre; nemmeno senza le ombre delle luci piccole (ADR 0057).
+        let shadows = on && settings.gfx.small_shadows;
+        if l.shadow_maps_enabled != shadows {
+            l.shadow_maps_enabled = shadows;
         }
     }
     let emissive = if on {
@@ -1868,6 +1870,7 @@ pub fn stove_light(
     time: Res<Time>,
     stoves: Query<(&PropKind, &PropState, &Children)>,
     mut lights: Query<&mut PointLight, With<StoveLight>>,
+    settings: Res<crate::audio::AudioSettings>,
 ) {
     let t = time.elapsed_secs();
     for (kind, st, children) in &stoves {
@@ -1884,9 +1887,10 @@ pub fn stove_light(
                 if l.intensity != intensity {
                     l.intensity = intensity;
                 }
-                // La stufa spenta non disegna ombre (ADR 0056).
-                if l.shadow_maps_enabled != st.on {
-                    l.shadow_maps_enabled = st.on;
+                // La stufa spenta non disegna ombre (ADR 0056), né senza le ombre piccole (ADR 0057).
+                let shadows = st.on && settings.gfx.small_shadows;
+                if l.shadow_maps_enabled != shadows {
+                    l.shadow_maps_enabled = shadows;
                 }
             }
         }

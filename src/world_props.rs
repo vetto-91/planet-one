@@ -1056,6 +1056,24 @@ pub fn update_interior_lights(
     }
 }
 
+/// Sistema: le luci interne fanno ombra solo con le ombre delle luci piccole (ADR 0057). Si scrive
+/// solo quando cambiano le opzioni o nascono luci nuove: con l'opzione attiva resta tutto com'era.
+pub fn interior_light_shadows(
+    settings: Res<crate::audio::AudioSettings>,
+    added: Query<(), Added<InteriorLight>>,
+    mut lights: Query<&mut PointLight, With<InteriorLight>>,
+) {
+    if !settings.is_changed() && added.is_empty() {
+        return;
+    }
+    let on = settings.gfx.small_shadows;
+    for mut l in &mut lights {
+        if l.shadow_maps_enabled != on {
+            l.shadow_maps_enabled = on;
+        }
+    }
+}
+
 /// Tipo di modello e seme di un edificio nel punto `p` del piazzamento.
 fn model_key(pl: &crate::debug_place::Placement, p: Vec2) -> (&str, u32) {
     let seed = (p.x * 100.0) as i32 as u32 ^ ((p.y * 100.0) as i32 as u32).rotate_left(11);

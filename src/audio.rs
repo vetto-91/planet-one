@@ -68,6 +68,9 @@ pub struct AudioSettings {
     pub fps: crate::graphics::FpsOptions,
     /// Da salvare su file appena il mouse viene rilasciato.
     pub dirty: bool,
+    /// La grafica è stata scelta (file o `PLANET_ONE_GFX`): il rilevamento della scheda non la
+    /// cambia (ADR 0057).
+    pub gfx_chosen: bool,
 }
 
 impl Default for AudioSettings {
@@ -91,6 +94,7 @@ impl Default for AudioSettings {
             gfx: Default::default(),
             fps: Default::default(),
             dirty: false,
+            gfx_chosen: false,
         };
         if let Some(text) = settings_path().and_then(|p| std::fs::read_to_string(p).ok()) {
             for line in text.lines() {
@@ -146,6 +150,7 @@ impl Default for AudioSettings {
                     s.ui_scale = if v > 0.0 { v.clamp(0.5, 3.0) } else { 0.0 };
                 }
                 s.gfx.read_line(line);
+                s.gfx_chosen |= line.trim().starts_with("gfx_");
                 s.fps.read_line(line);
                 if let Some(v) = line.trim().strip_prefix("time_speed=")
                     && let Ok(v) = v.trim().parse::<u32>()
@@ -164,13 +169,17 @@ impl Default for AudioSettings {
                 s.music_volume * 100.0
             );
         }
-        // Prove: `PLANET_ONE_GFX=basso|medio|alto` sceglie la grafica senza toccare il file.
+        // Prove: `PLANET_ONE_GFX=basso|medio|alto|integrata` sceglie la grafica senza toccare il file.
         if let Ok(v) = std::env::var("PLANET_ONE_GFX") {
+            s.gfx_chosen = true;
             match v.to_lowercase().as_str() {
+                "integrata" | "integrated" => s.gfx = crate::graphics::GfxOptions::INTEGRATED,
                 "basso" | "low" => s.gfx = crate::graphics::GfxOptions::LOW,
                 "medio" | "medium" => s.gfx = crate::graphics::GfxOptions::MEDIUM,
                 "alto" | "high" => s.gfx = crate::graphics::GfxOptions::HIGH,
-                other => warn!("[DEVTOOLS] PLANET_ONE_GFX={other} non valido: basso, medio o alto"),
+                other => warn!(
+                    "[DEVTOOLS] PLANET_ONE_GFX={other} non valido: basso, medio, alto o integrata"
+                ),
             }
         }
         s

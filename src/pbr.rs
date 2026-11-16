@@ -51,8 +51,28 @@ impl PbrMaterials {
     }
 }
 
+/// Texture dei materiali a metà risoluzione (`assets/textures/pbr/half/`, ADR 0057).
+static REDUCED_TEXTURES: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Sceglie le texture ridotte: vale per quelle caricate da qui in poi (all'avvio).
+pub fn set_reduced_textures(on: bool) {
+    REDUCED_TEXTURES.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// Percorso della texture: con le texture ridotte, la copia a metà risoluzione.
+fn texture_path(path: String, reduced: bool) -> String {
+    match path.strip_prefix("textures/pbr/") {
+        Some(name) if reduced => format!("textures/pbr/half/{name}"),
+        _ => path,
+    }
+}
+
 /// Carica una texture ripetuta (`srgb` per il colore, lineare per normal e ARM).
 pub fn load_tex(server: &AssetServer, path: String, srgb: bool) -> Handle<Image> {
+    let path = texture_path(
+        path,
+        REDUCED_TEXTURES.load(std::sync::atomic::Ordering::Relaxed),
+    );
     server
         .load_builder()
         .with_settings(move |s: &mut ImageLoaderSettings| {
@@ -161,5 +181,25 @@ impl FromWorld for PbrMaterials {
             }),
         );
         Self(map)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reduced_textures_come_from_the_half_folder() {
+        let p = |s: &str, r| texture_path(s.to_string(), r);
+        assert_eq!(
+            p("textures/pbr/sand_diff.jpg", false),
+            "textures/pbr/sand_diff.jpg"
+        );
+        assert_eq!(
+            p("textures/pbr/sand_diff.jpg", true),
+            "textures/pbr/half/sand_diff.jpg"
+        );
+        // Fuori dai materiali PBR non cambia nulla.
+        assert_eq!(p("textures/capanna.png", true), "textures/capanna.png");
     }
 }

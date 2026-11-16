@@ -812,12 +812,13 @@ fn lie_in_bed(tf: &mut Transform, pos: Vec3, head: Vec3) {
 pub fn lantern_shadows(
     players: Query<&GlobalTransform, With<crate::player::Player>>,
     mut lanterns: Query<(&mut PointLight, &GlobalTransform), With<GuardLantern>>,
+    settings: Res<crate::audio::AudioSettings>,
 ) {
     let Ok(me) = players.single() else {
         return;
     };
     for (mut l, g) in &mut lanterns {
-        let near = me.translation().distance(g.translation()) < 22.0;
+        let near = settings.gfx.small_shadows && me.translation().distance(g.translation()) < 22.0;
         if l.shadow_maps_enabled != near {
             l.shadow_maps_enabled = near;
         }

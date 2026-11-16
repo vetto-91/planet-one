@@ -1092,6 +1092,7 @@ pub fn nature_lod(
     player: Query<&GlobalTransform, With<crate::player::Player>>,
     chunks: Query<(&NatureChunk, &Children)>,
     mut groups: Query<(&NatureGroup, &mut Visibility)>,
+    settings: Res<crate::audio::AudioSettings>,
 ) {
     *timer -= time.delta_secs();
     if *timer > 0.0 {
@@ -1103,6 +1104,11 @@ pub fn nature_lod(
     };
     let p = player.translation();
     let here = Vec2::new(p.x, p.z);
+    // Erba, fiori e cespugli: più vicini solo se lo chiede la grafica (ADR 0057).
+    let detail = match settings.gfx.grass_distance {
+        0 => NEAR_DETAIL,
+        d => f32::from(d).min(NEAR_DETAIL),
+    };
     for (chunk, children) in &chunks {
         let d = chunk.center.distance(here);
         for child in children {
@@ -1110,7 +1116,7 @@ pub fn nature_lod(
                 let show = match group {
                     NatureGroup::NearTrees => d < NEAR_TREES,
                     NatureGroup::FarTrees => d >= NEAR_TREES,
-                    NatureGroup::Detail => d < NEAR_DETAIL,
+                    NatureGroup::Detail => d < detail,
                 };
                 let wanted = if show {
                     Visibility::Inherited

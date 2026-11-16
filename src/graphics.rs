@@ -18,17 +18,26 @@ use std::time::{Duration, Instant};
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Shadows {
     Off,
+    /// Per le schede integrate (ADR 0057): una cascata piccola e corta.
+    Minimal,
     Low,
     Medium,
     High,
 }
 
 impl Shadows {
-    pub const ALL: [Shadows; 4] = [Shadows::High, Shadows::Medium, Shadows::Low, Shadows::Off];
+    pub const ALL: [Shadows; 5] = [
+        Shadows::High,
+        Shadows::Medium,
+        Shadows::Low,
+        Shadows::Minimal,
+        Shadows::Off,
+    ];
 
     pub fn name(self) -> &'static str {
         match self {
             Shadows::Off => "Spente",
+            Shadows::Minimal => "Minime",
             Shadows::Low => "Basse",
             Shadows::Medium => "Medie",
             Shadows::High => "Alte",
@@ -38,6 +47,7 @@ impl Shadows {
     fn key(self) -> &'static str {
         match self {
             Shadows::Off => "off",
+            Shadows::Minimal => "minimal",
             Shadows::Low => "low",
             Shadows::Medium => "medium",
             Shadows::High => "high",
@@ -48,6 +58,7 @@ impl Shadows {
     pub fn params(self) -> (usize, usize, f32) {
         match self {
             Shadows::Off => (1, 512, 10.0),
+            Shadows::Minimal => (1, 1024, 40.0),
             Shadows::Low => (2, 1024, 60.0),
             Shadows::Medium => (3, 2048, 100.0),
             Shadows::High => (4, 4096, 180.0),
@@ -73,6 +84,12 @@ pub struct GfxOptions {
     pub waves: bool,
     /// Percentuale di vegetazione: 100, 70 o 40.
     pub vegetation: u8,
+    /// Ombre delle luci piccole: stufa, lume, luci interne e lanterne delle guardie (ADR 0057).
+    pub small_shadows: bool,
+    /// Distanza di erba, fiori e cespugli in metri (0 = normale, 42 m come sempre).
+    pub grass_distance: u16,
+    /// Texture dei materiali a metà risoluzione (vale al riavvio).
+    pub reduced_textures: bool,
 }
 
 impl GfxOptions {
@@ -87,6 +104,9 @@ impl GfxOptions {
         far_anim_cull: true,
         waves: true,
         vegetation: 100,
+        small_shadows: true,
+        grass_distance: 0,
+        reduced_textures: false,
     };
     pub const MEDIUM: Self = Self {
         shadows: Shadows::Medium,
@@ -99,6 +119,9 @@ impl GfxOptions {
         far_anim_cull: true,
         waves: true,
         vegetation: 70,
+        small_shadows: true,
+        grass_distance: 0,
+        reduced_textures: false,
     };
     pub const LOW: Self = Self {
         shadows: Shadows::Low,
@@ -111,7 +134,30 @@ impl GfxOptions {
         far_anim_cull: true,
         waves: false,
         vegetation: 40,
+        small_shadows: true,
+        grass_distance: 0,
+        reduced_textures: false,
     };
+
+    /// Schede integrate e senza GPU (ADR 0057): grafica leggera, stesso gioco.
+    pub const INTEGRATED: Self = Self {
+        shadows: Shadows::Minimal,
+        lamp_shadows: false,
+        interior_lights: false,
+        ssao: false,
+        bloom: false,
+        antialias: false,
+        particles: 50,
+        far_anim_cull: true,
+        waves: false,
+        vegetation: 40,
+        small_shadows: false,
+        grass_distance: 30,
+        reduced_textures: true,
+    };
+
+    /// Distanze proposte per erba, fiori e cespugli (0 = normale).
+    pub const GRASS_DISTANCES: [u16; 2] = [0, 30];
 
     /// Quota delle particelle attive (0..1).
     pub fn particle_scale(&self) -> f32 {
@@ -121,7 +167,7 @@ impl GfxOptions {
     /// Righe da scrivere in `settings.txt`.
     pub fn to_lines(self) -> String {
         format!(
-            "gfx_shadows={}\ngfx_lamp_shadows={}\ngfx_interior_lights={}\ngfx_ssao={}\ngfx_bloom={}\ngfx_antialias={}\ngfx_particles={}\ngfx_far_anim_cull={}\ngfx_waves={}\ngfx_vegetation={}\n",
+            "gfx_shadows={}\ngfx_lamp_shadows={}\ngfx_interior_lights={}\ngfx_ssao={}\ngfx_bloom={}\ngfx_antialias={}\ngfx_particles={}\ngfx_far_anim_cull={}\ngfx_waves={}\ngfx_vegetation={}\ngfx_small_shadows={}\ngfx_grass_distance={}\ngfx_reduced_textures={}\n",
             self.shadows.key(),
             u8::from(self.lamp_shadows),
             u8::from(self.interior_lights),
@@ -132,6 +178,9 @@ impl GfxOptions {
             u8::from(self.far_anim_cull),
             u8::from(self.waves),
             self.vegetation,
+            u8::from(self.small_shadows),
+            self.grass_distance,
+            u8::from(self.reduced_textures),
         )
     }
 
@@ -169,6 +218,15 @@ impl GfxOptions {
             }
             "gfx_far_anim_cull" => self.far_anim_cull = on,
             "gfx_waves" => self.waves = on,
+            "gfx_small_shadows" => self.small_shadows = on,
+            "gfx_grass_distance" => {
+                if let Ok(d) = value.parse::<u16>()
+                    && Self::GRASS_DISTANCES.contains(&d)
+                {
+                    self.grass_distance = d;
+                }
+            }
+            "gfx_reduced_textures" => self.reduced_textures = on,
             _ => {}
         }
     }
@@ -320,6 +378,33 @@ pub fn apply_graphics(
     info!("[GRAFICA] opzioni applicate: {gfx:?}");
 }
 
+/// Schede che vogliono la grafica leggera: integrate nella CPU (Intel, AMD) o senza GPU vera
+/// (rendering software). `kind` è il nome del tipo di scheda di wgpu (ADR 0057).
+pub fn wants_light_preset(kind: &str) -> bool {
+    matches!(kind, "IntegratedGpu" | "Cpu")
+}
+
+/// Sistema (prima dello startup, prima di caricare le texture): su una scheda integrata, se la
+/// grafica non è mai stata scelta, propone il preset «Integrata». Una scelta salvata non si tocca.
+pub fn pick_preset_for_adapter(
+    info: Option<Res<bevy::render::renderer::RenderAdapterInfo>>,
+    mut settings: ResMut<AudioSettings>,
+) {
+    if let Some(info) = info {
+        let kind = format!("{:?}", info.device_type);
+        let choice = if settings.gfx_chosen {
+            "grafica già scelta"
+        } else if wants_light_preset(&kind) {
+            settings.gfx = GfxOptions::INTEGRATED;
+            "preset Integrata"
+        } else {
+            "preset Alta"
+        };
+        info!("[GRAFICA] scheda: {} ({kind}) → {choice}", info.name);
+    }
+    crate::pbr::set_reduced_textures(settings.gfx.reduced_textures);
+}
+
 /// Scheda Video: solo aspetto visivo.
 pub fn graphics_ui(ui: &mut egui::Ui, audio: &mut AudioSettings) {
     ui.label("Solo aspetto visivo: non cambiano il gioco.");
@@ -331,6 +416,7 @@ pub fn graphics_ui(ui: &mut egui::Ui, audio: &mut AudioSettings) {
             ("Alta", GfxOptions::HIGH),
             ("Media", GfxOptions::MEDIUM),
             ("Bassa", GfxOptions::LOW),
+            ("Integrata", GfxOptions::INTEGRATED),
         ] {
             if ui.selectable_label(gfx == preset, name).clicked() {
                 gfx = preset;
@@ -347,6 +433,7 @@ pub fn graphics_ui(ui: &mut egui::Ui, audio: &mut AudioSettings) {
         }
     });
     ui.checkbox(&mut gfx.lamp_shadows, "Ombre dei lampioni");
+    ui.checkbox(&mut gfx.small_shadows, "Ombre di stufa, lumi e lanterne");
     ui.checkbox(&mut gfx.interior_lights, "Luci negli edifici");
     ui.checkbox(&mut gfx.ssao, "Occlusione ambientale");
     ui.checkbox(&mut gfx.bloom, "Bagliore delle luci");
@@ -377,6 +464,26 @@ pub fn graphics_ui(ui: &mut egui::Ui, audio: &mut AudioSettings) {
             }
         }
     });
+    ui.horizontal(|ui| {
+        ui.label("Erba, fiori e cespugli:");
+        for d in GfxOptions::GRASS_DISTANCES {
+            let label = if d == 0 {
+                "Normali".to_string()
+            } else {
+                format!("Vicini ({d} m)")
+            };
+            if ui
+                .selectable_label(gfx.grass_distance == d, label)
+                .clicked()
+            {
+                gfx.grass_distance = d;
+            }
+        }
+    });
+    ui.checkbox(
+        &mut gfx.reduced_textures,
+        "Texture ridotte (al prossimo avvio)",
+    );
     ui.separator();
     let mut fps = audio.fps;
     ui.checkbox(&mut fps.vsync, "VSync (FPS legati al monitor)");
@@ -416,15 +523,16 @@ fn keep_shadow_lights_extracted(mut lights: Query<&mut PointLight>) {
 }
 
 pub fn plugin(app: &mut App) {
-    app.add_systems(
-        Update,
-        (
-            apply_graphics,
-            apply_present_mode,
-            keep_shadow_lights_extracted,
-        ),
-    )
-    .add_systems(Last, limit_frame_rate);
+    app.add_systems(PreStartup, pick_preset_for_adapter)
+        .add_systems(
+            Update,
+            (
+                apply_graphics,
+                apply_present_mode,
+                keep_shadow_lights_extracted,
+            ),
+        )
+        .add_systems(Last, limit_frame_rate);
 }
 
 #[cfg(test)]
@@ -452,6 +560,9 @@ mod tests {
             far_anim_cull: false,
             waves: false,
             vegetation: 40,
+            small_shadows: false,
+            grass_distance: 30,
+            reduced_textures: true,
         };
         let mut read = GfxOptions::HIGH;
         for line in original.to_lines().lines() {
@@ -461,11 +572,51 @@ mod tests {
     }
 
     #[test]
+    fn integrated_preset_survives_the_settings_file() {
+        let mut read = GfxOptions::HIGH;
+        for line in GfxOptions::INTEGRATED.to_lines().lines() {
+            read.read_line(line);
+        }
+        assert_eq!(read, GfxOptions::INTEGRATED);
+    }
+
+    #[test]
+    fn old_settings_files_keep_todays_graphics() {
+        // Un file scritto prima dell'ADR 0057 non ha le chiavi nuove: restano i valori di oggi.
+        for preset in [GfxOptions::HIGH, GfxOptions::MEDIUM, GfxOptions::LOW] {
+            assert!(preset.small_shadows);
+            assert_eq!(preset.grass_distance, 0);
+            assert!(!preset.reduced_textures);
+        }
+        assert_eq!(GfxOptions::default(), GfxOptions::HIGH);
+    }
+
+    #[test]
+    fn only_integrated_and_software_adapters_get_the_light_preset() {
+        assert!(wants_light_preset("IntegratedGpu"));
+        assert!(wants_light_preset("Cpu"));
+        for kind in ["DiscreteGpu", "VirtualGpu", "Other"] {
+            assert!(!wants_light_preset(kind), "{kind}");
+        }
+    }
+
+    #[test]
+    fn integrated_preset_is_the_lightest() {
+        let g = GfxOptions::INTEGRATED;
+        let low = GfxOptions::LOW;
+        assert!(g.shadows.params().0 < low.shadows.params().0);
+        assert!(g.shadows.params().2 < low.shadows.params().2);
+        assert!(!g.ssao && !g.bloom && !g.antialias && !g.small_shadows);
+        assert!(g.vegetation <= low.vegetation && g.particles <= low.particles);
+    }
+
+    #[test]
     fn invalid_settings_lines_are_ignored() {
         let mut g = GfxOptions::HIGH;
         for line in [
             "gfx_shadows=boh",
             "gfx_particles=33",
+            "gfx_grass_distance=7",
             "altro=1",
             "senza uguale",
         ] {
