@@ -319,13 +319,16 @@ pub fn update_occlusion(
     spatial: avian3d::prelude::SpatialQuery,
     blockers: Query<(), With<crate::camera::BlocksCamera>>,
     mut occluded: ResMut<Occluded>,
+    mut found: Local<bevy::utils::Parallel<Vec<Entity>>>,
 ) {
     occluded.0.clear();
     let Ok(cam) = cameras.single() else {
         return;
     };
     let origin = cam.translation();
-    for (e, t) in &targets {
+    // I raggi di ogni personaggio sono indipendenti: si lanciano in parallelo e si raccolgono
+    // in liste per thread; l'insieme risultante è lo stesso del ciclo in serie (ADR 0056).
+    targets.par_iter().for_each(|(e, t)| {
         let hidden = [0.3, 0.9, 1.4].into_iter().all(|h| {
             let to = t.translation() + Vec3::Y * h - origin;
             let dist = to.length();
@@ -343,9 +346,10 @@ pub fn update_occlusion(
             })
         });
         if hidden {
-            occluded.0.insert(e);
+            found.borrow_local_mut().push(e);
         }
-    }
+    });
+    occluded.0.extend(found.drain());
 }
 
 /// Altezza (m, sopra il centro) del punto di ancoraggio della targhetta del

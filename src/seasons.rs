@@ -446,12 +446,15 @@ pub fn update_leaves(
     let t = time.elapsed_secs();
     let active = (season.0.leaf_fall * POOL as f32 * settings.gfx.particle_scale()) as usize;
     for (i, (mut leaf, mut tf, mut vis)) in leaves.iter_mut().enumerate() {
+        // Visibilità scritta solo al cambio: fuori dall'autunno le 150 foglie restano ferme (ADR 0056).
         if i >= active {
-            *vis = Visibility::Hidden;
-            leaf.fresh = true;
+            vis.set_if_neq(Visibility::Hidden);
+            if !leaf.fresh {
+                leaf.fresh = true;
+            }
             continue;
         }
-        *vis = Visibility::Inherited;
+        vis.set_if_neq(Visibility::Inherited);
         let pos = tf.translation;
         let ground = field.height_at(pos.x, pos.z);
         let out = Vec2::new(pos.x - cam.x, pos.z - cam.z).length() > LEAF_RADIUS;

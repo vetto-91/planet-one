@@ -543,19 +543,25 @@ pub fn update_precip(
     let open = (1.0 - 0.9 * state.sheltered) * settings.gfx.particle_scale();
     let rain_n = (state.rain * RAIN_POOL as f32 * open) as usize;
     let snow_n = (state.snow * SNOW_POOL as f32 * open) as usize;
-    for (mut p, mut tf, mut vis) in &mut parts {
+    let field = &*field;
+    let wind = wind.0;
+    // Ogni goccia o fiocco dipende solo da sé: si muovono in parallelo su tutti i core. La
+    // visibilità si scrive solo quando cambia, così Bevy non ripropaga 2900 entità ferme (ADR 0056).
+    parts.par_iter_mut().for_each(|(mut p, mut tf, mut vis)| {
         let n = if p.snow { snow_n } else { rain_n };
         if p.index >= n {
-            *vis = Visibility::Hidden;
-            p.fresh = true;
-            continue;
+            vis.set_if_neq(Visibility::Hidden);
+            if !p.fresh {
+                p.fresh = true;
+            }
+            return;
         }
         let pos = tf.translation;
-        *vis = if too_close(pos, cam) {
+        vis.set_if_neq(if too_close(pos, cam) {
             Visibility::Hidden
         } else {
             Visibility::Inherited
-        };
+        });
         let ground = field.height_at(pos.x, pos.z);
         let (radius, above) = if p.snow {
             (SNOW_RADIUS, SNOW_TOP)
@@ -580,9 +586,9 @@ pub fn update_precip(
             };
             p.fresh = false;
             tf.translation = Vec3::new(x, y, z);
-            continue;
+            return;
         }
-        let w = Vec3::new(wind.0.x, 0.0, wind.0.y);
+        let w = Vec3::new(wind.x, 0.0, wind.y);
         if p.snow {
             let sway = Vec3::new(
                 (t * 1.1 + p.seed).sin(),
@@ -595,7 +601,7 @@ pub fn update_precip(
             tf.translation += vel * dt;
             tf.rotation = Quat::from_rotation_arc(Vec3::Y, -vel.normalize());
         }
-    }
+    });
 }
 
 // ---------------------------------------------------------------------------------------------
