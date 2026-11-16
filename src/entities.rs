@@ -373,7 +373,11 @@ pub fn interact(
     }
 
     // Aggiorna il prompt mostrato dalla UI per l'interagibile piu' vicino.
-    nearest.prompt = best.as_ref().map(|b| b.2.prompt.clone());
+    // Clonato solo quando cambia (prima a ogni frame, ADR 0056).
+    let prompt = best.as_ref().map(|b| b.2.prompt.as_str());
+    if nearest.prompt.as_deref() != prompt {
+        nearest.prompt = prompt.map(str::to_string);
+    }
     // (log debug rimosso)
 
     // Porta e stufa: E commuta lo stato (gestito da `hut::handle_prop_toggle`).

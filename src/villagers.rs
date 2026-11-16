@@ -161,7 +161,7 @@ fn follow(
     vis: &mut Visibility,
     npc: &mut Npc,
     field: &TerrainField,
-    items: &[crate::debug_place::Placement],
+    piers: &[(Vec2, f32)],
     target: Vec3,
     dt: f32,
 ) {
@@ -183,7 +183,7 @@ fn follow(
     };
     tf.translation = Vec3::new(
         next.x,
-        ground_y(field, items, next.x, next.y) + CENTER_Y,
+        ground_y(field, piers, next.x, next.y) + CENTER_Y,
         next.y,
     );
     if dist > 0.3 {
@@ -339,8 +339,14 @@ pub struct NpcInventory {
 }
 
 impl NpcInventory {
+    #[cfg(test)]
     pub fn has(&self, key: &str) -> bool {
         self.keys.iter().any(|k| k == key)
+    }
+
+    /// Ha la chiave di questa casa? Come `has(&home.key())`, senza allocare.
+    pub fn opens(&self, home: &crate::world_props::HomeEntry) -> bool {
+        self.keys.iter().any(|k| home.key_is(k))
     }
 
     fn of(def: &VillagerDef) -> Self {
@@ -711,23 +717,52 @@ impl RoadGraph {
 }
 
 /// Quota del piano di un molo se (x, z) ne cade nell'impronta (ponte: x ±1,2, z da -2 a 12).
-pub fn pier_deck_at(items: &[crate::debug_place::Placement], x: f32, z: f32) -> Option<f32> {
-    for pl in items.iter().filter(|p| p.kind == "molo") {
-        for (j, &p) in pl.points.iter().enumerate() {
-            let d = Vec3::new(x - p.x, 0.0, z - p.y);
-            let l = Quat::from_rotation_y(-pl.yaw(j)) * d;
-            if l.x.abs() <= 1.2 && (-2.0..=12.0).contains(&l.z) {
-                return Some(crate::terrain::SEA_LEVEL + crate::buildings::PIER_DECK_TOP);
-            }
+#[cfg(test)]
+fn pier_deck_at(items: &[crate::debug_place::Placement], x: f32, z: f32) -> Option<f32> {
+    deck_on(&pier_points(items), x, z)
+}
+
+/// Punti e rotazioni dei moli (piazzamenti `molo`), nell'ordine dei piazzamenti.
+fn pier_points(items: &[crate::debug_place::Placement]) -> Vec<(Vec2, f32)> {
+    items
+        .iter()
+        .filter(|p| p.kind == "molo")
+        .flat_map(|pl| pl.points.iter().enumerate().map(|(j, &p)| (p, pl.yaw(j))))
+        .collect()
+}
+
+/// Piano del molo sotto (x, z), dai punti già raccolti da `pier_points`.
+fn deck_on(piers: &[(Vec2, f32)], x: f32, z: f32) -> Option<f32> {
+    for &(p, yaw) in piers {
+        let d = Vec3::new(x - p.x, 0.0, z - p.y);
+        let l = Quat::from_rotation_y(-yaw) * d;
+        if l.x.abs() <= 1.2 && (-2.0..=12.0).contains(&l.z) {
+            return Some(crate::terrain::SEA_LEVEL + crate::buildings::PIER_DECK_TOP);
         }
     }
     None
 }
 
 /// Quota del suolo: terreno, o piano del molo se più alto.
-fn ground_y(field: &TerrainField, items: &[crate::debug_place::Placement], x: f32, z: f32) -> f32 {
+fn ground_y(field: &TerrainField, piers: &[(Vec2, f32)], x: f32, z: f32) -> f32 {
     let g = field.height_at(x, z);
-    pier_deck_at(items, x, z).map_or(g, |d| d.max(g))
+    deck_on(piers, x, z).map_or(g, |d| d.max(g))
+}
+
+/// Spegne il collider dell'abitante, se non lo è già (`off` segue lo stato dentro il frame).
+fn disable_collider(commands: &mut Commands, entity: Entity, off: &mut bool) {
+    if !*off {
+        commands.entity(entity).insert(ColliderDisabled);
+        *off = true;
+    }
+}
+
+/// Riaccende il collider dell'abitante, se era spento.
+fn enable_collider(commands: &mut Commands, entity: Entity, off: &mut bool) {
+    if *off {
+        commands.entity(entity).remove::<ColliderDisabled>();
+        *off = false;
+    }
 }
 
 /// Letto di un abitante: serve la chiave di casa, altrimenti non può entrare.
@@ -758,7 +793,7 @@ fn home_of<'a>(
 ) -> Option<HomeRef<'a>> {
     let (kind, n, bed) = def.home.as_ref()?;
     let home = homes.find(kind, *n)?;
-    keys.has(&home.key()).then_some(())?;
+    keys.opens(home).then_some(())?;
     Some(HomeRef {
         door: home.door,
         bed: home.beds.get(*bed)?,
@@ -803,7 +838,7 @@ pub fn villager_routine(
     app_state: Res<State<crate::AppState>>,
     homes: Res<crate::world_props::Homes>,
     parents: Query<&ChildOf>,
-    mut graph: Local<Option<RoadGraph>>,
+    (mut graph, mut pier_cache): (Local<Option<RoadGraph>>, Local<Option<Vec<(Vec2, f32)>>>),
     mut q: Query<(
         Entity,
         &mut Transform,
@@ -812,6 +847,7 @@ pub fn villager_routine(
         &mut Villager,
         &mut Visibility,
         Has<crate::companions::Companion>,
+        Has<ColliderDisabled>,
     )>,
     mut lanterns: Query<(Entity, &mut PointLight), With<GuardLantern>>,
     mut gear: Query<GearItem, GearOnly>,
@@ -823,6 +859,11 @@ pub fn villager_routine(
     if graph.is_none() && !info.spec.roads.is_empty() {
         *graph = Some(RoadGraph::build(&info.spec.roads));
     }
+    // I moli si raccolgono una volta sola, e di nuovo solo se i piazzamenti cambiano (ADR 0056).
+    if pier_cache.is_none() || dbg.is_changed() {
+        *pier_cache = Some(pier_points(&dbg.items));
+    }
+    let piers = pier_cache.as_deref().unwrap_or_default();
     let dt = time.delta_secs();
     let hour = clock.hour;
     // Lanterne accese di notte, spente per chi dorme.
@@ -830,14 +871,14 @@ pub fn villager_routine(
     for (entity, mut l) in &mut lanterns {
         let asleep = parents
             .iter_ancestors(entity)
-            .any(|a| q.get(a).is_ok_and(|(.., v, _, _)| v.hidden));
+            .any(|a| q.get(a).is_ok_and(|(.., v, _, _, _)| v.hidden));
         let target = if dark && !asleep { 60_000.0 } else { 0.0 };
         l.intensity += (target - l.intensity) * (dt * 2.0).min(1.0);
     }
     for (entity, mut vis) in &mut gear {
         let asleep = parents
             .iter_ancestors(entity)
-            .any(|a| q.get(a).is_ok_and(|(.., v, _, _)| v.hidden));
+            .any(|a| q.get(a).is_ok_and(|(.., v, _, _, _)| v.hidden));
         // Le lanterne si portano soltanto al buio: di giorno restano riposte.
         let stowed = lanterns.contains(entity) && !dark;
         let wanted = if asleep || stowed {
@@ -850,12 +891,15 @@ pub fn villager_routine(
         }
     }
     let player = players.single().ok().map(|p| p.translation());
-    for (entity, mut tf, mut npc, keys, mut v, mut vis, companion) in &mut q {
+    for (entity, mut tf, mut npc, keys, mut v, mut vis, companion, collider_off) in &mut q {
+        // `ColliderDisabled` si aggiunge o si toglie solo quando lo stato cambia davvero: prima
+        // ogni abitante in cammino lo reinseriva a ogni frame (ADR 0056).
+        let mut collider_off = collider_off;
         // Un compagno lascia la sua giornata e segue il giocatore (ADR 0049); quando torna a casa
         // si rimette al posto giusto per l'ora.
         if companion && let Some(target) = player {
             follow(
-                &mut tf, &mut v, &mut vis, &mut npc, &field, &dbg.items, target, dt,
+                &mut tf, &mut v, &mut vis, &mut npc, &field, piers, target, dt,
             );
             continue;
         }
@@ -904,11 +948,12 @@ pub fn villager_routine(
                         tf: &mut Transform,
                         vis: &mut Visibility,
                         npc: &mut Npc,
-                        commands: &mut Commands| {
+                        commands: &mut Commands,
+                        collider_off: &mut bool| {
                 v.hidden = true;
                 v.phase = Phase::Rest;
                 npc.mode = NpcMode::Busy;
-                commands.entity(entity).insert(ColliderDisabled);
+                disable_collider(commands, entity, collider_off);
                 match &home {
                     Some(h) => {
                         lie_in_bed(tf, h.bed.pos, h.bed.head);
@@ -923,7 +968,14 @@ pub fn villager_routine(
                 *vis = Visibility::Inherited;
                 v.phase = Phase::Work;
                 if !on_duty {
-                    rest(&mut v, &mut tf, &mut vis, &mut npc, &mut commands);
+                    rest(
+                        &mut v,
+                        &mut tf,
+                        &mut vis,
+                        &mut npc,
+                        &mut commands,
+                        &mut collider_off,
+                    );
                     continue;
                 }
             }
@@ -945,7 +997,7 @@ pub fn villager_routine(
                 v.phase = Phase::Work;
                 *vis = Visibility::Inherited;
                 npc.mode = NpcMode::Ready;
-                commands.entity(entity).remove::<ColliderDisabled>();
+                enable_collider(&mut commands, entity, &mut collider_off);
                 tf.rotation = Quat::IDENTITY;
                 info!("[VILLAGERS] {} inizia il turno sulle mura", v.def.name);
             } else if !on_duty {
@@ -959,7 +1011,14 @@ pub fn villager_routine(
                         "[VILLAGERS] {} finisce il turno ed entra nella torre",
                         v.def.name
                     );
-                    rest(&mut v, &mut tf, &mut vis, &mut npc, &mut commands);
+                    rest(
+                        &mut v,
+                        &mut tf,
+                        &mut vis,
+                        &mut npc,
+                        &mut commands,
+                        &mut collider_off,
+                    );
                     continue;
                 }
             }
@@ -999,7 +1058,7 @@ pub fn villager_routine(
             v.hidden = matches!(want, Phase::Night | Phase::Rest);
             if v.hidden {
                 npc.mode = NpcMode::Busy;
-                commands.entity(entity).insert(ColliderDisabled);
+                disable_collider(&mut commands, entity, &mut collider_off);
                 if let Some(h) = &home {
                     lie_in_bed(&mut tf, h.bed.pos, h.bed.head);
                     *vis = Visibility::Inherited;
@@ -1015,7 +1074,7 @@ pub fn villager_routine(
             v.resume = false;
             if v.hidden {
                 npc.mode = NpcMode::Busy;
-                commands.entity(entity).insert(ColliderDisabled);
+                disable_collider(&mut commands, entity, &mut collider_off);
                 *vis = if home.is_some() {
                     Visibility::Inherited
                 } else {
@@ -1043,7 +1102,7 @@ pub fn villager_routine(
                 *vis = Visibility::Hidden;
                 v.hidden = true;
                 npc.mode = NpcMode::Busy;
-                commands.entity(entity).insert(ColliderDisabled);
+                disable_collider(&mut commands, entity, &mut collider_off);
                 v.phase = want;
                 continue;
             }
@@ -1102,7 +1161,7 @@ pub fn villager_routine(
         // Dentro casa si cammina in 3D, sulle rampe e sui pavimenti.
         if let Some(&next) = v.indoor.front() {
             npc.mode = NpcMode::Busy;
-            commands.entity(entity).insert(ColliderDisabled);
+            disable_collider(&mut commands, entity, &mut collider_off);
             if !talking {
                 let to = next + Vec3::Y * CENTER_Y - tf.translation;
                 if to.length() < 0.1 {
@@ -1137,7 +1196,7 @@ pub fn villager_routine(
         let here = Vec2::new(tf.translation.x, tf.translation.z);
         if let Some(&next) = v.path.front() {
             npc.mode = NpcMode::Busy;
-            commands.entity(entity).insert(ColliderDisabled);
+            disable_collider(&mut commands, entity, &mut collider_off);
             if !talking {
                 let to = next - here;
                 if to.length() < 0.15 {
@@ -1177,7 +1236,7 @@ pub fn villager_routine(
             v.entered = false;
             v.hidden = true;
             npc.mode = NpcMode::Busy;
-            commands.entity(entity).insert(ColliderDisabled);
+            disable_collider(&mut commands, entity, &mut collider_off);
             continue;
         } else {
             let (_, look) = spot(&v.def, v.called, v.phase, &info);
@@ -1187,11 +1246,10 @@ pub fn villager_routine(
             }
             if npc.mode == NpcMode::Busy {
                 npc.mode = NpcMode::Ready;
-                commands.entity(entity).remove::<ColliderDisabled>();
+                enable_collider(&mut commands, entity, &mut collider_off);
             }
         }
-        tf.translation.y =
-            ground_y(&field, &dbg.items, tf.translation.x, tf.translation.z) + CENTER_Y;
+        tf.translation.y = ground_y(&field, piers, tf.translation.x, tf.translation.z) + CENTER_Y;
     }
 }
 
@@ -1201,8 +1259,13 @@ pub fn villager_chores(
     mut shutters: Query<&mut crate::hut::PropState>,
 ) {
     for mut v in &mut villagers {
-        let name = v.def.name.clone();
-        let Some(c) = v.chore.as_mut().filter(|c| c.fire) else {
+        // Prima si guarda senza toccare: solo chi deve fare il gesto viene scritto (ADR 0056).
+        if !v.chore.as_ref().is_some_and(|c| c.fire) {
+            continue;
+        }
+        let v = &mut *v;
+        let name = &v.def.name;
+        let Some(c) = v.chore.as_mut() else {
             continue;
         };
         c.fire = false;
@@ -1231,10 +1294,9 @@ pub fn villager_doors(
         let Some(Ok((mut state, lock))) = home.state.map(|e| doors.get_mut(e)) else {
             continue;
         };
-        let key = home.key();
         let near = walkers.iter().any(|(t, v, keys)| {
             !v.indoor.is_empty()
-                && keys.has(&key)
+                && keys.opens(home)
                 && (t.translation - home.door_point).length() < OPEN_NEAR
         });
         if near {

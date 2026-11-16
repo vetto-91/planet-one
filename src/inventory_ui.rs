@@ -131,7 +131,7 @@ pub fn filtered(inv: &Inventory, equip: &Equipment, f: &Filter) -> Vec<ItemStack
         })
         .cloned()
         .collect();
-    out.sort_by_key(|s| normalize(s.kind.name()));
+    out.sort_by_cached_key(|s| normalize(s.kind.name()));
     out
 }
 

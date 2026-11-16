@@ -456,7 +456,7 @@ fn row(
 
 fn sorted(items: &[ItemStack]) -> Vec<ItemStack> {
     let mut list: Vec<ItemStack> = items.iter().filter(|s| s.qty > 0).cloned().collect();
-    list.sort_by_key(|s| normalize(s.kind.name()));
+    list.sort_by_cached_key(|s| normalize(s.kind.name()));
     list
 }
 

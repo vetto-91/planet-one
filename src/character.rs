@@ -365,7 +365,7 @@ impl Carry {
 }
 
 /// Valori ricalcolati a ogni frame, per movimento e interfaccia.
-#[derive(Resource, Debug, Clone, Copy)]
+#[derive(Resource, Debug, Clone, Copy, PartialEq)]
 pub struct Load {
     pub carry: Carry,
     pub capacity: f32,
@@ -397,7 +397,8 @@ pub fn update_load(
     let carry = Carry::of(character.stats, &equip, &effects);
     let capacity = carry.total();
     let weight = inventory.total_weight();
-    *load = Load {
+    // Scritto solo se cambia: chi guarda `Load` non lo vede cambiato a ogni frame (ADR 0056).
+    load.set_if_neq(Load {
         carry,
         capacity,
         weight,
@@ -409,7 +410,7 @@ pub fn update_load(
             } else {
                 1.0
             },
-    };
+    });
 }
 
 /// Sistema: la vita massima segue la costituzione.

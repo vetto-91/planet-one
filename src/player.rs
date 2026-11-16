@@ -194,11 +194,12 @@ pub fn update_grounded(
 
         // Raccoglie il hit più vicino tra centro e 4 offset laterali.
         let mut best: Option<RayHitData> = None;
-        let mut origins = Vec::with_capacity(5);
-        origins.push(center);
-        for off in RAY_OFFSETS {
-            origins.push(center + Vec3::new(off.x, 0.0, off.y));
-        }
+        // Centro e quattro offset, senza allocare a ogni tick (ADR 0056).
+        let origins = std::iter::once(center).chain(
+            RAY_OFFSETS
+                .iter()
+                .map(|off| center + Vec3::new(off.x, 0.0, off.y)),
+        );
 
         for origin in origins {
             if let Some(hit) = spatial_query.cast_ray_predicate(
