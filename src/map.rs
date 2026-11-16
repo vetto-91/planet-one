@@ -66,17 +66,21 @@ pub struct Saved {
 }
 
 /// OnEnter(Map): porta la camera sopra la scena, in ortografica, nord in alto.
+#[allow(clippy::type_complexity)]
 pub fn enter_map(
     mut commands: Commands,
     mut view: ResMut<MapView>,
     mut saved: ResMut<SavedCamera>,
-    mut cameras: Query<(
-        Entity,
-        &mut Transform,
-        &mut Projection,
-        &mut Camera,
-        Option<&Skybox>,
-    )>,
+    mut cameras: Query<
+        (
+            Entity,
+            &mut Transform,
+            &mut Projection,
+            &mut Camera,
+            Option<&Skybox>,
+        ),
+        With<Camera3d>,
+    >,
     players: Query<&GlobalTransform, (With<crate::player::Player>, Without<Camera>)>,
 ) {
     let Ok((entity, mut tf, mut proj, mut cam, skybox)) = cameras.single_mut() else {
@@ -116,7 +120,7 @@ pub fn enter_map(
 pub fn exit_map(
     mut commands: Commands,
     mut saved: ResMut<SavedCamera>,
-    mut cameras: Query<(Entity, &mut Transform, &mut Projection, &mut Camera)>,
+    mut cameras: Query<(Entity, &mut Transform, &mut Projection, &mut Camera), With<Camera3d>>,
 ) {
     let (Ok((entity, mut tf, mut proj, mut cam)), Some(s)) = (cameras.single_mut(), saved.0.take())
     else {

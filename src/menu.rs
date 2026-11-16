@@ -133,7 +133,7 @@ pub struct UiQueries<'w, 's> {
         ),
         With<crate::entities::Enemy>,
     >,
-    pub cameras: Query<'w, 's, (&'static Camera, &'static GlobalTransform)>,
+    pub cameras: Query<'w, 's, (&'static Camera, &'static GlobalTransform), With<Camera3d>>,
     pub transforms: Query<'w, 's, &'static GlobalTransform>,
     pub npcs: Query<
         'w,
@@ -1141,7 +1141,7 @@ fn draw_barks(
     ctx: &egui::Context,
     barks: &Barks,
     transforms: &Query<&GlobalTransform>,
-    cameras: &Query<(&Camera, &GlobalTransform)>,
+    cameras: &Query<(&Camera, &GlobalTransform), With<Camera3d>>,
     anchors: &Query<&crate::hud::NameAnchor>,
 ) {
     let Ok((camera, cam_t)) = cameras.single() else {

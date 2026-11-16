@@ -90,6 +90,8 @@ pub struct GfxOptions {
     pub grass_distance: u16,
     /// Texture dei materiali a metà risoluzione (vale al riavvio).
     pub reduced_textures: bool,
+    /// Scala di rendering della scena in percentuale: 100, 75 o 50 (ADR 0058).
+    pub render_scale: u8,
 }
 
 impl GfxOptions {
@@ -107,6 +109,7 @@ impl GfxOptions {
         small_shadows: true,
         grass_distance: 0,
         reduced_textures: false,
+        render_scale: 100,
     };
     pub const MEDIUM: Self = Self {
         shadows: Shadows::Medium,
@@ -122,6 +125,7 @@ impl GfxOptions {
         small_shadows: true,
         grass_distance: 0,
         reduced_textures: false,
+        render_scale: 100,
     };
     pub const LOW: Self = Self {
         shadows: Shadows::Low,
@@ -137,6 +141,7 @@ impl GfxOptions {
         small_shadows: true,
         grass_distance: 0,
         reduced_textures: false,
+        render_scale: 100,
     };
 
     /// Schede integrate e senza GPU (ADR 0057): grafica leggera, stesso gioco.
@@ -154,10 +159,14 @@ impl GfxOptions {
         small_shadows: false,
         grass_distance: 30,
         reduced_textures: true,
+        render_scale: 75,
     };
 
     /// Distanze proposte per erba, fiori e cespugli (0 = normale).
     pub const GRASS_DISTANCES: [u16; 2] = [0, 30];
+
+    /// Scale di rendering proposte, in percentuale.
+    pub const RENDER_SCALES: [u8; 3] = [100, 75, 50];
 
     /// Quota delle particelle attive (0..1).
     pub fn particle_scale(&self) -> f32 {
@@ -167,7 +176,7 @@ impl GfxOptions {
     /// Righe da scrivere in `settings.txt`.
     pub fn to_lines(self) -> String {
         format!(
-            "gfx_shadows={}\ngfx_lamp_shadows={}\ngfx_interior_lights={}\ngfx_ssao={}\ngfx_bloom={}\ngfx_antialias={}\ngfx_particles={}\ngfx_far_anim_cull={}\ngfx_waves={}\ngfx_vegetation={}\ngfx_small_shadows={}\ngfx_grass_distance={}\ngfx_reduced_textures={}\n",
+            "gfx_shadows={}\ngfx_lamp_shadows={}\ngfx_interior_lights={}\ngfx_ssao={}\ngfx_bloom={}\ngfx_antialias={}\ngfx_particles={}\ngfx_far_anim_cull={}\ngfx_waves={}\ngfx_vegetation={}\ngfx_small_shadows={}\ngfx_grass_distance={}\ngfx_reduced_textures={}\ngfx_render_scale={}\n",
             self.shadows.key(),
             u8::from(self.lamp_shadows),
             u8::from(self.interior_lights),
@@ -181,6 +190,7 @@ impl GfxOptions {
             u8::from(self.small_shadows),
             self.grass_distance,
             u8::from(self.reduced_textures),
+            self.render_scale,
         )
     }
 
@@ -227,6 +237,13 @@ impl GfxOptions {
                 }
             }
             "gfx_reduced_textures" => self.reduced_textures = on,
+            "gfx_render_scale" => {
+                if let Ok(p) = value.parse::<u8>()
+                    && Self::RENDER_SCALES.contains(&p)
+                {
+                    self.render_scale = p;
+                }
+            }
             _ => {}
         }
     }
@@ -484,6 +501,19 @@ pub fn graphics_ui(ui: &mut egui::Ui, audio: &mut AudioSettings) {
         &mut gfx.reduced_textures,
         "Texture ridotte (al prossimo avvio)",
     );
+    ui.horizontal(|ui| {
+        ui.label("Risoluzione della scena:");
+        for p in GfxOptions::RENDER_SCALES {
+            if ui
+                .selectable_label(gfx.render_scale == p, format!("{p}%"))
+                .clicked()
+            {
+                gfx.render_scale = p;
+            }
+        }
+    })
+    .response
+    .on_hover_text("Sotto il 100% la scena si disegna più piccola e si ingrandisce: interfaccia e mappa restano nitide.");
     ui.separator();
     let mut fps = audio.fps;
     ui.checkbox(&mut fps.vsync, "VSync (FPS legati al monitor)");
@@ -563,6 +593,7 @@ mod tests {
             small_shadows: false,
             grass_distance: 30,
             reduced_textures: true,
+            render_scale: 50,
         };
         let mut read = GfxOptions::HIGH;
         for line in original.to_lines().lines() {
@@ -587,6 +618,7 @@ mod tests {
             assert!(preset.small_shadows);
             assert_eq!(preset.grass_distance, 0);
             assert!(!preset.reduced_textures);
+            assert_eq!(preset.render_scale, 100);
         }
         assert_eq!(GfxOptions::default(), GfxOptions::HIGH);
     }
@@ -617,6 +649,7 @@ mod tests {
             "gfx_shadows=boh",
             "gfx_particles=33",
             "gfx_grass_distance=7",
+            "gfx_render_scale=60",
             "altro=1",
             "senza uguale",
         ] {

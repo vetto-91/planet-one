@@ -182,6 +182,11 @@ impl Default for AudioSettings {
                 ),
             }
         }
+        // Prove: `PLANET_ONE_RENDER_SCALE=100|75|50` sceglie la scala di rendering (ADR 0058).
+        if let Ok(v) = std::env::var("PLANET_ONE_RENDER_SCALE") {
+            s.gfx_chosen = true;
+            s.gfx.read_line(&format!("gfx_render_scale={v}"));
+        }
         s
     }
 }

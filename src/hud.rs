@@ -370,7 +370,7 @@ pub fn draw_enemy_bars(
         ),
         With<Enemy>,
     >,
-    cameras: &Query<(&Camera, &GlobalTransform)>,
+    cameras: &Query<(&Camera, &GlobalTransform), With<Camera3d>>,
     player_pos: Vec3,
     barks: &crate::quests::Barks,
     occluded: &Occluded,
@@ -449,7 +449,7 @@ pub fn draw_enemy_bars(
 pub fn draw_npc_labels(
     ctx: &egui::Context,
     npcs: &Query<(Entity, &GlobalTransform, &crate::entities::Npc, &Visibility)>,
-    cameras: &Query<(&Camera, &GlobalTransform)>,
+    cameras: &Query<(&Camera, &GlobalTransform), With<Camera3d>>,
     player_pos: Vec3,
     barks: &crate::quests::Barks,
     occluded: &Occluded,

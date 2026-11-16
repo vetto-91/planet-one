@@ -55,6 +55,7 @@ mod player;
 mod props;
 mod quests;
 mod region;
+mod render_scale;
 mod save;
 mod scene;
 mod seasons;
@@ -281,6 +282,7 @@ fn main() -> AppExit {
         .add_plugins(figure::plugin)
         .add_plugins(animation::plugin)
         .add_plugins(graphics::plugin)
+        .add_plugins(render_scale::plugin)
         .init_resource::<debug_place::DebugPlace>()
         .init_resource::<world_props::Homes>()
         .init_resource::<hud::Occluded>()

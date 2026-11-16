@@ -30,6 +30,7 @@ const HELP: &[&str] = &[
     "foto [nome] · dump [nome] (stato in JSON) · copione <file> (pilota automatico)",
     "quest <inizio|cerca|raccogli|torna|completata> · uccidi [raggio] · vicino [raggio] · fps · entita",
     "volume <musica|ambiente|voci> <0-100> (solo per questa partita)",
+    "scala <100|75|50> (scala di rendering della scena, solo per questa partita)",
     "regione <isola|nord> (viaggio fra l'Isola di Fontevivo e il Continente del Nord)",
     "missioni [on|off] · missione <id> <tappa> (storia del Prologo e secondarie)",
     "veloce [luogo] (viaggio veloce verso un luogo scoperto; senza nome: l'elenco)",
@@ -184,6 +185,8 @@ pub enum Cmd {
     Entities,
     /// Volume (0-100) di musica, ambiente o voci; non viene salvato.
     Volume(String, f32),
+    /// Scala di rendering della scena (100, 75 o 50); non viene salvata (ADR 0058).
+    RenderScale(u8),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -295,6 +298,12 @@ pub fn parse(line: &str) -> Result<Cmd, String> {
                 Ok(Cmd::Volume(what.to_lowercase(), v))
             }
             _ => Err("uso: volume <musica|ambiente|voci> <0-100>".into()),
+        },
+        "scala" | "scale" => match args.first().and_then(|v| v.parse::<u8>().ok()) {
+            Some(p) if crate::graphics::GfxOptions::RENDER_SCALES.contains(&p) => {
+                Ok(Cmd::RenderScale(p))
+            }
+            _ => Err("uso: scala <100|75|50>".into()),
         },
         "entita" | "entità" | "entities" => Ok(Cmd::Entities),
         "foto" | "shot" => Ok(Cmd::Photo(args.first().unwrap_or(&"foto").to_string())),
@@ -913,6 +922,10 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
                 _ => ctx.audio.voice_volume = level,
             }
             shell.say(format!("volume {what}: {v:.0}%"));
+        }
+        Cmd::RenderScale(p) => {
+            ctx.audio.gfx.render_scale = p;
+            shell.say(format!("scala di rendering: {p}%"));
         }
         Cmd::Entities => {
             shell.say(format!("entità: {}", ctx.every.iter().count()));
