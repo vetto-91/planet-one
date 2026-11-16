@@ -83,3 +83,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0055 | Le rifiniture dell'isola | accettato |
 | 0056 | Ottimizzazione del codice | accettato |
 | 0057 | Schede video integrate | accettato |
+| 0058 | Scala di rendering | accettato |
