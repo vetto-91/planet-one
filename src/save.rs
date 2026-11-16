@@ -1704,6 +1704,23 @@ fn apply(d: &SaveData, hero: &mut HeroParams, world: &mut WorldParams) {
     }
 }
 
+/// Sistema: chiudere la finestra durante una partita chiede un salvataggio automatico.
+pub fn save_on_close(
+    mut request: ResMut<SaveRequest>,
+    session: Res<Session>,
+    mut closing: MessageReader<WindowCloseRequested>,
+) {
+    if closing.read().count() > 0 && session.active {
+        request.kind = Some(SaveKind::Auto);
+    }
+}
+
+/// C'è un salvataggio da fare? `process_save` tocca quasi tutto il mondo: girando solo allora
+/// non blocca più ogni frame gli altri sistemi (ADR 0056).
+fn save_requested(request: Res<SaveRequest>) -> bool {
+    request.kind.is_some()
+}
+
 /// Sistema: esegue le richieste di salvataggio, poi l'eventuale uscita.
 #[allow(clippy::too_many_arguments)]
 pub fn process_save(
@@ -1713,11 +1730,7 @@ pub fn process_save(
     world: WorldParams,
     mut next: ResMut<NextState<AppState>>,
     mut exit: MessageWriter<AppExit>,
-    mut closing: MessageReader<WindowCloseRequested>,
 ) {
-    if closing.read().count() > 0 && session.active {
-        request.kind = Some(SaveKind::Auto);
-    }
     let Some(kind) = request.kind.take() else {
         return;
     };
@@ -2041,7 +2054,7 @@ pub fn plugin(app: &mut App) {
             (
                 session_tick.run_if(in_state(AppState::Playing)),
                 start_travel.run_if(in_state(AppState::Playing)),
-                process_save,
+                (save_on_close, process_save.run_if(save_requested)).chain(),
                 finish_loading.run_if(in_state(AppState::Loading)),
             ),
         );

@@ -1436,7 +1436,15 @@ pub fn shell_panel(mut contexts: EguiContexts, mut shell: ResMut<Shell>) {
 pub fn plugin(app: &mut App) {
     app.init_resource::<Cheats>()
         .init_resource::<Shell>()
-        .add_systems(Update, (shell_toggle, shell_execute, apply_cheats));
+        .add_systems(
+            Update,
+            (
+                shell_toggle,
+                // `ShellCtx` prende in prestito mezzo mondo: gira solo con comandi in coda (ADR 0056).
+                shell_execute.run_if(|s: Res<Shell>| !s.pending.is_empty()),
+                apply_cheats,
+            ),
+        );
 }
 
 #[cfg(test)]

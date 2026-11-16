@@ -1280,7 +1280,11 @@ pub fn plugin(app: &mut App) {
             (
                 take_photos,
                 // Dopo la morte: lo stato non mostra mai una vita negativa di passaggio.
-                dump_state.after(crate::combat::player_death),
+                // Esclusivo: gira solo quando il copione chiede lo stato, altrimenti fermava
+                // ogni frame tutti gli altri sistemi (ADR 0056).
+                dump_state
+                    .after(crate::combat::player_death)
+                    .run_if(|p: Res<Autopilot>| p.dump.is_some()),
             ),
         );
 }

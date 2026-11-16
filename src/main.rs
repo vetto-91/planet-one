@@ -634,14 +634,16 @@ fn log_input_events(
     for ev in mouse_btn.read() {
         info!("[INPUT] mouse btn {:?} {:?}", ev.button, ev.state);
     }
+    // Movimenti del mouse e del cursore: decine per frame, a livello debug per non intasare il
+    // log (tasti, click e rotella restano [INPUT] come prima; ADR 0056).
     for ev in mouse_motion.read() {
-        info!("[INPUT] mouse motion delta={:?}", ev.delta);
+        debug!("[INPUT] mouse motion delta={:?}", ev.delta);
     }
     for ev in wheel.read() {
         info!("[INPUT] wheel {:?}", ev.unit);
     }
     for ev in cursor_moved.read() {
-        info!(
+        debug!(
             "[EVENT] cursor moved to {:?} delta={:?}",
             ev.position, ev.delta
         );
