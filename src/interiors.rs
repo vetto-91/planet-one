@@ -610,7 +610,7 @@ fn hearth_back(b: &mut B, int: &mut Interior, r: &Room) {
         Vec3::new(xr - jamb, mouth_top, zb + 0.125),
         Vec3::new(xl + jamb, mouth_top, zb + 0.125),
         Vec3::Z,
-        [0.06, 0.05, 0.05, 1.0],
+        [0.02, 0.018, 0.018, 1.0],
     );
     b.quad(
         Vec3::new(xl + jamb, mouth_top - 0.005, zb + 0.12),

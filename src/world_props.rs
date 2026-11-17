@@ -279,10 +279,20 @@ pub fn sync_world_props(
     let water_mat = materials.add(crate::buildings::clear_water_material());
     // Fiamma dei focolari: come quella dei falò (`village_life::spawn_campfire`), ma segue lo
     // stato del focolare e non ha luce sua (il bagliore è `HearthLight`).
-    let flame_mesh = meshes.add(Sphere::new(0.13).mesh().uv(8, 6));
+    // Due lingue di fuoco: una arancione larga e una gialla più piccola dentro.
+    let flame_mesh = meshes.add(Cone::new(0.15, 0.42));
+    let flame_core = meshes.add(Cone::new(0.08, 0.28));
     let flame_mat = materials.add(StandardMaterial {
-        base_color: Color::srgb(1.0, 0.55, 0.15),
-        emissive: LinearRgba::rgb(9.0, 3.4, 0.6),
+        base_color: Color::srgba(1.0, 0.42, 0.08, 0.6),
+        emissive: LinearRgba::rgb(2.6, 0.8, 0.1),
+        alpha_mode: AlphaMode::Add,
+        unlit: true,
+        ..default()
+    });
+    let flame_core_mat = materials.add(StandardMaterial {
+        base_color: Color::srgb(1.0, 0.8, 0.35),
+        emissive: LinearRgba::rgb(3.0, 1.9, 0.5),
+        unlit: true,
         ..default()
     });
     let (mut spawned, mut skipped) = (0usize, 0usize);
@@ -658,10 +668,18 @@ pub fn sync_world_props(
                             },
                             Mesh3d(flame_mesh.clone()),
                             MeshMaterial3d(flame_mat.clone()),
-                            Transform::from_translation(Vec3::new(h.x, h.y - 1.8 + 0.36, h.z)),
+                            Transform::from_translation(Vec3::new(h.x, h.y - 1.8 + 0.42, h.z)),
                             Visibility::Hidden,
                             bevy::light::NotShadowCaster,
-                        ));
+                        ))
+                        .with_children(|f| {
+                            f.spawn((
+                                Mesh3d(flame_core.clone()),
+                                MeshMaterial3d(flame_core_mat.clone()),
+                                Transform::from_xyz(0.0, -0.05, 0.03),
+                                bevy::light::NotShadowCaster,
+                            ));
+                        });
                         hearth_ids.push(state);
                     }
                     for (i, at) in interior.chimneys.iter().enumerate() {
@@ -770,6 +788,13 @@ pub fn sync_world_props(
                     if let Some(door) = interior.door {
                         // Portone a due battenti: ogni anta è larga metà vano.
                         let leaves = door.leaves.max(1);
+                        // I battenti del portone stanno sulla faccia esterna del muro (girano senza
+                        // toccarlo); anche la maniglia sta lì, se no il battente stesso la nasconde.
+                        let out = if leaves == 2 {
+                            Vec3::Z * 0.15
+                        } else {
+                            Vec3::ZERO
+                        };
                         let (w, h) = (door.width / leaves as f32, door.height);
                         let leaf = match door_mesh_cache.iter().find(|(a, b, _)| *a == w && *b == h)
                         {
@@ -796,7 +821,7 @@ pub fn sync_world_props(
                                     use_from: None,
                                 },
                                 Transform::from_translation(
-                                    door.hinge + Vec3::new(door.width / 2.0, 1.0, 0.0),
+                                    door.hinge + out + Vec3::new(door.width / 2.0, 1.0, 0.0),
                                 ),
                             ))
                             .id();
@@ -804,8 +829,6 @@ pub fn sync_world_props(
                         // (cerniera, verso dell'anta lungo X, angolo d'apertura): la porta si apre
                         // verso dentro, i battenti del portone verso fuori.
                         let hinges: Vec<(Vec3, f32, f32)> = if leaves == 2 {
-                            // I battenti stanno sulla faccia esterna del muro: girano senza toccarlo.
-                            let out = Vec3::Z * 0.15;
                             vec![
                                 (door.hinge + out, 1.0, -DOOR_OPEN_ANGLE),
                                 (
@@ -1158,7 +1181,7 @@ pub fn update_interior_lights(
         });
         if lit {
             let k = 1.0 + 0.2 * (now * 9.0 + flame.seed).sin() * (now * 6.1 + flame.seed).cos();
-            tf.scale = Vec3::new(k * 1.3, k * 1.9, k);
+            tf.scale = Vec3::new(k, k * 1.3, k);
         }
     }
     for (tf, footprint, children) in &buildings {
