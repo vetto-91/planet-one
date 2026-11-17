@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non rilasciato
+## v0.0.67.0 — Correzioni della beta: guida alle missioni, pausa vera, finestre, mare ed editor F4 (2026-11-17)
 
 - **Correzioni della beta** (ADR 0059): le segnalazioni della prova della v0.0.63.
 - **Si sa sempre dove andare**: la bussola e un segnalino sullo schermo, con la distanza, portano alla tappa della missione che segui. Tab mostra le tappe fatte e quella in corso, anche appena sveglio.
@@ -20,7 +20,7 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 - **La bisaccia** resta attaccata alla schiena in ogni movimento.
 - **La sfera di luce** illumina di più, ti sta davanti e resta accesa dopo aver ricaricato la partita.
 - **Spiaggia del risveglio**: gli oggetti dei rottami non compaiono e spariscono più sotto gli occhi.
-- **Nemici bloccati**: i nemici fermi contro un ostacolo lo aggirano; se non ci riescono e non li vedi, passano oltre.
+- **Nemici bloccati**: i nemici fermi contro un ostacolo lo aggirano; se inseguono e non li vedi passano oltre, di pattuglia accorciano il giro e tornano indietro.
 - **Oggetti tornati**: i rottami della spiaggia (con la bisaccia), due lampioni e un carretto, persi per un difetto di «Annulla ultimo» in F4.
 - **Oggetti spostati**: il carretto dietro il forno non tocca più la finestra, e le botti non stanno più sulla scala della casa del porticciolo.
 
