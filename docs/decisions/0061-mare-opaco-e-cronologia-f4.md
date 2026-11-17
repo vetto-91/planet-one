@@ -105,3 +105,19 @@ Dalla beta v0.0.63 sono arrivate quattro segnalazioni su mare, suoni ed editor d
   si azzera al cambio di regione.
 - Il raggio sui modelli guarda le mesh che restano sulla CPU. Quelle solo-GPU dell'ADR 0056 (terreno, grandi
   mesh unite) non si colpiscono, e per loro vale il punto del terreno.
+
+## Misure
+Copioni `fps` e `b-mare-tramonto` a 1080p senza finestra, due corse alternate per `main` (v0.0.66.0) e per
+questo ramo, con gli asset del progetto. Durante le corse giravano altri 4–6 processi del gioco di altre
+sessioni, quindi i valori dell'1% peggiore non sono affidabili.
+
+| Scheda | Copione | main (FPS medi) | ramo (FPS medi) |
+|---|---|---|---|
+| RTX 3080 Ti | `fps` | 34, 26 | 38, 38 |
+| RTX 3080 Ti | `b-mare-tramonto` | 15, 34 | 43, 46 |
+| Arc integrata (Mesa 25, Integrata) | `fps` | 53, 73 | 76, 59 |
+| Arc integrata (Mesa 25, Integrata) | `b-mare-tramonto` | 66, 42 | 41, 88 |
+
+Nessun calo misurabile e nessun errore dello shader su nessuna delle due schede. Nelle foto del tramonto,
+su `main` il disco del sole si vede attraverso il mare e la fascia chiara arriva all'orizzonte. Sul ramo il
+sole è tagliato alla linea del mare, la fascia non c'è e le onde sono visibili.
