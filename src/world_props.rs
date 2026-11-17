@@ -289,6 +289,14 @@ pub fn sync_world_props(
     let door_mesh_cache: &mut Vec<(f32, f32, Handle<Mesh>)> = &mut Vec::new();
     let shutter_mats: &mut Vec<([f32; 4], Handle<StandardMaterial>)> = &mut Vec::new();
     let shutter_mesh = meshes.add(Cuboid::new(0.33, 0.9, 0.04));
+    // Vetri delle finestre delle case: un poco più grandi del vano, i bordi restano nel muro.
+    let window_size = crate::buildings::WINDOW_SIZE;
+    let pane_mesh = meshes.add(Cuboid::new(
+        window_size.x + 0.06,
+        window_size.y + 0.06,
+        0.012,
+    ));
+    let glass_mat = pbr.get(crate::pbr::Mat::Glass);
     homes.list.clear();
     let defs = crate::villagers::load_defs();
     let mut occurrences: std::collections::HashMap<String, usize> = Default::default();
@@ -508,7 +516,8 @@ pub fn sync_world_props(
                                     prompt: "[E] Chiudi scuri".to_string(),
                                     range: 3.0,
                                     aim: Some(0.45),
-                                    use_from: None,
+                                    // Da fuori: da dentro si passa dal vetro (`WindowInner`).
+                                    use_from: Some(n),
                                 },
                                 Transform::from_translation(win.center + n * 0.12),
                             ))
@@ -558,6 +567,54 @@ pub fn sync_world_props(
                                 ));
                             });
                         }
+                        // Dentro, come nella casetta del Viandante: vetro scorrevole (maniglia in
+                        // basso) e scuri raggiungibili col vetro alzato (maniglia in alto).
+                        let inner = win.center - n * (win.depth + 0.1);
+                        let glass = c
+                            .spawn((
+                                crate::hut::PropKind::WindowGlass,
+                                crate::hut::PropId(format!("vetro:{place_id}:{j}:{i}")),
+                                crate::hut::PropState { on: false },
+                                crate::entities::Interactable {
+                                    prompt: "[E] Alza vetro".to_string(),
+                                    range: 3.0,
+                                    aim: Some(0.22),
+                                    use_from: Some(-n),
+                                },
+                                Transform::from_translation(inner - Vec3::Y * 0.22),
+                            ))
+                            .id();
+                        c.spawn((
+                            crate::hut::PropKind::WindowInner,
+                            crate::hut::PropState { on: false },
+                            crate::hut::WindowLink {
+                                shutters: state,
+                                glass,
+                            },
+                            crate::entities::Interactable {
+                                prompt: "[E] Chiudi scuri".to_string(),
+                                range: 3.0,
+                                aim: Some(0.22),
+                                use_from: Some(-n),
+                            },
+                            Transform::from_translation(inner + Vec3::Y * 0.2),
+                        ));
+                        // Il vetro sta a metà del muro e, alzato, sparisce dentro l'architrave.
+                        // Lontano non si disegna (un vetro trasparente non si nota oltre i 45 m).
+                        let pane = win.center - n * (win.depth / 2.0);
+                        c.spawn((
+                            crate::hut::Slider {
+                                state: glass,
+                                closed_y: pane.y,
+                                open_y: pane.y + window_size.y + 0.05,
+                                y: pane.y,
+                            },
+                            Mesh3d(pane_mesh.clone()),
+                            MeshMaterial3d(glass_mat.clone()),
+                            Transform::from_translation(pane).with_rotation(frame),
+                            bevy::light::NotShadowCaster,
+                            bevy::camera::visibility::VisibilityRange::abrupt(0.0, 45.0),
+                        ));
                     }
                     let works = matches!(kind.as_str(), "forno" | "fabbro" | "locanda");
                     // Focolari: stato acceso/spento, bagliore e fumo dal camino sopra.

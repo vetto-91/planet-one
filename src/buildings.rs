@@ -117,12 +117,18 @@ pub struct Bed {
     pub stand: Vec3,
 }
 
-/// Finestra sul muro: centro, normale verso fuori e colore degli scuri.
+/// Finestra sul muro: centro (sulla faccia esterna), normale verso fuori e colore degli scuri.
+/// Il vano è vero: dentro c'è un vetro che si alza (`world_props`), fuori gli scuri.
 pub struct WindowSpot {
     pub center: Vec3,
     pub normal: Vec3,
     pub shutter: Col,
+    /// Spessore del muro: la faccia interna sta a `center - normal * depth`.
+    pub depth: f32,
 }
+
+/// Larghezza e altezza del vano delle finestre delle case.
+pub const WINDOW_SIZE: Vec2 = Vec2::new(0.62, 0.86);
 
 /// Parti interne di un edificio visitabile.
 #[derive(Default)]
@@ -679,31 +685,93 @@ fn classify(col: Col) -> (Mat, Col) {
     )
 }
 
-/// Finestra sul fronte (normale `n` = ±Z o ±X); le imposte sono entità apribili (`Interior.windows`).
+/// Finestra sul fronte (normale `n` = ±Z o ±X), nel vano già lasciato nel muro (`holed_wall`):
+/// telaio di legno, davanzale di pietra fuori e di legno dentro. Vetro e imposte sono entità
+/// apribili (`Interior.windows`).
 fn window(b: &mut B, int: &mut Interior, c: Vec3, n: Vec3, shutter: Col) {
     let t = Vec3::Y.cross(n).normalize(); // verso destra guardando la finestra
-    let (w, h) = (0.62, 0.86);
-    let o = n * 0.03;
-    let (l, r) = (c - t * (w / 2.0), c + t * (w / 2.0));
-    b.quad(
-        l - Vec3::Y * (h / 2.0) + o,
-        r - Vec3::Y * (h / 2.0) + o,
-        r + Vec3::Y * (h / 2.0) + o,
-        l + Vec3::Y * (h / 2.0) + o,
-        n,
-        GLASS,
-    );
-    // Davanzale e architrave di pietra.
+    let (w, h) = (WINDOW_SIZE.x, WINDOW_SIZE.y);
+    let depth = WALL_T;
+    // Davanzale di pietra (fuori) e di legno (dentro).
     b.cuboid_c(
         c - Vec3::Y * (h / 2.0 + 0.04) + n * 0.06,
         t.abs() * (w + 0.3) + n.abs() * 0.16 + Vec3::Y * 0.08,
         STONE,
     );
+    b.cuboid_c(
+        c - n * (depth + 0.03) - Vec3::Y * (h / 2.0 + 0.02),
+        t.abs() * (w + 0.16) + n.abs() * 0.1 + Vec3::Y * 0.04,
+        TIMBER,
+    );
+    // Telaio sul filo esterno: montanti e architrave (il vetro scorre dietro, dentro il muro).
+    let mid = c - n * 0.03;
+    for s in [-1.0f32, 1.0] {
+        b.cuboid_c(
+            mid + t * (s * (w / 2.0 + 0.025)),
+            t.abs() * 0.05 + n.abs() * 0.08 + Vec3::Y * (h + 0.05),
+            TIMBER,
+        );
+    }
+    b.cuboid_c(
+        mid + Vec3::Y * (h / 2.0 + 0.025),
+        t.abs() * (w + 0.1) + n.abs() * 0.08 + Vec3::Y * 0.05,
+        TIMBER,
+    );
     int.windows.push(WindowSpot {
         center: c,
         normal: n,
         shutter,
+        depth,
     });
+}
+
+/// Muro pieno da `min` a `max` (lungo X) con i vani rettangolari `holes` (x0, x1, y0, y1): solo la
+/// mesh; il collider resta il muro intero (il vano ha il vetro, e la camera non ci passa).
+fn holed_wall(b: &mut B, min: Vec3, max: Vec3, holes: &[(f32, f32, f32, f32)], col: Col) {
+    let holes: Vec<_> = holes
+        .iter()
+        .filter(|h| h.1 > min.x && h.0 < max.x && h.3 > min.y && h.2 < max.y)
+        .collect();
+    if holes.is_empty() {
+        b.cuboid(min, max, col);
+        return;
+    }
+    let mut xs = vec![min.x, max.x];
+    let mut ys = vec![min.y, max.y];
+    for h in &holes {
+        xs.extend([h.0.clamp(min.x, max.x), h.1.clamp(min.x, max.x)]);
+        ys.extend([h.2.clamp(min.y, max.y), h.3.clamp(min.y, max.y)]);
+    }
+    for v in [&mut xs, &mut ys] {
+        v.sort_by(f32::total_cmp);
+        v.dedup_by(|a, b| (*a - *b).abs() < 1e-4);
+    }
+    // Per ogni colonna, le fasce piene consecutive diventano un solo blocco.
+    for wx in xs.windows(2) {
+        let cx = (wx[0] + wx[1]) / 2.0;
+        let mut run: Option<f32> = None;
+        for (k, wy) in ys.windows(2).enumerate() {
+            let cy = (wy[0] + wy[1]) / 2.0;
+            let open = holes
+                .iter()
+                .any(|h| cx > h.0 && cx < h.1 && cy > h.2 && cy < h.3);
+            if !open && run.is_none() {
+                run = Some(wy[0]);
+            }
+            let last = k + 2 == ys.len();
+            if let Some(y_start) = run
+                && (open || last)
+            {
+                let y_end = if open { wy[0] } else { wy[1] };
+                b.cuboid(
+                    Vec3::new(wx[0], y_start, min.z),
+                    Vec3::new(wx[1], y_end, max.z),
+                    col,
+                );
+                run = None;
+            }
+        }
+    }
 }
 
 /// Quota del pavimento del piano terra, sopra lo zoccolo.
@@ -797,9 +865,37 @@ fn house(
     let door_x = if floors > 1 || barn { 0.0 } else { -hw * 0.35 };
     let (door_w, door_h) = if barn { (2.4, 2.3) } else { (1.0, 2.05) };
     let t = WALL_T;
-    // Pareti cave: la facciata ha il vano della porta.
+    // Finestre: sul fronte, a ogni piano (non accanto alla porta), e una sul retro.
+    let per_floor = ((w - 1.2) / 2.2).floor().max(1.0) as usize;
+    let mut front_windows: Vec<Vec2> = Vec::new();
+    let mut back_windows: Vec<Vec2> = Vec::new();
+    for f in 0..floors {
+        let y = y0 + 1.25 + f as f32 * STOREY;
+        for i in 0..per_floor {
+            let x = -hw + 0.9 + (w - 1.8) * (i as f32 + 0.5) / per_floor as f32;
+            if f == 0 && (x - door_x).abs() < door_w / 2.0 + 0.6 {
+                continue;
+            }
+            front_windows.push(Vec2::new(x, y));
+        }
+        back_windows.push(Vec2::new(0.0, y));
+    }
+    let rect = |p: &Vec2| {
+        let half = WINDOW_SIZE / 2.0;
+        (p.x - half.x, p.x + half.x, p.y - half.y, p.y + half.y)
+    };
+    let front_holes: Vec<_> = front_windows.iter().map(rect).collect();
+    let back_holes: Vec<_> = back_windows.iter().map(rect).collect();
+    // Pareti cave: la facciata ha il vano della porta, fronte e retro i vani delle finestre.
     let mut wall_box = |b: &mut B, min: Vec3, max: Vec3| {
-        b.cuboid(min, max, wall);
+        let holes = if max.z >= hd - 1e-3 {
+            &front_holes
+        } else if min.z <= -hd + 1e-3 && max.z <= -hd + t + 1e-3 {
+            &back_holes
+        } else {
+            &Vec::new()
+        };
+        holed_wall(b, min, max, holes, wall);
         int.walls.push(((min + max) / 2.0, max - min));
     };
     wall_box(b, Vec3::new(-hw, 0.4, -hd), Vec3::new(hw, wh, -hd + t));
@@ -894,19 +990,11 @@ fn house(
     if barn && let Some(d) = int.door.as_mut() {
         d.leaves = 2;
     }
-    let per_floor = ((w - 1.2) / 2.2).floor().max(1.0) as usize;
-    for f in 0..floors {
-        let y = y0 + 1.25 + f as f32 * STOREY;
-        for i in 0..per_floor {
-            let x = -hw + 0.9 + (w - 1.8) * (i as f32 + 0.5) / per_floor as f32;
-            if f == 0 && (x - door_x).abs() < door_w / 2.0 + 0.6 {
-                continue;
-            }
-            window(b, int, Vec3::new(x, y, hd), Vec3::Z, shutter);
-            inner_window(b, Vec3::new(x, y, hd - t - 0.01), Vec3::NEG_Z, (0.62, 0.86));
-        }
-        window(b, int, Vec3::new(0.0, y, -hd), Vec3::NEG_Z, shutter);
-        inner_window(b, Vec3::new(0.0, y, -hd + t + 0.01), Vec3::Z, (0.62, 0.86));
+    for p in &front_windows {
+        window(b, int, Vec3::new(p.x, p.y, hd), Vec3::Z, shutter);
+    }
+    for p in &back_windows {
+        window(b, int, Vec3::new(p.x, p.y, -hd), Vec3::NEG_Z, shutter);
     }
     // Piani, scale e arredi.
     let (x0, x1, z0, z1) = (-hw + t, hw - t, -hd + t, hd - t);
@@ -2749,7 +2837,22 @@ mod tests {
                                 if y < 2.0 && d.z > 0.0 {
                                     continue;
                                 }
-                                if !ray_hits(&tris, o, d) {
+                                // Le finestre sono vani veri (ADR 0060): un raggio che esce da
+                                // un vano non è un buco nel tetto.
+                                let through_window = b.interior.windows.iter().any(|w| {
+                                    let n = w.normal;
+                                    let along = d.dot(n);
+                                    if along <= 1e-4 {
+                                        return false;
+                                    }
+                                    let k = (w.center - o).dot(n) / along;
+                                    let q = o + d * k - w.center;
+                                    let side = q - n * q.dot(n);
+                                    side.y.abs() <= WINDOW_SIZE.y / 2.0 + 0.01
+                                        && (side - Vec3::Y * side.y).length()
+                                            <= WINDOW_SIZE.x / 2.0 + 0.01
+                                });
+                                if !through_window && !ray_hits(&tris, o, d) {
                                     leaks.push(format!(
                                         "({:.1},{:.1},{:.1}) dir {:.2},{:.2},{:.2}",
                                         o.x, o.y, o.z, d.x, d.y, d.z

@@ -803,15 +803,8 @@ pub fn spawn_hut(
         perceptual_roughness: 0.9,
         ..default()
     });
-    let glass_pane_mat = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.72, 0.86, 0.95, 0.22),
-        alpha_mode: AlphaMode::Blend,
-        perceptual_roughness: 0.08,
-        reflectance: 0.6,
-        double_sided: true,
-        cull_mode: None,
-        ..default()
-    });
+    // Vetro naturale, lo stesso delle finestre del paese (segnalazione 34).
+    let glass_pane_mat = materials.add(crate::pbr::glass_material());
     // Colori degli arredi.
     let wood = solid(materials, Color::srgb(0.45, 0.30, 0.18), 0.85, 0.0);
     let dark_wood = solid(materials, Color::srgb(0.28, 0.18, 0.11), 0.85, 0.0);
@@ -1532,7 +1525,7 @@ pub fn spawn_hut(
                     ));
                 });
             }
-            // Vetro scorrevole (sottile, azzurrino): sale lungo la faccia interna del muro.
+            // Vetro scorrevole (sottile): sale lungo la faccia interna del muro.
             let pane_pos = center - dir * 0.03;
             c.spawn((
                 Slider {
@@ -1767,37 +1760,45 @@ pub fn update_los_blockers(
 }
 
 /// Anima porta e imposte; attiva/disattiva il collider del pannello della porta.
+/// Ferme, non scrivono nulla: con centinaia di imposte e vetri nel paese ogni scrittura della
+/// trasformazione costa una propagazione a ogni fotogramma (ADR 0056, ADR 0060).
 pub fn animate_hinges(
     time: Res<Time>,
     mut commands: Commands,
     states: Query<&PropState>,
     mut hinges: Query<(&mut Hinge, &mut Transform, Option<&Children>)>,
-    colliders: Query<(), With<DoorCollider>>,
+    colliders: Query<Has<ColliderDisabled>, With<DoorCollider>>,
 ) {
     for (mut h, mut tf, children) in &mut hinges {
         let Ok(st) = states.get(h.state) else {
             continue;
         };
         let target = if st.on { h.open_angle } else { 0.0 };
-        let step = 2.6 * time.delta_secs();
-        h.angle += (target - h.angle).clamp(-step, step);
-        tf.rotation = h.base * Quat::from_rotation_y(h.angle);
+        if h.angle != target {
+            let step = 2.6 * time.delta_secs();
+            h.angle += (target - h.angle).clamp(-step, step);
+        }
+        let rotation = h.base * Quat::from_rotation_y(h.angle);
+        if tf.rotation != rotation {
+            tf.rotation = rotation;
+        }
         if let Some(children) = children {
             let blocking = !st.on && h.angle.abs() < 0.05;
             for child in children.iter() {
-                if colliders.contains(child) {
-                    if blocking {
-                        commands.entity(child).try_remove::<ColliderDisabled>();
-                    } else {
-                        commands.entity(child).try_insert(ColliderDisabled);
-                    }
+                let Ok(disabled) = colliders.get(child) else {
+                    continue;
+                };
+                if blocking && disabled {
+                    commands.entity(child).try_remove::<ColliderDisabled>();
+                } else if !blocking && !disabled {
+                    commands.entity(child).try_insert(ColliderDisabled);
                 }
             }
         }
     }
 }
 
-/// Anima la serranda (scorrimento verticale).
+/// Anima serrande e vetri (scorrimento verticale); fermi, non scrivono nulla.
 pub fn animate_sliders(
     time: Res<Time>,
     states: Query<&PropState>,
@@ -1808,9 +1809,13 @@ pub fn animate_sliders(
             continue;
         };
         let target = if st.on { sl.open_y } else { sl.closed_y };
-        let step = 1.1 * time.delta_secs();
-        sl.y += (target - sl.y).clamp(-step, step);
-        tf.translation.y = sl.y;
+        if sl.y != target {
+            let step = 1.1 * time.delta_secs();
+            sl.y += (target - sl.y).clamp(-step, step);
+        }
+        if tf.translation.y != sl.y {
+            tf.translation.y = sl.y;
+        }
     }
 }
 
