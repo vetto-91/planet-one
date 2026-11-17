@@ -39,7 +39,7 @@ verifica Relic(ShoalsMap) = 1
 # Via degli indizi: il registro di Ettore, nel primo mobile del faro.
 tp -14.4 3 94.6
 aspetta 2
-mira container
+mira 400:0:0
 premi e
 aspetta 1
 verifica app = Container

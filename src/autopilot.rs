@@ -474,6 +474,7 @@ pub fn run_autopilot(
         &GlobalTransform,
         &crate::hut::PropKind,
         Option<&crate::hut::PropId>,
+        Option<&crate::containers::Container>,
     )>,
     mut exit: MessageWriter<AppExit>,
     mut ui: PilotUi,
@@ -793,14 +794,16 @@ pub fn run_autopilot(
             }
         }
         "mira" | "aim" => {
-            // L'oggetto con stato più vicino (entro 6 m) il cui tipo o id contiene la parola.
+            // L'oggetto con stato più vicino (entro 6 m) il cui tipo, id o chiave di mobile contiene
+            // la parola (`mira 400:0:0`: il primo mobile del faro).
             let wanted = words[1..].join(" ").to_lowercase();
             let here = players.single().map(|t| t.translation).unwrap_or_default();
             let target = props
                 .iter()
-                .filter(|(_, kind, id)| {
+                .filter(|(_, kind, id, chest)| {
                     format!("{kind:?}").to_lowercase().contains(&wanted)
                         || id.is_some_and(|i| i.0.to_lowercase().contains(&wanted))
+                        || chest.is_some_and(|c| c.key == wanted)
                 })
                 .map(|(g, ..)| g.translation())
                 .filter(|p| p.distance(here) < 6.0)

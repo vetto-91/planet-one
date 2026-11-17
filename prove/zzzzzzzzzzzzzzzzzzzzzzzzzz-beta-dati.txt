@@ -36,3 +36,4 @@ aspetta 2
 camera 0 12 7
 aspetta 1
 foto carretto-1285
+esci
