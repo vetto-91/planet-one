@@ -487,14 +487,62 @@ pub fn sync_village(
             let (p, t, out) = lp.at(s);
             (p + out * INNER_LANE_U, t)
         };
+        // Scala a L (segnalazione 30): un pianerottolo in fondo alla corsia, contro la testa del
+        // muro pieno, e una rampa corta perpendicolare al muro che scende verso il paese. Prima la
+        // scala partiva da terra contro il muro e ci si saliva solo di lato.
         let g0 = ground(inner(a).0);
-        let top_guess = height_at(a + 6.0);
-        let steps = ((top_guess - g0) / STEP_RISE).ceil().max(1.0) as usize;
+        let landing_s = a + LANDING / 2.0;
+        let (lc, lt) = inner(landing_s);
+        let (_, _, out) = lp.at(landing_s);
+        let foot = lc - out * (LANE_HALF_INNER + PERP_STEPS as f32 * STEP_RUN + 0.2);
+        let g_low = ground(foot).min(g0);
+        let h_landing = g_low + (PERP_STEPS + 1) as f32 * STEP_RISE;
+        // Pianerottolo.
+        let lo = ground(lc).min(g_low) - 1.2;
+        stone.obox(
+            lc,
+            lo,
+            h_landing,
+            LANDING / 2.0 + 0.01,
+            LANE_HALF_INNER,
+            lt,
+            tint(STONE_DARK, rnd()),
+        );
+        walk_colliders.push((
+            Vec3::new(lc.x, (lo + h_landing) / 2.0, lc.y),
+            Vec3::new(LANDING + 0.02, h_landing - lo, LANE_HALF_INNER * 2.0),
+            (-lt.y).atan2(lt.x),
+        ));
+        // Rampa perpendicolare: dal bordo del pianerottolo verso il paese, in discesa.
+        let rise_in = (h_landing - g_low) / (PERP_STEPS + 1) as f32;
+        for i in 0..PERP_STEPS {
+            let c = lc - out * (LANE_HALF_INNER + (i as f32 + 0.5) * STEP_RUN);
+            let top = h_landing - (i + 1) as f32 * rise_in;
+            let lo = ground(c) - 1.2;
+            stone.obox(
+                c,
+                lo,
+                top,
+                LANE_HALF_INNER,
+                STEP_RUN / 2.0 + 0.01,
+                lt,
+                tint(STONE_DARK, rnd()),
+            );
+            walk_colliders.push((
+                Vec3::new(c.x, (lo + top) / 2.0, c.y),
+                Vec3::new(LANE_HALF_INNER * 2.0, top - lo, STEP_RUN + 0.02),
+                (-lt.y).atan2(lt.x),
+            ));
+        }
+        // Rampa lungo il muro, dal pianerottolo al camminamento.
+        let s0 = a + LANDING;
+        let top_guess = height_at(s0 + 5.0);
+        let steps = ((top_guess - h_landing) / STEP_RISE).ceil().max(1.0) as usize;
         let len = steps as f32 * STEP_RUN;
-        let rise = (height_at(a + len) - g0) / steps as f32;
+        let rise = (height_at(s0 + len) - h_landing) / steps as f32;
         for i in 0..steps {
-            let (c, t) = inner(a + (i as f32 + 0.5) * STEP_RUN);
-            let top = g0 + (i as f32 + 1.0) * rise;
+            let (c, t) = inner(s0 + (i as f32 + 0.5) * STEP_RUN);
+            let top = h_landing + (i as f32 + 1.0) * rise;
             let lo = ground(c) - 1.2;
             stone.obox(
                 c,
@@ -512,14 +560,15 @@ pub fn sync_village(
             ));
         }
         info!(
-            "[VILLAGGIO] scala da ({:.1},{:.1}) a ({:.1},{:.1}), {steps} gradini, sale a {:.1}",
-            inner(a).0.x,
-            inner(a).0.y,
-            inner(a + len).0.x,
-            inner(a + len).0.y,
-            g0 + steps as f32 * rise
+            "[VILLAGGIO] scala a L da ({:.1},{:.1}) a ({:.1},{:.1}), {} + {steps} gradini, sale a {:.1}",
+            foot.x,
+            foot.y,
+            inner(s0 + len).0.x,
+            inner(s0 + len).0.y,
+            PERP_STEPS + 1,
+            h_landing + steps as f32 * rise
         );
-        stair_zones.push((a, a + len));
+        stair_zones.push((a, s0 + len));
     }
 
     // --- Tratti di muro: corpo pieno, corsie, parapetto e cordolo ---
@@ -1060,6 +1109,9 @@ const MAX_WALK_SLOPE: f32 = 0.09;
 /// Scale.
 const STEP_RISE: f32 = 0.3;
 const STEP_RUN: f32 = 0.38;
+/// Scale a L: lunghezza del pianerottolo in fondo alla corsia e gradini della rampa perpendicolare.
+const LANDING: f32 = 1.5;
+const PERP_STEPS: usize = 3;
 const MIN_STAIR_RUN: f32 = 8.0;
 /// Torri.
 const TOWER_CLEAR: f32 = 6.8;
