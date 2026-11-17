@@ -907,6 +907,43 @@ nota: rottami
 punti: (27.50,85.50)
 rotazioni: 20
 
+[P-1281] tipo: casse | modalità: singolo
+quando: missione mp01 (rottami sulla spiaggia)
+punto: x 32.50, z 86.50
+quantità: 1   seed: 39711
+nota: rottami
+punti: (32.50,86.50)
+rotazioni: 60
+
+[P-1282] tipo: botti | modalità: singolo
+quando: missione mp01 (rottami sulla spiaggia)
+punto: x 31.00, z 83.00
+quantità: 1   seed: 39742
+nota: rottami
+punti: (31.00,83.00)
+rotazioni: 140
+
+[P-1283] tipo: lampione | modalità: singolo
+quando: 2026-11-14 21:06 (ora di gioco 22:59)
+punto: x -2.98, z 41.85
+quantità: 1   seed: 71462
+punti: (-2.98,41.85)
+rotazioni: 0
+
+[P-1284] tipo: lampione | modalità: singolo
+quando: 2026-11-14 21:07 (ora di gioco 23:08)
+punto: x 2.77, z 32.84
+quantità: 1   seed: 353596
+punti: (2.77,32.84)
+rotazioni: 0
+
+[P-1285] tipo: carretto | modalità: singolo
+quando: 2026-11-14 21:16 (ora di gioco 05:29)
+punto: x -14.35, z 1.38
+quantità: 1   seed: 355981
+punti: (-14.34,1.49)
+rotazioni: 4
+
 [P-1290] tipo: legnaia | modalità: singolo
 quando: pedinata di Pietro (ADR 0045)
 punto: x -20.61, z 17.97
