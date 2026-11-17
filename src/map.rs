@@ -421,11 +421,12 @@ pub struct SavedSea(Option<(Color, bool, AlphaMode, bool)>);
 /// OnEnter(Map): il mare diventa blu pieno e senza nebbia, altrimenti dall'alto si perde nel fondo.
 pub fn sea_on_map(
     mut saved: ResMut<SavedSea>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    sea: Query<&MeshMaterial3d<StandardMaterial>, With<crate::water::SeaSurface>>,
+    mut materials: ResMut<Assets<crate::terrain::FadeMaterial>>,
+    sea: Query<&MeshMaterial3d<crate::terrain::FadeMaterial>, With<crate::water::SeaSurface>>,
 ) {
     for m in &sea {
-        if let Some(mut mat) = materials.get_mut(&m.0) {
+        if let Some(mut sea) = materials.get_mut(&m.0) {
+            let mat = &mut sea.base;
             saved.0 = Some((mat.base_color, mat.unlit, mat.alpha_mode, mat.fog_enabled));
             mat.base_color = Color::srgb(0.1, 0.34, 0.5);
             mat.unlit = true;
@@ -438,14 +439,15 @@ pub fn sea_on_map(
 /// OnExit(Map): rimette il mare com'era.
 pub fn sea_off_map(
     mut saved: ResMut<SavedSea>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    sea: Query<&MeshMaterial3d<StandardMaterial>, With<crate::water::SeaSurface>>,
+    mut materials: ResMut<Assets<crate::terrain::FadeMaterial>>,
+    sea: Query<&MeshMaterial3d<crate::terrain::FadeMaterial>, With<crate::water::SeaSurface>>,
 ) {
     let Some((color, unlit, alpha, fog)) = saved.0.take() else {
         return;
     };
     for m in &sea {
-        if let Some(mut mat) = materials.get_mut(&m.0) {
+        if let Some(mut sea) = materials.get_mut(&m.0) {
+            let mat = &mut sea.base;
             mat.base_color = color;
             mat.unlit = unlit;
             mat.alpha_mode = alpha;

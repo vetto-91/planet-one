@@ -11,6 +11,8 @@ use bevy::prelude::*;
 pub const DAY_SECONDS: f32 = 24.0 * 60.0;
 /// Distanza (m) dei dischi di sole/luna dalla camera.
 const DISC_DISTANCE: f32 = 400.0;
+/// Fin dove si vede il mare: il piano lontano della camera (1000 m, quello di Bevy).
+const SEA_HORIZON_M: f32 = 1000.0;
 
 /// Giorni dei mesi (anno di 365 giorni, nessun bisestile).
 const MONTH_DAYS: [u8; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
@@ -300,7 +302,7 @@ pub fn tick_clock(
 pub fn spawn_sky_discs(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<crate::terrain::FadeMaterial>>,
 ) {
     let sphere = meshes.add(Sphere::new(1.0));
     for (is_sun, radius, color) in [
@@ -311,10 +313,16 @@ pub fn spawn_sky_discs(
             SkyDisc { is_sun },
             NotShadowCaster,
             Mesh3d(sphere.clone()),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color: color,
-                unlit: true,
-                ..default()
+            // Trasparenti (niente profondità scritta) e tagliati all'orizzonte del mare: al
+            // tramonto scendono dietro il mare invece di passargli davanti (ADR 0061).
+            MeshMaterial3d(materials.add(crate::terrain::FadeMaterial {
+                base: StandardMaterial {
+                    base_color: color,
+                    unlit: true,
+                    alpha_mode: AlphaMode::Blend,
+                    ..default()
+                },
+                extension: crate::terrain::DistanceFade::horizon(SEA_HORIZON_M),
             })),
             Transform::from_scale(Vec3::splat(radius)),
             Visibility::Hidden,

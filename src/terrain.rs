@@ -18,8 +18,11 @@ use avian3d::prelude::*;
 use bevy::asset::AssetEvent;
 use bevy::image::Image;
 use bevy::math::{UVec3, Vec2};
+use bevy::pbr::{ExtendedMaterial, MaterialExtension};
 use bevy::prelude::*;
 use bevy::render::mesh::{Indices, PrimitiveTopology, VertexAttributeValues};
+use bevy::render::render_resource::AsBindGroup;
+use bevy::shader::ShaderRef;
 
 /// Estensione del terreno sul piano XZ (m): il piano è centrato in origine.
 /// È un'isola: il quadrato centrale di `HEIGHTMAP_SIZE` m usa la heightmap, il
@@ -43,6 +46,70 @@ const HEIGHT_SCALE: f32 = 4.0;
 const GRASS_TILE_M: f32 = 4.0;
 /// Segno della bitangente per la griglia del terreno (V cresce verso +Z).
 const TANGENT_W: f32 = 1.0;
+
+/// Materiale standard con l'alfa che dipende dalla distanza dalla camera (ADR 0061): il mare
+/// lascia vedere il fondale solo vicino, i dischi di sole e luna spariscono sotto l'orizzonte.
+pub type FadeMaterial = ExtendedMaterial<StandardMaterial, DistanceFade>;
+
+/// Parametri dello shader `assets/shaders/distance_fade.wesl`.
+#[derive(Asset, AsBindGroup, Reflect, Debug, Clone, Default)]
+pub struct DistanceFade {
+    /// Mare: (inizio, opaco, -, 0) in metri; dischi: (quota del mare, bordo del mare, -, 1).
+    #[uniform(100)]
+    pub params: Vec4,
+}
+
+impl MaterialExtension for DistanceFade {
+    fn fragment_shader() -> ShaderRef {
+        "shaders/distance_fade.wesl".into()
+    }
+
+    /// Niente normali dal prepass: Bevy le fa leggere anche ai materiali trasparenti, e il mare
+    /// prendeva quelle del fondale che ha sotto (oltre l'isola, dove sotto non c'è nulla, una
+    /// normale verso il basso): era la fascia chiara del mare lontano (beta v0.0.63, n. 22).
+    fn specialize(
+        _pipeline: &bevy::pbr::MaterialExtensionPipeline,
+        descriptor: &mut bevy::render::render_resource::RenderPipelineDescriptor,
+        _layout: &bevy::mesh::MeshVertexBufferLayoutRef,
+        _key: bevy::pbr::MaterialExtensionKey<Self>,
+    ) -> Result<(), bevy::render::render_resource::SpecializedMeshPipelineError> {
+        if let Some(fragment) = descriptor.fragment.as_mut() {
+            fragment
+                .shader_defs
+                .retain(|d| d != &bevy::shader::ShaderDefVal::from("LOAD_PREPASS_NORMALS"));
+        }
+        Ok(())
+    }
+}
+
+/// Il mare è trasparente fino a `SEA_CLEAR_M` metri dalla camera e opaco da `SEA_OPAQUE_M`:
+/// la camera sta qualche metro dietro al giocatore, quindi il fondale si vede fino a una
+/// decina di metri da lui.
+pub const SEA_CLEAR_M: f32 = 4.0;
+/// Lato (m) di una piastrella delle onde sul mare.
+const SEA_WAVE_TILE_M: f32 = 8.0;
+pub const SEA_OPAQUE_M: f32 = 14.0;
+
+impl DistanceFade {
+    /// Il mare: l'alfa del materiale vicino, opaco lontano.
+    pub fn sea() -> Self {
+        Self {
+            params: Vec4::new(SEA_CLEAR_M, SEA_OPAQUE_M, 0.0, 0.0),
+        }
+    }
+
+    /// Sole e luna: tagliati all'orizzonte del mare, che si vede fino a `edge` metri.
+    pub fn horizon(edge: f32) -> Self {
+        Self {
+            params: Vec4::new(SEA_LEVEL, edge, 0.0, 1.0),
+        }
+    }
+}
+
+/// Registra il materiale del mare e dei dischi.
+pub fn plugin(app: &mut App) {
+    app.add_plugins(MaterialPlugin::<FadeMaterial>::default());
+}
 
 /// Asset e stato del terreno.
 #[derive(Resource)]
@@ -98,6 +165,9 @@ pub struct TerrainField {
     shore: Vec<Vec2>,
     /// Vertici coperti da ruscello e laghetto.
     wet: Vec<bool>,
+    /// Vertici di mare aperto (collegati al bordo, sotto `SEA_LEVEL`): una conca nell'entroterra
+    /// più bassa del mare resta terra.
+    sea: Vec<bool>,
     /// Materiale del suolo per vertice.
     surface: Vec<Surface>,
     /// Punti radi di ruscello e laghetto, per la distanza dall'acqua.
@@ -173,6 +243,14 @@ impl TerrainField {
     /// Distanza (m) da ruscello e laghetto.
     pub fn distance_to_fresh_water(&self, p: Vec2) -> f32 {
         nearest(&self.wet_points, p)
+    }
+
+    /// Il punto (x, z) è sul mare aperto (vertice più vicino)? Fuori dalla griglia è mare.
+    pub fn in_sea(&self, x: f32, z: f32) -> bool {
+        let i = |w: f32| ((w + size() / 2.0) / step()).round() as isize;
+        let (ix, iz) = (i(x), i(z));
+        let n = self.n as isize;
+        !((0..n).contains(&ix) && (0..n).contains(&iz)) || self.sea[(iz * n + ix) as usize]
     }
 
     /// C'è acqua dolce in (x, z)?
@@ -255,6 +333,7 @@ pub fn update_terrain(
     mut assets: ResMut<TerrainAssets>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut fade_materials: ResMut<Assets<FadeMaterial>>,
     asset_server: Res<AssetServer>,
     mut events: MessageReader<AssetEvent<Image>>,
     terrains: Query<(Entity, &Mesh3d), With<TerrainMesh>>,
@@ -406,7 +485,12 @@ pub fn update_terrain(
                 Surface::Grass
             }
         })
-        .collect();
+        .collect::<Vec<Surface>>();
+    // Conche dell'entroterra sotto il livello del mare: terra, non mare (passi, beta v0.0.63 n. 26).
+    let hollows = (0..field.h.len())
+        .filter(|i| field.h[*i] < SEA_LEVEL && !ocean[*i])
+        .count();
+    info!("[TERRAIN] conche sotto il livello del mare (terra, non mare): {hollows} vertici");
     // Un punto ogni 2,5 m basta per sapere quanto è vicina l'acqua.
     let wet_points = (0..n)
         .step_by(5)
@@ -425,6 +509,7 @@ pub fn update_terrain(
         h: field.h.clone(),
         shore,
         wet: water.1,
+        sea: ocean.clone(),
         surface,
         wet_points,
         lake: water.0.lake,
@@ -517,16 +602,20 @@ pub fn update_terrain(
         TerrainExtra,
         crate::water::SeaSurface,
         Mesh3d(meshes.add(gpu(sea_mesh))),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::srgba(0.05, 0.22, 0.33, 0.86),
-            reflectance: 0.6,
-            alpha_mode: AlphaMode::Blend,
-            // Il mare si disegna dopo sabbia e strade (anche dall'alto, nella mappa).
-            depth_bias: 4.0,
-            perceptual_roughness: 0.2,
-            metallic: 0.0,
-            normal_map_texture: Some(waves.clone()),
-            ..Default::default()
+        // Vicino alla camera si vede il fondale; lontano il mare è opaco (ADR 0061).
+        MeshMaterial3d(fade_materials.add(FadeMaterial {
+            base: StandardMaterial {
+                base_color: Color::srgba(0.05, 0.22, 0.33, 0.86),
+                reflectance: 0.6,
+                alpha_mode: AlphaMode::Blend,
+                // Il mare si disegna dopo sabbia e strade (anche dall'alto, nella mappa).
+                depth_bias: 4.0,
+                perceptual_roughness: 0.2,
+                metallic: 0.0,
+                normal_map_texture: Some(waves.clone()),
+                ..Default::default()
+            },
+            extension: DistanceFade::sea(),
         })),
         Transform::from_xyz(0.0, SEA_LEVEL, 0.0),
         bevy::light::NotShadowCaster,
@@ -1450,8 +1539,13 @@ fn build_sea_mesh(field: &Field, ocean: &[bool]) -> Mesh {
         PrimitiveTopology::TriangleList,
         bevy::asset::RenderAssetUsages::default(),
     );
-    // UV in metri (una piastrella di onde ogni 16 m) e tangenti per la mappa delle normali.
-    let uv: Vec<[f32; 2]> = pos.iter().map(|p| [p[0] / 16.0, p[2] / 16.0]).collect();
+    // UV in metri (una piastrella di onde ogni `SEA_WAVE_TILE_M`) e tangenti per la mappa delle
+    // normali. Finché il mare prendeva le normali del fondale (ADR 0061) la piastrella da 16 m non
+    // si vedeva; con le onde vere da 16 m il sole faceva macchie larghe e sfocate.
+    let uv: Vec<[f32; 2]> = pos
+        .iter()
+        .map(|p| [p[0] / SEA_WAVE_TILE_M, p[2] / SEA_WAVE_TILE_M])
+        .collect();
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, pos);
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[0.0, 1.0, 0.0]; count]);
     mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uv);
