@@ -1,0 +1,46 @@
+# Correzioni della beta v0.0.63, gruppo 2: frecce sull'arco impugnato, interfaccia nascosta con H e
+# con `hud`, aiuto della shell un comando per riga, avvisi in coda, interfaccia visibile in pausa.
+# Il nome comincia per z perché un copione nuovo non sposti le risoluzioni degli altri.
+# env: PLANET_ONE_SIZE=1920x1080
+god on
+ia off
+meteo sereno
+ora 11
+aspetta 2
+dai arco
+dai frecce 12
+premi 1
+aspetta 0.5
+verifica arma contiene Bow
+verifica /interfaccia/frecce = 12
+foto arco-frecce
+premi click
+aspetta 1.5
+verifica /interfaccia/frecce = 11
+# Senza arco in mano il contatore non c'è.
+premi 1
+aspetta 0.5
+verifica /interfaccia/frecce = null
+# H nasconde e rimostra l'interfaccia; il comando `hud` fa lo stesso.
+premi h
+aspetta 0.5
+verifica /interfaccia/nascosta = true
+foto senza-interfaccia
+premi h
+aspetta 0.5
+verifica /interfaccia/nascosta = false
+hud off
+aspetta 0.5
+verifica /interfaccia/nascosta = true
+hud on
+aspetta 0.5
+verifica /interfaccia/nascosta = false
+# In pausa restano visibili ora, data, bussola e FPS (foto con la finestra).
+premi esc
+aspetta 1
+verifica app = Paused
+foto pausa
+premi esc
+aspetta 1
+verifica app = Playing
+esci

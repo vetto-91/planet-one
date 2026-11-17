@@ -91,6 +91,26 @@ fn reserve_bar(
 /// Disegna l'HUD in `Playing`: crosshair al centro, barra degli oggetti in basso e, subito sopra,
 /// le tre riserve: magia a sinistra, vita al centro, vigore a destra (ADR 0039). Sopra la magia, la
 /// vita del compagno che ti segue (ADR 0049).
+fn is_bow(kind: crate::inventory::ItemKind) -> bool {
+    crate::inventory::weapon_stats(Some(kind)).ranged
+}
+
+/// Le frecce nell'inventario, se l'arma impugnata è un arco (le stesse che consuma il tiro).
+pub fn bow_arrows(equip: &crate::inventory::Equipment, inventory: &Inventory) -> Option<u32> {
+    equip
+        .weapon
+        .filter(|&w| is_bow(w))
+        .map(|_| inventory.qty(crate::inventory::ItemKind::Arrow))
+}
+
+fn arrow_color(n: u32) -> egui::Color32 {
+    if n == 0 {
+        egui::Color32::from_rgb(235, 90, 80)
+    } else {
+        crate::ui_style::GOLD
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn draw_hud(
     ctx: &egui::Context,
@@ -238,6 +258,24 @@ pub fn draw_hud(
         VIGOR_COLOR,
         vitals.winded,
     );
+    // Con l'arco in mano: le frecce dell'inventario, a destra del vigore (gialle, rosse se finite).
+    let arrows = bow_arrows(equip, inventory);
+    if let Some(n) = arrows {
+        let at = egui::pos2(
+            left + 2.0 * side_w + mid_w + 2.0 * gap + 10.0,
+            bars_y + BAR_H / 2.0,
+        );
+        let font = egui::FontId::proportional(15.0);
+        let text = format!("Frecce: {n}");
+        painter.text(
+            at + egui::vec2(1.0, 1.0),
+            egui::Align2::LEFT_CENTER,
+            &text,
+            font.clone(),
+            egui::Color32::from_black_alpha(200),
+        );
+        painter.text(at, egui::Align2::LEFT_CENTER, &text, font, arrow_color(n));
+    }
     egui::Area::new(egui::Id::new("inventory_bar"))
         .fixed_pos(egui::pos2(
             size.x / 2.0 - total_w / 2.0,
@@ -274,7 +312,16 @@ pub fn draw_hud(
                         resp.on_hover_ui(|ui| {
                             ui.label(stack.kind.name());
                         });
-                        if stack.qty > 1 {
+                        if let Some(n) = arrows.filter(|_| equipped && is_bow(stack.kind)) {
+                            // Sull'arco impugnato: quante frecce restano.
+                            ui.painter().text(
+                                egui::pos2(rect.max.x - 3.0, rect.max.y - 2.0),
+                                egui::Align2::RIGHT_BOTTOM,
+                                format!("{n}"),
+                                egui::FontId::proportional(14.0),
+                                arrow_color(n),
+                            );
+                        } else if stack.qty > 1 {
                             ui.painter().text(
                                 egui::pos2(rect.max.x - 3.0, rect.max.y - 2.0),
                                 egui::Align2::RIGHT_BOTTOM,

@@ -59,6 +59,8 @@ pub struct AudioSettings {
     pub mouse_sensitivity: f32,
     /// Contatore degli FPS a schermo.
     pub show_fps: bool,
+    /// Interfaccia di gioco nascosta (tasto H).
+    pub hide_hud: bool,
     pub fullscreen: bool,
     /// Scala dell'interfaccia (0 = automatica dalla risoluzione, vedi `ui_style::ui_scale`).
     pub ui_scale: f32,
@@ -89,6 +91,7 @@ impl Default for AudioSettings {
             time_speed: 1,
             mouse_sensitivity: 0.003,
             show_fps: true,
+            hide_hud: false,
             fullscreen: true,
             ui_scale: 0.0,
             gfx: Default::default(),
@@ -140,6 +143,9 @@ impl Default for AudioSettings {
                 }
                 if let Some(v) = line.trim().strip_prefix("show_fps=") {
                     s.show_fps = v.trim() != "0";
+                }
+                if let Some(v) = line.trim().strip_prefix("hide_hud=") {
+                    s.hide_hud = v.trim() != "0";
                 }
                 if let Some(v) = line.trim().strip_prefix("fullscreen=") {
                     s.fullscreen = v.trim() != "0";
@@ -367,7 +373,7 @@ pub fn save_settings(mut settings: ResMut<AudioSettings>, mouse: Res<ButtonInput
     match std::fs::write(
         &path,
         format!(
-            "music_volume={:.2}\nambient_volume={:.2}\nvoice_volume={:.2}\nai_enabled={}\nai_model={}\nai_host={}\ntts_enabled={}\ntts_voice={}\nstt_enabled={}\nstt_model={}\ntime_speed={}\nmouse_sensitivity={:.5}\nshow_fps={}\nfullscreen={}\nui_scale={:.2}\n{}{}",
+            "music_volume={:.2}\nambient_volume={:.2}\nvoice_volume={:.2}\nai_enabled={}\nai_model={}\nai_host={}\ntts_enabled={}\ntts_voice={}\nstt_enabled={}\nstt_model={}\ntime_speed={}\nmouse_sensitivity={:.5}\nshow_fps={}\nhide_hud={}\nfullscreen={}\nui_scale={:.2}\n{}{}",
             settings.music_volume,
             settings.ambient_volume,
             settings.voice_volume,
@@ -381,6 +387,7 @@ pub fn save_settings(mut settings: ResMut<AudioSettings>, mouse: Res<ButtonInput
             settings.time_speed,
             settings.mouse_sensitivity,
             u8::from(settings.show_fps),
+            u8::from(settings.hide_hud),
             u8::from(settings.fullscreen),
             settings.ui_scale,
             settings.gfx.to_lines(),

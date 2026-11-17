@@ -1223,11 +1223,44 @@ pub struct Session {
     pub played: f32,
     auto_timer: f32,
     notice: Option<(String, f32)>,
+    /// Gli avvisi che aspettano il loro turno: non si sovrascrivono a vicenda.
+    queued: std::collections::VecDeque<String>,
+}
+
+/// Quanto resta a schermo un avviso: abbastanza per leggerlo con calma.
+pub fn notice_secs(text: &str) -> f32 {
+    (2.5 + 0.06 * text.chars().count() as f32).clamp(4.0, 12.0)
 }
 
 impl Session {
+    /// Un avviso sotto la bussola. Se ce n'è già uno, il nuovo aspetta che finisca.
     pub fn notify(&mut self, text: impl Into<String>) {
-        self.notice = Some((text.into(), 3.0));
+        let text = text.into();
+        let repeated = self.notice.as_ref().is_some_and(|(t, _)| *t == text)
+            || self.queued.back() == Some(&text);
+        if repeated {
+            return;
+        }
+        if self.notice.is_none() {
+            let secs = notice_secs(&text);
+            self.notice = Some((text, secs));
+        } else {
+            self.queued.push_back(text);
+        }
+    }
+
+    /// Avanza l'avviso a schermo; finito il suo tempo passa al prossimo in coda.
+    pub fn tick_notice(&mut self, dt: f32) {
+        if let Some((_, left)) = &mut self.notice {
+            *left -= dt;
+            if *left > 0.0 {
+                return;
+            }
+        }
+        self.notice = self.queued.pop_front().map(|t| {
+            let secs = notice_secs(&t);
+            (t, secs)
+        });
     }
 }
 
@@ -2008,39 +2041,35 @@ fn start_session(session: &mut Session, name: &str, played: f32) {
 
 /// Sistema (egui): avviso breve in gioco.
 pub fn draw_notice(
-    time: Res<Time>,
+    time: Res<Time<Real>>,
     mut session: ResMut<Session>,
     mut contexts: bevy_egui::EguiContexts,
 ) {
-    let dt = time.delta_secs();
-    let Some((text, left)) = session.notice.clone() else {
+    use bevy_egui::egui;
+    // Tempo reale: in pausa l'avviso non resta bloccato a metà.
+    session.tick_notice(time.delta_secs());
+    let Some((text, _)) = session.notice.clone() else {
         return;
     };
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
     };
-    bevy_egui::egui::Area::new(bevy_egui::egui::Id::new("save_notice"))
-        .anchor(
-            bevy_egui::egui::Align2::CENTER_TOP,
-            bevy_egui::egui::vec2(0.0, 112.0),
-        )
+    let width = (ctx.viewport_rect().width() * 0.6).clamp(320.0, 760.0);
+    egui::Area::new(egui::Id::new("save_notice"))
+        .anchor(egui::Align2::CENTER_TOP, egui::vec2(0.0, 112.0))
         .show(ctx, |ui| {
-            bevy_egui::egui::Frame::default()
-                .fill(bevy_egui::egui::Color32::from_rgba_unmultiplied(
-                    10, 12, 20, 235,
-                ))
-                .corner_radius(bevy_egui::egui::CornerRadius::same(6))
-                .inner_margin(bevy_egui::egui::Margin::symmetric(14, 8))
+            egui::Frame::default()
+                .fill(egui::Color32::from_rgba_unmultiplied(10, 12, 20, 235))
+                .corner_radius(egui::CornerRadius::same(6))
+                .inner_margin(egui::Margin::symmetric(14, 8))
                 .show(ui, |ui| {
+                    ui.set_max_width(width);
                     ui.add(
-                        bevy_egui::egui::Label::new(
-                            bevy_egui::egui::RichText::new(&text).size(18.0),
-                        )
-                        .wrap_mode(bevy_egui::egui::TextWrapMode::Extend),
+                        egui::Label::new(egui::RichText::new(&text).size(18.0))
+                            .wrap_mode(egui::TextWrapMode::Wrap),
                     );
                 });
         });
-    session.notice = (left > dt).then_some((text, left - dt));
 }
 
 pub fn plugin(app: &mut App) {
@@ -2353,5 +2382,26 @@ mod tests {
         assert!(name_taken(&root, "primo"));
         assert!(!name_taken(&root, "Terzo"));
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn notices_wait_their_turn_and_last_by_length() {
+        let mut s = Session::default();
+        s.notify("Primo avviso");
+        s.notify("Secondo avviso, un po' più lungo del primo per restare a schermo di più");
+        s.notify("Secondo avviso, un po' più lungo del primo per restare a schermo di più");
+        assert_eq!(s.queued.len(), 1, "il doppione non entra in coda");
+        assert_eq!(notice_secs("Primo avviso"), 4.0);
+        s.tick_notice(3.9);
+        assert_eq!(
+            s.notice.as_ref().map(|n| n.0.as_str()),
+            Some("Primo avviso")
+        );
+        s.tick_notice(0.2);
+        let (text, left) = s.notice.clone().unwrap();
+        assert!(text.starts_with("Secondo"));
+        assert!(left > 4.0);
+        s.tick_notice(20.0);
+        assert!(s.notice.is_none());
     }
 }

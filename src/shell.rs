@@ -15,33 +15,152 @@ use bevy::input::keyboard::{Key, KeyboardInput};
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, egui};
 
-const HELP: &[&str] = &[
-    "aiuto · stato · pulisci · reset (ricostruisce la scena)",
-    "god [on|off] · noclip [on|off] · invisibile [on|off]",
-    "tp <x> <y> <z> · tp <luogo o abitante> [n] (es. tp chiesa, tp porta nord, tp marta)",
-    "passepartout [off] · chiavi · dai <oggetto> [quantità]",
-    "f3 (collider) · f4 (piazzamenti) · debug [on|off] (tasti F3 e F4) · coordinate [on|off]",
-    "ora <0-24> · meteo <sereno|nuvoloso|pioggia|temporale|nebbia|neve|auto>",
-    "ia [on|off] · ia modelli · ia modello <nome>",
-    "tts [on|off] · tts voci · tts voce <nome|auto>",
-    "stt [on|off] · stt modelli · stt modello <nome>",
-    "stat [<nome> <valore>] · effetto peso <kg> [secondi] · effetto via",
-    "vai|corri <x> <z> · vai <luogo o abitante> · dove <nome> · guarda <yaw> <pitch>|<nome> [distanza]",
-    "foto [nome] · dump [nome] (stato in JSON) · copione <file> (pilota automatico)",
-    "quest <inizio|cerca|raccogli|torna|completata> · uccidi [raggio] · vicino [raggio] · fps · entita",
-    "volume <musica|ambiente|voci> <0-100> (solo per questa partita)",
-    "scala <100|75|50> (scala di rendering della scena, solo per questa partita)",
-    "regione <isola|nord> (viaggio fra l'Isola di Fontevivo e il Continente del Nord)",
-    "missioni [on|off] · missione <id> <tappa> (storia del Prologo e secondarie)",
-    "veloce [luogo] (viaggio veloce verso un luogo scoperto; senza nome: l'elenco)",
-    "abilita [<nome> <grado>] · livello [n] · talento <abilità> (attiva un rango con un Nodo d'Oro)",
-    "dietro <abitante> [m] (alle sue spalle, per il borseggio o a distanza per pedinare) · scassina (la serratura aperta si forza da sola)",
-    "karma [n] · fiducia <abitante> <n> · davanti <abitante> · volti (diario su «Volti e segreti»)",
-    "incantesimo <luce|dardo|cura|passo|scudo> · magia <n> (riserva di magia)",
-    "casa <0|1|2> (la tua casa sul Poggio del Naufrago: terreno, fondamenta, finita)",
-    "scocca <1|2|3> (una freccia mirata a un anello della Prova dell'Arco) · ferisci <danno> (il compagno)",
-    "risveglio nuovo · risveglio eta <giovane|adulto|maturo> · risveglio classe <nome> · risveglio nome <nome>",
+/// L'elenco dei comandi: (comando, spiegazione), uno per riga.
+const HELP: &[(&str, &str)] = &[
+    ("aiuto", "questo elenco"),
+    ("stato", "trucchi attivi"),
+    ("pulisci", "svuota la shell"),
+    ("reset", "ricostruisce la scena"),
+    ("god [on|off]", "invulnerabile"),
+    (
+        "noclip [on|off]",
+        "attraversa i muri e vola (Spazio sale, Ctrl scende)",
+    ),
+    ("invisibile [on|off]", "i nemici e le guardie non ti vedono"),
+    ("tp <x> <y> <z>", "teletrasporto a un punto"),
+    (
+        "tp <luogo o abitante> [n]",
+        "teletrasporto (es. tp chiesa, tp porta nord, tp marta)",
+    ),
+    ("passepartout [off]", "apre ogni serratura"),
+    ("chiavi", "le chiavi che hai"),
+    (
+        "dai <oggetto> [quantità]",
+        "aggiunge un oggetto all'inventario",
+    ),
+    ("f3", "mostra i collider"),
+    ("f4", "modalità piazzamenti"),
+    ("debug [on|off]", "abilita i tasti F3 e F4"),
+    ("coordinate [on|off]", "coordinate del giocatore a schermo"),
+    (
+        "hud [on|off]",
+        "mostra o nasconde l'interfaccia (come il tasto H)",
+    ),
+    ("ora <0-24>", "cambia l'ora del giorno"),
+    (
+        "meteo <tempo|auto>",
+        "sereno, nuvoloso, pioggia, temporale, nebbia, neve o auto",
+    ),
+    ("ia [on|off]", "dialoghi con l'IA locale"),
+    ("ia modelli", "i modelli dell'IA locale"),
+    ("ia modello <nome>", "sceglie il modello dell'IA"),
+    ("tts [on|off]", "voce sintetica locale"),
+    (
+        "tts voci · tts voce <nome|auto>",
+        "le voci e la scelta della voce",
+    ),
+    ("stt [on|off]", "microfono (riconoscimento locale)"),
+    (
+        "stt modelli · stt modello <nome>",
+        "i modelli del microfono e la scelta",
+    ),
+    ("stat [<nome> <valore>]", "statistiche del personaggio"),
+    (
+        "effetto peso <kg> [secondi]",
+        "un effetto di peso temporaneo",
+    ),
+    ("effetto via", "toglie gli effetti"),
+    ("vai|corri <x> <z>", "il personaggio cammina o corre fin lì"),
+    ("vai <luogo o abitante>", "il personaggio cammina fin lì"),
+    ("dove <nome>", "dove si trova un abitante o un luogo"),
+    (
+        "guarda <yaw> <pitch> | <nome> [distanza]",
+        "orienta la camera",
+    ),
+    ("foto [nome]", "salva una foto dello schermo"),
+    ("dump [nome]", "salva lo stato in JSON"),
+    ("copione <file>", "avvia il pilota automatico"),
+    (
+        "quest <inizio|cerca|raccogli|torna|completata>",
+        "porta «Denaro Rubato» a una tappa",
+    ),
+    ("uccidi [raggio]", "elimina i nemici vicini"),
+    ("vicino [raggio]", "cosa c'è intorno"),
+    ("fps", "fotogrammi al secondo"),
+    ("entita", "quante entità ci sono"),
+    (
+        "volume <musica|ambiente|voci> <0-100>",
+        "volume, solo per questa partita",
+    ),
+    (
+        "scala <100|75|50>",
+        "scala di rendering della scena, solo per questa partita",
+    ),
+    (
+        "regione <isola|nord>",
+        "viaggio fra l'Isola di Fontevivo e il Continente del Nord",
+    ),
+    ("missioni [on|off]", "storia del Prologo e secondarie"),
+    ("missione <id> <tappa>", "porta una missione a una tappa"),
+    (
+        "veloce [luogo]",
+        "viaggio veloce a un luogo scoperto (senza nome: l'elenco)",
+    ),
+    ("abilita [<nome> <grado>]", "abilità e gradi"),
+    ("livello [n]", "livello del personaggio"),
+    ("talento <abilità>", "attiva un rango con un Nodo d'Oro"),
+    (
+        "dietro <abitante> [m]",
+        "alle sue spalle, per il borseggio o per pedinare",
+    ),
+    ("scassina", "la serratura aperta si forza da sola"),
+    ("karma [n]", "la tua fama"),
+    ("fiducia <abitante> <n>", "la fiducia di un abitante"),
+    ("davanti <abitante>", "davanti a un abitante"),
+    ("volti", "apre il diario su «Volti e segreti»"),
+    (
+        "incantesimo <luce|dardo|cura|passo|scudo>",
+        "sceglie un incantesimo",
+    ),
+    ("magia <n>", "riserva di magia"),
+    (
+        "casa <0|1|2>",
+        "la tua casa sul Poggio del Naufrago: terreno, fondamenta, finita",
+    ),
+    (
+        "scocca <1|2|3>",
+        "una freccia mirata a un anello della Prova dell'Arco",
+    ),
+    ("ferisci <danno>", "ferisce il compagno"),
+    ("risveglio nuovo", "ricomincia il risveglio"),
+    ("risveglio eta <giovane|adulto|maturo>", "sceglie l'età"),
+    ("risveglio classe <nome>", "sceglie l'indole"),
+    ("risveglio nome <nome>", "sceglie il nome"),
 ];
+
+/// Una riga d'aiuto nel registro: comando e spiegazione separati da una tabulazione.
+const HELP_SEP: char = '\t';
+
+/// Una riga della shell: le righe d'aiuto hanno il comando colorato e la spiegazione in bianco.
+fn help_or_text(ui: &mut egui::Ui, line: &str) {
+    if let Some((cmd, what)) = line.split_once(HELP_SEP) {
+        ui.horizontal_wrapped(|ui| {
+            ui.label(
+                egui::RichText::new(cmd)
+                    .monospace()
+                    .size(15.0)
+                    .color(crate::ui_style::GOLD),
+            );
+            ui.label(
+                egui::RichText::new(format!("— {what}"))
+                    .size(15.0)
+                    .color(egui::Color32::WHITE),
+            );
+        });
+    } else {
+        ui.label(egui::RichText::new(line).monospace().size(15.0));
+    }
+}
 
 /// Trucchi attivi: non salvati, tutti spenti a ogni avvio.
 #[derive(Resource, Default, Debug)]
@@ -131,6 +250,7 @@ pub enum Cmd {
     F4,
     Debug(Option<bool>),
     Coords(Option<bool>),
+    Hud(Option<bool>),
     Hour(f32),
     Weather(Option<crate::weather::Kind>),
     Ai(AiCmd),
@@ -323,6 +443,7 @@ pub fn parse(line: &str) -> Result<Cmd, String> {
         "f4" => Ok(Cmd::F4),
         "debug" => Ok(Cmd::Debug(switch(args.first())?)),
         "coordinate" | "coords" => Ok(Cmd::Coords(switch(args.first())?)),
+        "hud" | "interfaccia" => Ok(Cmd::Hud(switch(args.first())?)),
         "ora" => {
             let hour: f32 = args
                 .first()
@@ -650,8 +771,8 @@ fn apply_switch(flag: &mut bool, wanted: Option<bool>) -> bool {
 fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
     match cmd {
         Cmd::Help => {
-            for line in HELP {
-                shell.say(*line);
+            for (cmd, what) in HELP {
+                shell.say(format!("{cmd}{HELP_SEP}{what}"));
             }
         }
         Cmd::Status => {
@@ -986,6 +1107,13 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
         Cmd::Coords(v) => {
             let on = apply_switch(&mut ctx.cheats.coords, v);
             shell.say(format!("coordinate {}", on_off(on)));
+        }
+        Cmd::Hud(v) => {
+            let mut shown = !ctx.audio.hide_hud;
+            let on = apply_switch(&mut shown, v);
+            ctx.audio.hide_hud = !on;
+            ctx.audio.dirty = true;
+            shell.say(format!("interfaccia {}", on_off(on)));
         }
         Cmd::Hour(hour) => {
             ctx.clock.hour = hour;
@@ -1408,7 +1536,7 @@ pub fn shell_panel(mut contexts: EguiContexts, mut shell: ResMut<Shell>) {
                     .show(ui, |ui| {
                         ui.set_min_width(ui.available_width());
                         for line in &shell.log {
-                            ui.label(egui::RichText::new(line).monospace().size(15.0));
+                            help_or_text(ui, line);
                         }
                     });
                 ui.add_space(6.0);

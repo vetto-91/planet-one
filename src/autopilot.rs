@@ -5,7 +5,7 @@
 //! Comandi propri del pilota:
 //! - `aspetta <s>`: attende `s` secondi di gioco;
 //! - `premi <tasto> [s]`: tiene premuto un tasto (`w a s d spazio shift ctrl e invio esc tab su giu
-//!   sinistra destra 0-9 i j m t c v f5 f9 click clickdx`) per `s` secondi (predefinito 0,1);
+//!   sinistra destra 0-9 i j m t c v h f5 f9 f12 click clickdx`) per `s` secondi (predefinito 0,1);
 //! - `avanza`: fa scorrere il dialogo (Invio) finché compaiono le scelte o si chiude;
 //! - `tieni <tasto> <s>`: come `premi`, ma il copione prosegue subito (foto in movimento);
 //! - `scegli <n o testo>`: nel dialogo sceglie la risposta (numero da 1 o parte del testo) e conferma;
@@ -305,6 +305,7 @@ pub fn parse_key(name: &str) -> Option<PilotKey> {
         "z" => K::KeyZ,
         "f" => K::KeyF,
         "g" => K::KeyG,
+        "h" => K::KeyH,
         "f5" => K::F5,
         "f9" => K::F9,
         "f11" => K::F11,
@@ -942,6 +943,10 @@ pub fn snapshot(world: &mut World) -> Value {
     }
     let equip = world.resource::<crate::inventory::Equipment>();
     let arma = equip.weapon.map(|w| format!("{w:?}"));
+    let interfaccia = json!({
+        "nascosta": world.resource::<crate::menu::HudHidden>().0,
+        "frecce": crate::hud::bow_arrows(equip, world.resource::<crate::inventory::Inventory>()),
+    });
     let shop = world.resource::<crate::shop::ShopState>();
     let negozio = json!({
         "venditore": shop.vendor,
@@ -1148,7 +1153,7 @@ pub fn snapshot(world: &mut World) -> Value {
         "classe": who.class.name(),
         "nome": who.name.clone(),
     });
-    json!({
+    let mut state = json!({
         "app": app,
         "ora": (hour * 100.0).round() / 100.0,
         "data": date,
@@ -1228,7 +1233,9 @@ pub fn snapshot(world: &mut World) -> Value {
         "mobile": mobile,
         "vicini": near.into_iter().map(|(_, v)| v).collect::<Vec<_>>(),
         "abitanti": abitanti,
-    })
+    });
+    state["interfaccia"] = interfaccia;
+    state
 }
 
 /// Sistema esclusivo: esegue la fotografia dello stato richiesta.

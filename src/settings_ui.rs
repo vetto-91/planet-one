@@ -135,19 +135,98 @@ fn video_tab(ui: &mut egui::Ui, a: &mut AudioSettings) {
     crate::graphics::graphics_ui(ui, a);
 }
 
+/// I comandi del gioco: gruppo, poi (funzione, tasti).
+pub const CONTROLS: &[(&str, &[(&str, &str)])] = &[
+    (
+        "Movimento",
+        &[
+            ("Muoversi", "W A S D · frecce"),
+            ("Correre", "Shift (tenuto)"),
+            ("Saltare", "Spazio"),
+            ("Scatto (talento dell'Atletica)", "X"),
+            (
+                "Immergersi (talento del Nuoto)",
+                "Ctrl (tenuto, in acqua profonda)",
+            ),
+        ],
+    ),
+    (
+        "Camera",
+        &[
+            ("Guardarsi intorno", "Mouse"),
+            ("Prima / terza persona", "V"),
+            ("Prima persona finché tieni premuto", "Tasto destro"),
+        ],
+    ),
+    (
+        "Azioni",
+        &[
+            ("Interagire, parlare, avanzare nel dialogo", "E · Invio"),
+            ("Attaccare, tirare con l'arco", "Tasto sinistro"),
+            ("Scegliere l'incantesimo", "Z"),
+            ("Lanciare l'incantesimo", "Q"),
+            ("Oggetti della barra", "1 … 9, 0"),
+            ("Borseggiare alle spalle", "F"),
+            ("Sfilare la chiave · regalare", "G"),
+            ("Raccogliere legname e pietra", "R"),
+        ],
+    ),
+    (
+        "Pannelli",
+        &[
+            ("Inventario", "I"),
+            ("Personaggio", "C"),
+            ("Diario", "J"),
+            ("Mappa (zoom con + e −)", "M"),
+            ("Aspettare", "T"),
+            ("Obiettivi della missione seguita", "Tab (tenuto)"),
+            ("Nascondere / mostrare l'interfaccia", "H"),
+            ("Menu e pausa", "Esc"),
+        ],
+    ),
+    (
+        "Partita e finestra",
+        &[
+            ("Salvataggio rapido", "F5"),
+            ("Carica il salvataggio rapido", "F9"),
+            ("Schermo intero", "F11"),
+            ("Segnala un problema (foto e nota)", "F12"),
+            ("Parlare al microfono nella chat con l'IA", "F2 (tenuto)"),
+        ],
+    ),
+    (
+        "Strumenti",
+        &[
+            ("Shell dei trucchi", "\\"),
+            ("Debug: collider (dopo «debug on» nella shell)", "F3"),
+            ("Debug: piazzamenti (dopo «debug on» nella shell)", "F4"),
+        ],
+    ),
+];
+
 fn controls_tab(ui: &mut egui::Ui) {
-    for line in [
-        "W/A/S/D o frecce — movimento",
-        "Shift — corsa, Spazio — salto",
-        "Mouse — camera, V — prima persona, tasto destro — prima persona temporanea",
-        "E / Invio — interagisci e dialoga",
-        "I — inventario, C — personaggio, J — diario, M — mappa, T — aspetta",
-        "1–0 — barra degli oggetti, TAB (tenuto) — obiettivi",
-        "F5 — salvataggio rapido, F9 — carica il salvataggio rapido",
-        "F11 — schermo intero, Esc — menu, \\ — shell dei trucchi",
-    ] {
-        ui.label(line);
-    }
+    egui::ScrollArea::vertical().show(ui, |ui| {
+        for (group, rows) in CONTROLS {
+            ui.add_space(6.0);
+            ui.label(
+                egui::RichText::new(*group)
+                    .strong()
+                    .color(crate::ui_style::GOLD),
+            );
+            egui::Grid::new(("controls", *group))
+                .num_columns(2)
+                .striped(true)
+                .spacing([24.0, 6.0])
+                .min_col_width(220.0)
+                .show(ui, |ui| {
+                    for (what, keys) in *rows {
+                        ui.label(*what);
+                        ui.label(egui::RichText::new(*keys).monospace().strong());
+                        ui.end_row();
+                    }
+                });
+        }
+    });
 }
 
 /// Sistema (egui): finestra a schede.
@@ -200,11 +279,13 @@ pub fn apply_settings(
     audio: Res<AudioSettings>,
     mut orbit: ResMut<crate::camera::OrbitCamera>,
     mut show_fps: ResMut<crate::menu::ShowFps>,
+    mut hud_hidden: ResMut<crate::menu::HudHidden>,
     mut windows: Query<&mut Window, With<bevy::window::PrimaryWindow>>,
     mut last_fullscreen: Local<Option<bool>>,
 ) {
     orbit.sensitivity = audio.mouse_sensitivity;
     show_fps.0 = audio.show_fps;
+    hud_hidden.0 = audio.hide_hud;
     if *last_fullscreen != Some(audio.fullscreen)
         && let Ok(mut window) = windows.single_mut()
     {

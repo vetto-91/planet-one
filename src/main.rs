@@ -135,6 +135,8 @@ pub enum AppState {
     Shell,
     /// Negozio aperto (acquisto con le monete): gameplay sospeso, cursore libero.
     Shop,
+    /// Nota di una segnalazione (F12) da scrivere: gioco sospeso, cursore libero.
+    BugNote,
     /// Reset della scena in corso (un frame, non interattivo).
     Resetting,
 }
@@ -228,6 +230,7 @@ fn main() -> AppExit {
         })
         .init_resource::<camera::OrbitCamera>()
         .init_resource::<menu::ShowFps>()
+        .init_resource::<menu::HudHidden>()
         .init_resource::<entities::DialogState>()
         .init_resource::<entities::NearestInteract>()
         .init_resource::<inventory::Inventory>()
@@ -243,7 +246,8 @@ fn main() -> AppExit {
         .add_plugins(villagers::plugin)
         .add_plugins(shell::plugin)
         .add_plugins(autopilot::plugin)
-        .add_systems(Update, bugreport::report_bug)
+        .init_resource::<bugreport::BugReport>()
+        .add_systems(Update, (bugreport::report_bug, bugreport::move_shots))
         .add_plugins(containers::plugin)
         .add_plugins(character::plugin)
         .add_plugins(skills::plugin)
@@ -418,6 +422,7 @@ fn main() -> AppExit {
                 debug_place::debug_ui,
                 inventory_ui::inventory_window.run_if(in_state(AppState::Inventory)),
                 shell::shell_panel.run_if(in_state(AppState::Shell)),
+                bugreport::bug_note_window.run_if(in_state(AppState::BugNote)),
                 containers::container_window.run_if(in_state(AppState::Container)),
                 thievery::lockpick_window.run_if(in_state(AppState::Lockpick)),
                 awakening::awakening_window.run_if(in_state(AppState::Awakening)),
@@ -491,6 +496,7 @@ fn main() -> AppExit {
                 .after(entities::advance_dialog)
                 .before(entities::interact),
         )
+        .add_systems(Update, menu::toggle_hud.run_if(in_state(AppState::Playing)))
         // F3: toggle debug wireframe dei collider (PhysicsDebugPlugin).
         .add_systems(
             Update,

@@ -1,6 +1,18 @@
-# F12 «Segnala bug»: crea la cartella con schermo, stato, log e nota.
+# F12 «Segnala bug»: crea la cartella con schermo, stato, log e nota, poi apre la casella della nota.
 premi f12
 aspetta 2
 dump dopo
+verifica app = BugNote
+# Esc chiude senza testo e torna al gioco.
+premi esc
+aspetta 1
+dump chiusa
+verifica app = Playing
+# Una seconda foto con la nota vuota è un'altra inquadratura della stessa segnalazione.
+premi f12
+aspetta 2
+verifica app = BugNote
+premi esc
+aspetta 1
 verifica app = Playing
 esci

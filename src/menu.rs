@@ -28,6 +28,30 @@ impl Default for ShowFps {
     }
 }
 
+/// L'interfaccia nascosta col tasto H o con `hud off` nella shell (salvata nelle impostazioni).
+#[derive(Resource, Default)]
+pub struct HudHidden(pub bool);
+
+/// Sistema: H nasconde e rimostra l'interfaccia di gioco; la scelta resta nelle impostazioni.
+pub fn toggle_hud(
+    keys: Res<ButtonInput<KeyCode>>,
+    dialog: Res<crate::entities::DialogState>,
+    mut audio: ResMut<crate::audio::AudioSettings>,
+) {
+    if keys.just_pressed(KeyCode::KeyH) && !dialog.open {
+        audio.hide_hud = !audio.hide_hud;
+        audio.dirty = true;
+        info!(
+            "[INPUT] interfaccia {}",
+            if audio.hide_hud {
+                "nascosta"
+            } else {
+                "visibile"
+            }
+        );
+    }
+}
+
 /// Toggle del menu: `Esc` alterna `Playing` ↔ `Paused` in entrambe le direzioni.
 ///
 /// La finestra di Bevy NON si chiude con Esc perché `close_on_escape`
@@ -88,7 +112,12 @@ pub fn toggle(
         | AppState::Character
         | AppState::Shop => next.set(AppState::Playing),
         // Durante il reset ESC non fa nulla: è uno stato transitorio. Il risveglio va concluso.
-        AppState::Resetting | AppState::Loading | AppState::MainMenu | AppState::Awakening => {}
+        // La nota di F12 si chiude con Esc dalla sua casella (`bugreport::bug_note_window`).
+        AppState::Resetting
+        | AppState::Loading
+        | AppState::MainMenu
+        | AppState::Awakening
+        | AppState::BugNote => {}
     }
 }
 
@@ -113,6 +142,7 @@ pub struct MenuActions<'w> {
 #[derive(SystemParam)]
 pub struct UiQueries<'w, 's> {
     pub actions: MenuActions<'w>,
+    pub hud_hidden: Res<'w, HudHidden>,
     pub cheats: Res<'w, crate::shell::Cheats>,
     pub character: Res<'w, crate::character::Character>,
     pub load: Res<'w, crate::character::Load>,
@@ -221,45 +251,8 @@ pub fn ui(
 
     match state.get() {
         AppState::Playing => {
-            // Hint sempre visibile + contatore monete in possesso (alto-sinistra).
-            egui::Area::new(egui::Id::new("hint"))
-                .fixed_pos(egui::pos2(12.0, 12.0))
-                .show(ctx, |ui| {
-                    hud_chip(ui, "ESC = menu");
-                });
-            let coins = inventory.qty(crate::inventory::ItemKind::Coin);
-            egui::Area::new(egui::Id::new("coins"))
-                .fixed_pos(egui::pos2(12.0, 58.0))
-                .show(ctx, |ui| {
-                    hud_chip(ui, &format!("Monete: {coins}"));
-                });
-            egui::Area::new(egui::Id::new("weather"))
-                .fixed_pos(egui::pos2(12.0, 150.0))
-                .show(ctx, |ui| {
-                    hud_chip(ui, &q.weather.label());
-                });
-            if q.load.overloaded {
-                egui::Area::new(egui::Id::new("overload"))
-                    .fixed_pos(egui::pos2(12.0, 196.0))
-                    .show(ctx, |ui| {
-                        hud_chip(
-                            ui,
-                            &format!(
-                                "Sovraccarico: {:.1} / {:.1} kg",
-                                q.load.weight, q.load.capacity
-                            ),
-                        );
-                    });
-            }
-            egui::Area::new(egui::Id::new("clock"))
-                .fixed_pos(egui::pos2(12.0, 104.0))
-                .show(ctx, |ui| {
-                    hud_chip(
-                        ui,
-                        &format!("{} — {}", q.clock.date_label(), q.clock.label()),
-                    );
-                });
-
+            let hidden = q.hud_hidden.0;
+            draw_status(ctx, &q, &inventory, &quest, &orbit, &show_fps, &diagnostics);
             // Prompt di interazione: appare quando il player e' vicino a un
             // NPC interagibile (il sistema entities::interact gestisce il range).
             // Mostriamo "[E] Parla" quando un dialogo non e' aperto e c'e'
@@ -274,7 +267,7 @@ pub fn ui(
             }
 
             // HUD di gioco: barra vita (basso-sx), crosshair, inventario.
-            if let Ok(hp) = q.health.single() {
+            if !hidden && let Ok(hp) = q.health.single() {
                 let spell = q.magic.selected;
                 let price =
                     crate::magic::cost(spell, crate::skills::rank(crate::skills::Skill::Magic));
@@ -291,7 +284,7 @@ pub fn ui(
             }
 
             // Barre vita dei nemici sopra le loro teste (proiezione world→screen).
-            if let Ok(pp) = q.player_pos.single() {
+            if !hidden && let Ok(pp) = q.player_pos.single() {
                 hud::draw_enemy_bars(
                     ctx,
                     &q.enemies,
@@ -310,21 +303,6 @@ pub fn ui(
                 );
             }
 
-            // Bussola in alto al centro + titolo quest + obiettivi (TAB).
-            if let Ok(pp) = q.player_pos.single() {
-                draw_compass(
-                    ctx,
-                    &quest,
-                    pp.translation(),
-                    &q.thief_pos,
-                    &q.coins_pos,
-                    &q.npc_pos,
-                    &orbit,
-                );
-                if q.cheats.coords {
-                    draw_coords(ctx, pp.translation());
-                }
-            }
             if let Some((text, _t)) = &quest.title {
                 draw_title_banner(ctx, text);
             }
@@ -339,23 +317,10 @@ pub fn ui(
                 draw_objectives(ctx, &entry);
             }
             draw_barks(ctx, &barks, &q.transforms, &q.cameras, &q.anchors);
-
-            // Contatore FPS in alto a destra (se attivato dal menu).
-            if show_fps.0
-                && let Some(fps) = diagnostics
-                    .get(&FrameTimeDiagnosticsPlugin::FPS)
-                    .and_then(|d| d.smoothed())
-            {
-                let size = ctx.viewport_rect().size();
-                egui::Area::new(egui::Id::new("fps"))
-                    .pivot(egui::Align2::RIGHT_TOP)
-                    .fixed_pos(egui::pos2(size.x - 12.0, 12.0))
-                    .show(ctx, |ui| {
-                        hud_chip(ui, &format!("FPS: {:.0}", fps));
-                    });
-            }
         }
         AppState::Paused => {
+            // In pausa restano visibili ora, data, bussola, coordinate e FPS.
+            draw_status(ctx, &q, &inventory, &quest, &orbit, &show_fps, &diagnostics);
             // Con «Carica» aperto disegna tutto `main_menu::main_menu_ui`.
             if q.actions.menu_ui.screen != crate::main_menu::Screen::Load
                 && !q.actions.settings.open
@@ -519,7 +484,7 @@ pub fn ui(
         // Anche la shell ha il suo sistema (`shell::shell_panel`).
         AppState::Shell => {}
         // I mobili aperti hanno il loro sistema (`containers::container_window`).
-        AppState::Container | AppState::Lockpick | AppState::Awakening => {}
+        AppState::Container | AppState::Lockpick | AppState::Awakening | AppState::BugNote => {}
         AppState::Character => {}
         // Menu principale e attesa hanno i loro sistemi.
         AppState::MainMenu | AppState::Loading => {}
@@ -823,6 +788,81 @@ fn draw_compass(
 }
 
 /// Coordinate x,z del player in un chip centrato sotto la bussola.
+/// Le informazioni di stato: monete, ora e data, meteo, sovraccarico, bussola, coordinate e FPS.
+/// In gioco e in pausa; con l'interfaccia nascosta restano solo le coordinate dei trucchi.
+fn draw_status(
+    ctx: &egui::Context,
+    q: &UiQueries,
+    inventory: &Inventory,
+    quest: &QuestState,
+    orbit: &OrbitCamera,
+    show_fps: &ShowFps,
+    diagnostics: &DiagnosticsStore,
+) {
+    let player = q.player_pos.single().ok().map(|p| p.translation());
+    if q.cheats.coords
+        && let Some(p) = player
+    {
+        draw_coords(ctx, p);
+    }
+    if q.hud_hidden.0 {
+        return;
+    }
+    egui::Area::new(egui::Id::new("hint"))
+        .fixed_pos(egui::pos2(12.0, 12.0))
+        .show(ctx, |ui| {
+            hud_chip(ui, "ESC = menu");
+        });
+    let coins = inventory.qty(crate::inventory::ItemKind::Coin);
+    egui::Area::new(egui::Id::new("coins"))
+        .fixed_pos(egui::pos2(12.0, 58.0))
+        .show(ctx, |ui| {
+            hud_chip(ui, &format!("Monete: {coins}"));
+        });
+    egui::Area::new(egui::Id::new("clock"))
+        .fixed_pos(egui::pos2(12.0, 104.0))
+        .show(ctx, |ui| {
+            hud_chip(
+                ui,
+                &format!("{} — {}", q.clock.date_label(), q.clock.label()),
+            );
+        });
+    egui::Area::new(egui::Id::new("weather"))
+        .fixed_pos(egui::pos2(12.0, 150.0))
+        .show(ctx, |ui| {
+            hud_chip(ui, &q.weather.label());
+        });
+    if q.load.overloaded {
+        egui::Area::new(egui::Id::new("overload"))
+            .fixed_pos(egui::pos2(12.0, 196.0))
+            .show(ctx, |ui| {
+                hud_chip(
+                    ui,
+                    &format!(
+                        "Sovraccarico: {:.1} / {:.1} kg",
+                        q.load.weight, q.load.capacity
+                    ),
+                );
+            });
+    }
+    if let Some(p) = player {
+        draw_compass(ctx, quest, p, &q.thief_pos, &q.coins_pos, &q.npc_pos, orbit);
+    }
+    if show_fps.0
+        && let Some(fps) = diagnostics
+            .get(&FrameTimeDiagnosticsPlugin::FPS)
+            .and_then(|d| d.smoothed())
+    {
+        let size = ctx.viewport_rect().size();
+        egui::Area::new(egui::Id::new("fps"))
+            .pivot(egui::Align2::RIGHT_TOP)
+            .fixed_pos(egui::pos2(size.x - 12.0, 12.0))
+            .show(ctx, |ui| {
+                hud_chip(ui, &format!("FPS: {:.0}", fps));
+            });
+    }
+}
+
 fn draw_coords(ctx: &egui::Context, player_pos: Vec3) {
     let size = ctx.viewport_rect().size();
     egui::Area::new(egui::Id::new("coords"))
