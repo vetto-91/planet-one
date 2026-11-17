@@ -1,0 +1,17 @@
+# Segnalazione 42 (v0.0.63): la stalla della fattoria ha un portone a due battenti che si apre con E.
+god on
+# La stalla è privata: col passepartout il portone si apre.
+dai passepartout
+ora 12
+tp -37.2 2 -42.0
+aspetta 3
+guarda stalla
+aspetta 1.5
+foto portone-chiuso
+mira porta
+premi e
+aspetta 2.5
+verifica prop:porta:attivo = true
+foto portone-aperto
+aspetta 1
+esci

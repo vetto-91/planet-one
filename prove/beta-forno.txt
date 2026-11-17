@@ -1,0 +1,18 @@
+# Segnalazioni 37 e 38 (v0.0.63): nel forno la rampa al sottotetto è libera (in cima non si
+# sbatte più la testa) e la bocca del forno guarda il centro della stanza.
+god on
+ora 18
+tp 2.55 0.74 19.33
+aspetta 3
+prima-persona
+guarda 120 15
+aspetta 1.5
+foto forno
+tp 6.89 4.2 21.59
+aspetta 3
+guarda 280 0
+aspetta 1.5
+foto rampa-sottotetto
+prima-persona off
+aspetta 1
+esci

@@ -1,0 +1,27 @@
+# Segnalazioni 33 e 34 (v0.0.63): le finestre delle case sono vani veri con un vetro che si alza
+# con E (come nella casetta del Viandante), e il vetro è naturale (anche quello della casetta).
+god on
+ora 12
+tp -8.06 3.13 -6.23
+aspetta 4
+prima-persona
+guarda 190 0
+aspetta 1.5
+foto vetro-chiuso
+mira vetro
+premi e
+aspetta 2
+verifica prop:vetro:attivo = true
+foto vetro-alzato
+mira windowinner
+premi e
+aspetta 2
+foto scuri-chiusi
+tp 5.22 1.56 1.08
+aspetta 3
+guarda 180 0
+aspetta 1.5
+foto casetta-vetro
+prima-persona off
+aspetta 1
+esci

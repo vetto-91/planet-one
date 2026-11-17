@@ -1,0 +1,16 @@
+# Segnalazioni 5 e 6 (v0.0.63): il pozzo della piazza (P-0200) ha il bordo chiuso e l'acqua limpida
+# sotto il bordo; la rete da pesca sulla spiaggia del molo (P-1257) ha la sua collisione.
+god on
+ora 11
+tp -1.2 3 12.6
+aspetta 3
+guarda pozzo
+aspetta 1.5
+foto pozzo
+tp -4.5 3 93.5
+aspetta 3
+guarda reti
+aspetta 1.5
+foto reti
+aspetta 1
+esci

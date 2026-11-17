@@ -1,0 +1,16 @@
+# Segnalazione 30 (v0.0.63): le scale delle mura finivano contro il muro; ora sono a L, con
+# pianerottolo e rampa corta perpendicolare al muro. Stessi punti delle foto della segnalazione.
+god on
+ora 11
+tp -24.66 0 1.31
+aspetta 3
+camera 210 15 5
+aspetta 1.5
+foto scala-ovest
+tp -22.86 0 7.26
+aspetta 3
+camera 200 15 5
+aspetta 1.5
+foto scala-ovest-2
+aspetta 1
+esci
