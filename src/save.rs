@@ -1733,6 +1733,7 @@ fn apply(d: &SaveData, hero: &mut HeroParams, world: &mut WorldParams) {
                     waypoints: vec![e.a, e.b],
                     current: e.current.min(1),
                     speed,
+                    home: None,
                 },
             ));
             c.remove::<NeedsGroundSnap>();

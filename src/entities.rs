@@ -81,6 +81,9 @@ const STUCK_AFTER: f32 = 1.0;
 const DETOUR_SECS: f32 = 1.3;
 /// Aggiramenti falliti prima di passare oltre (se non visto).
 const DETOURS_BEFORE_HOP: u32 = 3;
+/// Secondi di cammino libero, in linea retta, perché gli aggiramenti tornino a zero: camminare
+/// bene di lato durante un aggiramento non vuol dire essersi sbloccati.
+const FREE_RESET: f32 = 4.0;
 
 /// Un nemico bloccato contro un ostacolo (ADR 0059).
 #[derive(Component, Default, Debug)]
@@ -93,6 +96,8 @@ pub struct Stuck {
     side: f32,
     /// Aggiramenti già provati senza sbloccarsi.
     tries: u32,
+    /// Secondi di cammino libero dopo l'ultimo aggiramento.
+    free: f32,
 }
 
 /// Cosa fare per sbloccarsi.
@@ -111,10 +116,14 @@ impl Stuck {
         }
         if moved < wanted * 0.25 {
             self.still += dt;
+            self.free = 0.0;
         } else {
             self.still = (self.still - 2.0 * dt).max(0.0);
-            if self.detour <= 0.0 && self.still <= 0.0 {
-                self.tries = 0;
+            if self.detour <= 0.0 {
+                self.free += dt;
+                if self.free >= FREE_RESET {
+                    self.tries = 0;
+                }
             }
         }
         if self.still < STUCK_AFTER || self.detour > 0.0 {
@@ -154,6 +163,19 @@ pub struct PatrolState {
     pub current: usize,
     /// Velocità di patrol (m/s).
     pub speed: f32,
+    /// Dove si torna al posto del primo punto, se quello non si raggiunge (ADR 0059): il primo punto
+    /// resta com'è perché dice da quale campo viene il nemico.
+    pub home: Option<Vec3>,
+}
+
+impl PatrolState {
+    /// Il punto verso cui si cammina ora.
+    pub fn target(&self) -> Vec3 {
+        match (self.current, self.home) {
+            (0, Some(home)) => home,
+            (i, _) => self.waypoints[i],
+        }
+    }
 }
 
 /// Resource: prompt dell'interagibile piu' vicino al player (per la UI).
@@ -297,6 +319,7 @@ pub fn spawn_enemy(
                 waypoints: vec![start, end],
                 current: 0,
                 speed: PATROL_SPEED,
+                home: None,
             },
             RigidBody::Kinematic,
             Collider::capsule(0.4, 0.8),
@@ -808,7 +831,7 @@ pub fn enemy_patrol(
                 }
                 (Vec3::new(p.x, transform.translation.y, p.z), CHASE_SPEED)
             }
-            _ => (patrol.waypoints[patrol.current], patrol.speed),
+            _ => (patrol.target(), patrol.speed),
         };
         let to_target = target - transform.translation;
         let horizontal = Vec3::new(to_target.x, 0.0, to_target.z);
@@ -853,7 +876,28 @@ pub fn enemy_patrol(
         let moved = (transform.translation - before).xz().length();
         match stuck.step(moved, speed * dt, dt) {
             Unstick::Detour => {
-                info!("[NEMICO] bloccato: aggira l'ostacolo");
+                info!(
+                    "[NEMICO] bloccato: aggira l'ostacolo ({:.1} {:.1})",
+                    transform.translation.x, transform.translation.z
+                );
+            }
+            Unstick::Hop if !mind.chase => {
+                // Di pattuglia il percorso passa per un ostacolo: si accorcia fin qui e si torna
+                // indietro, invece di saltarlo avanti e indietro. Il primo punto resta (dice da
+                // quale campo viene il nemico, `places::is_camp_patrol`): al suo posto vale `home`.
+                let here = transform.translation;
+                if patrol.current == 0 {
+                    patrol.home = Some(here);
+                } else {
+                    let i = patrol.current;
+                    patrol.waypoints[i] = here;
+                }
+                info!(
+                    "[NEMICO] percorso bloccato: si accorcia a ({:.1} {:.1})",
+                    here.x, here.z
+                );
+                patrol.current = (patrol.current + 1) % patrol.waypoints.len();
+                *stuck = Stuck::default();
             }
             Unstick::Hop => {
                 let unseen = eye.is_none_or(|(at, fwd)| {
@@ -940,6 +984,32 @@ mod tests {
         assert_eq!(seen[1], (Unstick::Detour, -1.0));
         assert_eq!(seen[2], (Unstick::Detour, 1.0));
         assert_eq!(seen[3].0, Unstick::Hop);
+    }
+
+    #[test]
+    fn walking_well_sideways_does_not_reset_the_tries() {
+        let mut s = Stuck::default();
+        let dt = 0.1;
+        let mut hops = 0;
+        for _ in 0..400 {
+            // Durante l'aggiramento cammina bene; in linea retta resta fermo contro il muro.
+            let moved = if s.detour > 0.0 { 0.43 } else { 0.0 };
+            if s.step(moved, 0.43, dt) == Unstick::Hop {
+                hops += 1;
+                break;
+            }
+            s.detour = (s.detour - dt).max(0.0);
+        }
+        assert_eq!(hops, 1, "deve arrivare a passare oltre");
+        // Dopo qualche secondo di cammino libero si ricomincia da capo.
+        let mut s = Stuck {
+            tries: DETOURS_BEFORE_HOP,
+            ..Default::default()
+        };
+        for _ in 0..50 {
+            s.step(0.43, 0.43, dt);
+        }
+        assert_eq!(s.tries, 0);
     }
 
     #[test]

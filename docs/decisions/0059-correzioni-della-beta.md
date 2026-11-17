@@ -78,8 +78,13 @@ della lista invece dell'ultima mossa. Così il commit f0605b9 aveva perso cinque
 - **Rottami del risveglio:** gli oggetti compaiono insieme alla pozza e spariscono solo oltre 14 m.
 - **Nemici bloccati** (`entities::Stuck`):
   - dopo un secondo quasi fermi aggirano l'ostacolo, una volta a sinistra e una a destra;
-  - dopo tre tentativi, se il giocatore non li vede, passano oltre il primo punto libero a terra 2,5–5,5 m più
-    avanti.
+  - i tentativi tornano a zero solo dopo 4 secondi di cammino libero in linea retta: camminare bene di lato
+    durante un aggiramento non conta;
+  - dopo tre tentativi, mentre inseguono e se il giocatore non li vede, passano oltre il primo punto libero a
+    terra 2,5–5,5 m più avanti;
+  - di pattuglia, invece, il percorso si accorcia fino al punto dove si sono fermati e tornano indietro (il
+    primo punto resta, perché dice da quale campo vengono). Senza questa regola un bandito del campo a
+    (76, 40) saltava lo stesso ostacolo avanti e indietro tutta la notte.
 
 ## Conseguenze
 - Ogni tappa nuova delle missioni deve avere un luogo: il test `every_open_step_shows_the_way` lo richiede.

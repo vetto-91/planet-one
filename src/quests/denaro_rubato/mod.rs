@@ -681,6 +681,7 @@ pub fn spawn_thief(
                 waypoints: vec![start, end],
                 current: 0,
                 speed: crate::entities::PATROL_SPEED,
+                home: None,
             },
             RigidBody::Kinematic,
             Collider::capsule(0.4, 0.9),
