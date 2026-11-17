@@ -1,0 +1,18 @@
+# Segnalazione 31 (v0.0.63): casa dell'arcere. Al piano terra la rastrelliera degli archi sta a
+# terra e lontana dalla porta; nel sottotetto, di fronte alla scala, il tetto è chiuso.
+god on
+ora 11
+tp -18.6 0.3 -5.38
+aspetta 3
+prima-persona
+guarda 205 0
+aspetta 1.5
+foto piano-terra
+tp -18.77 5.3 -3.2
+aspetta 3
+guarda 30 -25
+aspetta 1.5
+foto soffitta
+prima-persona off
+aspetta 1
+esci

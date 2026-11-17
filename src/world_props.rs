@@ -276,10 +276,37 @@ pub fn sync_world_props(
         ..default()
     });
     let snow_mat = crate::seasons::snow_material(&mut materials);
+    let water_mat = materials.add(crate::buildings::clear_water_material());
+    // Fiamma dei focolari: come quella dei falò (`village_life::spawn_campfire`), ma segue lo
+    // stato del focolare e non ha luce sua (il bagliore è `HearthLight`).
+    // Due lingue di fuoco: una arancione larga e una gialla più piccola dentro.
+    let flame_mesh = meshes.add(Cone::new(0.15, 0.42));
+    let flame_core = meshes.add(Cone::new(0.08, 0.28));
+    let flame_mat = materials.add(StandardMaterial {
+        base_color: Color::srgba(1.0, 0.42, 0.08, 0.6),
+        emissive: LinearRgba::rgb(2.6, 0.8, 0.1),
+        alpha_mode: AlphaMode::Add,
+        unlit: true,
+        ..default()
+    });
+    let flame_core_mat = materials.add(StandardMaterial {
+        base_color: Color::srgb(1.0, 0.8, 0.35),
+        emissive: LinearRgba::rgb(3.0, 1.9, 0.5),
+        unlit: true,
+        ..default()
+    });
     let (mut spawned, mut skipped) = (0usize, 0usize);
     let door_mesh_cache: &mut Vec<(f32, f32, Handle<Mesh>)> = &mut Vec::new();
     let shutter_mats: &mut Vec<([f32; 4], Handle<StandardMaterial>)> = &mut Vec::new();
     let shutter_mesh = meshes.add(Cuboid::new(0.33, 0.9, 0.04));
+    // Vetri delle finestre delle case: un poco più grandi del vano, i bordi restano nel muro.
+    let window_size = crate::buildings::WINDOW_SIZE;
+    let pane_mesh = meshes.add(Cuboid::new(
+        window_size.x + 0.06,
+        window_size.y + 0.06,
+        0.012,
+    ));
+    let glass_mat = pbr.get(crate::pbr::Mat::Glass);
     homes.list.clear();
     let defs = crate::villagers::load_defs();
     let mut occurrences: std::collections::HashMap<String, usize> = Default::default();
@@ -499,7 +526,8 @@ pub fn sync_world_props(
                                     prompt: "[E] Chiudi scuri".to_string(),
                                     range: 3.0,
                                     aim: Some(0.45),
-                                    use_from: None,
+                                    // Da fuori: da dentro si passa dal vetro (`WindowInner`).
+                                    use_from: Some(n),
                                 },
                                 Transform::from_translation(win.center + n * 0.12),
                             ))
@@ -549,6 +577,54 @@ pub fn sync_world_props(
                                 ));
                             });
                         }
+                        // Dentro, come nella casetta del Viandante: vetro scorrevole (maniglia in
+                        // basso) e scuri raggiungibili col vetro alzato (maniglia in alto).
+                        let inner = win.center - n * (win.depth + 0.1);
+                        let glass = c
+                            .spawn((
+                                crate::hut::PropKind::WindowGlass,
+                                crate::hut::PropId(format!("vetro:{place_id}:{j}:{i}")),
+                                crate::hut::PropState { on: false },
+                                crate::entities::Interactable {
+                                    prompt: "[E] Alza vetro".to_string(),
+                                    range: 3.0,
+                                    aim: Some(0.22),
+                                    use_from: Some(-n),
+                                },
+                                Transform::from_translation(inner - Vec3::Y * 0.22),
+                            ))
+                            .id();
+                        c.spawn((
+                            crate::hut::PropKind::WindowInner,
+                            crate::hut::PropState { on: false },
+                            crate::hut::WindowLink {
+                                shutters: state,
+                                glass,
+                            },
+                            crate::entities::Interactable {
+                                prompt: "[E] Chiudi scuri".to_string(),
+                                range: 3.0,
+                                aim: Some(0.22),
+                                use_from: Some(-n),
+                            },
+                            Transform::from_translation(inner + Vec3::Y * 0.2),
+                        ));
+                        // Il vetro sta a metà del muro e, alzato, sparisce dentro l'architrave.
+                        // Lontano non si disegna (un vetro trasparente non si nota oltre i 45 m).
+                        let pane = win.center - n * (win.depth / 2.0);
+                        c.spawn((
+                            crate::hut::Slider {
+                                state: glass,
+                                closed_y: pane.y,
+                                open_y: pane.y + window_size.y + 0.05,
+                                y: pane.y,
+                            },
+                            Mesh3d(pane_mesh.clone()),
+                            MeshMaterial3d(glass_mat.clone()),
+                            Transform::from_translation(pane).with_rotation(frame),
+                            bevy::light::NotShadowCaster,
+                            bevy::camera::visibility::VisibilityRange::abrupt(0.0, 45.0),
+                        ));
                     }
                     let works = matches!(kind.as_str(), "forno" | "fabbro" | "locanda");
                     // Focolari: stato acceso/spento, bagliore e fumo dal camino sopra.
@@ -584,6 +660,26 @@ pub fn sync_world_props(
                             },
                             Transform::from_translation(front + Vec3::Y * 0.1),
                         ));
+                        // Fiamma viva nella bocca del focolare, sopra i ceppi.
+                        c.spawn((
+                            HearthFlame {
+                                state,
+                                seed: i as f32 * 2.3 + j as f32 * 0.7,
+                            },
+                            Mesh3d(flame_mesh.clone()),
+                            MeshMaterial3d(flame_mat.clone()),
+                            Transform::from_translation(Vec3::new(h.x, h.y - 1.8 + 0.42, h.z)),
+                            Visibility::Hidden,
+                            bevy::light::NotShadowCaster,
+                        ))
+                        .with_children(|f| {
+                            f.spawn((
+                                Mesh3d(flame_core.clone()),
+                                MeshMaterial3d(flame_core_mat.clone()),
+                                Transform::from_xyz(0.0, -0.05, 0.03),
+                                bevy::light::NotShadowCaster,
+                            ));
+                        });
                         hearth_ids.push(state);
                     }
                     for (i, at) in interior.chimneys.iter().enumerate() {
@@ -598,6 +694,14 @@ pub fn sync_world_props(
                                 },
                             },
                             Transform::from_translation(*at),
+                        ));
+                    }
+                    for (at, half) in &interior.water {
+                        c.spawn((
+                            Mesh3d(meshes.add(Plane3d::new(Vec3::Y, *half))),
+                            MeshMaterial3d(water_mat.clone()),
+                            Transform::from_translation(*at),
+                            bevy::light::NotShadowCaster,
                         ));
                     }
                     for at in interior.fires {
@@ -682,7 +786,16 @@ pub fn sync_world_props(
                         }
                     }
                     if let Some(door) = interior.door {
-                        let (w, h) = (door.width, door.height);
+                        // Portone a due battenti: ogni anta è larga metà vano.
+                        let leaves = door.leaves.max(1);
+                        // I battenti del portone stanno sulla faccia esterna del muro (girano senza
+                        // toccarlo); anche la maniglia sta lì, se no il battente stesso la nasconde.
+                        let out = if leaves == 2 {
+                            Vec3::Z * 0.15
+                        } else {
+                            Vec3::ZERO
+                        };
+                        let (w, h) = (door.width / leaves as f32, door.height);
                         let leaf = match door_mesh_cache.iter().find(|(a, b, _)| *a == w && *b == h)
                         {
                             Some((_, _, m)) => m.clone(),
@@ -708,34 +821,51 @@ pub fn sync_world_props(
                                     use_from: None,
                                 },
                                 Transform::from_translation(
-                                    door.hinge + Vec3::new(w / 2.0, 1.0, 0.0),
+                                    door.hinge + out + Vec3::new(door.width / 2.0, 1.0, 0.0),
                                 ),
                             ))
                             .id();
                         door_state = Some(state);
-                        c.spawn((
-                            crate::hut::Hinge {
-                                state,
-                                open_angle: DOOR_OPEN_ANGLE,
-                                angle: 0.0,
-                                base: Quat::IDENTITY,
-                            },
-                            Transform::from_translation(door.hinge),
-                            Visibility::default(),
-                        ))
-                        .with_children(|d| {
-                            d.spawn((
-                                Mesh3d(leaf),
-                                MeshMaterial3d(wood.clone()),
-                                Transform::from_xyz(w / 2.0, h / 2.0, 0.0),
-                            ));
-                            d.spawn((
-                                crate::hut::DoorCollider,
-                                Collider::cuboid(w, h, 0.1),
-                                Transform::from_xyz(w / 2.0, h / 2.0, 0.0),
-                                crate::camera::BlocksCamera,
-                            ));
-                        });
+                        // (cerniera, verso dell'anta lungo X, angolo d'apertura): la porta si apre
+                        // verso dentro, i battenti del portone verso fuori.
+                        let hinges: Vec<(Vec3, f32, f32)> = if leaves == 2 {
+                            vec![
+                                (door.hinge + out, 1.0, -DOOR_OPEN_ANGLE),
+                                (
+                                    door.hinge + out + Vec3::X * door.width,
+                                    -1.0,
+                                    DOOR_OPEN_ANGLE,
+                                ),
+                            ]
+                        } else {
+                            vec![(door.hinge, 1.0, DOOR_OPEN_ANGLE)]
+                        };
+                        for (at, along, open_angle) in hinges {
+                            let mid = Vec3::new(along * w / 2.0, h / 2.0, 0.0);
+                            c.spawn((
+                                crate::hut::Hinge {
+                                    state,
+                                    open_angle,
+                                    angle: 0.0,
+                                    base: Quat::IDENTITY,
+                                },
+                                Transform::from_translation(at),
+                                Visibility::default(),
+                            ))
+                            .with_children(|d| {
+                                d.spawn((
+                                    Mesh3d(leaf.clone()),
+                                    MeshMaterial3d(wood.clone()),
+                                    Transform::from_translation(mid),
+                                ));
+                                d.spawn((
+                                    crate::hut::DoorCollider,
+                                    Collider::cuboid(w, h, 0.1),
+                                    Transform::from_translation(mid),
+                                    crate::camera::BlocksCamera,
+                                ));
+                            });
+                        }
                     }
                     if kind == "faro" {
                         // Testa del faro: ruota; dentro c'è un faro orientabile e un bagliore fisso.
@@ -1013,6 +1143,13 @@ pub fn sync_world_props(
     homes.built = true;
 }
 
+/// Fiamma di un focolare del paese: visibile e tremolante solo quando il focolare è acceso.
+#[derive(Component)]
+pub struct HearthFlame {
+    pub state: Entity,
+    pub seed: f32,
+}
+
 /// Luce interna comandata da un interruttore (casa del giocatore): segue il suo stato.
 #[derive(Component)]
 pub struct SwitchedBy(pub Entity);
@@ -1025,11 +1162,28 @@ pub fn update_interior_lights(
     buildings: Query<(&GlobalTransform, &BuildingFootprint, &Children)>,
     mut lights: Query<(&mut Visibility, Option<&SwitchedBy>), With<InteriorLight>>,
     switches: Query<&crate::hut::PropState>,
+    mut flames: Query<(&HearthFlame, &mut Visibility, &mut Transform), Without<InteriorLight>>,
+    time: Res<Time>,
 ) {
     let Ok(player) = player.single() else {
         return;
     };
     let p = player.translation();
+    // Fiamme dei focolari (qui per non aggiungere un sistema): accese seguono il focolare;
+    // la scala si scrive solo quando la fiamma si vede (niente propagazione inutile, ADR 0056).
+    let now = time.elapsed_secs();
+    for (flame, mut vis, mut tf) in &mut flames {
+        let lit = switches.get(flame.state).is_ok_and(|s| s.on);
+        vis.set_if_neq(if lit {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        });
+        if lit {
+            let k = 1.0 + 0.2 * (now * 9.0 + flame.seed).sin() * (now * 6.1 + flame.seed).cos();
+            tf.scale = Vec3::new(k, k * 1.3, k);
+        }
+    }
     for (tf, footprint, children) in &buildings {
         let local = tf.affine().inverse().transform_point3(p);
         let inside = settings.gfx.interior_lights

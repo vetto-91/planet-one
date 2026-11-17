@@ -281,10 +281,25 @@ pub(crate) fn slab_with_holes(
 pub(crate) fn square_helix(
     b: &mut B,
     int: &mut Interior,
+    rect: (f32, f32, f32, f32),
+    y0: f32,
+    y1: f32,
+    lane: f32,
+) -> Vec<(f32, f32, f32, f32)> {
+    square_helix_ending(b, int, rect, y0, y1, lane, None)
+}
+
+/// Come `square_helix`, ma con l'ultimo gradino nella cella `last` del giro (0 = angolo
+/// fronte-destra, poi verso il fondo, a sinistra e di nuovo verso il fronte): la scala arriva
+/// dove serve (l'uscita della lanterna del faro) e parte da dove cade.
+pub(crate) fn square_helix_ending(
+    b: &mut B,
+    int: &mut Interior,
     (x0, x1, z0, z1): (f32, f32, f32, f32),
     y0: f32,
     y1: f32,
     lane: f32,
+    last: Option<usize>,
 ) -> Vec<(f32, f32, f32, f32)> {
     const THICK: f32 = 0.34;
     let n = ((y1 - y0) / MAX_RISE).ceil() as usize;
@@ -320,10 +335,12 @@ pub(crate) fn square_helix(
     straight(&mut lap, back.1, front.0, left, true);
     lap.push((left.0, left.1, front.0, front.1));
     straight(&mut lap, left.1, right.0, front, false);
+    let len = lap.len();
+    let start = last.map_or(0, |l| (l % len + len * n - (n - 1)) % len);
     let mut holes: Vec<(f32, f32, f32, f32)> = Vec::new();
     let mut path_end = Vec3::ZERO;
     for k in 0..n {
-        let cell = lap[k % lap.len()];
+        let cell = lap[(k + start) % len];
         let top = y0 + (k + 1) as f32 * rise;
         let lower = (top - THICK).max(y0);
         step_visual(b, cell.0, cell.1, cell.2, cell.3, lower, top);
@@ -331,7 +348,7 @@ pub(crate) fn square_helix(
         let at = Vec3::new((cell.0 + cell.1) / 2.0, top, (cell.2 + cell.3) / 2.0);
         if k == 0 {
             // Entrata: dalla cella precedente del giro, a quota del pavimento, alla prima.
-            let before = lap[lap.len() - 1];
+            let before = lap[(start + len - 1) % len];
             let from = Vec3::new((before.0 + before.1) / 2.0, y0, (before.2 + before.3) / 2.0);
             ramp(int, from, at, width);
         } else {
@@ -545,24 +562,72 @@ fn hearth_back(b: &mut B, int: &mut Interior, r: &Room) {
     }
     let x = r.x1 - width / 2.0;
     let (y, z) = (r.y, r.back_z + 0.28);
-    solid(
-        b,
-        int,
-        Vec3::new(x, y + 0.9, z),
-        Vec3::new(width, 1.8, 0.55),
+    // Il blocco intero ferma il giocatore (non si entra nel fuoco), ma la bocca è un vano vero.
+    int.furniture
+        .push((Vec3::new(x, y + 0.9, z), Vec3::new(width, 1.8, 0.55)));
+    int.hearths.push(Vec3::new(x, y + 1.8, z));
+    let (zb, zf) = (z - 0.275, z + 0.275);
+    let (xl, xr) = (x - width / 2.0, x + width / 2.0);
+    let jamb = 0.25;
+    let mouth_top = y + 0.95;
+    // Piano del focolare, stipiti, fondo e cappa sopra la bocca.
+    b.cuboid(
+        Vec3::new(xl, y, zb),
+        Vec3::new(xr, y + 0.1, zf + 0.06),
         STONE_FIRE,
     );
-    int.hearths.push(Vec3::new(x, y + 1.8, z));
-    b.cuboid_c(
-        Vec3::new(x, y + 0.5, z + 0.28),
-        Vec3::new(width - 0.5, 0.7, 0.04),
-        [0.08, 0.07, 0.07, 1.0],
+    b.cuboid(
+        Vec3::new(xl, y + 0.1, zb),
+        Vec3::new(xl + jamb, mouth_top, zf),
+        STONE_FIRE,
     );
-    b.cuboid_c(
-        Vec3::new(x, y + 0.24, z + 0.31),
-        Vec3::new(width - 0.8, 0.18, 0.04),
-        [0.95, 0.45, 0.12, 1.0],
+    b.cuboid(
+        Vec3::new(xr - jamb, y + 0.1, zb),
+        Vec3::new(xr, mouth_top, zf),
+        STONE_FIRE,
     );
+    b.cuboid(
+        Vec3::new(xl + jamb, y + 0.1, zb),
+        Vec3::new(xr - jamb, mouth_top, zb + 0.12),
+        STONE_FIRE,
+    );
+    b.cuboid(
+        Vec3::new(xl, mouth_top, zb),
+        Vec3::new(xr, y + 1.8, zf),
+        STONE_FIRE,
+    );
+    // Architrave di legno sulla bocca.
+    b.cuboid(
+        Vec3::new(xl - 0.04, mouth_top - 0.02, zf - 0.02),
+        Vec3::new(xr + 0.04, mouth_top + 0.14, zf + 0.06),
+        WOOD_DARK,
+    );
+    // Dentro la bocca: fuliggine sul fondo e sul cielo del focolare, ceppi sul piano.
+    b.force = Some(crate::pbr::Mat::Plain);
+    b.quad(
+        Vec3::new(xl + jamb, y + 0.1, zb + 0.125),
+        Vec3::new(xr - jamb, y + 0.1, zb + 0.125),
+        Vec3::new(xr - jamb, mouth_top, zb + 0.125),
+        Vec3::new(xl + jamb, mouth_top, zb + 0.125),
+        Vec3::Z,
+        [0.02, 0.018, 0.018, 1.0],
+    );
+    b.quad(
+        Vec3::new(xl + jamb, mouth_top - 0.005, zb + 0.12),
+        Vec3::new(xr - jamb, mouth_top - 0.005, zb + 0.12),
+        Vec3::new(xr - jamb, mouth_top - 0.005, zf),
+        Vec3::new(xl + jamb, mouth_top - 0.005, zf),
+        Vec3::NEG_Y,
+        [0.05, 0.04, 0.04, 1.0],
+    );
+    b.force = None;
+    for (dx, dz) in [(-0.12, 0.0), (0.12, 0.05)] {
+        b.cuboid_c(
+            Vec3::new(x + dx, y + 0.16, z + dz),
+            Vec3::new(0.5, 0.11, 0.11),
+            WOOD_DARK,
+        );
+    }
 }
 
 /// Piano di una casa: cucina a terra, camera ai piani. Il corridoio porta-scala resta libero.
@@ -712,30 +777,49 @@ pub(crate) fn furnish(
                 Vec3::new(1.5, 1.6, 1.2),
                 STONE_FIRE,
             );
+            // La bocca del forno guarda il centro della stanza (verso -X), non il tavolo.
+            let mouth = Vec3::new(r.x(0.8) - 0.76, y + 0.7, r.z(0.28));
+            b.cuboid_c(mouth, Vec3::new(0.05, 0.45, 0.6), [0.9, 0.42, 0.12, 1.0]);
             b.cuboid_c(
-                Vec3::new(r.x(0.8), y + 0.7, r.z(0.28) + 0.62),
-                Vec3::new(0.6, 0.45, 0.05),
-                [0.9, 0.42, 0.12, 1.0],
+                mouth + Vec3::new(-0.02, 0.29, 0.0),
+                Vec3::new(0.08, 0.1, 0.8),
+                STONE_FIRE,
+            );
+            b.cuboid_c(
+                mouth + Vec3::new(-0.06, -0.3, 0.0),
+                Vec3::new(0.16, 0.08, 0.8),
+                STONE_FIRE,
             );
             table(b, int, r.x(0.8), r.z(0.83), y, 1.4, 0.7);
             shelf(b, int, r.x(0.12), r.z1 - 0.25, y, 1.1, -1.0);
             chest(b, int, r.x0 + 0.45, r.z(0.62), y);
         }
         ("arcere", 0) => {
+            // Rastrelliera con archi contro la parete di sinistra (senza finestre), appoggiati
+            // al pavimento e lontani dalla porta.
+            let door = int.door_inside.unwrap_or(Vec3::new(0.0, y, r.z1 + 1.0));
             for k in 0..3 {
-                let x = r.x(0.15) + k as f32 * 0.9;
-                // Rastrelliera con archi.
+                let (x, z) = (r.x0 + 0.12, r.z0 + 0.6 + k as f32 * 0.6);
+                if Vec2::new(x - door.x, z - door.z).length() < 1.2 {
+                    continue;
+                }
                 b.cuboid_c(
-                    Vec3::new(x, y + 1.0, r.z1 - 0.2),
+                    Vec3::new(x, y + 0.8, z),
                     Vec3::new(0.06, 1.6, 0.06),
                     [0.55, 0.38, 0.2, 1.0],
                 );
                 b.cuboid_c(
-                    Vec3::new(x + 0.14, y + 1.0, r.z1 - 0.2),
+                    Vec3::new(x + 0.14, y + 0.8, z),
                     Vec3::new(0.02, 1.5, 0.02),
                     LINEN,
                 );
             }
+            // Traversa che regge gli archi.
+            b.cuboid_c(
+                Vec3::new(r.x0 + 0.05, y + 1.3, r.z0 + 1.2),
+                Vec3::new(0.08, 0.08, 1.5),
+                WOOD,
+            );
             table(b, int, r.x(0.78), r.z(0.5), y, 1.5, 0.8);
             barrel(b, int, r.x(0.93), r.z(0.12), y);
         }
@@ -775,34 +859,50 @@ pub(crate) fn furnish_attic(b: &mut B, int: &mut Interior, r: &Room, kind: &str)
 }
 
 /// Faro: alloggio del guardiano al piano terra, rampa al primo piano, ripostiglio e chiocciola fino in cima.
+///
+/// La rampa sale lungo la parete destra dal fronte (accanto alla porta) verso il fondo; la
+/// chiocciola parte dall'angolo opposto e passa sopra il vano della rampa solo quando è già alta,
+/// e arriva nella lanterna in fronte-sinistra, diretta verso l'uscita sulla balconata.
 pub(crate) fn lighthouse_interior(b: &mut B, int: &mut Interior, y0: f32, y1: f32, top: f32) {
     let rect = (-1.7, 1.7, -1.7, 1.7);
     slab(b, int, rect.0, rect.1, rect.2, rect.3, y0);
-    // Rampa lungo la parete destra: il primo gradino fa da pianerottolo fino al muro di fondo.
+    // Rampa lungo la parete destra, verso il fondo: il primo gradino fa da pianerottolo fino al
+    // muro di facciata.
     let (tx0, tx1) = (0.9, 1.7);
     let n = 11;
     let rise = (y1 - y0) / n as f32;
-    let start = -1.45;
+    let start = 1.45;
+    let end = start - n as f32 * RUN;
     for k in 0..n {
-        let za = if k == 0 {
-            rect.2
+        let zb = if k == 0 {
+            rect.3
         } else {
-            start + k as f32 * RUN
+            start - k as f32 * RUN
         };
-        let zb = start + (k + 1) as f32 * RUN;
+        let za = start - (k + 1) as f32 * RUN;
         if k == 0 {
             step(b, int, tx0, tx1, za, zb, y0, y0 + rise);
         } else {
             step_visual(b, tx0, tx1, za, zb, y0, y0 + (k + 1) as f32 * rise);
         }
     }
+    let cx = (tx0 + tx1) / 2.0;
     ramp(
         int,
-        Vec3::new((tx0 + tx1) / 2.0, y0 + rise / 2.0, start),
-        Vec3::new((tx0 + tx1) / 2.0, y1, start + n as f32 * RUN),
+        Vec3::new(cx, y0 + rise / 2.0, start),
+        Vec3::new(cx, y1, end),
         tx1 - tx0,
     );
-    slab_with_hole(b, int, rect, (tx0, tx1, start, start + n as f32 * RUN), y1);
+    slab_with_hole(b, int, rect, (tx0, tx1, end, start), y1);
+    // Percorso: dal pianerottolo ai piedi della rampa, su fino al primo piano, lungo il fondo fino
+    // all'ingresso della chiocciola (angolo di fondo a sinistra).
+    int.routes.push(vec![
+        Vec3::new(cx, y0, start),
+        Vec3::new(cx, y1, end),
+        Vec3::new(cx, y1, -1.42),
+        Vec3::new(-0.73, y1, -1.42),
+        Vec3::new(-0.73, y1, -0.73),
+    ]);
 
     // Alloggio: i mobili lasciano libero il passaggio dalla porta alla rampa.
     let room = Room {
@@ -819,15 +919,16 @@ pub(crate) fn lighthouse_interior(b: &mut B, int: &mut Interior, y0: f32, y1: f3
     shelf(b, int, -1.1, 1.5, y0, 1.0, -1.0);
     table(b, int, 0.55, 0.4, y0, 0.6, 0.6);
     stool(b, 0.55, -0.25, y0);
-    crate_box(b, int, 0.62, 1.3, y0, 0.5);
+    crate_box(b, int, 0.55, -1.3, y0, 0.5);
+    barrel(b, int, -0.2, -1.3, y0);
 
-    // Ripostiglio al primo piano, sotto i giri alti della scala.
-    chest(b, int, -1.05, 1.28, y1);
-    barrel(b, int, -1.2, -1.2, y1);
+    // Ripostiglio al primo piano, lungo il fronte (fuori dal giro basso della chiocciola).
+    chest(b, int, 0.0, 1.42, y1);
 
-    // Chiocciola nel pozzo centrale, fino alla stanza della lanterna.
+    // Chiocciola nel pozzo centrale, fino alla stanza della lanterna: l'ultimo gradino è
+    // nell'angolo fronte-sinistra (cella 9 del giro), davanti all'uscita.
     let shaft = (-1.13, 1.13, -1.13, 1.13);
-    let holes = square_helix(b, int, shaft, y1, top, 0.8);
+    let holes = square_helix_ending(b, int, shaft, y1, top, 0.8, Some(9));
     slab_with_holes(b, int, (-1.15, 1.15, -1.15, 1.15), &holes, top);
 }
 

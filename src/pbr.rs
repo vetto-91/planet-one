@@ -172,15 +172,23 @@ impl FromWorld for PbrMaterials {
                 ..default()
             }),
         );
-        map.insert(
-            Mat::Glass,
-            materials.add(StandardMaterial {
-                perceptual_roughness: 0.35,
-                reflectance: 0.12,
-                ..default()
-            }),
-        );
+        map.insert(Mat::Glass, materials.add(glass_material()));
         Self(map)
+    }
+}
+
+/// Vetro naturale (finestre delle case, della casetta e del faro): quasi incolore e molto
+/// trasparente, liscio e riflettente. Il vecchio vetro della casetta era azzurrino e lattiginoso
+/// (segnalazione 34); quello delle case era opaco.
+pub fn glass_material() -> StandardMaterial {
+    StandardMaterial {
+        base_color: Color::srgba(0.93, 0.97, 0.98, 0.08),
+        alpha_mode: AlphaMode::Blend,
+        perceptual_roughness: 0.04,
+        reflectance: 0.45,
+        double_sided: true,
+        cull_mode: None,
+        ..default()
     }
 }
 

@@ -178,12 +178,11 @@ pub fn stage_beach(
     let ground = |p: Vec2| Vec3::new(p.x, field.height_at(p.x, p.y), p.y);
     if character.awakening == 0 && pools.is_empty() {
         let rock = pbr.get(crate::pbr::Mat::Stone);
+        // Acqua ferma e limpida: si vede il fondo, ma riflette ancora il cielo (ci si specchia).
         let water = materials.add(StandardMaterial {
-            base_color: Color::srgb(0.12, 0.2, 0.24),
+            reflectance: 0.7,
             perceptual_roughness: 0.04,
-            metallic: 0.2,
-            reflectance: 0.9,
-            ..default()
+            ..crate::buildings::clear_water_material()
         });
         let g = ground(POOL);
         commands
@@ -194,19 +193,30 @@ pub fn stage_beach(
                 Visibility::default(),
             ))
             .with_children(|c| {
-                for k in 0..7 {
-                    let a = k as f32 / 7.0 * std::f32::consts::TAU;
+                // Bordo chiuso: dodici pietre che si toccano tutt'intorno (prima erano sette, con
+                // i varchi fra l'una e l'altra), alte sopra il pelo dell'acqua.
+                let stone = meshes.add(crate::pbr::with_tangents(Cuboid::new(0.42, 0.42, 0.5)));
+                for k in 0..12 {
+                    let a = k as f32 / 12.0 * std::f32::consts::TAU;
                     c.spawn((
-                        Mesh3d(meshes.add(crate::pbr::with_tangents(Cuboid::new(0.55, 0.35, 0.4)))),
+                        Mesh3d(stone.clone()),
                         MeshMaterial3d(rock.clone()),
-                        Transform::from_xyz(a.cos() * 0.85, 0.1, a.sin() * 0.85)
+                        Transform::from_xyz(a.cos() * 0.86, 0.1, a.sin() * 0.86)
                             .with_rotation(Quat::from_rotation_y(-a)),
                     ));
                 }
+                // Fondo di pietra sotto l'acqua, che si vede attraverso.
                 c.spawn((
-                    Mesh3d(meshes.add(Cylinder::new(0.75, 0.04))),
+                    Mesh3d(meshes.add(crate::pbr::with_tangents(Cylinder::new(0.7, 0.2)))),
+                    MeshMaterial3d(rock.clone()),
+                    Transform::from_xyz(0.0, -0.06, 0.0),
+                ));
+                c.spawn((
+                    Mesh3d(meshes.add(Circle::new(0.7))),
                     MeshMaterial3d(water),
-                    Transform::from_xyz(0.0, 0.16, 0.0),
+                    Transform::from_xyz(0.0, 0.2, 0.0)
+                        .with_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)),
+                    bevy::light::NotShadowCaster,
                 ));
             });
     }

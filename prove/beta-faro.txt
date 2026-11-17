@@ -1,0 +1,18 @@
+# Segnalazioni 45 e 46 (v0.0.63): nel faro la chiocciola non sta sopra il vano della prima rampa
+# e in cima arriva davanti all'uscita della lanterna.
+god on
+ora 12
+tp -15.26 2.5 92.66
+aspetta 3
+prima-persona
+guarda 90 -50
+aspetta 1.5
+foto primo-piano
+prima-persona off
+tp -12.21 15.8 94.77
+aspetta 3
+camera 290 35 5
+aspetta 1.5
+foto lanterna
+aspetta 1
+esci

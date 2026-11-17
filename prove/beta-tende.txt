@@ -1,0 +1,12 @@
+# Segnalazione 36 (v0.0.63): i tendoni del mercato hanno spessore e mantovana; di profilo si vedono.
+god on
+ora 17
+tp -3.28 0 5.11
+aspetta 3
+prima-persona
+guarda 120 5
+aspetta 1.5
+foto tendone-profilo
+prima-persona off
+aspetta 1
+esci

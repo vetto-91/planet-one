@@ -1,0 +1,14 @@
+# Segnalazione 32 (v0.0.63): il focolare ha una bocca vera e, acceso, il fuoco vivo dentro.
+god on
+ora 19
+tp -18.63 0.3 3.42
+aspetta 4
+prima-persona
+mira focolare
+aspetta 2
+attendi prop:focolare:attivo = true 60
+aspetta 1
+foto focolare-acceso
+prima-persona off
+aspetta 1
+esci

@@ -182,6 +182,54 @@ mod tests {
         assert!(bad.is_empty(), "{}", bad.join("\n"));
     }
 
+    /// Dalla porta su per tutte le rampe fino al sottotetto (segnalazione 37: nel forno la testa
+    /// sbatteva nella fascia sotto la gronda e non si saliva).
+    #[test]
+    fn the_attic_can_be_reached_on_foot() {
+        let mut bad = Vec::new();
+        for k in [
+            "forno",
+            "casa-piccola",
+            "casa-media",
+            "casa-grande",
+            "arcere",
+            "fabbro",
+            "locanda",
+            "caserma",
+        ] {
+            let int = model(k, 7).interior;
+            // Dal piede dell'ultima rampa (le rampe di sotto le prova `every_bed_…`) su fino in
+            // cima e fuori dal vano, nel sottotetto. Il primo gradino è un pianerottolo pieno:
+            // la capsula della prova non sale gli scalini, si parte già sulla rampa.
+            let (c, rot, size) = *int.ramps.last().unwrap();
+            let (x, n) = (rot * Vec3::X, rot * Vec3::Y);
+            let mid = c + n * (size.y / 2.0);
+            let low = mid - x * (size.x / 2.0);
+            let route = int.routes.last().unwrap();
+            let path = vec![
+                low + Vec3::Y * 0.05,
+                route[route.len() - 2],
+                // Fuori dal vano, 30 cm più indietro: il punto degli abitanti sfiora il muretto.
+                route[route.len() - 1] - Vec3::Z * 0.3,
+            ];
+            if let Err(e) = can_walk(&int, &path) {
+                bad.push(format!("{k}: {e}"));
+            }
+        }
+        assert!(bad.is_empty(), "{}", bad.join("\n"));
+    }
+
+    /// Faro: dalla porta su per la rampa al primo piano, fino all'ingresso della chiocciola
+    /// (segnalazione 45: la chiocciola stava sopra il vano della rampa).
+    #[test]
+    fn the_lighthouse_ground_flight_leads_to_the_spiral() {
+        let int = model("faro", 7).interior;
+        let path = int.routes.last().unwrap().clone();
+        if let Err(e) = can_walk(&int, &path) {
+            panic!("faro: {e}");
+        }
+    }
+
     /// Percorso lungo le rampe della chiocciola: dall'inizio della prima ai suoi punti d'arrivo.
     fn helix_path(int: &Interior, from_y: f32) -> Vec<Vec3> {
         let ends: Vec<(Vec3, Vec3)> = int
