@@ -2,6 +2,28 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Correzioni della beta** (ADR 0059): le segnalazioni della prova della v0.0.63.
+- **Si sa sempre dove andare**: la bussola e un segnalino sullo schermo, con la distanza, portano alla tappa della missione che segui. Tab mostra le tappe fatte e quella in corso, anche appena sveglio.
+- **Il diario divide le missioni** in storia principale, secondarie, eventi e generate dall'IA (per ora nessuna). Con «Segui» scegli quale guidare; la scelta resta nel salvataggio.
+- **Gaspare e il tuo nome**: la casella del nome si apre subito, senza passare da «Arrivederci». Detto il nome, Gaspare ti risponde chiamandoti così. Anche il Viandante e gli altri abitanti ti chiamano per nome, e la voce locale lo pronuncia.
+- **Pausa vera**: con il menu, l'inventario, il diario e gli altri pannelli aperti si fermano anche animazioni, fisica e particelle. In pausa restano visibili ora, data, bussola e FPS.
+- **Interfaccia**:
+  - con l'arco in mano vedi quante frecce restano;
+  - i comandi sono in una tabella (Impostazioni → Controlli);
+  - la shell ha un comando per riga, a colori;
+  - H nasconde l'interfaccia;
+  - gli avvisi sotto la bussola restano il tempo di leggerli.
+- **F12** apre una casella per scrivere la nota. Una seconda foto con la nota vuota si aggiunge alla stessa segnalazione, come un'altra inquadratura.
+- **Prima persona**: guardando in basso il corpo non si piega più. L'arco si vede nella mano sinistra e non attraversa lo schermo quando ti fermi.
+- **La bisaccia** resta attaccata alla schiena in ogni movimento.
+- **La sfera di luce** illumina di più, ti sta davanti e resta accesa dopo aver ricaricato la partita.
+- **Spiaggia del risveglio**: gli oggetti dei rottami non compaiono e spariscono più sotto gli occhi.
+- **Nemici bloccati**: i nemici fermi contro un ostacolo lo aggirano; se non ci riescono e non li vedi, passano oltre.
+- **Oggetti tornati**: i rottami della spiaggia (con la bisaccia), due lampioni e un carretto, persi per un difetto di «Annulla ultimo» in F4.
+- **Oggetti spostati**: il carretto dietro il forno non tocca più la finestra, e le botti non stanno più sulla scala della casa del porticciolo.
+
 ## v0.0.66.0 — Gioco più leggero e schede video integrate (2026-11-16)
 
 - **Risoluzione della scena** (ADR 0058): nel menu Esc → Grafica si può disegnare il mondo al 100%, 75% o 50% della risoluzione dello schermo e poi ingrandirlo; interfaccia, mappa e foto restano nitide. Il preset **Integrata** parte al 75%: sull'Arc integrata Intel da 25 a 31 fotogrammi al secondo a 1080p e da 36 a 41 a 720p. Alta, Media e Bassa restano al 100% e non cambiano.
