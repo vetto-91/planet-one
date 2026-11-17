@@ -637,10 +637,10 @@ rotazioni: 270
 
 [P-1247] tipo: carretto | modalità: singolo
 quando: generato da gen_paese.py
-punto: x 13.00, z 20.20
+punto: x 11.30, z 21.00
 quantità: 1   seed: 1
 nota: paese
-punti: (13.00,20.20)
+punti: (11.30,21.00)
 rotazioni: 80
 
 [P-1248] tipo: carretto | modalità: singolo
@@ -725,10 +725,10 @@ rotazioni: 0
 
 [P-1258] tipo: botti | modalità: singolo
 quando: generato da gen_paese.py
-punto: x 4.60, z 89.30
+punto: x 6.60, z 89.00
 quantità: 1   seed: 1
 nota: paese
-punti: (4.60,89.30)
+punti: (6.60,89.00)
 rotazioni: 0
 
 [P-1259] tipo: casse | modalità: singolo
