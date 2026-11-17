@@ -130,15 +130,6 @@ fn new_screen(ui: &mut egui::Ui, menu: &mut MenuUi) -> Option<Choice> {
         "Ti svegli su una spiaggia, tra rottami che non sai riconoscere. Non ricordi chi sei, \
          né quanti anni hai, né come ti chiami.",
     );
-    ui.add_space(6.0);
-    ui.label(
-        egui::RichText::new(
-            "L'acqua ferma tra le rocce ti dirà la tua età, i rottami la tua indole; \
-             il nome lo dirai al primo che ti verrà incontro.",
-        )
-        .size(15.0)
-        .color(egui::Color32::from_rgb(170, 178, 196)),
-    );
     ui.add_space(12.0);
     ui.horizontal(|ui| {
         if ui.button("Svegliati").clicked() {

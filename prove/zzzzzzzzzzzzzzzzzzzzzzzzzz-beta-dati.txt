@@ -1,0 +1,38 @@
+# Correzioni della beta v0.0.63, gruppo 1: gli oggetti tornati (rottami del risveglio, lampioni e
+# carretto persi con «Annulla ultimo» di F4), il carretto staccato dalla finestra dietro il forno e le
+# botti uscite dalla scala della casa del porticciolo.
+# Il nome comincia per z perché un copione nuovo non sposti le risoluzioni degli altri.
+god on
+ia off
+meteo sereno
+ora 11
+aspetta 2
+# I rottami del risveglio: botti P-1280 e P-1282, casse P-1281.
+tp 37 3 85
+aspetta 2
+camera 90 12 7
+aspetta 1
+foto rottami-spiaggia
+# Il carretto dietro il forno, lontano dalla finestra e vicino alle casse.
+tp 10 1 23
+aspetta 2
+camera 315 25 4
+aspetta 1
+foto carretto-forno
+# Le botti fuori dalla casa del porticciolo.
+tp 10 3 89
+aspetta 2
+camera 90 12 6
+aspetta 1
+foto botti-porticciolo
+# I due lampioni a nord del paese e il carretto P-1285.
+tp 0 3 37
+aspetta 2
+camera 0 8 8
+aspetta 1
+foto lampioni
+tp -14 3 6
+aspetta 2
+camera 0 12 7
+aspetta 1
+foto carretto-1285
