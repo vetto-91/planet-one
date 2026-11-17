@@ -86,3 +86,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0058 | Scala di rendering | accettato |
 | 0059 | Le correzioni della beta v0.0.63 | accettato |
 | 0060 | Finestre vere, focolari aperti e scale a L | accettato |
+| 0061 | Mare opaco con la distanza e cronologia dell'editor F4 | accettato |

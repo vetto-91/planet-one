@@ -1,0 +1,20 @@
+# Beta v0.0.63, n. 26: sull'erba del fossato fuori dalle mura (terreno sotto il livello del mare,
+# ma non è mare) i passi erano quelli dell'acqua. Segnalazione 2026-11-14_19-41-10, (10.4, 36.8).
+ia off
+god on
+meteo sereno
+ora 12
+tp 10.4 1 33
+aspetta 3
+vai 10.4 40
+verifica passi = Grass
+foto fossato
+vai 12 34
+verifica passi = Grass
+# Prova contraria: sulla spiaggia la sabbia.
+tp -11 3 98
+aspetta 2
+vai -14 100
+verifica passi = Sand
+dump spiaggia
+esci

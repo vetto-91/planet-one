@@ -150,7 +150,7 @@ enum Align {
 }
 
 /// Una richiesta di piazzamento (uno o più oggetti).
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Placement {
     pub id: u32,
     pub kind: String,
@@ -282,6 +282,31 @@ pub struct DebugPlace {
     preview_n: usize,
     /// Aumenta a ogni modifica dei piazzamenti (gli oggetti veri si rigenerano).
     revision: u32,
+    /// Cronologia per annulla/ripeti (ADR 0061): fotografie dei piazzamenti del file, senza
+    /// quelli che vivono solo in memoria (la casa del giocatore). `saved` è lo stato corrente.
+    saved: Vec<Placement>,
+    undo: Vec<Vec<Placement>>,
+    redo: Vec<Vec<Placement>>,
+    /// Oggetti candidati sotto il mirino o il cursore, dal più probabile, e quale è scelto
+    /// (Tab o rotella passano al successivo).
+    picks: Vec<(usize, usize)>,
+    pick_turn: usize,
+    /// Ricerca nell'elenco dei piazzamenti.
+    search: String,
+    /// Richiesta «Vai e seleziona»: il punto dove portare la camera libera.
+    pub goto: Option<Vec2>,
+    /// Camera libera (solo con F4 acceso), vedi `camera::fly`.
+    pub fly: bool,
+}
+
+/// Il piazzamento vive solo in memoria (non va nel file né nella cronologia).
+fn runtime(p: &Placement) -> bool {
+    p.kind == crate::house::KIND
+}
+
+/// I piazzamenti che vanno nel file.
+fn persistent(items: &[Placement]) -> Vec<Placement> {
+    items.iter().filter(|p| !runtime(p)).cloned().collect()
 }
 
 fn new_seed() -> u64 {
@@ -324,8 +349,17 @@ impl Default for DebugPlace {
             redistribute_req: None,
             preview_n: 0,
             revision: 1,
+            saved: Vec::new(),
+            undo: Vec::new(),
+            redo: Vec::new(),
+            picks: Vec::new(),
+            pick_turn: 0,
+            search: String::new(),
+            goto: None,
+            fly: false,
         };
         d.items = read_file();
+        d.saved = persistent(&d.items);
         d.next_id = d.items.iter().map(|p| p.id).max().unwrap_or(0) + 1;
         info!("[DEBUG] piazzamenti letti da {}: {}", file(), d.items.len());
         d
@@ -336,6 +370,10 @@ impl DebugPlace {
     /// Rilegge i piazzamenti della regione corrente (dopo un cambio di regione).
     pub fn reload(&mut self) {
         self.items = read_file();
+        // Un'altra regione: la cronologia di quella prima non vale più.
+        self.saved = persistent(&self.items);
+        self.undo.clear();
+        self.redo.clear();
         self.next_id = self.items.iter().map(|p| p.id).max().unwrap_or(0) + 1;
         self.pending.clear();
         self.grabbed = None;
@@ -384,12 +422,73 @@ impl DebugPlace {
         }
     }
 
-    /// Salva e fa ricreare i segnaposto.
+    /// Salva e fa ricreare i segnaposto; lo stato di prima entra nella cronologia.
     fn changed(&mut self) {
+        let now = persistent(&self.items);
+        if now != self.saved {
+            let before = std::mem::replace(&mut self.saved, now);
+            self.undo.push(before);
+            self.redo.clear();
+        }
+        self.store();
+    }
+
+    /// Scrive il file e fa rigenerare segnaposto e oggetti.
+    fn store(&mut self) {
         write_file(&self.items);
         self.markers_dirty = true;
         self.revision += 1;
         self.grabbed = None;
+        self.picks.clear();
+    }
+
+    /// Rimette i piazzamenti del file com'erano in `snapshot`; quelli solo in memoria restano.
+    fn restore(&mut self, snapshot: Vec<Placement>) {
+        let kept: Vec<Placement> = self.items.iter().filter(|p| runtime(p)).cloned().collect();
+        self.items = snapshot.clone();
+        self.items.extend(kept);
+        self.saved = snapshot;
+        // Gli id non tornano indietro: un piazzamento annullato e uno nuovo non si confondono.
+        let top = self.saved.iter().map(|p| p.id).max().unwrap_or(0);
+        self.next_id = self.next_id.max(top + 1);
+        self.reset_pending();
+        self.store();
+    }
+
+    /// Annulla l'ultima modifica (senza limite di passi). `false` se non c'è niente da annullare.
+    pub fn undo(&mut self) -> bool {
+        let Some(prev) = self.undo.pop() else {
+            return false;
+        };
+        let now = std::mem::take(&mut self.saved);
+        self.redo.push(now);
+        self.restore(prev);
+        info!("[DEBUG] annullato (ancora {} passi)", self.undo.len());
+        true
+    }
+
+    /// Ripete la modifica annullata. `false` se non c'è niente da ripetere.
+    pub fn redo(&mut self) -> bool {
+        let Some(next) = self.redo.pop() else {
+            return false;
+        };
+        let now = std::mem::take(&mut self.saved);
+        self.undo.push(now);
+        self.restore(next);
+        info!("[DEBUG] ripetuto (ancora {} passi)", self.redo.len());
+        true
+    }
+
+    /// L'oggetto scelto fra i candidati sotto il mirino.
+    fn picked(&self) -> Option<(usize, usize)> {
+        (!self.picks.is_empty())
+            .then(|| self.picks[self.pick_turn % self.picks.len()])
+            .filter(|(i, j)| self.items.get(*i).is_some_and(|p| *j < p.points.len()))
+    }
+
+    /// Passi disponibili: (annulla, ripeti).
+    pub fn history(&self) -> (usize, usize) {
+        (self.undo.len(), self.redo.len())
     }
 
     /// Accende o spegne la modalità piazzamenti; restituisce il nuovo stato.
@@ -619,6 +718,10 @@ const HEADER: &str = "\
 ";
 
 fn write_file(items: &[Placement]) {
+    // Le prove non toccano il file vero (lo si modifica a mano o con F4).
+    if cfg!(test) {
+        return;
+    }
     let mut out = String::from(HEADER);
     // La casa del giocatore appartiene alla partita, non al mondo.
     for p in items.iter().filter(|p| p.kind != crate::house::KIND) {
@@ -935,6 +1038,16 @@ fn cursor_ground(camera: (&Camera, &GlobalTransform), cursor: egui::Pos2) -> Opt
     })
 }
 
+/// Ciò che il raggio del mirino ignora: terreno, mare, giocatore, cielo.
+type NotPickable = Or<(
+    With<Ground>,
+    With<crate::terrain::TerrainMesh>,
+    With<crate::terrain::TerrainExtra>,
+    With<crate::player::Player>,
+    With<crate::player::PlayerVisual>,
+    With<crate::daynight::SkyDisc>,
+)>;
+
 #[derive(bevy::ecs::system::SystemParam)]
 pub struct DebugCtx<'w, 's> {
     contexts: EguiContexts<'w, 's>,
@@ -947,7 +1060,30 @@ pub struct DebugCtx<'w, 's> {
     grounds: Query<'w, 's, (), With<Ground>>,
     clock: Res<'w, GameClock>,
     windows: Query<'w, 's, &'static Window, With<bevy::window::PrimaryWindow>>,
+    /// Raggio sui modelli veri (non solo sul terreno), per scegliere l'oggetto mirato.
+    ray_cast: bevy::picking::mesh_picking::ray_cast::MeshRayCast<'w, 's>,
+    wheel: MessageReader<'w, 's, bevy::input::mouse::MouseWheel>,
+    skip: Query<'w, 's, (), NotPickable>,
+    parents: Query<'w, 's, &'static ChildOf>,
 }
+
+/// Il raggio del mirino ignora terreno, mare, giocatore e cielo (anche i loro figli).
+fn pickable(e: Entity, skip: &Query<(), NotPickable>, parents: &Query<&ChildOf>) -> bool {
+    let mut at = e;
+    for _ in 0..16 {
+        if skip.contains(at) {
+            return false;
+        }
+        match parents.get(at) {
+            Ok(p) => at = p.parent(),
+            Err(_) => return true,
+        }
+    }
+    true
+}
+
+/// Fin dove un edificio si sceglie mirando un suo muro (m dal centro).
+const BUILDING_REACH: f32 = 9.0;
 
 /// Con F4 acceso, Ctrl tenuto libera il cursore per usare il pannello.
 pub fn cursor_free(on: bool, keys: &ButtonInput<KeyCode>) -> bool {
@@ -994,6 +1130,47 @@ fn yaw_to(from: Vec2, to: Vec2) -> Option<f32> {
     (d.length() > 0.2).then(|| d.x.atan2(d.y))
 }
 
+/// Sistema (PreUpdate, dopo l'input): scorciatoie di F4 che il gioco non deve vedere
+/// (Z da solo cambia l'incantesimo, Tab apre altro): Ctrl+Z annulla, Ctrl+Y e Ctrl+Maiusc+Z
+/// ripetono, Tab passa al candidato successivo, F6 accende la camera libera.
+pub fn shortcuts(
+    mut dbg: ResMut<DebugPlace>,
+    mut keys: ResMut<ButtonInput<KeyCode>>,
+    state: Res<State<AppState>>,
+) {
+    if !dbg.on {
+        dbg.fly = false;
+        return;
+    }
+    if !matches!(state.get(), AppState::Playing | AppState::Map) {
+        return;
+    }
+    let ctrl = keys.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]);
+    let shift = keys.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
+    if ctrl && keys.just_pressed(KeyCode::KeyZ) {
+        if shift {
+            dbg.redo();
+        } else {
+            dbg.undo();
+        }
+        keys.reset(KeyCode::KeyZ);
+    }
+    if ctrl && keys.just_pressed(KeyCode::KeyY) {
+        dbg.redo();
+        keys.reset(KeyCode::KeyY);
+    }
+    if keys.just_pressed(KeyCode::Tab) {
+        if !dbg.picks.is_empty() {
+            dbg.pick_turn = (dbg.pick_turn + 1) % dbg.picks.len();
+        }
+        keys.reset(KeyCode::Tab);
+    }
+    if keys.just_pressed(KeyCode::F6) && *state.get() == AppState::Playing {
+        dbg.fly = !dbg.fly;
+        info!("[DEBUG] camera libera: {}", dbg.fly);
+    }
+}
+
 /// Sistema (EguiPrimaryContextPass): tasto F4, pannello, strumenti e anteprime.
 pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
     if cx.cheats.debug_keys
@@ -1005,6 +1182,7 @@ pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
     {
         dbg.on = !dbg.on;
         dbg.reset_pending();
+        dbg.fly = false;
         info!("[DEBUG] modalità piazzamenti: {}", dbg.on);
     }
     let state = cx.state.get().clone();
@@ -1065,6 +1243,25 @@ pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
                 Vec2::new(p.x, p.z)
             })
     };
+    // Modello vero sotto il mirino (3D): il punto colpito sceglie l'oggetto, anche quando sta
+    // sopra il terreno o in mezzo ad altri (beta v0.0.63, n. 40).
+    let model_hit = if in_map || free {
+        None
+    } else {
+        camera.and_then(|(_, t)| {
+            let ray = Ray3d::new(t.translation(), t.forward());
+            let (skip, parents) = (&cx.skip, &cx.parents);
+            let ok = |e: Entity| pickable(e, skip, parents);
+            let settings = bevy::picking::mesh_picking::ray_cast::MeshRayCastSettings::default()
+                .with_filter(&ok)
+                .with_early_exit_test(&ok);
+            cx.ray_cast
+                .cast_ray(ray, &settings)
+                .first()
+                .filter(|(_, h)| h.distance < 200.0)
+                .map(|(_, h)| h.point)
+        })
+    };
     let (hover, pressed, down, released, right_pressed) = if in_map {
         let hover = (!over_ui)
             .then(|| {
@@ -1099,6 +1296,37 @@ pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
     };
     let reach = if in_map { 2.5 } else { 2.0 };
     let snapped = hover.map(|w| snap(&dbg, w));
+    // Candidati sotto il mirino o il cursore: il modello colpito vince sul terreno dietro.
+    let aim = match (model_hit, hover, camera) {
+        (Some(m), Some(g), Some((_, t))) => {
+            let ground_d = t.translation().distance(Vec3::new(g.x, m.y, g.y));
+            if t.translation().distance(m) <= ground_d + 0.3 {
+                Some(m.xz())
+            } else {
+                Some(g)
+            }
+        }
+        (Some(m), None, _) => Some(m.xz()),
+        (_, g, _) => g,
+    };
+    let picks = aim
+        .filter(|_| dbg.tool != Tool::Place)
+        .map(|w| candidates(&dbg, w, reach))
+        .unwrap_or_default();
+    if picks.first() != dbg.picks.first() {
+        dbg.pick_turn = 0;
+    }
+    dbg.picks = picks;
+    // Tab (vedi `shortcuts`) o rotella: il candidato successivo.
+    let wheel: f32 = cx.wheel.read().map(|w| w.y).sum();
+    if !in_map && !over_ui && wheel != 0.0 && dbg.picks.len() > 1 {
+        let n = dbg.picks.len();
+        dbg.pick_turn = if wheel > 0.0 {
+            dbg.pick_turn + 1
+        } else {
+            dbg.pick_turn + n - 1
+        } % n;
+    }
 
     if let Some(w) = snapped {
         let single_place = dbg.tool == Tool::Place && dbg.mode == PlaceMode::Single;
@@ -1118,7 +1346,7 @@ pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
             }
         } else if dbg.tool == Tool::Rotate {
             if pressed {
-                dbg.drag_obj = nearest(&dbg, w, reach);
+                dbg.drag_obj = dbg.picked();
             }
             if down
                 && let Some((i, j)) = dbg.drag_obj
@@ -1140,6 +1368,8 @@ pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
                 dbg.reset_pending();
             } else if dbg.tool == Tool::Place {
                 remove_nearest(&mut dbg, w, reach);
+            } else if let Some(t) = dbg.picked() {
+                remove_at(&mut dbg, t);
             }
         }
     }
@@ -1162,8 +1392,7 @@ pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
                     1.0
                 };
             if dbg.tool == Tool::Rotate
-                && let Some(w) = hover
-                && let Some((i, j)) = nearest(&dbg, w, reach)
+                && let Some((i, j)) = dbg.picked()
             {
                 dbg.items[i].fix_yaws();
                 dbg.items[i].yaws[j] += step;
@@ -1173,11 +1402,12 @@ pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
             }
         }
         // Scorciatoia 3D: X = elimina l'oggetto più vicino al mirino.
-        if !in_map
-            && let Some(w) = hover
-            && cx.keys.just_pressed(KeyCode::KeyX)
-        {
-            remove_nearest(&mut dbg, w, 3.0);
+        if !in_map && cx.keys.just_pressed(KeyCode::KeyX) {
+            if let Some(t) = dbg.picked() {
+                remove_at(&mut dbg, t);
+            } else if let Some(w) = aim {
+                remove_nearest(&mut dbg, w, 3.0);
+            }
         }
     }
 
@@ -1308,11 +1538,27 @@ pub fn debug_ui(mut dbg: ResMut<DebugPlace>, mut cx: DebugCtx) {
     }
     if dbg.tool != Tool::Place {
         // Gomma/Sposta/Ruota: evidenzia (e mostra la freccia del) l'oggetto più vicino al cursore.
-        if let Some(w) = hover
-            && let Some((i, j)) = nearest(&dbg, w, reach)
+        if let Some((i, j)) = dbg.picked()
             && let Some(s) = proj(dbg.items[i].points[j])
         {
             painter.circle_stroke(s, 10.0, egui::Stroke::new(2.0, egui::Color32::LIGHT_RED));
+            let it = &dbg.items[i];
+            let more = if dbg.picks.len() > 1 {
+                format!(
+                    "  ({}/{}, Tab o rotella = altro)",
+                    dbg.pick_turn % dbg.picks.len() + 1,
+                    dbg.picks.len()
+                )
+            } else {
+                String::new()
+            };
+            painter.text(
+                s + egui::vec2(14.0, 0.0),
+                egui::Align2::LEFT_CENTER,
+                format!("P-{:04} {}{more}", it.id, it.kind),
+                egui::FontId::proportional(15.0),
+                egui::Color32::LIGHT_RED,
+            );
             if dbg.tool != Tool::Erase && dbg.drag_obj.is_none() {
                 arrow(dbg.items[i].points[j], dbg.items[i].yaw(j));
             }
@@ -1475,24 +1721,61 @@ fn panel(ui: &mut egui::Ui, dbg: &mut DebugPlace, in_map: bool, hour: &str) {
     });
     ui.separator();
     ui.horizontal(|ui| {
-        if ui.button("Annulla ultimo").clicked() {
-            dbg.items.pop();
-            dbg.changed();
+        // Annulla/ripeti tornano indietro e avanti fra le modifiche (non tolgono l'ultimo
+        // dell'elenco, che poteva essere la casa del giocatore: beta v0.0.63, n. 39).
+        let (back, fwd) = dbg.history();
+        if ui
+            .add_enabled(back > 0, egui::Button::new(format!("↶ Annulla ({back})")))
+            .on_hover_text("Ctrl+Z")
+            .clicked()
+        {
+            dbg.undo();
+        }
+        if ui
+            .add_enabled(fwd > 0, egui::Button::new(format!("↷ Ripeti ({fwd})")))
+            .on_hover_text("Ctrl+Y o Ctrl+Maiusc+Z")
+            .clicked()
+        {
+            dbg.redo();
         }
         if ui.button("Svuota").clicked() {
-            dbg.items.clear();
+            dbg.items.retain(runtime);
             dbg.changed();
         }
     });
     let mut del: Option<u32> = None;
     let mut redo: Option<u32> = None;
+    let mut go: Option<(usize, usize)> = None;
+    ui.horizontal(|ui| {
+        ui.label("Cerca:");
+        ui.add(
+            egui::TextEdit::singleline(&mut dbg.search)
+                .hint_text("id, tipo o nota")
+                .desired_width(170.0),
+        );
+        if !dbg.search.is_empty() && ui.small_button("✖").clicked() {
+            dbg.search.clear();
+        }
+    });
+    let query = dbg.search.trim().to_lowercase();
     egui::ScrollArea::vertical()
         .id_salt("debug_list")
         .max_height(150.0)
         .show(ui, |ui| {
-            for p in &dbg.items {
+            for (i, p) in dbg.items.iter().enumerate() {
+                if !matches_search(p, &query) {
+                    continue;
+                }
                 ui.horizontal_wrapped(|ui| {
                     ui.label(format!("P-{:04} {} ×{}", p.id, p.kind, p.points.len()));
+                    if !in_map
+                        && ui
+                            .small_button("Vai e seleziona")
+                            .on_hover_text("Porta la camera libera davanti all'oggetto")
+                            .clicked()
+                    {
+                        go = Some((i, 0));
+                    }
                     if ui.small_button("Elimina").clicked() {
                         del = Some(p.id);
                     }
@@ -1508,6 +1791,21 @@ fn panel(ui: &mut egui::Ui, dbg: &mut DebugPlace, in_map: bool, hour: &str) {
     }
     if redo.is_some() {
         dbg.redistribute_req = redo;
+    }
+    if let Some((i, j)) = go {
+        // Strumento Sposta: arrivati, l'oggetto è sotto il mirino e si prende con un clic.
+        if dbg.tool == Tool::Place {
+            dbg.tool = Tool::Move;
+            dbg.reset_pending();
+        }
+        dbg.goto = Some(dbg.items[i].points[j]);
+        dbg.fly = true;
+    }
+    if !in_map {
+        ui.checkbox(
+            &mut dbg.fly,
+            "Camera libera (F6): WASD, E/Spazio su, Q/C giù, Maiusc veloce",
+        );
     }
     ui.label(format!("File: {}  (ora di gioco {hour})", file()));
 }
@@ -1683,6 +1981,40 @@ fn place_panel(ui: &mut egui::Ui, dbg: &mut DebugPlace) {
     }
 }
 
+/// Il piazzamento corrisponde alla ricerca (id «P-0012» o «12», tipo, nota)?
+fn matches_search(p: &Placement, query: &str) -> bool {
+    if query.is_empty() {
+        return true;
+    }
+    let id = format!("p-{:04}", p.id);
+    id.contains(query)
+        || query.trim_start_matches("p-").parse::<u32>() == Ok(p.id)
+        || p.kind.to_lowercase().contains(query)
+        || p.note.to_lowercase().contains(query)
+}
+
+/// Oggetti attorno a `w`, dal più probabile: entro `max_d` metri, gli edifici fino a
+/// `BUILDING_REACH` dal centro (si mira un muro) ma dopo le cose piccole vicine.
+fn candidates(dbg: &DebugPlace, w: Vec2, max_d: f32) -> Vec<(usize, usize)> {
+    let mut found: Vec<(f32, usize, usize)> = Vec::new();
+    for (i, p) in dbg.items.iter().enumerate().filter(|(_, p)| !runtime(p)) {
+        let building = crate::buildings::is_building(&p.kind);
+        let reach = if building {
+            max_d.max(BUILDING_REACH)
+        } else {
+            max_d
+        };
+        for (j, q) in p.points.iter().enumerate() {
+            let real = q.distance(w);
+            if real <= reach {
+                found.push((if building { real + 3.0 } else { real }, i, j));
+            }
+        }
+    }
+    found.sort_by(|a, b| a.0.total_cmp(&b.0));
+    found.into_iter().map(|(_, i, j)| (i, j)).collect()
+}
+
 /// Oggetto più vicino a `w` entro `max_d` metri: (piazzamento, punto).
 fn nearest(dbg: &DebugPlace, w: Vec2, max_d: f32) -> Option<(usize, usize)> {
     let mut best: Option<(usize, usize, f32)> = None;
@@ -1707,11 +2039,14 @@ fn nearest(dbg: &DebugPlace, w: Vec2, max_d: f32) -> Option<(usize, usize)> {
 fn click(dbg: &mut DebugPlace, w: Vec2, reach: f32, hour: &str) {
     dbg.msg.clear();
     match dbg.tool {
-        Tool::Erase => remove_nearest(dbg, w, reach),
+        Tool::Erase => match dbg.picked() {
+            Some(t) => remove_at(dbg, t),
+            None => remove_nearest(dbg, w, reach),
+        },
         // La rotazione è gestita dal trascinamento in `debug_ui`.
         Tool::Rotate => {}
         Tool::Move => match dbg.grabbed {
-            None => dbg.grabbed = nearest(dbg, w, reach.max(2.0)),
+            None => dbg.grabbed = dbg.picked().or_else(|| nearest(dbg, w, reach.max(2.0))),
             Some((i, j)) => {
                 let kind = dbg.items[i].kind.clone();
                 let r = footprint(&kind);
@@ -1894,7 +2229,14 @@ fn redistribute(dbg: &mut DebugPlace, id: u32) {
 
 /// Elimina il punto più vicino a `w` entro `max_d` metri (un singolo oggetto).
 fn remove_nearest(dbg: &mut DebugPlace, w: Vec2, max_d: f32) {
-    if let Some((i, j)) = nearest(dbg, w, max_d) {
+    if let Some(t) = nearest(dbg, w, max_d) {
+        remove_at(dbg, t);
+    }
+}
+
+/// Elimina l'oggetto `j` del piazzamento `i` (e il piazzamento, se resta vuoto).
+fn remove_at(dbg: &mut DebugPlace, (i, j): (usize, usize)) {
+    if dbg.items.get(i).is_some_and(|p| j < p.points.len()) {
         let id = dbg.items[i].id;
         dbg.items[i].fix_yaws();
         dbg.items[i].points.remove(j);
@@ -1904,5 +2246,120 @@ fn remove_nearest(dbg: &mut DebugPlace, w: Vec2, max_d: f32) {
         }
         info!("[DEBUG] rimosso un oggetto di P-{id:04}");
         dbg.changed();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn item(id: u32, kind: &str, x: f32) -> Placement {
+        let at = Vec2::new(x, 0.0);
+        Placement {
+            id,
+            kind: kind.to_string(),
+            mode: PlaceMode::Single,
+            a: at,
+            b: at,
+            radius: 0.0,
+            poly: Vec::new(),
+            seed: 1,
+            note: String::new(),
+            when: String::new(),
+            points: vec![at],
+            yaws: vec![0.0],
+        }
+    }
+
+    fn editor(items: Vec<Placement>) -> DebugPlace {
+        let mut d = DebugPlace::default();
+        d.items = items;
+        d.saved = persistent(&d.items);
+        d.undo.clear();
+        d.redo.clear();
+        d.next_id = 100;
+        d
+    }
+
+    fn ids(d: &DebugPlace) -> Vec<u32> {
+        d.items.iter().map(|p| p.id).collect()
+    }
+
+    #[test]
+    fn undo_brings_back_what_was_deleted_not_the_last_item() {
+        // Beta v0.0.63, n. 39: «Annulla ultimo» toglieva l'ultimo dell'elenco (anche la casa).
+        let mut d = editor(vec![item(1, "albero", 0.0), item(2, "roccia", 5.0)]);
+        d.set_runtime(crate::house::KIND, Some(Vec2::new(40.0, 0.0)));
+        remove_at(&mut d, (0, 0));
+        assert_eq!(ids(&d), vec![2, 9000]);
+        assert!(d.undo());
+        assert_eq!(ids(&d), vec![1, 2, 9000], "torna l'albero, la casa resta");
+        assert!(!d.undo(), "niente altro da annullare");
+        assert_eq!(ids(&d), vec![1, 2, 9000]);
+        assert!(d.redo());
+        assert_eq!(ids(&d), vec![2, 9000]);
+        assert!(!d.redo());
+    }
+
+    #[test]
+    fn history_has_no_limit_and_a_new_change_drops_the_redo() {
+        let mut d = editor(Vec::new());
+        for i in 0..150 {
+            d.items.push(item(i + 1, "fiori", i as f32));
+            d.changed();
+        }
+        assert_eq!(d.history(), (150, 0));
+        while d.undo() {}
+        assert!(d.items.is_empty());
+        assert_eq!(d.history(), (0, 150));
+        d.redo();
+        d.redo();
+        d.items.push(item(500, "roccia", 1.0));
+        d.changed();
+        assert_eq!(d.history(), (3, 0));
+        assert_eq!(ids(&d), vec![1, 2, 500]);
+    }
+
+    #[test]
+    fn the_player_house_never_enters_the_history() {
+        let mut d = editor(vec![item(1, "albero", 0.0)]);
+        d.set_runtime(crate::house::KIND, Some(Vec2::ZERO));
+        d.changed();
+        assert_eq!(d.history(), (0, 0));
+        d.items.retain(runtime);
+        d.changed();
+        assert!(d.undo());
+        assert_eq!(ids(&d), vec![1, 9000]);
+    }
+
+    #[test]
+    fn picks_put_small_things_before_buildings_and_skip_the_house() {
+        let mut d = editor(vec![
+            item(1, "casa", 0.0),
+            item(2, "lampione", 1.5),
+            item(3, "albero", 30.0),
+        ]);
+        d.set_runtime(crate::house::KIND, Some(Vec2::new(0.5, 0.0)));
+        let picks = candidates(&d, Vec2::new(1.0, 0.0), 2.0);
+        let found: Vec<u32> = picks.iter().map(|(i, _)| d.items[*i].id).collect();
+        assert_eq!(
+            found,
+            vec![2, 1],
+            "il lampione, poi la casa; mai la casa del giocatore"
+        );
+        d.picks = picks;
+        d.pick_turn = 1;
+        assert_eq!(d.picked(), Some((0, 0)));
+    }
+
+    #[test]
+    fn search_matches_id_kind_and_note() {
+        let mut p = item(12, "lampione", 0.0);
+        p.note = "vicino al pozzo".into();
+        for q in ["", "p-0012", "12", "lamp", "pozzo"] {
+            assert!(matches_search(&p, q), "{q}");
+        }
+        assert!(!matches_search(&p, "albero"));
+        assert!(!matches_search(&p, "13"));
     }
 }

@@ -48,7 +48,8 @@ const BEDS: [(Bed, f32); 5] = [
     (Bed::Waves, 0.9),
     (Bed::Stream, 0.55),
     (Bed::Crickets, 0.4),
-    (Bed::Market, 0.6),
+    // Registrazione vera (picchi a 0 dB, media −16 dB): più bassa del brusio sintetico di prima.
+    (Bed::Market, 0.35),
     (Bed::HighWind, 0.55),
 ];
 
@@ -197,66 +198,6 @@ pub fn synth_crickets() -> Vec<u8> {
         }
     }
     to_wav(&buf, 0.5)
-}
-
-/// Brusio: voci finte senza parole, fatte di soffio e poca voce attraverso formanti larghe, così
-/// resta un mormorio di folla e non un ronzio. Ciclo di 12 s.
-pub fn synth_market() -> Vec<u8> {
-    const VOWELS: [(f32, f32); 5] = [
-        (700.0, 1100.0),
-        (520.0, 1700.0),
-        (330.0, 2100.0),
-        (560.0, 900.0),
-        (380.0, 950.0),
-    ];
-    let n = RATE as usize * 12;
-    let c = RATE as usize / 2;
-    let total = n + c;
-    let mut buf = vec![0.0f32; total];
-    let dt = 1.0 / RATE as f32;
-    let mut rng = Noise(0x7A1C_0DE5);
-    let mut uniform = move || (rng.next() + 1.0) * 0.5;
-    let mut noise = Noise(0x0DD_BA11);
-    for voice in 0..9 {
-        let pitch = 105.0 + uniform() * 120.0;
-        let gain = 0.4 + uniform() * 0.5;
-        let mut phase = 0.0f32;
-        let (mut b1, mut l1, mut b2, mut l2) = (0.0f32, 0.0f32, 0.0f32, 0.0f32);
-        let mut at = (uniform() * RATE as f32 * voice as f32 * 0.25) as usize;
-        while at < total {
-            let syllables = 2 + (uniform() * 6.0) as usize;
-            for _ in 0..syllables {
-                let len = (RATE as f32 * (0.12 + uniform() * 0.2)) as usize;
-                let (f1, f2) = VOWELS[(uniform() * 4.99) as usize];
-                let f0 = pitch * (0.9 + uniform() * 0.25);
-                let k1 = 2.0 * (PI * f1 * dt).sin();
-                let k2 = 2.0 * (PI * f2 * dt).sin();
-                for j in 0..len.min(total.saturating_sub(at)) {
-                    phase = (phase + f0 * dt).fract();
-                    // Poca voce (dente di sega smussato) e molto soffio.
-                    let voiced = (2.0 * phase - 1.0) * 0.25 + (TAU * phase).sin() * 0.3;
-                    let src = voiced + noise.next() * 0.55;
-                    l1 += k1 * b1;
-                    b1 += k1 * (src - l1 - 0.7 * b1);
-                    l2 += k2 * b2;
-                    b2 += k2 * (src - l2 - 0.9 * b2);
-                    let x = j as f32 / len as f32;
-                    let env = (x * PI).sin().powf(0.8);
-                    buf[at + j] += (b1 + 0.5 * b2) * env * gain;
-                }
-                at += len;
-            }
-            at += (RATE as f32 * (0.5 + uniform() * 1.6)) as usize;
-        }
-    }
-    // Da lontano le alte si perdono e il tutto si fa sordo.
-    let (mut lp, mut lp2) = (0.0f32, 0.0f32);
-    for s in buf.iter_mut() {
-        lp += (*s - lp) * 0.22;
-        lp2 += (lp - lp2) * 0.3;
-        *s = lp2;
-    }
-    to_wav(&make_loop(&buf, n), 0.5)
 }
 
 /// Canto di un uccello: qualche nota che sale o scende, a volte trillata.
@@ -428,15 +369,29 @@ pub fn market_level(d: f32, hour: f32, rain: f32) -> f32 {
     open * falloff(d, MARKET_RANGE) * (1.0 - rain * 1.2).max(0.1)
 }
 
-/// Superficie sotto i piedi: `feet` è la quota del giocatore.
+/// Ultima superficie dei passi (0 = nessun passo ancora), per lo stato del pilota automatico.
+static LAST_STEP: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
+
+/// Nome dell'ultima superficie calpestata («Grass», «Water»…; vuoto prima del primo passo).
+pub fn last_step() -> String {
+    match LAST_STEP.load(std::sync::atomic::Ordering::Relaxed) {
+        0 => String::new(),
+        n => format!("{:?}", Surface::ALL[(n - 1) as usize]),
+    }
+}
+
+/// Superficie sotto i piedi: `feet` è la quota del giocatore, `at_sea` dice se il punto è sul
+/// mare aperto. Una conca dell'entroterra più bassa del mare (il fossato fuori dalle mura) resta
+/// erba: conta la maschera del mare, non la quota.
 pub fn step_surface(
     ground: Surface,
     feet: f32,
     terrain_y: f32,
+    at_sea: bool,
     on_wall: bool,
     snow: f32,
 ) -> Surface {
-    if terrain_y < SEA_LEVEL {
+    if at_sea && terrain_y < SEA_LEVEL {
         // Sopra il mare si sta su un molo o si è in acqua bassa.
         return if feet > SEA_LEVEL + 0.7 {
             Surface::Wood
@@ -459,7 +414,15 @@ pub fn step_surface(
 
 // --- Sistemi -----------------------------------------------------------------------------------
 
-fn setup(mut commands: Commands, mut sources: ResMut<Assets<AudioSource>>) {
+/// Brusio del mercato: la registrazione «Vita tra i banchi» dell'autore del gioco, in ciclo
+/// (160 s, coda e inizio sfumati l'una nell'altro). Beta v0.0.63, n. 35.
+pub const MARKET_FILE: &str = "audio/ambience/vita_tra_i_banchi.ogg";
+
+fn setup(
+    mut commands: Commands,
+    mut sources: ResMut<Assets<AudioSource>>,
+    asset_server: Res<AssetServer>,
+) {
     let mut add = |bytes: Vec<u8>| {
         sources.add(AudioSource {
             bytes: bytes.into(),
@@ -469,7 +432,7 @@ fn setup(mut commands: Commands, mut sources: ResMut<Assets<AudioSource>>) {
         add(synth_waves()),
         add(synth_stream()),
         add(synth_crickets()),
-        add(synth_market()),
+        asset_server.load(MARKET_FILE),
         add(crate::weather::synth_wind()),
     ];
     let birds = (0..6).map(|i| add(synth_bird(0xB1D0 + i * 977))).collect();
@@ -747,6 +710,7 @@ fn footsteps(
         field.surface_at(p.x, p.z),
         feet,
         terrain_y,
+        field.in_sea(p.x, p.z),
         on_wall,
         weather.snow_cover,
     );
@@ -782,6 +746,7 @@ fn footsteps(
             ));
         }
         st.surface = Some(surface);
+        LAST_STEP.store(surface as u8 + 1, std::sync::atomic::Ordering::Relaxed);
         info!("[PASSI] superficie: {surface:?}");
     }
     let Some(set) = Surface::ALL
@@ -845,7 +810,6 @@ mod tests {
             synth_waves(),
             synth_stream(),
             synth_crickets(),
-            synth_market(),
             synth_bird(3),
             synth_gull(5),
         ] {
@@ -947,6 +911,19 @@ mod tests {
     }
 
     #[test]
+    fn the_market_recording_is_shipped() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("assets")
+            .join(MARKET_FILE);
+        let bytes = std::fs::read(&path).expect("registrazione del mercato");
+        assert_eq!(
+            &bytes[..4],
+            b"OggS",
+            "deve essere Ogg Vorbis (niente mp3 in Bevy)"
+        );
+    }
+
+    #[test]
     fn market_closes_at_night_and_fades_with_distance() {
         assert!(market_level(0.0, 12.0, 0.0) > 0.9);
         assert_eq!(market_level(0.0, 23.0, 0.0), 0.0);
@@ -956,12 +933,15 @@ mod tests {
     #[test]
     fn surface_follows_where_the_feet_are() {
         use Surface::*;
-        assert_eq!(step_surface(Grass, 3.0, 3.0, false, 0.0), Grass);
-        assert_eq!(step_surface(Grass, 3.0, 3.0, false, 0.8), Snow);
-        assert_eq!(step_surface(Stone, 3.0, 3.0, false, 0.8), Stone);
-        assert_eq!(step_surface(Grass, 3.5, 3.0, false, 0.8), Wood);
-        assert_eq!(step_surface(Grass, 8.0, 3.0, true, 0.0), Stone);
-        assert_eq!(step_surface(Sand, 0.1, -2.0, false, 0.0), Wood);
-        assert_eq!(step_surface(Sand, -1.4, -2.0, false, 0.0), Water);
+        assert_eq!(step_surface(Grass, 3.0, 3.0, false, false, 0.0), Grass);
+        assert_eq!(step_surface(Grass, 3.0, 3.0, false, false, 0.8), Snow);
+        assert_eq!(step_surface(Stone, 3.0, 3.0, false, false, 0.8), Stone);
+        assert_eq!(step_surface(Grass, 3.5, 3.0, false, false, 0.8), Wood);
+        assert_eq!(step_surface(Grass, 8.0, 3.0, false, true, 0.0), Stone);
+        assert_eq!(step_surface(Sand, 0.1, -2.0, true, false, 0.0), Wood);
+        assert_eq!(step_surface(Sand, -1.4, -2.0, true, false, 0.0), Water);
+        // Beta v0.0.63, n. 26: il fossato erboso fuori dalle mura è sotto il livello del mare
+        // (terreno a -1,4 m), ma non è mare: si sente l'erba, non lo sciabordio.
+        assert_eq!(step_surface(Grass, -1.3, -1.4, false, false, 0.0), Grass);
     }
 }

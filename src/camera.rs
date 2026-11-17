@@ -58,6 +58,88 @@ impl Default for OrbitCamera {
     }
 }
 
+/// Camera libera della modalità piazzamenti (F4 + F6, ADR 0061): vola staccata dal giocatore
+/// per avvicinarsi agli oggetti. I tasti del volo non arrivano al gioco (il giocatore resta fermo).
+#[derive(Resource, Default)]
+pub struct FlyCamera {
+    pub active: bool,
+    pub pos: Vec3,
+    pub yaw: f32,
+    pub pitch: f32,
+    /// Tasti del volo tenuti, dagli eventi della tastiera (in `ButtonInput` vengono azzerati).
+    held: Vec<KeyCode>,
+    /// Tasti premuti in `ButtonInput` in questo fotogramma (anche dal pilota automatico).
+    pressed: Vec<KeyCode>,
+}
+
+/// Tasti del volo: avanti, indietro, sinistra, destra, su, giù, veloce.
+const FLY_KEYS: [KeyCode; 11] = [
+    KeyCode::KeyW,
+    KeyCode::KeyS,
+    KeyCode::KeyA,
+    KeyCode::KeyD,
+    KeyCode::KeyE,
+    KeyCode::Space,
+    KeyCode::KeyQ,
+    KeyCode::KeyC,
+    KeyCode::ShiftLeft,
+    KeyCode::ShiftRight,
+    KeyCode::ArrowUp,
+];
+/// Velocità della camera libera (m/s); con Maiusc quattro volte tanto.
+const FLY_SPEED: f32 = 8.0;
+
+impl FlyCamera {
+    fn down(&self, k: KeyCode) -> bool {
+        self.held.contains(&k) || self.pressed.contains(&k)
+    }
+
+    /// Guarda verso `target` (stessa convenzione della prima persona).
+    pub fn look_at(&mut self, target: Vec3) {
+        let d = (target - self.pos).normalize_or_zero();
+        if d != Vec3::ZERO {
+            self.yaw = (-d.x).atan2(-d.z);
+            self.pitch = (-d.y).asin();
+        }
+    }
+
+    fn rotation(&self) -> Quat {
+        Quat::from_rotation_y(self.yaw) * Quat::from_rotation_x(-self.pitch)
+    }
+}
+
+/// Sistema (PreUpdate, dopo l'input): con la camera libera accesa legge i tasti del volo e li
+/// toglie al gioco, così il giocatore non cammina, non salta e non lancia incantesimi.
+pub fn fly_keys(
+    mut events: MessageReader<bevy::input::keyboard::KeyboardInput>,
+    mut keys: ResMut<ButtonInput<KeyCode>>,
+    mut fly: ResMut<FlyCamera>,
+    debug: Res<crate::debug_place::DebugPlace>,
+) {
+    let on = debug.on && debug.fly;
+    for ev in events.read() {
+        if !FLY_KEYS.contains(&ev.key_code) {
+            continue;
+        }
+        fly.held.retain(|k| *k != ev.key_code);
+        if ev.state.is_pressed() {
+            fly.held.push(ev.key_code);
+        }
+    }
+    if !on {
+        fly.held.clear();
+        fly.pressed.clear();
+        return;
+    }
+    fly.pressed = FLY_KEYS.into_iter().filter(|k| keys.pressed(*k)).collect();
+    for k in FLY_KEYS {
+        keys.reset(k);
+    }
+    keys.reset(KeyCode::ArrowDown);
+    keys.reset(KeyCode::ArrowLeft);
+    keys.reset(KeyCode::ArrowRight);
+}
+
 /// Marker dei collider che la camera in terza persona non deve attraversare
 /// (pareti e tetto della casetta).
 #[derive(Component)]
@@ -149,6 +231,7 @@ pub fn orbit(
     mut state: ResMut<OrbitCamera>,
     debug: Res<crate::debug_place::DebugPlace>,
     keys: Res<ButtonInput<KeyCode>>,
+    mut fly: ResMut<FlyCamera>,
 ) {
     let cursor: Vec2 = cursor_events
         .read()
@@ -161,6 +244,12 @@ pub fn orbit(
     let delta = pick_delta(captured, cursor, motion);
     // Con F4 la visuale resta normale; solo con Ctrl (cursore libero sul pannello) non ruota.
     if crate::debug_place::cursor_free(debug.on, &keys) {
+        return;
+    }
+    // Camera libera: il mouse gira lei, la visuale del giocatore resta com'era.
+    if fly.active {
+        fly.yaw -= delta.x * state.sensitivity;
+        fly.pitch = (fly.pitch + delta.y * state.sensitivity).clamp(-1.54, 1.54);
         return;
     }
     state.yaw -= delta.x * state.sensitivity;
@@ -261,10 +350,56 @@ pub fn follow(
     players: Query<&GlobalTransform, With<Player>>,
     mut cameras: Query<&mut Transform, (With<Camera3d>, Without<Player>)>,
     time: Res<Time>,
+    (mut fly, mut debug, field): (
+        ResMut<FlyCamera>,
+        ResMut<crate::debug_place::DebugPlace>,
+        Option<Res<crate::terrain::TerrainField>>,
+    ),
 ) {
     let (Ok(player), Ok(mut camera)) = (players.single(), cameras.single_mut()) else {
         return;
     };
+    let flying = debug.on && debug.fly;
+    if flying && !fly.active {
+        // Si parte da dove si trova la camera, guardando dove guardava.
+        fly.active = true;
+        fly.pos = camera.translation;
+        let ahead = camera.translation + *camera.forward();
+        fly.look_at(ahead);
+    } else if !flying && fly.active {
+        fly.active = false;
+    }
+    if fly.active {
+        // «Vai e seleziona»: davanti all'oggetto, un po' in alto, guardandolo.
+        if let Some(p) = debug.goto.take() {
+            let ground = field.as_ref().map_or(0.0, |f| f.height_at(p.x, p.y));
+            let target = Vec3::new(p.x, ground + 0.8, p.y);
+            let back = Quat::from_rotation_y(fly.yaw) * Vec3::Z;
+            fly.pos =
+                target + Vec3::new(back.x, 0.0, back.z).normalize_or(Vec3::Z) * 6.0 + Vec3::Y * 3.0;
+            fly.look_at(target);
+        }
+        let rot = fly.rotation();
+        let axis = |plus: &[KeyCode], minus: &[KeyCode]| {
+            let p = plus.iter().any(|k| fly.down(*k)) as i32 as f32;
+            let m = minus.iter().any(|k| fly.down(*k)) as i32 as f32;
+            p - m
+        };
+        let ahead = axis(&[KeyCode::KeyW, KeyCode::ArrowUp], &[KeyCode::KeyS]);
+        let side = axis(&[KeyCode::KeyD], &[KeyCode::KeyA]);
+        let up = axis(
+            &[KeyCode::KeyE, KeyCode::Space],
+            &[KeyCode::KeyQ, KeyCode::KeyC],
+        );
+        let fast = fly.down(KeyCode::ShiftLeft) || fly.down(KeyCode::ShiftRight);
+        let dir =
+            (rot * Vec3::NEG_Z * ahead + rot * Vec3::X * side + Vec3::Y * up).clamp_length_max(1.0);
+        let speed = FLY_SPEED * if fast { 4.0 } else { 1.0 };
+        fly.pos += dir * speed * time.delta_secs();
+        camera.translation = fly.pos;
+        camera.rotation = rot;
+        return;
+    }
 
     match state.mode {
         CameraMode::ThirdPerson => {

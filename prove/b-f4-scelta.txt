@@ -1,0 +1,33 @@
+# Beta v0.0.63, n. 39 e 40: editor dei piazzamenti (F4). Il copione NON modifica il file dei
+# piazzamenti: accende F4, vola con la camera libera (F6) fino agli oggetti della piazza,
+# passa fra i candidati sotto il mirino (Tab) e prova Ctrl+Z a cronologia vuota (non cambia
+# nulla). Annulla/ripeti e la scelta dei candidati sono provati anche da `cargo test`.
+ia off
+god on
+meteo sereno
+ora 12
+tp -1.2 3 14
+aspetta 3
+debug on
+f4
+premi f6
+aspetta 0.5
+# La camera vola in avanti e in alto; il personaggio resta fermo.
+tieni w 1.2
+tieni e 0.6
+aspetta 2
+verifica x > -1.7
+verifica x < -0.7
+verifica z > 13.5
+verifica z < 14.5
+foto f4-volo
+premi tab
+aspetta 0.3
+foto f4-candidato
+tieni ctrl 0.5
+premi z
+aspetta 0.5
+premi f6
+f4
+aspetta 1
+esci

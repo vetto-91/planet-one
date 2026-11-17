@@ -24,3 +24,6 @@ Thumbs.db
 assets_src/
 __pycache__/
 prove/out/
+
+# Originali audio da cui si ricavano gli OGG (es. Vita_tra_i_banchi.mp3): non vanno in git.
+assets/audio/*.mp3

@@ -279,6 +279,15 @@ fn main() -> AppExit {
         .add_plugins(shop::plugin)
         .add_plugins(bells::plugin)
         .add_plugins(ambience::plugin)
+        .add_plugins(terrain::plugin)
+        .init_resource::<camera::FlyCamera>()
+        .add_systems(
+            PreUpdate,
+            (debug_place::shortcuts, camera::fly_keys)
+                .chain()
+                .after(bevy::input::InputSystems)
+                .after(autopilot::run_autopilot),
+        )
         .add_plugins(animals::plugin)
         .add_plugins(places::plugin)
         .add_plugins(village_life::plugin)

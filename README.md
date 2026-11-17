@@ -73,6 +73,11 @@ Giocando normalmente non ci sono trucchi. Con il tasto `\` si apre una shell (Es
 
 Per indicare dove mettere alberi o qualunque oggetto: F4 apre il pannello. In 3D il punto è quello del **mirino** (clic sinistro conferma, trascina = direzione, **R** = ruota 15°);
 **Ctrl tenuto** libera il mouse per usare il pannello. Nella mappa (M) si sceglie col clic sinistro; **X** elimina al mirino.
+Il mirino colpisce anche i modelli veri (non solo il terreno): fra più oggetti vicini **Tab** o la **rotella** passano al
+successivo (l'etichetta rossa dice quale e quanti sono). **Ctrl+Z** annulla e **Ctrl+Y** (o Ctrl+Maiusc+Z) ripete, senza limite
+di passi, anche dai pulsanti del pannello. **F6** accende la **camera libera** (WASD, E/Spazio su, Q/C giù, Maiusc veloce):
+vola staccata dal personaggio, che resta fermo. Nell'elenco si **cerca** per id, tipo o nota e **Vai e seleziona** porta la
+camera libera davanti all'oggetto.
 
 - **Piazza**: *singolo* (allineamento libero, a **griglia** o a **linea** con distanza uguale), *gruppo*,
   *rettangolo* (4 angoli qualsiasi), *cerchio* (raggio in anteprima dal centro) e *poligono* (N punti, poi **OK** o
@@ -289,6 +294,10 @@ Le voci registrate (`assets/audio/voci/`) già presenti sono state generate con 
 fase precedente: verificarne i termini d'uso prima di distribuire il gioco. Le **nuove** si generano solo in locale con
 `scripts/gen_tts_voci.py` (Piper + ffmpeg, solo i clip mancanti; `--force` per rigenerarli tutti). Autore e licenza del brano da
 indicare prima di rendere pubblico il repository.
+
+**Crediti audio.** Il brusio del mercato in piazza (`assets/audio/ambience/vita_tra_i_banchi.ogg`, «Vita tra i banchi») è una
+registrazione dell'autore del gioco, distribuita con il gioco con il suo permesso; è convertita in Ogg Vorbis dall'originale e
+ripetuta in ciclo (coda e inizio sfumati l'una nell'altro). Gli altri suoni d'ambiente sono sintetizzati dal gioco.
 
 ### Dialoghi con IA (locale)
 

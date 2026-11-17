@@ -1,0 +1,29 @@
+# Beta v0.0.63, n. 22: al tramonto sole e luna scendono DIETRO il mare (non gli passano davanti)
+# e il fondale si vede solo vicino alla riva, mai lontano (mare opaco con la distanza, ADR 0061).
+# Stesso punto e stessa vista delle segnalazioni 2026-11-14_19-33-02 e 19-34-41 (verso ovest).
+ia off
+god on
+meteo sereno
+ora 17.95
+tp -15.3 1.6 98.6
+aspetta 3
+prima-persona
+camera 90 -1
+aspetta 2
+foto tramonto
+ora 18.15
+aspetta 2
+foto sole-dietro-il-mare
+# Notte: la luna cala allo stesso modo (mattino presto, verso ovest).
+ora 5.6
+aspetta 2
+foto luna
+# Dall'alto sul mare aperto: il fondale lontano non si vede.
+prima-persona off
+ora 12
+tp -11 3 112
+aspetta 2
+camera 180 20
+aspetta 1
+foto mare-giorno
+esci

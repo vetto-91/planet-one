@@ -562,7 +562,8 @@ pub fn animate_water(
     time: Res<Time>,
     settings: Res<crate::audio::AudioSettings>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    sea: Query<&MeshMaterial3d<StandardMaterial>, With<SeaSurface>>,
+    mut sea_materials: ResMut<Assets<crate::terrain::FadeMaterial>>,
+    sea: Query<&MeshMaterial3d<crate::terrain::FadeMaterial>, With<SeaSurface>>,
     stream: Query<&MeshMaterial3d<StandardMaterial>, With<StreamSurface>>,
     mut foam: Query<(&MeshMaterial3d<StandardMaterial>, &mut Visibility), With<ShoreFoam>>,
 ) {
@@ -589,7 +590,13 @@ pub fn animate_water(
         Affine2::IDENTITY
     };
     for m in &sea {
-        set_uv(&m.0, sea_uv);
+        if sea_materials
+            .get(&m.0)
+            .is_some_and(|m| m.base.uv_transform != sea_uv)
+            && let Some(mut mat) = sea_materials.get_mut(&m.0)
+        {
+            mat.base.uv_transform = sea_uv;
+        }
     }
     let offset = if on {
         Vec2::new(0.0, -t * 0.25)
