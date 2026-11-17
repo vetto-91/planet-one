@@ -2,6 +2,23 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+### Edifici e arredi (segnalazioni della beta v0.0.63, ADR 0060)
+
+- **Finestre vere** in tutte le case del paese: il vano è aperto nel muro, dentro c'è un vetro che si alza con E e, col vetro alzato, si chiudono e aprono gli scuri anche da dentro, come nella casetta del Viandante. Da fuori gli scuri si usano come prima.
+- **Vetro più naturale**, quasi incolore, liscio e riflettente: nelle case, nella casetta del Viandante (prima azzurrino e lattiginoso) e nel faro.
+- **Focolari con la bocca vera**: stipiti, cappa, ceppi e, quando il fuoco è acceso, la fiamma viva che tremola dentro.
+- **Scale delle mura a L**: un pianerottolo in fondo e qualche gradino perpendicolare al muro, verso il paese; prima la scala partiva contro il muro e ci si saliva solo di lato.
+- **Faro**: la prima rampa sale dal fronte verso il fondo e la chiocciola non le sta più sopra; in cima la scala arriva davanti all'uscita della lanterna, che si è spostata a sinistra.
+- **Pozzo** chiuso su tutti i lati, con l'acqua limpida sotto il bordo; la **pozza del risveglio** ha un bordo di pietre senza varchi e l'acqua trasparente.
+- **Stalla della fattoria**: al posto del pannello di legno c'è un portone a due battenti che si apre verso fuori.
+- **Forno**: la scala per il sottotetto non fa più sbattere la testa e si sale; la bocca del forno guarda il centro della stanza. Anche nelle case piccole in cima alla scala del sottotetto si scende senza incastrarsi.
+- **Casa dell'arcere**: la rastrelliera degli archi poggia a terra, contro la parete di sinistra, lontano dalla porta. Nel sottotetto delle case non c'è più la fessura verso il cielo sopra la scala.
+- **Mercato**: i tendoni hanno spessore e una mantovana sul davanti, e di profilo non spariscono.
+- **Reti da pesca** sulla spiaggia del molo: ora fermano il passo.
+- Porte, imposte e vetri fermi non vengono ricalcolati a ogni fotogramma.
+
 ## v0.0.66.0 — Gioco più leggero e schede video integrate (2026-11-16)
 
 - **Risoluzione della scena** (ADR 0058): nel menu Esc → Grafica si può disegnare il mondo al 100%, 75% o 50% della risoluzione dello schermo e poi ingrandirlo; interfaccia, mappa e foto restano nitide. Il preset **Integrata** parte al 75%: sull'Arc integrata Intel da 25 a 31 fotogrammi al secondo a 1080p e da 36 a 41 a 720p. Alta, Media e Bassa restano al 100% e non cambiano.

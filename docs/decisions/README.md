@@ -84,3 +84,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0056 | Ottimizzazione del codice | accettato |
 | 0057 | Schede video integrate | accettato |
 | 0058 | Scala di rendering | accettato |
+| 0060 | Finestre vere, focolari aperti e scale a L | accettato |
