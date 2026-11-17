@@ -24,6 +24,9 @@ pub const RELICS: [(Class, Vec2); 4] = [
     (Class::Merchant, Vec2::new(33.5, 87.5)),
 ];
 const REACH: f32 = 1.8;
+/// Il centro dei rottami, e la distanza oltre la quale gli oggetti non scelti spariscono.
+const RELICS_CENTER: Vec2 = Vec2::new(30.5, 87.5);
+const RELICS_HIDE: f32 = 14.0;
 
 /// Detto il nome, chi l'ha chiesto risponde subito (ADR 0059): lo legge `entities::interact`.
 static GREET: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
@@ -157,10 +160,15 @@ pub fn stage_beach(
     mut materials: ResMut<Assets<StandardMaterial>>,
     pools: Query<Entity, With<MirrorPool>>,
     relics: Query<(Entity, &WreckRelic)>,
+    players: Query<&GlobalTransform, With<crate::player::Player>>,
 ) {
     let Some(field) = field else {
         return;
     };
+    // Gli oggetti dei rottami compaiono e spariscono solo lontano dagli occhi (ADR 0059).
+    let far = players.single().map_or(true, |p| {
+        p.translation().xz().distance(RELICS_CENTER) > RELICS_HIDE
+    });
     if !awake_needed(&character, &missions) {
         for e in pools.iter().chain(relics.iter().map(|(e, _)| e)) {
             commands.entity(e).despawn();
@@ -202,7 +210,7 @@ pub fn stage_beach(
                 ));
             });
     }
-    if character.awakening == 1 && relics.is_empty() {
+    if character.awakening <= 1 && relics.is_empty() {
         let iron = pbr.get(crate::pbr::Mat::Iron);
         let wood = pbr.get(crate::pbr::Mat::Planks);
         let cloth = pbr.get(crate::pbr::Mat::Cloth);
@@ -222,7 +230,7 @@ pub fn stage_beach(
                     .with_rotation(Quat::from_rotation_y(p.x * 0.7) * Quat::from_rotation_z(1.4)),
             ));
         }
-    } else if character.awakening != 1 {
+    } else if character.awakening > 1 && far {
         for (e, _) in &relics {
             commands.entity(e).despawn();
         }

@@ -473,6 +473,7 @@ fn main() -> AppExit {
                     .run_if(in_state(AppState::Playing)),
                 equipment::update_held_items,
                 equipment::stow_weapon_while_running,
+                equipment::first_person_weapon.after(equipment::update_held_items),
             ),
         )
         .add_systems(

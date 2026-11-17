@@ -1,0 +1,54 @@
+# Correzioni della beta v0.0.63, gruppo 4: la bisaccia attaccata alla schiena, l'arco visto in prima
+# persona dal lato giusto, il corpo dritto guardando in basso e gli oggetti dei rottami presenti
+# insieme alla pozza. Il nome comincia per z perché un copione nuovo non sposti le risoluzioni degli altri.
+# env: PLANET_ONE_SIZE=1920x1080
+god on
+ia off
+meteo sereno
+ora 11
+aspetta 2
+risveglio nuovo
+aspetta 2
+# Appena svegli i rottami ci sono già, accanto alla pozza.
+tp 38 3 83
+aspetta 2
+camera 70 35 7
+aspetta 1
+foto rottami-e-pozza
+risveglio eta adulto
+risveglio classe Mercante
+risveglio nome Lia
+aspetta 1
+dai arco
+dai frecce 10
+tp 0 3 30
+aspetta 2
+# Il Mercante ha la bisaccia nel riquadro 1 (la si indossa), l'arco nel 2.
+premi 1
+aspetta 0.5
+premi 2
+aspetta 0.5
+verifica arma contiene Bow
+# Terza persona, di spalle: la bisaccia sulla schiena, ferma e in corsa.
+camera 0 12 4
+aspetta 1
+foto bisaccia-ferma
+tieni w 3
+tieni shift 3
+aspetta 1.2
+foto bisaccia-corsa
+aspetta 2.5
+# Prima persona: l'arco nella sinistra, in basso.
+prima-persona
+aspetta 1
+foto arco-prima-persona
+tieni w 1.5
+tieni shift 1.5
+aspetta 1.8
+foto arco-dopo-corsa
+# Guardando in basso il corpo resta dritto.
+guarda 0 70
+aspetta 1
+foto guardo-in-basso
+prima-persona off
+esci

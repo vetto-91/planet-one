@@ -74,6 +74,70 @@ pub struct EnemyMind {
     pub shots: u32,
 }
 
+/// Quanto piega di lato un nemico che aggira un ostacolo (radianti).
+const DETOUR_ANGLE: f32 = 1.2;
+/// Secondi quasi fermi prima di provare ad aggirare, e durata dell'aggiramento.
+const STUCK_AFTER: f32 = 1.0;
+const DETOUR_SECS: f32 = 1.3;
+/// Aggiramenti falliti prima di passare oltre (se non visto).
+const DETOURS_BEFORE_HOP: u32 = 3;
+
+/// Un nemico bloccato contro un ostacolo (ADR 0059).
+#[derive(Component, Default, Debug)]
+pub struct Stuck {
+    /// Secondi passati quasi fermi.
+    still: f32,
+    /// Secondi rimasti dell'aggiramento in corso.
+    detour: f32,
+    /// Lato dell'aggiramento: +1 sinistra, -1 destra.
+    side: f32,
+    /// Aggiramenti già provati senza sbloccarsi.
+    tries: u32,
+}
+
+/// Cosa fare per sbloccarsi.
+#[derive(Debug, PartialEq)]
+pub enum Unstick {
+    None,
+    Detour,
+    Hop,
+}
+
+impl Stuck {
+    /// Un passo: `moved` metri fatti a fronte di `wanted`. Rende cosa fare.
+    pub fn step(&mut self, moved: f32, wanted: f32, dt: f32) -> Unstick {
+        if wanted <= 1e-4 {
+            return Unstick::None;
+        }
+        if moved < wanted * 0.25 {
+            self.still += dt;
+        } else {
+            self.still = (self.still - 2.0 * dt).max(0.0);
+            if self.detour <= 0.0 && self.still <= 0.0 {
+                self.tries = 0;
+            }
+        }
+        if self.still < STUCK_AFTER || self.detour > 0.0 {
+            return Unstick::None;
+        }
+        self.still = 0.0;
+        if self.tries >= DETOURS_BEFORE_HOP {
+            return Unstick::Hop;
+        }
+        self.tries += 1;
+        self.side = if self.tries % 2 == 1 { 1.0 } else { -1.0 };
+        self.detour = DETOUR_SECS;
+        Unstick::Detour
+    }
+}
+
+/// Il primo punto libero oltre l'ostacolo, lungo la direzione voluta (2,5–5 m più avanti).
+pub fn hop_spot(from: Vec3, dir: Vec3, free: impl Fn(Vec3) -> Option<Vec3>) -> Option<Vec3> {
+    [2.5f32, 3.5, 4.5, 5.5]
+        .into_iter()
+        .find_map(|d| free(from + dir * d))
+}
+
 /// Velocità del pattugliamento (m/s): a passo, non di corsa.
 pub const PATROL_SPEED: f32 = 1.5;
 /// Velocità dell'inseguimento (m/s).
@@ -690,11 +754,15 @@ pub fn dialog_walk_away(
 
 /// Patrol del nemico: si muove verso il waypoint corrente con MoveAndSlide.
 /// Gira in FixedUpdate come il player.
-#[allow(clippy::type_complexity)]
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn enemy_patrol(
+    mut commands: Commands,
     move_and_slide: MoveAndSlide,
+    spatial: SpatialQuery,
     time: Res<Time>,
+    field: Option<Res<crate::terrain::TerrainField>>,
     players: Query<&GlobalTransform, (With<Player>, Without<Enemy>)>,
+    cameras: Query<&GlobalTransform, (With<Camera3d>, Without<Enemy>)>,
     mut enemies: Query<
         (
             Entity,
@@ -703,12 +771,22 @@ pub fn enemy_patrol(
             &Collider,
             &mut PatrolState,
             &EnemyMind,
+            Option<&mut Stuck>,
         ),
         With<Enemy>,
     >,
 ) {
     let me = players.single().ok().map(|p| p.translation());
-    for (entity, mut transform, mut velocity, collider, mut patrol, mind) in &mut enemies {
+    let eye = cameras
+        .single()
+        .ok()
+        .map(|c| (c.translation(), *c.forward()));
+    let dt = time.delta_secs();
+    for (entity, mut transform, mut velocity, collider, mut patrol, mind, stuck) in &mut enemies {
+        let Some(mut stuck) = stuck else {
+            commands.entity(entity).insert(Stuck::default());
+            continue;
+        };
         let (target, speed) = match (mind.chase, me) {
             (true, Some(p)) => {
                 let flat = Vec3::new(
@@ -742,11 +820,19 @@ pub fn enemy_patrol(
             continue;
         }
 
-        // Velocità verso il waypoint + gravità per restare sul terreno.
-        let dir = horizontal.normalize();
+        // Velocità verso il waypoint + gravità per restare sul terreno. Durante un aggiramento la
+        // direzione piega di lato (ADR 0059).
+        let straight = horizontal.normalize();
+        let dir = if stuck.detour > 0.0 {
+            stuck.detour -= dt;
+            Quat::from_rotation_y(stuck.side * DETOUR_ANGLE) * straight
+        } else {
+            straight
+        };
         velocity.x = dir.x * speed;
         velocity.z = dir.z * speed;
         velocity.y -= 20.0 * time.delta_secs(); // stessa gravità del player
+        let before = transform.translation;
 
         let output = move_and_slide.move_and_slide(
             collider,
@@ -762,9 +848,105 @@ pub fn enemy_patrol(
         transform.translation = output.position;
         velocity.0 = output.projected_velocity;
 
+        // Fermo contro un ostacolo: prima prova ad aggirarlo, un lato e poi l'altro; se non basta,
+        // e il giocatore non lo vede, passa oltre (appoggiato a terra).
+        let moved = (transform.translation - before).xz().length();
+        match stuck.step(moved, speed * dt, dt) {
+            Unstick::Detour => {
+                info!("[NEMICO] bloccato: aggira l'ostacolo");
+            }
+            Unstick::Hop => {
+                let unseen = eye.is_none_or(|(at, fwd)| {
+                    let to = transform.translation - at;
+                    let ahead = to.normalize_or_zero().dot(fwd) > 0.45 && to.length() < 60.0;
+                    let in_sight = ahead
+                        && Dir3::new(to).is_ok_and(|d| {
+                            spatial
+                                .cast_ray(
+                                    at,
+                                    d,
+                                    to.length() - 0.6,
+                                    true,
+                                    &SpatialQueryFilter::from_excluded_entities([entity]),
+                                )
+                                .is_none()
+                        });
+                    !in_sight
+                });
+                if unseen
+                    && let Some(field) = field.as_ref()
+                    && let Some(spot) = hop_spot(transform.translation, straight, |p| {
+                        let ground = field.height_at(p.x, p.z);
+                        let lifted = Vec3::new(
+                            p.x,
+                            ground + (before.y - field.height_at(before.x, before.z)).max(0.9),
+                            p.z,
+                        );
+                        spatial
+                            .shape_intersections(
+                                collider,
+                                lifted,
+                                transform.rotation,
+                                &SpatialQueryFilter::from_excluded_entities([entity]),
+                            )
+                            .is_empty()
+                            .then_some(lifted)
+                    })
+                {
+                    info!(
+                        "[NEMICO] bloccato e non visto: passa oltre ({:.1} {:.1})",
+                        spot.x, spot.z
+                    );
+                    transform.translation = spot;
+                    velocity.0 = Vec3::ZERO;
+                    *stuck = Stuck::default();
+                }
+            }
+            Unstick::None => {}
+        }
+
         // Il fronte (-Z) guarda nella direzione di marcia.
         let target = Quat::from_rotation_y((-dir.x).atan2(-dir.z));
         let alpha = (10.0 * time.delta_secs()).clamp(0.0, 1.0);
         transform.rotation = transform.rotation.slerp(target, alpha);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_stuck_enemy_detours_both_ways_then_hops() {
+        let mut s = Stuck::default();
+        let dt = 0.1;
+        // Cammina bene: niente da fare.
+        for _ in 0..30 {
+            assert_eq!(s.step(0.4, 0.43, dt), Unstick::None);
+        }
+        // Fermo contro un muro: dopo un secondo aggira, prima a sinistra poi a destra.
+        let mut seen = Vec::new();
+        for _ in 0..200 {
+            match s.step(0.0, 0.43, dt) {
+                Unstick::None => {}
+                u => seen.push((u, s.side)),
+            }
+            s.detour = (s.detour - dt).max(0.0);
+            if seen.len() == 4 {
+                break;
+            }
+        }
+        assert_eq!(seen[0], (Unstick::Detour, 1.0));
+        assert_eq!(seen[1], (Unstick::Detour, -1.0));
+        assert_eq!(seen[2], (Unstick::Detour, 1.0));
+        assert_eq!(seen[3].0, Unstick::Hop);
+    }
+
+    #[test]
+    fn the_hop_lands_on_the_first_free_spot() {
+        let wall = |p: Vec3| (p.z < -3.0).then_some(p);
+        let at = hop_spot(Vec3::ZERO, Vec3::NEG_Z, wall).unwrap();
+        assert!((at.z + 3.5).abs() < 1e-5);
+        assert!(hop_spot(Vec3::ZERO, Vec3::NEG_Z, |_| None).is_none());
     }
 }

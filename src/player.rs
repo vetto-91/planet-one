@@ -491,8 +491,7 @@ const SWIM_LIFT: f32 = 0.0;
 /// - In 3a persona: ruota solo sull'asse Y verso la direzione di movimento
 ///   (comportamento standard RPG), oppure verso la direzione della camera
 ///   quando il player è fermo, così il "naso" punta verso il crosshair.
-/// - In 1a persona: il player è nascosto, ma la rotazione resta sincronizzata
-///   con yaw+pitch della camera (se mai riattivato).
+/// - In 1a persona: il corpo (senza testa) ruota con lo yaw della camera, sempre dritto.
 pub fn facing(
     mut visuals: Query<&mut Transform, With<PlayerVisual>>,
     players: Query<(&LinearVelocity, &GroundedState), With<Player>>,
@@ -501,9 +500,10 @@ pub fn facing(
 ) {
     let mode = orbit.mode;
 
-    // In 1a persona: il corpo segue yaw+pitch della camera (naso = crosshair).
+    // In 1a persona il corpo gira con lo sguardo ma resta dritto: guardando in basso non si piega
+    // in avanti (si vedrebbe la schiena; ADR 0059).
     if mode == crate::camera::CameraMode::FirstPerson {
-        let target = Quat::from_rotation_y(orbit.yaw) * Quat::from_rotation_x(-orbit.pitch);
+        let target = Quat::from_rotation_y(orbit.yaw);
         for mut transform in &mut visuals {
             let alpha = (12.0 * time.delta_secs()).clamp(0.0, 1.0);
             transform.rotation = transform.rotation.slerp(target, alpha);

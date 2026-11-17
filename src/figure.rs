@@ -169,12 +169,35 @@ fn on_character_ready(
     }
 }
 
-/// Sistema: aggancia alle ossa delle mani gli oggetti in attesa (armi, scudo, lancia, lanterna).
+/// Oggetto da agganciare all'osso della schiena (`spine_03`), tenendo la posa che ha rispetto al
+/// corpo: così segue il busto in ogni animazione (la bisaccia, ADR 0059).
+#[derive(Component)]
+pub struct AttachToBack;
+
+/// Sistema: aggancia alle ossa delle mani gli oggetti in attesa (armi, scudo, lancia, lanterna) e
+/// alla schiena quelli che ci vanno portati.
 pub fn attach_to_hands(
     mut commands: Commands,
     pending: Query<(Entity, &AttachToHand, &ChildOf)>,
+    backs: Query<(Entity, &Transform, &ChildOf), With<AttachToBack>>,
     bones: Query<&HandBones>,
+    globals: Query<&GlobalTransform>,
 ) {
+    for (e, local, parent) in &backs {
+        let Some(back) = bones.get(parent.parent()).ok().and_then(|b| b.back) else {
+            continue;
+        };
+        let (Ok(body), Ok(bone)) = (globals.get(parent.parent()), globals.get(back)) else {
+            continue;
+        };
+        // La stessa posa nel mondo, espressa nel riferimento dell'osso.
+        let world = body.affine() * local.compute_affine();
+        let rel = bone.affine().inverse() * world;
+        commands
+            .entity(e)
+            .remove::<AttachToBack>()
+            .insert((Transform::from_matrix(rel.into()), ChildOf(back)));
+    }
     for (e, hand, parent) in &pending {
         if let Ok(b) = bones.get(parent.parent()) {
             let bone = if hand.right { b.right } else { b.left };
