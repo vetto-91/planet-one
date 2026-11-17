@@ -24,6 +24,19 @@ pub const RELICS: [(Class, Vec2); 4] = [
     (Class::Merchant, Vec2::new(33.5, 87.5)),
 ];
 const REACH: f32 = 1.8;
+
+/// Detto il nome, chi l'ha chiesto risponde subito (ADR 0059): lo legge `entities::interact`.
+static GREET: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// C'è un saluto in attesa dopo il nome?
+pub fn greeting_pending() -> bool {
+    GREET.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+/// Il saluto è stato detto.
+pub fn greeting_done() {
+    GREET.store(false, std::sync::atomic::Ordering::Relaxed);
+}
 /// Punti statistica in più alla fine della creazione, da spendere nel pannello C.
 pub const BONUS_POINTS: u32 = 2;
 
@@ -312,6 +325,7 @@ fn answer(
             character.awakening = AWAKE;
             crate::save::rename_session(session, &name);
             session.notify(format!("Non sei più Nessuno: sei {name}"));
+            GREET.store(true, std::sync::atomic::Ordering::Relaxed);
             info!("[RISVEGLIO] nome: {name}");
             true
         }

@@ -336,7 +336,7 @@ fn list_models(dir: &Path) -> Vec<String> {
 }
 
 /// Sistema: cerca motore e modelli a intervalli.
-pub fn stt_scan(time: Res<Time>, settings: Res<AudioSettings>, mut stt: ResMut<SttState>) {
+pub fn stt_scan(time: Res<Time<Real>>, settings: Res<AudioSettings>, mut stt: ResMut<SttState>) {
     if !settings.stt_enabled {
         if stt.status != SttStatus::Off {
             stt.status = SttStatus::Off;

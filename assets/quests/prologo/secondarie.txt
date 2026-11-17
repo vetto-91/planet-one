@@ -30,6 +30,7 @@ quando: parla Gino
 
 [tappa]
 obiettivo: Scaccia i due predoni dal bosco attorno al mulino
+dove: 0.5 -66
 quando: sbloccato predoni-mulino-vinti
 pensiero: Il bosco attorno al mulino torna quieto. Sopra, la pala ricomincia a girare.
 
@@ -290,7 +291,7 @@ quando: parla Agnese
 scegli: L'infuso del sogno, per vedere più lontano => stat saggezza 1; fiducia Agnese 4
 scegli: L'infuso della memoria, per ricordare i segni => stat intelligenza 1; fiducia Agnese 4
 > … Dove l'hai trovata? Mi cadde il giorno in cui arrivai. Dal nord. Non lo sa nessuno.
-> Ecco l'infuso. E tieni la bocca chiusa, viaggiatore: certe cose si dicono a tempo.
+> Ecco l'infuso. E tieni la bocca chiusa, {nome}: certe cose si dicono a tempo.
 dai: pozione del mulo 1
 monete: 10
 
@@ -374,6 +375,7 @@ pensiero: Sotto la grata, un cavo di rame grosso come un polso. Corre dritto ver
 
 [tappa]
 obiettivo: Apri con la chiave il quadro di rame dietro la stufa del Viandante
+dove: 6.5 0.7
 quando: sbloccato quadro-rame
 pensiero: Dentro il quadro, tre fili scendono nel pavimento verso la piazza. Non c'è un fuoco, non c'è una ruota: la luce arriva già fatta, da qualche parte.
 
@@ -419,11 +421,13 @@ monete: 8
 
 [tappa]
 obiettivo: Duello amichevole con Dino fuori da Porta Sud: tre colpi a segno, senza fargli male
+dove: 0.4 46.5
 quando: sbloccato duello-dino
 pensiero: Dino para tardi e ride presto. Al terzo colpo abbassa la lancia: ha capito dove sbaglia, e anche tu.
 
 [tappa]
 obiettivo: Al tramonto, aiuta Dino a fermare i predoni sulla strada del Sud, sotto gli occhi di Aldo
+dove: 0 50
 quando: sbloccato predoni-sud-vinti
 pensiero: Due predoni a terra, e Dino ancora in piedi accanto a te. Il sergente ha visto tutto.
 
@@ -497,6 +501,7 @@ pensiero: Una stanza di pietra sotto la piazza. La colonna del pozzo scende in u
 
 [tappa]
 obiettivo: Tocca l'acqua della vasca, sotto il pozzo (E)
+dove: -1.2 10
 quando: sbloccato risonanza
 pensiero: Tutta la camera ha cantato, e il cavo si è acceso fino al muro. La lamina dice dove va: a nord, sotto il mare. Le ronde vedevano la croce; qui sotto c'è la strada.
 monete: 20
@@ -559,6 +564,7 @@ dai: grimaldello 3
 
 [tappa]
 obiettivo: Apri i tre bauli chiusi a chiave della caserma, con i grimaldelli
+dove: 7.5 -16.5
 quando: conta serrature:caserma 3
 pensiero: Tre serrature hanno ceduto. Guardia Carlo vorrà saperlo.
 
@@ -579,6 +585,7 @@ monete: 15
 
 [tappa]
 obiettivo: Infila di nascosto quindici monete nella tasca di Beppe (alle sue spalle, tasto G)
+dove: Beppe
 quando: conta infilate:beppe 15
 pensiero: Beppe non si è accorto di nulla. Osvaldo sarà contento.
 
@@ -610,11 +617,13 @@ pensiero: Quattro paletti nell'erba, e il mare là in fondo. Qui può stare una 
 
 [tappa]
 obiettivo: Posa le fondamenta: dieci pietre (tasto R sul terreno)
+dove: -40 40
 quando: conta casa 1
 pensiero: Le fondamenta tengono. Ora servono il legname e altra pietra per i muri.
 
 [tappa]
 obiettivo: Alza la casa: sedici tronchi e sei pietre
+dove: -40 40
 quando: conta casa 2
 pensiero: Ha una porta, un tetto e un focolare. È casa mia.
 
@@ -633,6 +642,7 @@ sblocca: casa-pietra
 
 [tappa]
 obiettivo: Amplia la casa in pietra: dodici pietre e sei tronchi (tasto R sul terreno)
+dove: -40 40
 quando: conta casa 3
 pensiero: Muri di pietra, scuri alle finestre, il camino che tira e una luce con l'interruttore. Una casa da cui tornare.
 
@@ -665,6 +675,7 @@ pensiero: Eccoli: tre cerchi di ferro sospesi sull'acqua, uno dietro l'altro.
 
 [tappa]
 obiettivo: Centra i tre anelli con tre frecce di fila
+dove: 81 -8
 quando: conta arco 1
 pensiero: Tre rintocchi di ferro, uno dopo l'altro. Silvia vorrà saperlo.
 

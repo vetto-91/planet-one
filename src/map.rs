@@ -138,7 +138,7 @@ pub fn exit_map(
 /// Zoom (rotella, +/-) e spostamento (frecce/WASD, trascinamento, C = sul giocatore).
 #[allow(clippy::too_many_arguments)]
 pub fn map_zoom(
-    time: Res<Time>,
+    time: Res<Time<Real>>,
     keys: Res<ButtonInput<KeyCode>>,
     buttons: Res<ButtonInput<MouseButton>>,
     mut wheel: MessageReader<MouseWheel>,

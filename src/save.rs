@@ -116,6 +116,11 @@ pub struct SaveData {
     /// Vigore e magia (ADR 0039); negativo = non salvato, si parte pieni.
     pub vigor: f32,
     pub magic: f32,
+    /// Secondi rimasti della sfera di luce e dello scudo etereo.
+    pub light: f32,
+    pub ward: f32,
+    /// La missione seguita nel diario (ADR 0059).
+    pub tracked: Option<String>,
     pub inventory: Vec<(ItemKind, u32)>,
     pub hotbar: [Option<ItemKind>; 10],
     pub weapon: Option<ItemKind>,
@@ -357,6 +362,9 @@ impl SaveData {
             health: 100.0,
             vigor: -1.0,
             magic: -1.0,
+            light: 0.0,
+            ward: 0.0,
+            tracked: None,
             inventory: Vec::new(),
             hotbar: [None; 10],
             weapon: None,
@@ -524,6 +532,15 @@ impl SaveData {
         if self.vigor >= 0.0 {
             line(format!("vigore = {:.1}", self.vigor));
             line(format!("magia = {:.1}", self.magic));
+        }
+        if self.light > 0.0 {
+            line(format!("luce = {:.1}", self.light));
+        }
+        if self.ward > 0.0 {
+            line(format!("scudo_etereo = {:.1}", self.ward));
+        }
+        if let Some(id) = &self.tracked {
+            line(format!("segue = {id}"));
         }
         line(String::new());
         line("# oggetto = quantità".into());
@@ -894,6 +911,9 @@ impl SaveData {
                     "vita" => self.health = v.parse().ok()?,
                     "vigore" => self.vigor = v.parse().ok()?,
                     "magia" => self.magic = v.parse().ok()?,
+                    "luce" => self.light = v.parse().ok()?,
+                    "scudo_etereo" => self.ward = v.parse().ok()?,
+                    "segue" => self.tracked = Some(v.to_string()),
                     _ => return None,
                 }
             }
@@ -1313,6 +1333,8 @@ pub struct HeroParams<'w, 's> {
     equip: ResMut<'w, Equipment>,
     orbit: ResMut<'w, crate::camera::OrbitCamera>,
     cheats: ResMut<'w, crate::shell::Cheats>,
+    magic: ResMut<'w, crate::magic::Magic>,
+    tracked: ResMut<'w, crate::quests::Tracked>,
     players: Query<
         'w,
         's,
@@ -1419,6 +1441,9 @@ fn collect(kind: SaveKind, session: &Session, hero: &HeroParams, world: &WorldPa
     d.wounded = world.companion_state.wounded.clone();
     d.vigor = hero.vitals.vigor;
     d.magic = hero.vitals.magic;
+    d.light = hero.magic.light;
+    d.ward = hero.magic.ward;
+    d.tracked = hero.tracked.0.clone();
     d.region = crate::region::current();
     d.elsewhere = world
         .memory
@@ -1592,6 +1617,10 @@ fn apply(d: &SaveData, hero: &mut HeroParams, world: &mut WorldParams) {
             vitals.magic = d.magic.clamp(0.0, vitals.magic_max);
         }
         *hero.vitals = vitals;
+        // La sfera di luce e lo scudo continuano dal punto in cui erano (`magic::ensure_orb`).
+        hero.magic.light = d.light;
+        hero.magic.ward = d.ward;
+        hero.tracked.0 = d.tracked.clone();
         hero.orbit.yaw = d.yaw;
         hero.orbit.pitch = d.pitch;
         hero.orbit.distance = d.distance;
@@ -1917,6 +1946,8 @@ pub fn finish_loading(
             *hero.equip = Equipment::default();
             *hero.effects = ActiveEffects::default();
             *hero.cheats = Default::default();
+            *hero.magic = Default::default();
+            *hero.tracked = Default::default();
             *world.clock = GameClock::default();
             world.weather.forced = None;
             world.weather.snow_cover = 0.0;

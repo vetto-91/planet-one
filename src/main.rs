@@ -231,6 +231,7 @@ fn main() -> AppExit {
         .init_resource::<camera::OrbitCamera>()
         .init_resource::<menu::ShowFps>()
         .init_resource::<menu::HudHidden>()
+        .init_resource::<quests::Tracked>()
         .init_resource::<entities::DialogState>()
         .init_resource::<entities::NearestInteract>()
         .init_resource::<inventory::Inventory>()
@@ -497,6 +498,8 @@ fn main() -> AppExit {
                 .before(entities::interact),
         )
         .add_systems(Update, menu::toggle_hud.run_if(in_state(AppState::Playing)))
+        // Menu e pannelli fermano il tempo del mondo (ADR 0059).
+        .add_systems(Update, menu::pause_world.run_if(state_changed::<AppState>))
         // F3: toggle debug wireframe dei collider (PhysicsDebugPlugin).
         .add_systems(
             Update,

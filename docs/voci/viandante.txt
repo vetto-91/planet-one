@@ -6,18 +6,18 @@ Suggerimento di tono (modificabile): voce adulta, calda e un po' roca, da negozi
 File generato da scripts/export_voci.py a partire da assets/quests/denaro_rubato/dialoghi.txt.
 Non modificare a mano: cambia i dialoghi nel gioco e rilancia lo script.
 
-V-001 | Primo incontro, quest da accettare (riga 1/3) | Salve, viaggiatore! Un ladro mi ha rubato tutte le monete d'oro.
+V-001 | Primo incontro, quest da accettare (riga 1/3) | Salve, {nome}! Un ladro mi ha rubato tutte le monete d'oro.
 V-002 | Primo incontro, quest da accettare (riga 2/3) | Era un uomo alto e rosso, si nasconde lontano, oltre le colline.
 V-003 | Primo incontro, quest da accettare (riga 3/3) | Uccidilo e riporta qui il mio denaro. Ti aspetto!
 V-004 | Quest accettata, ladro vivo, riga 1/2: COMPONIBILE (vedi sotto) | Il ladro si trova a {direzione}, circa {N} metri.
-V-005 | Quest accettata, ladro vivo, riga 2/2 | Non lasciarlo scappare, viaggiatore!
+V-005 | Quest accettata, ladro vivo, riga 2/2 | Non lasciarlo scappare, {nome}!
 V-006 | Quest accettata, direzione del ladro non disponibile (riga 1/2) | Il ladro è là fuori... uccidilo e raccogli le mie 12 monete.
 V-007 | Quest accettata, direzione del ladro non disponibile (riga 2/2) | Poi torna qui con il bottino!
 V-008 | Ladro sconfitto, da raccogliere le monete (riga 1/2) | Il ladro è stato sconfitto? Ottimo lavoro!
 V-009 | Ladro sconfitto, da raccogliere le monete (riga 2/2) | Raccogli le mie 12 monete e torna qui.
-V-010 | Monete riportate: ricompensa (riga 1/2) | Le mie monete! Grazie, viaggiatore!
+V-010 | Monete riportate: ricompensa (riga 1/2) | Le mie monete! Grazie, {nome}!
 V-011 | Monete riportate: ricompensa (riga 2/2) | Ecco 5 monete per il tuo aiuto.
-V-012 | Quest completata, ogni dialogo successivo (riga 1/1) | Grazie ancora, viaggiatore. Il ladro non darà più fastidio a nessuno.
+V-012 | Quest completata, ogni dialogo successivo (riga 1/1) | Grazie ancora, {nome}. Il ladro non darà più fastidio a nessuno.
 V-013 | Il giocatore si allontana durante il dialogo (fumetto) | Ok, ciao!
 
 --- Testi componibili (direzione e distanza del ladro) ---
@@ -42,7 +42,7 @@ V-027 | Distanza | circa 55 metri
 V-028 | Distanza | circa 60 metri
 
 --- Opzionali: battute di riserva (nel codice, usate solo se mancano sezioni) ---
-V-029 | Riserva, riga 1/4 (solo se mancano sezioni) | Salve, viaggiatore! Benvenuto su Planet One.
+V-029 | Riserva, riga 1/4 (solo se mancano sezioni) | Salve, {nome}! Benvenuto su Planet One.
 V-030 | Riserva, riga 2/4 (solo se mancano sezioni) | Le colline qui intorno sono piene di sorprese... e di nemici.
 V-031 | Riserva, riga 3/4 (solo se mancano sezioni) | Prova a saltare con Space mentre corri: il coyote time ti aiuta!
 V-032 | Riserva, riga 4/4 (solo se mancano sezioni) | Se premi Esc trovi il menu. Buona fortuna!

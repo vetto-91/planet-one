@@ -4,7 +4,7 @@ carattere: È il prete di Fontevivo: pacato, saggio e gentile, si prende cura de
 voce: it_IT-riccardo-x_low
 velocita: 1.12
 stile: Parla con calma e dolcezza, con frasi misurate.
-saluto: Pace a voi, viaggiatore. Che il cammino vi sia lieve. / Benvenuto a Fontevivo. La chiesa è sempre aperta a chi cerca riposo.
+saluto: Pace a voi, {nome}. Che il cammino vi sia lieve. / Benvenuto a Fontevivo. La chiesa è sempre aperta a chi cerca riposo.
 
 [sa]
 - La chiesa, a ovest della piazza, ha un campanile con una campana che suona alle ore.

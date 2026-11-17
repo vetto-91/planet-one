@@ -262,7 +262,7 @@ const DUCK_TAU: f32 = 0.25;
 
 /// Sistema: porta `MusicDuck.level` verso `DUCK_LEVEL` mentre c'è una voce, altrimenti verso 1.
 pub fn update_music_duck(
-    time: Res<Time>,
+    time: Res<Time<Real>>,
     voice: Res<crate::voice::VoiceQueue>,
     clips: Query<(), With<crate::voice::VoiceClip>>,
     mut duck: ResMut<MusicDuck>,
@@ -327,7 +327,7 @@ pub fn start_music(
 
 /// Dissolvenza incrociata giorno/notte e volume delle musiche (impostazioni e ducking).
 pub fn apply_music_volume(
-    time: Res<Time>,
+    time: Res<Time<Real>>,
     clock: Res<crate::daynight::GameClock>,
     settings: Res<AudioSettings>,
     duck: Res<MusicDuck>,

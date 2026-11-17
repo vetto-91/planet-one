@@ -103,6 +103,10 @@ const HELP: &[(&str, &str)] = &[
     ("missioni [on|off]", "storia del Prologo e secondarie"),
     ("missione <id> <tappa>", "porta una missione a una tappa"),
     (
+        "segui <id|auto>",
+        "la missione seguita da bussola, segnalino e TAB",
+    ),
+    (
         "veloce [luogo]",
         "viaggio veloce a un luogo scoperto (senza nome: l'elenco)",
     ),
@@ -237,6 +241,7 @@ pub enum Cmd {
     /// Missioni del Prologo: accese/spente, o salto a una tappa.
     Missions(Option<bool>),
     Mission(String, usize),
+    Follow(Option<String>),
     /// Viaggio in un'altra regione del mondo.
     Region(crate::region::Region),
     God(Option<bool>),
@@ -400,6 +405,11 @@ pub fn parse(line: &str) -> Result<Cmd, String> {
             (Some(id), Some(step)) if step >= 1 => Ok(Cmd::Mission((*id).to_string(), step - 1)),
             _ => Err("uso: missione <mp01|mp03|mp04|mp05> <tappa da 1>".into()),
         },
+        "segui" | "follow" => Ok(Cmd::Follow(
+            args.first()
+                .filter(|a| **a != "auto")
+                .map(|a| (*a).to_string()),
+        )),
         "uccidi" | "kill" => Ok(Cmd::Kill(
             args.first().and_then(|a| a.parse().ok()).unwrap_or(30.0),
         )),
@@ -692,6 +702,7 @@ pub struct ShellCtx<'w, 's> {
     awakening: ResMut<'w, crate::awakening::Awakening>,
     vitals: ResMut<'w, crate::vitals::Vitals>,
     journal_tab: ResMut<'w, crate::menu::JournalTab>,
+    tracked: ResMut<'w, crate::quests::Tracked>,
     fast_travel: ResMut<'w, crate::places::FastTravel>,
     diagnostics: Res<'w, bevy::diagnostic::DiagnosticsStore>,
     every: Query<'w, 's, Entity>,
@@ -965,6 +976,13 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
                     .map_or(String::new(), |(g, _)| g.clone());
                 shell.say(format!("  {} — {}", e.title, goal));
             }
+        }
+        Cmd::Follow(id) => {
+            shell.say(match &id {
+                Some(id) => format!("missione seguita: {id}"),
+                None => "missione seguita: la prima della storia".to_string(),
+            });
+            ctx.tracked.0 = id;
         }
         Cmd::Mission(id, step) => match ctx.missions.jump(&id, step) {
             Ok(text) | Err(text) => shell.say(text),

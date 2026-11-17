@@ -34,6 +34,7 @@ quando: parla Lino il carrettiere
 
 [tappa]
 obiettivo: Difendi Lino dai due predoni
+dove: 1.7 -24
 quando: sbloccato predoni-vinti
 pensiero: I predoni sono a terra. Lino ha ancora il bastone alzato, e le mani che tremano.
 
@@ -65,11 +66,13 @@ tipo: evento
 
 [tappa]
 obiettivo: Il bosco a est del pascolo, di giorno: libera la pecora dai rovi, senz'armi
+dove: 46 28
 quando: sbloccato pecora-liberata
 pensiero: Una pecora impigliata nei rovi. La liberi con le mani, piano, e lei ti viene dietro. Sa dov'è il gregge meglio di te.
 
 [tappa]
 obiettivo: Riportala al pascolo
+dove: 34 38
 quando: sbloccato pecora-al-gregge
 pensiero: Rientra tra le altre senza voltarsi. Sul recinto qualcuno ha lasciato un fagotto per chi riporta le bestie.
 dai: mela 2

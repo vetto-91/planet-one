@@ -480,8 +480,13 @@ pub fn update_thief_hint(
 
 /// Battute del Viandante (righe, scelte) in base alla fase; i testi vengono
 /// dal file `dialoghi.txt`. Le scelte compaiono solo alla prima richiesta.
-pub fn npc_dialog(quest: &QuestState, d: &Dialogs) -> (Vec<String>, Vec<String>, Vec<Vec<String>>) {
+pub fn npc_dialog(
+    quest: &QuestState,
+    d: &Dialogs,
+    player: &str,
+) -> (Vec<String>, Vec<String>, Vec<Vec<String>>) {
     let vars = [
+        ("nome", player.to_string()),
         ("total", quest.coins_total.to_string()),
         ("n", quest.coins_collected.to_string()),
         ("reward", REWARD_COINS.to_string()),
@@ -584,6 +589,12 @@ pub fn journal_entry(quest: &QuestState, d: &Dialogs) -> Option<QuestEntry> {
         _ => "obiettivo_ladro",
     };
     Some(QuestEntry {
+        // È la MP-02 della storia del Prologo (ADR 0034).
+        id: "denaro_rubato".to_string(),
+        kind: super::QuestKind::Main,
+        // Il ladro e le monete si muovono: la bussola li cerca da sé (`menu::quest_target`).
+        target: matches!(stage, QuestStage::Returning)
+            .then(|| super::Target::Npc("Viandante".to_string())),
         title: d.text("diario_titolo", &vars),
         summary,
         status: if stage == QuestStage::Completed {

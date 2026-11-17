@@ -107,7 +107,7 @@ pub fn departure_lines(how: &str, helmsman: bool, farewell: bool) -> Vec<String>
 
 /// Sistema: avanza la scena e, alla fine, parte il viaggio.
 pub fn run_cutscene(
-    time: Res<Time>,
+    time: Res<Time<Real>>,
     mut cutscene: ResMut<Cutscene>,
     mut travel: ResMut<crate::save::TravelRequest>,
     mut session: ResMut<crate::save::Session>,

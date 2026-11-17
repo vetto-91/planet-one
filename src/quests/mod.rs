@@ -202,12 +202,72 @@ pub enum QuestStatus {
     Completed,
 }
 
+/// Le quattro famiglie di missioni del diario (ADR 0059).
+#[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Ord)]
+pub enum QuestKind {
+    /// La storia principale (il Prologo).
+    Main,
+    /// Le missioni secondarie, proposte dagli abitanti.
+    Side,
+    /// Gli eventi casuali legati a luoghi, ore e meteo.
+    Event,
+    /// Missioni generate dall'IA locale (ancora nessuna).
+    Ai,
+}
+
+impl QuestKind {
+    pub const ALL: [QuestKind; 4] = [Self::Main, Self::Side, Self::Event, Self::Ai];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Main => "Storia principale",
+            Self::Side => "Missioni secondarie",
+            Self::Event => "Eventi",
+            Self::Ai => "Generate dall'IA",
+        }
+    }
+}
+
+/// Dove porta la tappa in corso: un punto (x, z) o un abitante, cercato per nome.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Target {
+    At(Vec2),
+    Npc(String),
+}
+
 /// Voce del diario (e del pannello TAB) di una quest.
 pub struct QuestEntry {
+    /// Identificativo stabile (id della missione, `denaro_rubato`): serve a seguirla.
+    pub id: String,
+    pub kind: QuestKind,
     pub title: String,
     pub summary: String,
     pub status: QuestStatus,
     pub objectives: Vec<(String, ObjState)>,
+    /// Dove andare per la tappa in corso, se si sa.
+    pub target: Option<Target>,
+}
+
+/// La missione seguita (bussola, segnalino e TAB). Vuota: la prima della storia ancora aperta.
+#[derive(Resource, Default, Clone, Debug, PartialEq)]
+pub struct Tracked(pub Option<String>);
+
+impl Tracked {
+    /// La voce seguita: quella scelta se è ancora aperta, altrimenti la prima aperta della storia
+    /// principale, poi la prima aperta di qualunque tipo.
+    pub fn pick<'a>(&self, entries: &'a [QuestEntry]) -> Option<&'a QuestEntry> {
+        let open = |e: &&QuestEntry| e.status == QuestStatus::Active;
+        self.0
+            .as_ref()
+            .and_then(|id| entries.iter().filter(open).find(|e| e.id == *id))
+            .or_else(|| {
+                entries
+                    .iter()
+                    .filter(open)
+                    .find(|e| e.kind == QuestKind::Main)
+            })
+            .or_else(|| entries.iter().find(open))
+    }
 }
 
 /// Voci del diario: solo le quest accettate. Una riga per quest registrata.
@@ -227,8 +287,9 @@ pub fn journal_entries(
 pub fn npc_dialog(
     quest: &QuestState,
     texts: &QuestTexts,
+    player: &str,
 ) -> (Vec<String>, Vec<String>, Vec<Vec<String>>) {
-    denaro_rubato::npc_dialog(quest, &texts.denaro_rubato)
+    denaro_rubato::npc_dialog(quest, &texts.denaro_rubato, player)
 }
 
 // ---------------------------------------------------------------------------

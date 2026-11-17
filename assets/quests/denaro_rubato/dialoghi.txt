@@ -14,7 +14,7 @@
 # --- Dialoghi del Viandante, per fase della quest ---
 
 [idle]
-Salve, viaggiatore! Un ladro mi ha rubato tutte le monete d'oro.
+Salve, {nome}! Un ladro mi ha rubato tutte le monete d'oro.
 Era un uomo alto e rosso, si nasconde lontano, oltre le colline.
 Uccidilo e riporta qui il mio denaro. Ti aspetto!
 ? Sì, ti aiuto
@@ -22,7 +22,7 @@ Uccidilo e riporta qui il mio denaro. Ti aspetto!
 
 [seek_thief]
 Il ladro si trova a {hint}.
-Non lasciarlo scappare, viaggiatore!
+Non lasciarlo scappare, {nome}!
 
 [seek_thief_nohint]
 Il ladro è là fuori... uccidilo e raccogli le mie {total} monete.
@@ -33,11 +33,11 @@ Il ladro è stato sconfitto? Ottimo lavoro!
 Raccogli le mie {total} monete e torna qui.
 
 [returning]
-Le mie monete! Grazie, viaggiatore!
+Le mie monete! Grazie, {nome}!
 Ecco {reward} monete per il tuo aiuto.
 
 [completed]
-Grazie ancora, viaggiatore. Il ladro non darà più fastidio a nessuno.
+Grazie ancora, {nome}. Il ladro non darà più fastidio a nessuno.
 
 # --- Battute singole (fumetti sopra la testa) ---
 
@@ -111,7 +111,7 @@ Ecco {reward} monete per te. E questa tienila: è la Moneta Madre. Un giorno, a 
 [returning_patto]
 Sei monete. Solo sei.
 E il ladro è scappato con il resto, dici. Capisco.
-Il mare restituisce quello che vuole, viaggiatore. Anche le bugie.
+Il mare restituisce quello che vuole, {nome}. Anche le bugie.
 
 # …quando il ladro è stato sconfitto: le scelte della consegna.
 [returning_scelte]

@@ -1,0 +1,66 @@
+# Correzioni della beta v0.0.63, gruppo 3: la missione seguita e dove porta (bussola, segnalino, TAB),
+# Gaspare che apre da sé la casella del nome e risponde col nome, la sfera di luce salvata e la pausa
+# vera nei menu. Il nome comincia per z perché un copione nuovo non sposti le risoluzioni degli altri.
+# env: PLANET_ONE_SIZE=1920x1080
+god on
+ia off
+meteo sereno
+ora 9
+aspetta 2
+risveglio nuovo
+aspetta 2
+# Appena svegli la storia è seguita e porta alla pozza.
+verifica /interfaccia/seguita/id = mp01
+verifica /interfaccia/seguita/verso/0 = 34
+foto risveglio-segnalino
+tieni tab 3
+aspetta 1
+foto risveglio-tab
+aspetta 2
+risveglio eta adulto
+aspetta 1
+verifica /interfaccia/seguita/verso/0 = 30.5
+risveglio classe Esploratore
+aspetta 1
+verifica /interfaccia/seguita/verso = Gaspare
+# Gaspare chiede il nome: senza «Arrivederci» la casella si apre alla fine del dialogo.
+tp gaspare
+aspetta 1
+attendi npc:gaspare:modo = Ready 60
+davanti gaspare
+aspetta 0.5
+guarda gaspare
+aspetta 1
+premi e
+aspetta 1
+avanza
+aspetta 1
+verifica app = Awakening
+risveglio nome Lia
+aspetta 1
+verifica dialogo = true
+verifica /dialogo/riga contiene Lia
+avanza
+aspetta 1
+verifica /missioni/mp01 = 5
+verifica /interfaccia/seguita/verso/0 = 0.4
+# La sfera di luce resta dopo un salvataggio e un caricamento.
+incantesimo luce
+premi q
+aspetta 1
+verifica /interfaccia/sfere = 1
+premi f5
+aspetta 2
+premi f9
+aspetta 4
+verifica /interfaccia/luce > 100
+verifica /interfaccia/sfere = 1
+# Nel menu il mondo si ferma; si riparte tornando a giocare.
+premi esc
+aspetta 1
+verifica app = Paused
+verifica /interfaccia/mondo_in_pausa = true
+premi esc
+aspetta 1
+verifica /interfaccia/mondo_in_pausa = false
+esci

@@ -278,6 +278,14 @@ impl Default for Character {
 }
 
 impl Character {
+    /// Come lo chiamano gli abitanti: il nome scelto, oppure «viaggiatore» finché non ne ha uno.
+    pub fn address(&self) -> String {
+        match self.name.trim() {
+            "" | "Viaggiatore" | "Nessuno" => "viaggiatore".to_string(),
+            name => name.to_string(),
+        }
+    }
+
     /// Il naufrago appena arrivato: senza nome, senza età né indole (le sceglie sulla spiaggia).
     pub fn castaway() -> Self {
         Self {

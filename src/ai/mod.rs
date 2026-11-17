@@ -293,7 +293,7 @@ impl AiState {
 }
 
 /// Sistema: controlla il servizio a intervalli e scarica il modello quando si spegne la IA.
-pub fn ai_probe(time: Res<Time>, settings: Res<AudioSettings>, mut ai: ResMut<AiState>) {
+pub fn ai_probe(time: Res<Time<Real>>, settings: Res<AudioSettings>, mut ai: ResMut<AiState>) {
     if !settings.ai_enabled {
         if ai.was_enabled {
             ai.was_enabled = false;
@@ -455,6 +455,7 @@ fn request_reply(chat: &mut AiChat, ai: &AiState, settings: &AudioSettings) {
 }
 
 /// OnEnter(Chat): costruisce il prompt e chiede il saluto iniziale.
+#[allow(clippy::too_many_arguments)]
 pub fn ai_enter_chat(
     mut chat: ResMut<AiChat>,
     ai: Res<AiState>,
@@ -463,12 +464,20 @@ pub fn ai_enter_chat(
     clock: Res<GameClock>,
     karma: Res<crate::karma::Karma>,
     secrets: Res<crate::karma::Secrets>,
+    character: Res<crate::character::Character>,
 ) {
     let p = persona::load(&chat.npc_name);
     chat.voice = p.voice.clone();
     chat.speed = p.speed;
     let mut context = context_line(&quest, &clock);
     context.push_str(&bond_line(&chat.npc_name, &karma, &secrets));
+    // Il nome del protagonista, perché lo chiami per nome (ADR 0059).
+    let who = character.address();
+    if who != "viaggiatore" {
+        context.push_str(&format!(
+            " Il giocatore si chiama {who}: quando ti rivolgi a lui, chiamalo per nome."
+        ));
+    }
     chat.system = persona::system_prompt(&p, &context);
     request_reply(&mut chat, &ai, &settings);
     info!("[AI] chat con {} avviata", chat.npc_name);
@@ -481,7 +490,7 @@ pub fn ai_handle_action(
     settings: Res<AudioSettings>,
     mut next: ResMut<NextState<AppState>>,
     mut voice: ResMut<crate::voice::VoiceQueue>,
-    time: Res<Time>,
+    time: Res<Time<Real>>,
 ) {
     let Some(action) = chat.action.take() else {
         return;

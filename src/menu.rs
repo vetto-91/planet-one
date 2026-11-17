@@ -52,6 +52,40 @@ pub fn toggle_hud(
     }
 }
 
+/// Gli stati in cui il mondo è fermo: menu, pannelli, mappa, chat, shell e nota di F12.
+pub fn world_paused(state: &AppState) -> bool {
+    matches!(
+        state,
+        AppState::Paused
+            | AppState::Journal
+            | AppState::Wait
+            | AppState::Map
+            | AppState::Chat
+            | AppState::Inventory
+            | AppState::Character
+            | AppState::Container
+            | AppState::Lockpick
+            | AppState::Awakening
+            | AppState::Shell
+            | AppState::Shop
+            | AppState::BugNote
+    )
+}
+
+/// Sistema: ferma il tempo del mondo (animazioni, fisica, particelle, abitanti) quando si apre un
+/// menu o un pannello e lo fa ripartire in gioco (ADR 0059). I pannelli, la musica, gli avvisi e
+/// il pilota automatico contano il tempo reale.
+pub fn pause_world(state: Res<State<AppState>>, mut time: ResMut<Time<Virtual>>) {
+    let stop = world_paused(state.get());
+    if stop && !time.is_paused() {
+        time.pause();
+        info!("[TIME] mondo in pausa ({:?})", state.get());
+    } else if !stop && time.is_paused() {
+        time.unpause();
+        info!("[TIME] mondo ripartito");
+    }
+}
+
 /// Toggle del menu: `Esc` alterna `Playing` ↔ `Paused` in entrambe le direzioni.
 ///
 /// La finestra di Bevy NON si chiude con Esc perché `close_on_escape`
@@ -213,12 +247,8 @@ pub struct UiQueries<'w, 's> {
     >,
     pub coins_pos:
         Query<'w, 's, &'static GlobalTransform, With<crate::quests::denaro_rubato::QuestCoin>>,
-    pub npc_pos: Query<
-        'w,
-        's,
-        &'static GlobalTransform,
-        (With<crate::entities::Npc>, Without<crate::player::Player>),
-    >,
+    pub tracked: ResMut<'w, crate::quests::Tracked>,
+    pub field: Option<Res<'w, crate::terrain::TerrainField>>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -252,7 +282,16 @@ pub fn ui(
     match state.get() {
         AppState::Playing => {
             let hidden = q.hud_hidden.0;
-            draw_status(ctx, &q, &inventory, &quest, &orbit, &show_fps, &diagnostics);
+            draw_status(
+                ctx,
+                &q,
+                &inventory,
+                &quest,
+                &texts,
+                &orbit,
+                &show_fps,
+                &diagnostics,
+            );
             // Prompt di interazione: appare quando il player e' vicino a un
             // NPC interagibile (il sistema entities::interact gestisce il range).
             // Mostriamo "[E] Parla" quando un dialogo non e' aperto e c'e'
@@ -306,21 +345,27 @@ pub fn ui(
             if let Some((text, _t)) = &quest.title {
                 draw_title_banner(ctx, text);
             }
-            // Obiettivi (TAB): solo a quest accettata e non ancora completata.
-            if keys.pressed(KeyCode::Tab)
-                && quest.accepted
-                && quest.stage != QuestStage::Completed
-                && let Some(entry) = crate::quests::journal_entries(&quest, &texts, &q.missions)
-                    .into_iter()
-                    .find(|e| e.status == QuestStatus::Active)
-            {
-                draw_objectives(ctx, &entry);
+            // Obiettivi (TAB): la missione seguita, con le tappe fatte e quella in corso.
+            if keys.pressed(KeyCode::Tab) {
+                let entries = crate::quests::journal_entries(&quest, &texts, &q.missions);
+                if let Some(entry) = q.tracked.pick(&entries) {
+                    draw_objectives(ctx, entry);
+                }
             }
             draw_barks(ctx, &barks, &q.transforms, &q.cameras, &q.anchors);
         }
         AppState::Paused => {
             // In pausa restano visibili ora, data, bussola, coordinate e FPS.
-            draw_status(ctx, &q, &inventory, &quest, &orbit, &show_fps, &diagnostics);
+            draw_status(
+                ctx,
+                &q,
+                &inventory,
+                &quest,
+                &texts,
+                &orbit,
+                &show_fps,
+                &diagnostics,
+            );
             // Con «Carica» aperto disegna tutto `main_menu::main_menu_ui`.
             if q.actions.menu_ui.screen != crate::main_menu::Screen::Load
                 && !q.actions.settings.open
@@ -443,7 +488,7 @@ pub fn ui(
                     q.cameras.single().ok(),
                     pp.translation(),
                     heading,
-                    q.npc_pos.single().ok().map(|t| t.translation()),
+                    npc_position(&q, "Viandante"),
                     (q.village.poly.len() >= 3).then(|| {
                         let north = q.village.poly.iter().map(|p| p.y).fold(f32::MAX, f32::min);
                         (
@@ -462,7 +507,14 @@ pub fn ui(
         }
         AppState::Journal => {
             let entries = crate::quests::journal_entries(&quest, &texts, &q.missions);
-            draw_journal(ctx, &entries, &mut tab, &q.karma, &q.secrets);
+            draw_journal(
+                ctx,
+                &entries,
+                &mut tab,
+                &q.karma,
+                &q.secrets,
+                &mut q.tracked,
+            );
         }
         AppState::Shop => {
             let coins = inventory.qty(crate::inventory::ItemKind::Coin);
@@ -625,36 +677,12 @@ fn show_dialog_panel(ctx: &egui::Context, dialog: &DialogState) {
 /// della quest + coordinate x,z del player.
 fn draw_compass(
     ctx: &egui::Context,
-    quest: &QuestState,
+    target: Option<Vec3>,
     player_pos: Vec3,
-    thief: &Query<
-        &GlobalTransform,
-        (
-            With<crate::quests::denaro_rubato::QuestThief>,
-            Without<crate::player::Player>,
-        ),
-    >,
-    coins: &Query<&GlobalTransform, With<crate::quests::denaro_rubato::QuestCoin>>,
-    npc: &Query<&GlobalTransform, (With<crate::entities::Npc>, Without<crate::player::Player>)>,
     orbit: &crate::camera::OrbitCamera,
 ) {
     let size = ctx.viewport_rect().size();
     let center = egui::pos2(size.x / 2.0, 30.0);
-
-    // Scegli il target in base allo stage.
-    let target: Option<Vec3> = match quest.stage {
-        QuestStage::SeekThief => thief.single().ok().map(|t| t.translation()),
-        QuestStage::Collecting => coins
-            .iter()
-            .min_by(|a, b| {
-                let da = a.translation().distance(player_pos);
-                let db = b.translation().distance(player_pos);
-                da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
-            })
-            .map(|t| t.translation()),
-        QuestStage::Returning | QuestStage::Completed => npc.single().ok().map(|t| t.translation()),
-        QuestStage::Idle => npc.single().ok().map(|t| t.translation()),
-    };
 
     // Heading della camera in gradi compass (0 = N = -Z, 90 = E = +X).
     // La camera guarda in direzione (-sin yaw, -cos yaw): bearing = -yaw.
@@ -787,14 +815,15 @@ fn draw_compass(
         });
 }
 
-/// Coordinate x,z del player in un chip centrato sotto la bussola.
 /// Le informazioni di stato: monete, ora e data, meteo, sovraccarico, bussola, coordinate e FPS.
 /// In gioco e in pausa; con l'interfaccia nascosta restano solo le coordinate dei trucchi.
+#[allow(clippy::too_many_arguments)]
 fn draw_status(
     ctx: &egui::Context,
     q: &UiQueries,
     inventory: &Inventory,
     quest: &QuestState,
+    texts: &QuestTexts,
     orbit: &OrbitCamera,
     show_fps: &ShowFps,
     diagnostics: &DiagnosticsStore,
@@ -846,7 +875,15 @@ fn draw_status(
             });
     }
     if let Some(p) = player {
-        draw_compass(ctx, quest, p, &q.thief_pos, &q.coins_pos, &q.npc_pos, orbit);
+        let entries = crate::quests::journal_entries(quest, texts, &q.missions);
+        let target = q
+            .tracked
+            .pick(&entries)
+            .and_then(|e| quest_target(e, quest, p, q));
+        draw_compass(ctx, target, p, orbit);
+        if let Some(t) = target {
+            draw_target_marker(ctx, t, p, &q.cameras);
+        }
     }
     if show_fps.0
         && let Some(fps) = diagnostics
@@ -863,6 +900,156 @@ fn draw_status(
     }
 }
 
+/// La posizione di un abitante, cercato per nome (anche solo una parte, senza maiuscole).
+fn npc_position(q: &UiQueries, name: &str) -> Option<Vec3> {
+    let wanted = name.to_lowercase();
+    let mut found = None;
+    for (_, t, npc, _) in q.npcs.iter() {
+        let have = npc.name.to_lowercase();
+        if have == wanted {
+            return Some(t.translation());
+        }
+        if found.is_none() && have.contains(&wanted) {
+            found = Some(t.translation());
+        }
+    }
+    found
+}
+
+/// Il punto verso cui portano bussola e segnalino per la voce seguita.
+fn quest_target(
+    entry: &QuestEntry,
+    quest: &QuestState,
+    player: Vec3,
+    q: &UiQueries,
+) -> Option<Vec3> {
+    // «Denaro Rubato»: il ladro e le monete si muovono, li si cerca qui.
+    if entry.id == "denaro_rubato" {
+        match quest.stage {
+            QuestStage::SeekThief => return q.thief_pos.single().ok().map(|t| t.translation()),
+            QuestStage::Collecting => {
+                return q
+                    .coins_pos
+                    .iter()
+                    .map(|t| t.translation())
+                    .min_by(|a, b| a.distance(player).total_cmp(&b.distance(player)));
+            }
+            _ => {}
+        }
+    }
+    match entry.target.as_ref()? {
+        crate::quests::Target::Npc(name) => npc_position(q, name),
+        crate::quests::Target::At(p) => {
+            let ground = q
+                .field
+                .as_ref()
+                .map_or(player.y, |f| f.height_at(p.x, p.y).max(0.0));
+            Some(Vec3::new(p.x, ground + 1.0, p.y))
+        }
+    }
+}
+
+/// Il segnalino dell'obiettivo sullo schermo, con la distanza. Fuori dallo schermo (o alle spalle)
+/// resta sul bordo e punta dalla parte giusta.
+fn draw_target_marker(
+    ctx: &egui::Context,
+    target: Vec3,
+    player: Vec3,
+    cameras: &Query<(&Camera, &GlobalTransform), With<Camera3d>>,
+) {
+    let Ok((camera, cam_t)) = cameras.single() else {
+        return;
+    };
+    let dist = target.distance(player);
+    if dist < 2.5 {
+        return;
+    }
+    let view = ctx.viewport_rect();
+    let margin = 48.0;
+    let inner = view.shrink(margin);
+    let gold = crate::ui_style::GOLD;
+    let shadow = egui::Color32::from_black_alpha(170);
+    let local = cam_t
+        .affine()
+        .inverse()
+        .transform_point3(target + Vec3::Y * 0.6);
+    let on_screen = (local.z < 0.0)
+        .then(|| camera.world_to_viewport(cam_t, target + Vec3::Y * 0.6).ok())
+        .flatten()
+        .map(|p| crate::ui_style::screen_to_ui(ctx, p))
+        .filter(|p| inner.contains(*p));
+    let painter = ctx.layer_painter(egui::LayerId::new(
+        egui::Order::Background,
+        egui::Id::new("quest_marker"),
+    ));
+    let label = if dist >= 1000.0 {
+        format!("{:.1} km", dist / 1000.0)
+    } else {
+        format!("{dist:.0} m")
+    };
+    let font = egui::FontId::proportional(15.0);
+    match on_screen {
+        Some(at) => {
+            // Un rombo dorato con una punta verso il basso, e la distanza sotto.
+            let r = 9.0;
+            let diamond = vec![
+                at + egui::vec2(0.0, -r),
+                at + egui::vec2(r, 0.0),
+                at + egui::vec2(0.0, r),
+                at + egui::vec2(-r, 0.0),
+            ];
+            painter.add(egui::Shape::convex_polygon(
+                diamond,
+                gold,
+                egui::Stroke::new(1.5, shadow),
+            ));
+            painter.text(
+                at + egui::vec2(1.0, r + 9.0),
+                egui::Align2::CENTER_TOP,
+                &label,
+                font.clone(),
+                shadow,
+            );
+            painter.text(
+                at + egui::vec2(0.0, r + 8.0),
+                egui::Align2::CENTER_TOP,
+                &label,
+                font,
+                egui::Color32::WHITE,
+            );
+        }
+        None => {
+            // Sul bordo, nella direzione dell'obiettivo (alle spalle: in basso).
+            let mut dir = egui::vec2(local.x, -local.y);
+            if local.z >= 0.0 {
+                dir.y = dir.y.abs().max(0.3);
+            }
+            if dir.length() < 1e-3 {
+                dir = egui::vec2(0.0, 1.0);
+            }
+            let dir = dir.normalized();
+            let c = view.center();
+            let half = inner.size() / 2.0;
+            let t = (half.x / dir.x.abs().max(1e-3)).min(half.y / dir.y.abs().max(1e-3));
+            let at = c + dir * t;
+            let side = egui::vec2(-dir.y, dir.x);
+            painter.add(egui::Shape::convex_polygon(
+                vec![at + dir * 14.0, at + side * 9.0, at - side * 9.0],
+                gold,
+                egui::Stroke::new(1.5, shadow),
+            ));
+            painter.text(
+                at - dir * 16.0,
+                egui::Align2::CENTER_CENTER,
+                &label,
+                font,
+                egui::Color32::WHITE,
+            );
+        }
+    }
+}
+
+/// Coordinate x,z del player in un chip centrato sotto la bussola.
 fn draw_coords(ctx: &egui::Context, player_pos: Vec3) {
     let size = ctx.viewport_rect().size();
     egui::Area::new(egui::Id::new("coords"))
@@ -987,7 +1174,7 @@ fn draw_obj_icon(painter: &egui::Painter, c: egui::Pos2, state: ObjState) {
 fn draw_objectives(ctx: &egui::Context, entry: &QuestEntry) {
     let size = ctx.viewport_rect().size();
     egui::Area::new(egui::Id::new("objectives"))
-        .fixed_pos(egui::pos2(size.x - 330.0, size.y / 2.0 - 90.0))
+        .fixed_pos(egui::pos2(size.x - 400.0, size.y / 2.0 - 90.0))
         .show(ctx, |ui| {
             let frame = egui::Frame::default()
                 .fill(egui::Color32::from_rgba_unmultiplied(12, 16, 24, 240))
@@ -998,7 +1185,7 @@ fn draw_objectives(ctx: &egui::Context, entry: &QuestEntry) {
                 .inner_margin(egui::Margin::symmetric(16, 12))
                 .corner_radius(egui::CornerRadius::same(8));
             frame.show(ui, |ui| {
-                ui.set_min_width(268.0);
+                ui.set_max_width(340.0);
                 ui.label(
                     egui::RichText::new(format!("Obiettivi — {}", entry.title))
                         .strong()
@@ -1006,29 +1193,38 @@ fn draw_objectives(ctx: &egui::Context, entry: &QuestEntry) {
                         .color(egui::Color32::from_rgb(255, 214, 102)),
                 );
                 ui.add_space(8.0);
-                objective_rows(ui, &entry.objectives, 268.0, 16.0);
+                objective_rows(ui, &entry.objectives, 340.0, 16.0);
             });
         });
 }
 
-/// Righe obiettivo con icona di stato.
+/// Righe obiettivo con icona di stato; i testi lunghi vanno a capo.
 fn objective_rows(ui: &mut egui::Ui, objectives: &[(String, ObjState)], w: f32, font: f32) {
     for (text, st) in objectives {
-        let (rect, _resp) = ui.allocate_exact_size(egui::vec2(w, 28.0), egui::Sense::hover());
-        draw_obj_icon(
-            ui.painter(),
-            egui::pos2(rect.left() + 11.0, rect.center().y),
-            *st,
-        );
         let color = match st {
             ObjState::Pending => egui::Color32::from_rgb(150, 158, 178),
             _ => egui::Color32::from_rgb(245, 248, 255),
         };
-        ui.painter().text(
-            egui::pos2(rect.left() + 30.0, rect.center().y),
-            egui::Align2::LEFT_CENTER,
-            text,
+        let galley = ui.painter().layout(
+            text.clone(),
             egui::FontId::proportional(font),
+            color,
+            w - 30.0,
+        );
+        let h = (galley.size().y + 8.0).max(28.0);
+        let (rect, _resp) = ui.allocate_exact_size(egui::vec2(w, h), egui::Sense::hover());
+        draw_obj_icon(
+            ui.painter(),
+            egui::pos2(rect.left() + 11.0, rect.top() + 14.0),
+            *st,
+        );
+        let first_line = galley
+            .rows
+            .first()
+            .map_or(galley.size().y, |r| r.rect().height());
+        ui.painter().galley(
+            egui::pos2(rect.left() + 30.0, rect.top() + 14.0 - first_line / 2.0),
+            galley,
             color,
         );
     }
@@ -1051,7 +1247,9 @@ fn draw_journal(
     tab: &mut JournalTab,
     karma: &crate::karma::Karma,
     secrets: &crate::karma::Secrets,
+    tracked: &mut crate::quests::Tracked,
 ) {
+    let followed = tracked.pick(entries).map(|e| e.id.clone());
     let todo = entries
         .iter()
         .filter(|e| e.status == QuestStatus::Active)
@@ -1092,18 +1290,61 @@ fn draw_journal(
                 if shown.is_empty() {
                     ui.label("Nessuna quest.");
                 }
-                for e in shown {
-                    egui::CollapsingHeader::new(
-                        egui::RichText::new(&e.title)
-                            .size(19.0)
-                            .color(egui::Color32::from_rgb(255, 214, 102)),
-                    )
-                    .id_salt(&e.title)
-                    .show(ui, |ui| {
-                        ui.label(&e.summary);
-                        ui.add_space(6.0);
-                        objective_rows(ui, &e.objectives, 540.0, 17.0);
-                    });
+                // Raggruppate per tipo: storia principale, secondarie, eventi, generate dall'IA.
+                for kind in crate::quests::QuestKind::ALL {
+                    let group: Vec<&&QuestEntry> =
+                        shown.iter().filter(|e| e.kind == kind).collect();
+                    if group.is_empty()
+                        && !(kind == crate::quests::QuestKind::Ai && wanted == QuestStatus::Active)
+                    {
+                        continue;
+                    }
+                    ui.add_space(4.0);
+                    ui.label(
+                        egui::RichText::new(kind.label())
+                            .strong()
+                            .size(15.0)
+                            .color(egui::Color32::from_rgb(170, 178, 196)),
+                    );
+                    if group.is_empty() {
+                        ui.label(
+                            egui::RichText::new("Ancora nessuna.")
+                                .italics()
+                                .color(egui::Color32::from_rgb(150, 158, 178)),
+                        );
+                    }
+                    for e in group {
+                        let is_followed = followed.as_deref() == Some(e.id.as_str());
+                        let id = ui.make_persistent_id(("quest", &e.id));
+                        egui::collapsing_header::CollapsingState::load_with_default_open(
+                            ui.ctx(),
+                            id,
+                            false,
+                        )
+                        .show_header(ui, |ui| {
+                            ui.label(
+                                egui::RichText::new(&e.title)
+                                    .size(19.0)
+                                    .color(egui::Color32::from_rgb(255, 214, 102)),
+                            );
+                            if e.status == QuestStatus::Active {
+                                if is_followed {
+                                    ui.label(
+                                        egui::RichText::new("★ Seguita")
+                                            .color(crate::ui_style::GOLD),
+                                    );
+                                } else if ui.small_button("Segui").clicked() {
+                                    tracked.0 = Some(e.id.clone());
+                                    info!("[QUEST] seguita: {}", e.id);
+                                }
+                            }
+                        })
+                        .body(|ui| {
+                            ui.label(&e.summary);
+                            ui.add_space(6.0);
+                            objective_rows(ui, &e.objectives, 520.0, 17.0);
+                        });
+                    }
                 }
             });
             ui.separator();

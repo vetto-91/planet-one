@@ -341,7 +341,7 @@ fn worker(rx: mpsc::Receiver<Request>, tx: mpsc::Sender<Event>, mock: bool) {
 }
 
 /// Sistema: ricerca Piper e le voci installate (poco costosa, ogni 15 s).
-pub fn tts_scan(time: Res<Time>, settings: Res<AudioSettings>, mut tts: ResMut<TtsState>) {
+pub fn tts_scan(time: Res<Time<Real>>, settings: Res<AudioSettings>, mut tts: ResMut<TtsState>) {
     if !settings.ai_enabled || !settings.tts_enabled {
         tts.status = TtsStatus::Off;
         tts.scan_timer = 0.0;

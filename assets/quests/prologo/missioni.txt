@@ -8,6 +8,7 @@
 #                     parla <abitante> | quest accettata | quest completata
 #                   > battuta dell'abitante della condizione «parla» ({nome} = il protagonista)
 #                   pensiero: testo mostrato a tappa fatta    monete: premio    sblocca: nome
+#                   dove: <x> <z> | <abitante>  (dove porta la bussola, se le condizioni non lo dicono)
 
 [missione mp01]
 titolo: Il Nome sulla Sabbia
@@ -15,11 +16,13 @@ sommario: Ti sei svegliato su una spiaggia, tra rottami che non sai riconoscere.
 
 [tappa]
 obiettivo: Tra le rocce c'è una pozza d'acqua ferma: guardaci dentro (E)
+dove: 34 84.5
 quando: conta risveglio 1
 pensiero: Il mare ha lavato via i ricordi, non le primavere. Ora sai almeno quanti anni porti.
 
 [tappa]
 obiettivo: Tra i rottami, raccogli la prima cosa che ti chiama (E)
+dove: 30.5 87.5
 quando: conta risveglio 2
 pensiero: Legno incastrato alla maniera antica, e un ferro piegato che non è di nessuna barca. Ma le mani sanno che cosa fare.
 
@@ -49,6 +52,7 @@ pensiero: Mura di pietra, e lampioni che brillano senza fiamma. La gente di qui 
 
 [tappa]
 obiettivo: Trova il Viandante alla casetta in piazza
+dove: Viandante
 quando: quest accettata
 monete: 5
 
@@ -129,6 +133,7 @@ pensiero: Nell'acqua bassa, tra i quattro pilastri, non si specchia la roccia: s
 
 [tappa]
 obiettivo: Fai risuonare le quattro stele del laghetto con la magia (Q)
+dove: 96.5 33.2
 quando: sbloccato stele-risonanti
 pensiero: Le stele cantano tutte insieme. Da qualche parte, oltre il cunicolo, la pietra si muove.
 

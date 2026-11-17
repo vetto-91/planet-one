@@ -199,6 +199,45 @@ pub struct Step {
     pub effects: Vec<Effect>,
     /// Risposte fra cui scegliere alla fine del dialogo (`scegli: testo => effetto; effetto`).
     pub choices: Vec<Choice>,
+    /// Dove andare (`dove: x z` o `dove: <abitante>`), quando le condizioni non lo dicono.
+    pub place: Option<super::Target>,
+}
+
+impl Step {
+    /// Dove porta la tappa: il `dove:` scritto nel file, poi l'abitante di `parla`, poi il punto
+    /// di `vicino` o del campo da liberare.
+    pub fn target(&self) -> Option<super::Target> {
+        if let Some(t) = &self.place {
+            return Some(t.clone());
+        }
+        self.when
+            .iter()
+            .find_map(|w| match w {
+                When::Talk(n) => Some(super::Target::Npc(n.clone())),
+                _ => None,
+            })
+            .or_else(|| {
+                self.when.iter().find_map(|w| match w {
+                    When::Near(p, _) | When::Clear(p, _) => Some(super::Target::At(*p)),
+                    _ => None,
+                })
+            })
+    }
+}
+
+/// `dove:` — «x z» è un punto, altrimenti il nome di un abitante.
+fn parse_place(value: &str) -> Option<super::Target> {
+    let n: Vec<f32> = value
+        .split_whitespace()
+        .filter_map(|t| t.replace(',', ".").parse().ok())
+        .collect();
+    match n.as_slice() {
+        [x, z] => Some(super::Target::At(Vec2::new(*x, *z))),
+        _ if !value.trim().is_empty() && n.is_empty() => {
+            Some(super::Target::Npc(value.trim().to_string()))
+        }
+        _ => None,
+    }
 }
 
 /// Una missione letta dal file.
@@ -280,6 +319,10 @@ pub fn parse(text: &str) -> Vec<Mission> {
             }
             ("obiettivo", Some(s)) => s.goal = value.to_string(),
             ("pensiero", Some(s)) => s.note = value.to_string(),
+            ("dove", Some(s)) => match parse_place(value) {
+                Some(t) => s.place = Some(t),
+                None => warn!("[MISSIONI] luogo non valido: {line}"),
+            },
             ("monete", Some(s)) => s.coins = value.parse().unwrap_or(0),
             ("sblocca", Some(s)) => s.unlocks.push(value.to_string()),
             ("doni", Some(s)) => s.effects.push(Effect::Gifts),
@@ -767,6 +810,15 @@ impl Missions {
                 let (m, p) = (&self.list[i], self.progress[i]);
                 let finished = p >= m.steps.len();
                 QuestEntry {
+                    id: m.id.clone(),
+                    kind: if m.event {
+                        super::QuestKind::Event
+                    } else if m.side {
+                        super::QuestKind::Side
+                    } else {
+                        super::QuestKind::Main
+                    },
+                    target: m.steps.get(p).and_then(Step::target),
                     title: m.title.clone(),
                     summary: m.summary.clone(),
                     status: if finished {
@@ -1757,5 +1809,26 @@ mod tests {
         assert_eq!(again.journal(true).len(), 4);
         again.reset();
         assert!(!again.done("mp03"));
+    }
+
+    #[test]
+    fn every_open_step_shows_the_way() {
+        let missions = Missions::default();
+        let missing: Vec<String> = missions
+            .list
+            .iter()
+            .flat_map(|m| {
+                m.steps
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, s)| s.target().is_none())
+                    .map(move |(k, s)| format!("{} {}: {}", m.id, k, s.goal))
+            })
+            .collect();
+        assert!(
+            missing.is_empty(),
+            "tappe senza `dove:` né luogo:\n{}",
+            missing.join("\n")
+        );
     }
 }

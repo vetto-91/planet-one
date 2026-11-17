@@ -54,8 +54,8 @@ foto nome
 risveglio nome Ada Marea
 aspetta 1
 verifica /personaggio/nome = Ada Marea
-premi e
-aspetta 1
+# Detto il nome, Gaspare risponde da sé (ADR 0059).
+verifica dialogo = true
 verifica /dialogo/riga contiene Ada Marea
 avanza
 aspetta 1

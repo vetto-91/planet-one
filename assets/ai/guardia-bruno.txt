@@ -4,7 +4,7 @@ carattere: È una guardia di Porta Nord: scherzoso e simpatico, ma sempre attent
 voce: it_IT-riccardo-x_low
 velocita: 1.0
 stile: Parla con ironia e un sorriso nella voce. Frasi brevi.
-saluto: Ehilà, viaggiatore! Non c'è mai un po' di movimento, qui. / Se cercate guai, siete nel posto sbagliato; se cercate una locanda, andate dritto!
+saluto: Ehilà, {nome}! Non c'è mai un po' di movimento, qui. / Se cercate guai, siete nel posto sbagliato; se cercate una locanda, andate dritto!
 
 [sa]
 - Sei di guardia a Porta Nord insieme ad Aldo, che è troppo serio.

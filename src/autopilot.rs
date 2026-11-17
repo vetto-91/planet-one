@@ -459,7 +459,7 @@ pub struct PilotUi<'w, 's> {
 #[allow(clippy::too_many_arguments)]
 pub fn run_autopilot(
     mut pilot: ResMut<Autopilot>,
-    time: Res<Time>,
+    time: Res<Time<Real>>,
     state: Res<State<crate::AppState>>,
     mut keys: ResMut<ButtonInput<KeyCode>>,
     mut mouse: ResMut<ButtonInput<MouseButton>>,
@@ -936,6 +936,10 @@ pub fn snapshot(world: &mut World) -> Value {
         }
         Value::Object(map)
     };
+    let orbs = world
+        .query_filtered::<(), With<crate::magic::Orb>>()
+        .iter(world)
+        .count();
     let inv = world.resource::<crate::inventory::Inventory>();
     let mut items = serde_json::Map::new();
     for s in &inv.slots {
@@ -943,7 +947,31 @@ pub fn snapshot(world: &mut World) -> Value {
     }
     let equip = world.resource::<crate::inventory::Equipment>();
     let arma = equip.weapon.map(|w| format!("{w:?}"));
+    // La missione seguita (bussola, segnalino, TAB) e dove porta (ADR 0059).
+    let seguita = {
+        let quest = world.resource::<crate::quests::denaro_rubato::QuestState>();
+        let texts = world.resource::<crate::quests::QuestTexts>();
+        let missions = world.resource::<crate::quests::missions::Missions>();
+        let entries = crate::quests::journal_entries(quest, texts, missions);
+        let picked = world.resource::<crate::quests::Tracked>().pick(&entries);
+        json!({
+            "id": picked.map(|e| e.id.clone()),
+            "tappa": picked.and_then(|e| e
+                .objectives
+                .iter()
+                .find(|o| o.1 == crate::quests::ObjState::Current)
+                .map(|o| o.0.clone())),
+            "verso": picked.and_then(|e| e.target.as_ref()).map(|t| match t {
+                crate::quests::Target::At(p) => json!([p.x, p.y]),
+                crate::quests::Target::Npc(n) => json!(n),
+            }),
+        })
+    };
     let interfaccia = json!({
+        "seguita": seguita,
+        "mondo_in_pausa": world.resource::<Time<Virtual>>().is_paused(),
+        "luce": world.resource::<crate::magic::Magic>().light.round(),
+        "sfere": orbs,
         "nascosta": world.resource::<crate::menu::HudHidden>().0,
         "frecce": crate::hud::bow_arrows(equip, world.resource::<crate::inventory::Inventory>()),
     });

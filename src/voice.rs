@@ -217,23 +217,51 @@ pub fn drive_voice(
     }
 }
 
+/// La battuta contiene il nome del protagonista? Allora la clip registrata (che dice
+/// «viaggiatore») non va bene: si legge dal vivo con Piper locale (ADR 0059).
+pub fn says_player_name(line: &str, player: &str) -> bool {
+    let player = player.trim();
+    !player.is_empty() && !matches!(player, "Viaggiatore" | "Nessuno") && line.contains(player)
+}
+
 /// Sistema: a ogni riga mostrata dal dialogo parte la sua voce; alla chiusura
-/// del dialogo si ferma la voce del dialogo.
+/// del dialogo si ferma la voce del dialogo. Le battute col nome del protagonista si leggono dal
+/// vivo con la voce Piper del personaggio, se il TTS locale è pronto.
 pub fn dialog_voice(
     dialog: Res<DialogState>,
+    character: Res<crate::character::Character>,
+    mut tts: ResMut<crate::ai::tts::TtsState>,
     mut queue: ResMut<VoiceQueue>,
     mut last: Local<(bool, usize)>,
+    mut live: Local<bool>,
 ) {
     if dialog.open {
-        if (!last.0 || dialog.index != last.1)
-            && !dialog.choosing
-            && let Some(clips) = dialog.voices.get(dialog.index)
-            && !clips.is_empty()
-        {
-            queue.play_from(clips.clone(), VoiceKind::Dialog, dialog.speaker_entity);
+        if (!last.0 || dialog.index != last.1) && !dialog.choosing {
+            let line = dialog.lines.get(dialog.index).map_or("", String::as_str);
+            if says_player_name(line, &character.name)
+                && tts.status == crate::ai::tts::TtsStatus::Ready
+            {
+                queue.stop(VoiceKind::Dialog);
+                let persona = crate::ai::persona::load(&dialog.speaker);
+                tts.speak(line, &persona.voice, persona.speed);
+                *live = true;
+                info!("[VOICE] battuta col nome letta dal vivo");
+            } else if let Some(clips) = dialog.voices.get(dialog.index)
+                && !clips.is_empty()
+            {
+                if *live {
+                    tts.stop();
+                    *live = false;
+                }
+                queue.play_from(clips.clone(), VoiceKind::Dialog, dialog.speaker_entity);
+            }
         }
     } else if last.0 {
         queue.stop(VoiceKind::Dialog);
+        if *live {
+            tts.stop();
+            *live = false;
+        }
     }
     *last = (dialog.open, dialog.index);
 }
@@ -241,6 +269,13 @@ pub fn dialog_voice(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn lines_with_the_player_name_are_read_live() {
+        assert!(says_player_name("Ottimo, Erk: non sei più Nessuno.", "Erk"));
+        assert!(!says_player_name("Salve, viaggiatore!", "Viaggiatore"));
+        assert!(!says_player_name("Buongiorno.", "Erk"));
+    }
 
     #[test]
     fn greeting_clips_follow_the_persona_file_names() {

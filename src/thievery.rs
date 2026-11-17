@@ -275,7 +275,7 @@ impl PickParams<'_> {
 #[allow(clippy::too_many_arguments)]
 pub fn lockpick_window(
     mut contexts: EguiContexts,
-    time: Res<Time>,
+    time: Res<Time<Real>>,
     keys: Res<ButtonInput<KeyCode>>,
     mouse: Res<ButtonInput<MouseButton>>,
     mut pick: ResMut<Lockpicking>,

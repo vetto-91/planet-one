@@ -190,7 +190,7 @@ pub fn spawn_npc(
                 mode: NpcMode::Ready,
                 shop: Some("viandante"),
                 lines: &[
-                    "Salve, viaggiatore! Benvenuto su Planet One.",
+                    "Salve, {nome}! Benvenuto su Planet One.",
                     "Le colline qui intorno sono piene di sorprese... e di nemici.",
                     "Prova a saltare con Space mentre corri: il coyote time ti aiuta!",
                     "Se premi Esc trovi il menu. Buona fortuna!",
@@ -395,9 +395,21 @@ pub fn interact(
         barks.say(entity, npc.name, "Zzz…".to_string());
         return;
     }
-    if let Some((_, entity, _, Some(npc), _)) = best
-        && keys.just_pressed(KeyCode::KeyE)
-    {
+    // Detto il nome sulla spiaggia, Gaspare risponde da sé (ADR 0059): il dialogo si apre senza E.
+    // Il saluto vale solo mentre la tappa del nome di «Il Nome sulla Sabbia» è quella in corso.
+    if crate::awakening::greeting_pending() && missions.step_of("mp01") != Some(3) {
+        crate::awakening::greeting_done();
+    }
+    let greeted = crate::awakening::greeting_pending()
+        .then(|| {
+            interactables.iter().find(|(_, t, _, n, _)| {
+                n.is_some_and(|n| n.name == "Gaspare") && t.translation().distance(p) < 10.0
+            })
+        })
+        .flatten()
+        .map(|(e, _, i, n, prop)| (0.0, e, i, n, prop));
+    let talk = greeted.or(best.filter(|_| keys.just_pressed(KeyCode::KeyE)));
+    if let Some((_, entity, _, Some(npc), _)) = talk {
         dialog.open = true;
         dialog.speaker = npc.name.to_string();
         // Battute e scelte dalla quest (file dialoghi.txt), altrimenti default dell'NPC.
@@ -425,15 +437,30 @@ pub fn interact(
         } else {
             missions.dialog_for(npc.name, &mut facts, &character.name)
         };
+        if greeted.is_some() {
+            // Il saluto aspetta che la tappa del nome sia pronta (i contatori arrivano al frame
+            // dopo): niente battute di repertorio al posto della risposta di Gaspare.
+            if mission.is_none() {
+                dialog.open = false;
+                return;
+            }
+            crate::awakening::greeting_done();
+        }
         let (lines, choices, voices) = if let Some((lines, choices)) = mission {
             (lines, choices, missions.voices(npc.name))
         } else if npc.name == "Viandante" {
-            crate::quests::npc_dialog(&quest, &texts)
+            crate::quests::npc_dialog(&quest, &texts, &character.name)
         } else {
             (Vec::new(), Vec::new(), Vec::new())
         };
         if lines.is_empty() {
-            dialog.lines = npc.lines.iter().map(|s| s.to_string()).collect();
+            // Il saluto chiama il protagonista per nome (ADR 0059).
+            let who = character.address();
+            dialog.lines = npc
+                .lines
+                .iter()
+                .map(|s| s.replace("{nome}", &who))
+                .collect();
             dialog.voices = if npc.name == "Viandante" {
                 vec![Vec::new(); dialog.lines.len()]
             } else {
@@ -472,6 +499,7 @@ pub fn advance_dialog(
     keys: Res<ButtonInput<KeyCode>>,
     mut travel: ResMut<crate::save::TravelRequest>,
     missions: Res<crate::quests::missions::Missions>,
+    character: Res<crate::character::Character>,
     mut dialog: ResMut<DialogState>,
     ai: Res<crate::ai::AiState>,
     settings: Res<crate::audio::AudioSettings>,
@@ -556,7 +584,10 @@ pub fn advance_dialog(
     if confirm {
         dialog.index += 1;
         if dialog.index >= dialog.lines.len() {
-            if dialog.choices.is_empty() && dialog.cold {
+            // Durante il risveglio un dialogo di missione finisce e basta: niente «Arrivederci»
+            // prima della casella del nome (ADR 0059).
+            let awakening = missions.in_dialog() && character.awakening < crate::character::AWAKE;
+            if dialog.choices.is_empty() && (dialog.cold || awakening) {
                 close_dialog(&mut dialog, None, true);
             } else if dialog.choices.is_empty() {
                 // Dialogo scritto finito, nessuna scelta di quest in sospeso: si offre di comprare

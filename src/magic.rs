@@ -310,28 +310,8 @@ pub fn cast(
     let p = player.translation();
     match spell {
         Spell::Light => {
+            // La sfera nasce da `ensure_orb`, anche dopo un caricamento.
             magic.light = LIGHT_SECS;
-            if orbs.is_empty() {
-                commands.spawn((
-                    crate::scene::SceneNode,
-                    Orb,
-                    Mesh3d(meshes.add(Sphere::new(0.09))),
-                    MeshMaterial3d(materials.add(StandardMaterial {
-                        base_color: Color::srgb(1.0, 0.95, 0.75),
-                        emissive: LinearRgba::rgb(40.0, 34.0, 20.0),
-                        unlit: true,
-                        ..default()
-                    })),
-                    PointLight {
-                        intensity: 420_000.0,
-                        range: 22.0,
-                        color: Color::srgb(1.0, 0.93, 0.78),
-                        shadow_maps_enabled: false,
-                        ..default()
-                    },
-                    Transform::from_translation(p + Vec3::new(0.5, 1.5, 0.0)),
-                ));
-            }
         }
         Spell::Dart => {
             let dir = cameras.single().map_or(Dir3::NEG_Z, |c| c.forward());
@@ -396,16 +376,69 @@ pub fn cast(
     );
 }
 
-/// Sistema: il lume segue il personaggio, appena sopra la spalla.
+/// Luce della sfera: abbastanza per vedere bene 4–5 metri attorno a sé, di notte (ADR 0059).
+const ORB_LUMENS: f32 = 1_600_000.0;
+const ORB_RANGE: f32 = 26.0;
+
+/// Dove sta la sfera: sopra la testa, un passo avanti nella direzione in cui si guarda e un poco
+/// a destra, così illumina ciò che si ha davanti in prima e in terza persona.
+pub fn orb_spot(player: Vec3, look: Vec3) -> Vec3 {
+    let flat = Vec3::new(look.x, 0.0, look.z).normalize_or(Vec3::NEG_Z);
+    let right = Vec3::new(-flat.z, 0.0, flat.x);
+    player + Vec3::Y * 1.9 + flat * 0.9 + right * 0.45
+}
+
+/// Sistema: con la sfera di luce attiva e nessuna sfera nel mondo (lancio, caricamento di una
+/// partita, scena ricostruita) ne crea una accanto al giocatore.
+pub fn ensure_orb(
+    mut commands: Commands,
+    magic: Res<Magic>,
+    orbs: Query<(), With<Orb>>,
+    players: Query<&GlobalTransform, With<crate::player::Player>>,
+    cameras: Query<&GlobalTransform, With<Camera3d>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    if magic.light <= 0.0 || !orbs.is_empty() {
+        return;
+    }
+    let Ok(player) = players.single() else {
+        return;
+    };
+    let look = cameras.single().map_or(Vec3::NEG_Z, |c| *c.forward());
+    commands.spawn((
+        crate::scene::SceneNode,
+        Orb,
+        Mesh3d(meshes.add(Sphere::new(0.09))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::srgb(1.0, 0.95, 0.75),
+            emissive: LinearRgba::rgb(40.0, 34.0, 20.0),
+            unlit: true,
+            ..default()
+        })),
+        PointLight {
+            intensity: ORB_LUMENS,
+            range: ORB_RANGE,
+            color: Color::srgb(1.0, 0.93, 0.78),
+            shadow_maps_enabled: false,
+            ..default()
+        },
+        Transform::from_translation(orb_spot(player.translation(), look)),
+    ));
+}
+
+/// Sistema: il lume segue il personaggio, sopra la testa e un passo avanti.
 pub fn follow_orb(
     time: Res<Time>,
     players: Query<&GlobalTransform, With<crate::player::Player>>,
+    cameras: Query<&GlobalTransform, With<Camera3d>>,
     mut orbs: Query<&mut Transform, With<Orb>>,
 ) {
     let Ok(player) = players.single() else {
         return;
     };
-    let target = player.translation() + Vec3::new(0.5, 1.5, 0.0);
+    let look = cameras.single().map_or(Vec3::NEG_Z, |c| *c.forward());
+    let target = orb_spot(player.translation(), look);
     for mut tf in &mut orbs {
         let bob = (time.elapsed_secs() * 1.7).sin() * 0.06;
         let k = (6.0 * time.delta_secs()).clamp(0.0, 1.0);
@@ -489,7 +522,9 @@ pub fn plugin(app: &mut App) {
         .add_systems(Update, sync_taught)
         .add_systems(
             Update,
-            (cast, follow_orb, update_darts, apply_calm).run_if(in_state(crate::AppState::Playing)),
+            (cast, ensure_orb, follow_orb, update_darts, apply_calm)
+                .chain()
+                .run_if(in_state(crate::AppState::Playing)),
         );
 }
 
