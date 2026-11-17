@@ -2,6 +2,17 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non rilasciato
+
+- **Il mare al tramonto** (beta v0.0.63, n. 22; ADR 0061): sole e luna scendono dietro la linea del mare invece di passarle davanti, e il mare diventa opaco allontanandosi. Il fondale si vede solo vicino a te, fino a una decina di metri. Sparisce la fascia chiara sull'orizzonte: il mare prendeva la luce del fondale che aveva sotto, e oltre l'isola, dove sotto non c'è nulla, una luce sbagliata. Ora si vedono le sue onde vere. È il primo shader del gioco (`assets/shaders/distance_fade.wesl`).
+- **Passi sull'erba** (n. 26): nel fossato erboso fuori dalle mura, più basso del livello del mare, i passi suonavano d'acqua; ora l'acqua si sente solo sul mare vero.
+- **Brusio del mercato** (n. 35): in piazza si sente la registrazione «Vita tra i banchi» dell'autore, in ciclo senza stacchi, al posto del mormorio sintetico. Sale e scende come prima con la distanza, l'ora e la pioggia.
+- **Editor dei piazzamenti (F4)** (n. 39 e 40):
+  - «Annulla ultimo» toglieva l'ultimo oggetto dell'elenco (anche la casa del giocatore); ora **Annulla** e **Ripeti** tornano indietro e avanti fra le modifiche, senza limite di passi, con **Ctrl+Z**, **Ctrl+Y** o Ctrl+Maiusc+Z e con i pulsanti del pannello;
+  - il mirino colpisce anche i modelli veri e non solo il terreno; fra più oggetti vicini **Tab** o la **rotella** passano al successivo;
+  - nell'elenco c'è la **ricerca** per id, tipo o nota, e **Vai e seleziona** porta la camera davanti all'oggetto;
+  - **camera libera** con **F6** (solo in F4): vola staccata dal personaggio, che resta fermo, per arrivare vicino agli oggetti.
+
 ## v0.0.66.0 — Gioco più leggero e schede video integrate (2026-11-16)
 
 - **Risoluzione della scena** (ADR 0058): nel menu Esc → Grafica si può disegnare il mondo al 100%, 75% o 50% della risoluzione dello schermo e poi ingrandirlo; interfaccia, mappa e foto restano nitide. Il preset **Integrata** parte al 75%: sull'Arc integrata Intel da 25 a 31 fotogrammi al secondo a 1080p e da 36 a 41 a 720p. Alta, Media e Bassa restano al 100% e non cambiano.
