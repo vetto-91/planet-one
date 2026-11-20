@@ -474,11 +474,19 @@ pub fn sync_world_props(
                             crate::camera::BlocksCamera,
                         ));
                     }
+                    for (center, rot, size) in &interior.slides {
+                        c.spawn((
+                            Collider::cuboid(size.x, size.y, size.z),
+                            Transform::from_translation(*center).with_rotation(*rot),
+                            crate::player::Slippery,
+                        ));
+                    }
                     for (center, size) in interior.walls {
                         c.spawn((
                             Collider::cuboid(size.x, size.y, size.z),
                             Transform::from_translation(center),
                             crate::camera::BlocksCamera,
+                            crate::scene::Wall,
                         ));
                     }
                     for (center, size) in interior.ground {

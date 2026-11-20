@@ -23,6 +23,10 @@ use bevy::prelude::*;
 #[derive(Component)]
 pub struct Player;
 
+/// Superficie su cui non ci si appoggia: si urta ma si scivola giù (tende delle bancarelle).
+#[derive(Component)]
+pub struct Slippery;
+
 /// Marker del gruppo visivo (figlio): ruota verso la direzione di moto.
 #[derive(Component)]
 pub struct PlayerVisual;
@@ -66,6 +70,8 @@ pub struct GroundedState {
     pub last_ground_hit: f32,
     /// In acqua profonda: si nuota (posa distesa in `facing`).
     pub swimming: bool,
+    /// Verso orizzontale in cui un telo scivoloso ([`Slippery`]) spinge giù (zero se non lo si tocca).
+    pub slide: Vec3,
 }
 
 impl Default for GroundedState {
@@ -76,6 +82,7 @@ impl Default for GroundedState {
             coyote_left: 0.0,
             last_ground_hit: 0.0,
             swimming: false,
+            slide: Vec3::ZERO,
         }
     }
 }
@@ -139,6 +146,8 @@ const RAY_OFFSETS: [Vec2; 4] = [
     Vec2::new(0.0, 0.25),
     Vec2::new(0.0, -0.25),
 ];
+/// Velocità (m/s) con cui un telo scivoloso spinge verso il bordo.
+const SLIDE_SPEED: f32 = 3.0;
 /// Coyote time (s): il salto resta valido questo tempo dopo l'ultimo contatto.
 const COYOTE_TIME: f32 = 0.25;
 /// Durata (s) per cui un hit fisico di MoveAndSlide resta "recente".
@@ -177,12 +186,15 @@ pub fn spawn(commands: &mut Commands, asset_server: &AssetServer) {
 
 /// Ground-check multi-ray: 5 raycast verso il basso (centro + 4 offset XZ).
 ///
-/// `grounded_now` è true se almeno un ray colpisce un `Ground` con normale
-/// verticale Breaking >= MIN_GROUND_NORMAL_Y entro GROUND_DETECT_DISTANCE.
+/// `grounded_now` è true se almeno un ray colpisce una superficie d'appoggio ([`is_footing`]) con
+/// normale verticale >= MIN_GROUND_NORMAL_Y entro GROUND_DETECT_DISTANCE.
 /// `ground_dist` è la distanza del hit più vicino. Gira in FixedUpdate.
+#[allow(clippy::too_many_arguments)]
 pub fn update_grounded(
     spatial_query: SpatialQuery,
     grounds: Query<Entity, With<Ground>>,
+    bodies: Query<&RigidBody>,
+    slippery: Query<(), With<Slippery>>,
     mut players: Query<(Entity, &GlobalTransform, &mut GroundedState), With<Player>>,
     time: Res<Time>,
     field: Option<Res<crate::terrain::TerrainField>>,
@@ -208,7 +220,9 @@ pub fn update_grounded(
                 GROUND_DETECT_DISTANCE,
                 true,
                 &filter,
-                &|hit_entity| grounds.contains(hit_entity),
+                &|hit_entity| {
+                    !slippery.contains(hit_entity) && is_footing(hit_entity, &grounds, &bodies)
+                },
             ) && hit.normal.y >= MIN_GROUND_NORMAL_Y
                 && best.as_ref().is_none_or(|b| hit.distance < b.distance)
             {
@@ -411,6 +425,19 @@ pub fn movement(
 
 /// Filtro delle collisioni del giocatore: esclude lui stesso e, dentro un buco del terreno
 /// (imbocco delle gallerie), anche il terreno.
+/// Ci si può appoggiare sopra: il terreno e i pavimenti (`Ground`), ma anche ogni altra cosa
+/// ferma (casse, pietre, mobili, tetti: i loro collider sono figli di un corpo statico e non hanno
+/// un `RigidBody` proprio). Prima contava solo `Ground`: sopra casse e pietre si galleggiava, si
+/// scivolava via dai bordi e non si poteva risaltare (segnalazioni 2026-11-19_21-55-43, 21-57-32).
+/// Non sono appoggi abitanti, nemici e animali (cinematici) né le frecce (dinamiche).
+fn is_footing(
+    entity: Entity,
+    grounds: &Query<Entity, With<Ground>>,
+    bodies: &Query<&RigidBody>,
+) -> bool {
+    grounds.contains(entity) || bodies.get(entity).ok().is_none_or(|b| b.is_static())
+}
+
 fn solid_filter(
     player: Entity,
     at: Vec3,
@@ -436,6 +463,7 @@ pub fn run_move_and_slide(
     cheats: Res<crate::shell::Cheats>,
     field: Option<Res<crate::terrain::TerrainField>>,
     terrains: Query<Entity, With<crate::terrain::TerrainMesh>>,
+    slippery: Query<(), With<Slippery>>,
     mut players: Query<
         (
             Entity,
@@ -454,24 +482,36 @@ pub fn run_move_and_slide(
             continue;
         }
         let mut hit_ground = false;
+        let mut slide = Vec3::ZERO;
+        // Sul telo scivoloso si viene spinti verso il bordo in discesa, fino a cadere giù.
+        let push = state.slide * SLIDE_SPEED;
         let output = move_and_slide.move_and_slide(
             collider,
             transform.translation,
             transform.rotation,
-            velocity.0,
+            velocity.0 + push,
             time.delta(),
             &MoveAndSlideConfig::default(),
             &solid_filter(entity, transform.translation, field.as_deref(), &terrains),
             |hit| {
-                if hit.intersects() && hit.normal.y >= MIN_GROUND_NORMAL_Y {
+                // Sui teli scivolosi non ci si appoggia: niente salto, si scivola giù.
+                if hit.intersects()
+                    && hit.normal.y >= MIN_GROUND_NORMAL_Y
+                    && !slippery.contains(hit.entity)
+                {
                     hit_ground = true;
+                }
+                if slippery.contains(hit.entity) {
+                    let n = **hit.normal;
+                    slide = Vec3::new(n.x, 0.0, n.z).normalize_or_zero();
                 }
                 MoveAndSlideHitResponse::Accept
             },
         );
 
         transform.translation = output.position;
-        velocity.0 = output.projected_velocity;
+        velocity.0 = output.projected_velocity - push;
+        state.slide = slide;
 
         if hit_ground {
             state.last_ground_hit = GROUND_HIT_RECENT;

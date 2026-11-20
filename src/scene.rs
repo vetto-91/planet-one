@@ -29,6 +29,11 @@ pub struct SceneNode;
 #[derive(Component)]
 pub struct Ground;
 
+/// Marker sui muri (pareti degli edifici, mura del paese): fermano anche abitanti e animali, che
+/// invece passano tra mobili e bancarelle seguendo le strade (con le porte, `hut::DoorCollider`).
+#[derive(Component)]
+pub struct Wall;
+
 /// Costruisce la camera 3D UNA sola volta, allo startup.
 ///
 /// La camera NON viene ricreata durante il reset: il contesto egui è

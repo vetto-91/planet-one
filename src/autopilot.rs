@@ -348,6 +348,7 @@ pub fn field<'a>(state: &'a Value, name: &str) -> Option<&'a Value> {
         "y" => "/giocatore/pos/1",
         "z" => "/giocatore/pos/2",
         "sopra_terreno" => "/giocatore/sopra_terreno",
+        "a_terra" => "/giocatore/a_terra",
         "passi" => "/giocatore/passi",
         "anim" => "/giocatore/anim",
         "quest" => "/quest/fase",
@@ -948,6 +949,8 @@ pub fn snapshot(world: &mut World) -> Value {
         .next()
         .map(|(t, hp)| (t.translation, hp.current, hp.max));
     let pos = player.map_or(Vec3::ZERO, |p| p.0);
+    let mut grounded = world.query_filtered::<&crate::player::GroundedState, With<Player>>();
+    let on_ground = grounded.iter(world).next().map(|g| g.grounded_now);
     let mut anims =
         world.query_filtered::<&crate::animation::Animator, With<crate::player::PlayerVisual>>();
     let anim = anims.iter(world).next().map(|a| a.current_clip());
@@ -1232,6 +1235,8 @@ pub fn snapshot(world: &mut World) -> Value {
             "vita_max": player.map(|p| p.2),
             "terreno": terrain,
             "sopra_terreno": terrain.map(|h| pos.y - h),
+            // Appoggiato su qualcosa (terreno, pavimento, casse, pietre…): si può saltare.
+            "a_terra": on_ground,
             "anim": anim,
             "fiato": (crate::diving::breath() * 10.0).round() / 10.0,
             "sott_acqua": crate::diving::under(),

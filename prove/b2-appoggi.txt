@@ -1,0 +1,90 @@
+# Appoggi (blocco 2): ci si lascia cadere sopra, si resta appoggiati e da lì si salta.
+god on
+ora 12
+# 2026-11-19_21-55-43: sulle casse si galleggia e non si risalta
+tp 6.8 5 88.5
+aspetta 2
+camera 30 25 5
+aspetta 0.3
+foto casse-impilate
+dump casse-impilate
+verifica a_terra = true
+premi spazio 0.2
+aspetta 0.25
+dump casse-impilate-salto
+verifica y > 3.13
+aspetta 1.5
+# 2026-11-19_21-57-32: sopra la pietra non si salta
+tp -31.0 6 29.9
+aspetta 2
+camera 30 25 5
+aspetta 0.3
+foto pietra
+dump pietra
+verifica a_terra = true
+premi spazio 0.2
+aspetta 0.25
+dump pietra-salto
+verifica y > 4.82
+aspetta 1.5
+# 2026-11-18_23-12-06: le casse del molo non hanno collisione
+tp 7.8 4 97.3
+aspetta 2
+camera 30 25 5
+aspetta 0.3
+foto casse-molo
+dump casse-molo
+verifica a_terra = true
+premi spazio 0.2
+aspetta 0.25
+dump casse-molo-salto
+verifica y > 2.38
+aspetta 1.5
+# 2026-11-19_20-36-21: sul carro si galleggia
+tp 7.8 4 33.52
+aspetta 2
+camera 30 25 5
+aspetta 0.3
+foto carro
+dump carro
+verifica a_terra = true
+premi spazio 0.2
+aspetta 0.25
+dump carro-salto
+verifica y > 1.56
+aspetta 1.5
+# 2026-11-19_21-58-28: la tettoia della legnaia non ha collisione
+tp -20.6 6 18.0
+aspetta 2
+camera 30 25 5
+aspetta 0.3
+foto legnaia
+dump legnaia
+verifica a_terra = true
+premi spazio 0.2
+aspetta 0.25
+dump legnaia-salto
+verifica y > 3.18
+aspetta 1.5
+# 2026-11-19_20-38-31: sul cono del fieno le gambe sprofondano
+tp -8.0 6 41.0
+aspetta 2
+camera 30 25 5
+aspetta 0.3
+foto fieno
+dump fieno
+verifica a_terra = true
+premi spazio 0.2
+aspetta 0.25
+dump fieno-salto
+verifica y > 5.09
+aspetta 1.5
+# 2026-11-19_22-00-22: la tenda della bancarella è rigida ma scivolosa: ci si scivola giù.
+tp -5.2 6 15.4
+aspetta 0.6
+dump tenda
+verifica sopra_terreno > 1.5
+aspetta 4
+dump tenda-giu
+verifica sopra_terreno < 1.2
+esci

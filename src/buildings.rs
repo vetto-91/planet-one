@@ -158,6 +158,9 @@ pub struct Interior {
     /// Falde dei tetti come lastre inclinate (centro, rotazione, dimensioni), gronde comprese:
     /// fermano la camera, che altrimenti entrava nelle gronde sporgenti.
     pub roofs: Vec<(Vec3, Quat, Vec3)>,
+    /// Teli rigidi ma scivolosi (tende delle bancarelle): si urtano ma non ci si appoggia, si
+    /// scivola giù dai lati (`player::Slippery`).
+    pub slides: Vec<(Vec3, Quat, Vec3)>,
     /// Scritte delle targhe: centro della tabella (sul muro davanti) e chiave della texture
     /// in `assets/textures/cartelli/<chiave>.png`.
     pub signs: Vec<(Vec3, &'static str)>,
@@ -1506,7 +1509,18 @@ fn cart(b: &mut B, int: &mut Interior) -> Vec<(Vec3, Vec3)> {
         TIMBER,
     );
     crate::interiors::crate_box(b, int, 0.0, -0.45, y + 0.04, 0.62);
-    vec![(Vec3::new(0.0, 0.75, -0.05), Vec3::new(1.6, 1.5, 2.3))]
+    // Collider come il carro che si vede: il pianale (con le ruote sotto) e le sponde. Prima era
+    // un blocco unico alto 1,5 m e sopra si galleggiava (segnalazione 2026-11-19_20-36-21).
+    let bed_top = y + 0.04;
+    vec![
+        (
+            Vec3::new(0.0, bed_top / 2.0, -0.05),
+            Vec3::new(1.6, bed_top, 2.3),
+        ),
+        (Vec3::new(-0.63, y + 0.22, 0.0), Vec3::new(0.08, 0.36, 2.2)),
+        (Vec3::new(0.63, y + 0.22, 0.0), Vec3::new(0.08, 0.36, 2.2)),
+        (Vec3::new(0.0, y + 0.22, -1.08), Vec3::new(1.3, 0.36, 0.08)),
+    ]
 }
 
 /// Legnaia: tettoia a uno spiovente su quattro pali, con la legna spaccata accatastata sotto e una
@@ -1531,6 +1545,14 @@ fn woodshed(b: &mut B, r: &mut Rng) -> Vec<(Vec3, Vec3)> {
         let c = roof.transform_point(Vec3::new(x + 0.18, 0.0, 0.0));
         b.cuboid_c(c, Vec3::new(0.34, 0.04, 2.0 * D + 0.4), TIMBER);
     }
+    // La tettoia è solida: ci si sale con la scaletta (segnalazione 2026-11-19_21-58-28).
+    let edge = |z: f32| roof.transform_point(Vec3::new(0.0, 0.02, z));
+    b.slabs.push(roof_slab(
+        edge(D + 0.2),
+        edge(-D - 0.2),
+        Vec3::X,
+        2.0 * W + 0.3,
+    ));
     // Le cataste: tronchetti di testa, file sfalsate, contro la parete di fondo.
     let mut z = -D + 0.25;
     for row in 0..2 {
@@ -1774,6 +1796,14 @@ fn stall(b: &mut B, int: &mut Interior, kind: &str) -> Vec<(Vec3, Vec3)> {
         // Mantovana sul davanti: una fascia che pende dal bordo del telo.
         b.cuboid(Vec3::new(x0, 1.92, 1.33), Vec3::new(x1, 2.2, 1.37), col);
     }
+    // Il telo è rigido ma scivoloso: non lo si attraversa, e chi ci salta sopra scivola giù dai
+    // lati (segnalazione 2026-11-19_22-00-22).
+    int.slides.push(roof_slab(
+        Vec3::new(0.0, 2.2, 1.35),
+        Vec3::new(0.0, 2.7, -1.3),
+        Vec3::X,
+        3.2,
+    ));
     // Merce sul bancone e casse dietro.
     for i in 0..6 {
         let x = -1.1 + 0.44 * i as f32;
@@ -2059,6 +2089,28 @@ fn pier(b: &mut B, int: &mut Interior) -> Vec<(Vec3, Vec3)> {
         (
             Vec3::new(1.3, deck_y + 0.6, 5.0),
             Vec3::new(0.14, 1.2, 14.0),
+        ),
+        // Casse, barile e bitte: solidi come si vedono (segnalazione 2026-11-18_23-12-06).
+        (Vec3::new(-0.7, deck_y + 0.3, 1.0), Vec3::new(0.7, 0.6, 0.7)),
+        (
+            Vec3::new(-0.6, deck_y + 0.85, 1.0),
+            Vec3::new(0.5, 0.5, 0.5),
+        ),
+        (
+            Vec3::new(0.75, deck_y + 0.4, 2.4),
+            Vec3::new(0.55, 0.8, 0.55),
+        ),
+        (
+            Vec3::new(-1.1, deck_y + 0.18, 4.0),
+            Vec3::new(0.2, 0.36, 0.2),
+        ),
+        (
+            Vec3::new(1.1, deck_y + 0.18, 8.0),
+            Vec3::new(0.2, 0.36, 0.2),
+        ),
+        (
+            Vec3::new(-1.1, deck_y + 0.18, 11.4),
+            Vec3::new(0.2, 0.36, 0.2),
         ),
     ]
 }
@@ -2428,11 +2480,24 @@ pub fn model(kind: &str, seed: u32) -> Building {
                 Vec3::new(0.9, 1.1, 0.9),
                 [0.85, 0.7, 0.3, 1.0],
             );
-            b.pyramid(Vec3::new(0.0, 1.1, 0.0), 1.15, 1.4, [0.8, 0.62, 0.22, 1.0]);
+            let (base, half, h) = (1.1, 1.15, 1.4);
+            b.pyramid(Vec3::new(0.0, base, 0.0), half, h, [0.8, 0.62, 0.22, 1.0]);
+            // Il cono con le sue quattro falde: prima un cubo alto 1,8 m e sui versanti le gambe
+            // sprofondavano nel fieno (segnalazione 2026-11-19_20-38-31).
+            let apex = Vec3::new(0.0, base + h, 0.0);
+            for (dir, along) in [
+                (Vec3::Z, Vec3::X),
+                (Vec3::NEG_Z, Vec3::X),
+                (Vec3::X, Vec3::Z),
+                (Vec3::NEG_X, Vec3::Z),
+            ] {
+                let eave = Vec3::new(0.0, base, 0.0) + dir * half;
+                b.slabs.push(roof_slab(eave, apex, along, 2.0 * half));
+            }
             (
                 1.8,
                 1.8,
-                vec![(Vec3::new(0.0, 0.8, 0.0), Vec3::new(1.8, 1.8, 1.8))],
+                vec![(Vec3::new(0.0, 0.45, 0.0), Vec3::new(1.8, 1.3, 1.8))],
             )
         }
         "spaventapasseri" => {
