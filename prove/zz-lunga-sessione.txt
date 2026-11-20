@@ -1,0 +1,222 @@
+# Partita lunga: giro dell'isola ripetuto, uno stato per tappa.
+# Serve a vedere cosa cresce (entità, asset, luci, suoni) mentre gli FPS calano (segnalazione 2026-11-19_22-17-36).
+god on
+dump inizio
+tp 0 3 20
+aspetta 12
+dump g01-paese
+tp -10 4 84
+aspetta 12
+dump g01-faro
+tp 9 3 100
+aspetta 12
+dump g01-molo
+tp 90 5 30
+aspetta 12
+dump g01-grotta
+tp -71 8 -21
+aspetta 12
+dump g01-bosco
+tp -31 3 -8
+aspetta 12
+dump g01-mura
+tp 0 3 20
+aspetta 12
+dump g02-paese
+tp -10 4 84
+aspetta 12
+dump g02-faro
+tp 9 3 100
+aspetta 12
+dump g02-molo
+tp 90 5 30
+aspetta 12
+dump g02-grotta
+tp -71 8 -21
+aspetta 12
+dump g02-bosco
+tp -31 3 -8
+aspetta 12
+dump g02-mura
+tp 0 3 20
+aspetta 12
+dump g03-paese
+tp -10 4 84
+aspetta 12
+dump g03-faro
+tp 9 3 100
+aspetta 12
+dump g03-molo
+tp 90 5 30
+aspetta 12
+dump g03-grotta
+tp -71 8 -21
+aspetta 12
+dump g03-bosco
+tp -31 3 -8
+aspetta 12
+dump g03-mura
+tp 0 3 20
+aspetta 12
+dump g04-paese
+tp -10 4 84
+aspetta 12
+dump g04-faro
+tp 9 3 100
+aspetta 12
+dump g04-molo
+tp 90 5 30
+aspetta 12
+dump g04-grotta
+tp -71 8 -21
+aspetta 12
+dump g04-bosco
+tp -31 3 -8
+aspetta 12
+dump g04-mura
+tp 0 3 20
+aspetta 12
+dump g05-paese
+tp -10 4 84
+aspetta 12
+dump g05-faro
+tp 9 3 100
+aspetta 12
+dump g05-molo
+tp 90 5 30
+aspetta 12
+dump g05-grotta
+tp -71 8 -21
+aspetta 12
+dump g05-bosco
+tp -31 3 -8
+aspetta 12
+dump g05-mura
+tp 0 3 20
+aspetta 12
+dump g06-paese
+tp -10 4 84
+aspetta 12
+dump g06-faro
+tp 9 3 100
+aspetta 12
+dump g06-molo
+tp 90 5 30
+aspetta 12
+dump g06-grotta
+tp -71 8 -21
+aspetta 12
+dump g06-bosco
+tp -31 3 -8
+aspetta 12
+dump g06-mura
+tp 0 3 20
+aspetta 12
+dump g07-paese
+tp -10 4 84
+aspetta 12
+dump g07-faro
+tp 9 3 100
+aspetta 12
+dump g07-molo
+tp 90 5 30
+aspetta 12
+dump g07-grotta
+tp -71 8 -21
+aspetta 12
+dump g07-bosco
+tp -31 3 -8
+aspetta 12
+dump g07-mura
+tp 0 3 20
+aspetta 12
+dump g08-paese
+tp -10 4 84
+aspetta 12
+dump g08-faro
+tp 9 3 100
+aspetta 12
+dump g08-molo
+tp 90 5 30
+aspetta 12
+dump g08-grotta
+tp -71 8 -21
+aspetta 12
+dump g08-bosco
+tp -31 3 -8
+aspetta 12
+dump g08-mura
+tp 0 3 20
+aspetta 12
+dump g09-paese
+tp -10 4 84
+aspetta 12
+dump g09-faro
+tp 9 3 100
+aspetta 12
+dump g09-molo
+tp 90 5 30
+aspetta 12
+dump g09-grotta
+tp -71 8 -21
+aspetta 12
+dump g09-bosco
+tp -31 3 -8
+aspetta 12
+dump g09-mura
+tp 0 3 20
+aspetta 12
+dump g10-paese
+tp -10 4 84
+aspetta 12
+dump g10-faro
+tp 9 3 100
+aspetta 12
+dump g10-molo
+tp 90 5 30
+aspetta 12
+dump g10-grotta
+tp -71 8 -21
+aspetta 12
+dump g10-bosco
+tp -31 3 -8
+aspetta 12
+dump g10-mura
+tp 0 3 20
+aspetta 12
+dump g11-paese
+tp -10 4 84
+aspetta 12
+dump g11-faro
+tp 9 3 100
+aspetta 12
+dump g11-molo
+tp 90 5 30
+aspetta 12
+dump g11-grotta
+tp -71 8 -21
+aspetta 12
+dump g11-bosco
+tp -31 3 -8
+aspetta 12
+dump g11-mura
+tp 0 3 20
+aspetta 12
+dump g12-paese
+tp -10 4 84
+aspetta 12
+dump g12-faro
+tp 9 3 100
+aspetta 12
+dump g12-molo
+tp 90 5 30
+aspetta 12
+dump g12-grotta
+tp -71 8 -21
+aspetta 12
+dump g12-bosco
+tp -31 3 -8
+aspetta 12
+dump g12-mura
+dump fine
+esci

@@ -894,6 +894,37 @@ pub fn take_photos(
 }
 
 /// Fotografia dello stato del gioco (JSON): giocatore, quest, dialogo, inventario, dintorni.
+/// Quante cose vive tiene il gioco: asset caricati e entità che costano a ogni fotogramma (mesh,
+/// luci, suoni). Servono a trovare ciò che cresce durante una partita lunga e fa calare gli FPS.
+fn resource_counts(world: &mut World) -> Value {
+    fn count<F: bevy::ecs::query::QueryFilter>(world: &mut World) -> usize {
+        world.query_filtered::<(), F>().iter(world).count()
+    }
+    let assets = |world: &World| {
+        (
+            world.resource::<Assets<Mesh>>().len(),
+            world.resource::<Assets<StandardMaterial>>().len(),
+            world.resource::<Assets<Image>>().len(),
+        )
+    };
+    let (meshes, materials, images) = assets(world);
+    let shadow_lights = world
+        .query::<&PointLight>()
+        .iter(world)
+        .filter(|l| l.shadow_maps_enabled)
+        .count();
+    json!({
+        "luci_ombra": shadow_lights,
+        "mesh": meshes,
+        "materiali": materials,
+        "immagini": images,
+        "oggetti_visibili": count::<With<Mesh3d>>(world),
+        "luci_punto": count::<With<PointLight>>(world),
+        "luci_spot": count::<With<SpotLight>>(world),
+        "suoni": count::<With<AudioPlayer>>(world),
+    })
+}
+
 pub fn snapshot(world: &mut World) -> Value {
     let app = world
         .get_resource::<State<crate::AppState>>()
@@ -1193,7 +1224,7 @@ pub fn snapshot(world: &mut World) -> Value {
         "meteo": meteo,
         "temperatura": temp,
         "fps": fps.map(|f| f.round()),
-        "entita": world.entities().len(),
+        "entita": world.entities().count_spawned(),
         "regione": crate::region::current().key(),
         "giocatore": {
             "pos": [pos.x, pos.y, pos.z],
@@ -1269,6 +1300,7 @@ pub fn snapshot(world: &mut World) -> Value {
         "abitanti": abitanti,
     });
     state["interfaccia"] = interfaccia;
+    state["risorse"] = resource_counts(world);
     state
 }
 
@@ -1326,8 +1358,43 @@ pub fn plugin(app: &mut App) {
                 dump_state
                     .after(crate::combat::player_death)
                     .run_if(|p: Res<Autopilot>| p.dump.is_some()),
+                // Esclusivo anche lui, ma gira una volta al minuto.
+                perf_log.run_if(every(PERF_EVERY)),
             ),
         );
+}
+
+/// Ogni quanti secondi reali scrivere la riga `[PERF]` nel log.
+const PERF_EVERY: f32 = 60.0;
+
+/// Condizione vera una volta ogni `secs` secondi reali.
+fn every(secs: f32) -> impl FnMut(Res<Time<Real>>, Local<f32>) -> bool {
+    move |time: Res<Time<Real>>, mut left: Local<f32>| {
+        *left -= time.delta_secs();
+        if *left > 0.0 {
+            return false;
+        }
+        *left = secs;
+        true
+    }
+}
+
+/// Riga `[PERF]` nel log: FPS, entità vive e risorse, per capire dopo un calo di FPS o un crash
+/// cosa è cresciuto durante la partita (segnalazione 2026-11-19_22-17-36). Le segnalazioni F12
+/// portano con sé le ultime righe del log.
+fn perf_log(world: &mut World) {
+    let fps = world
+        .get_resource::<DiagnosticsStore>()
+        .and_then(|d| d.get(&FrameTimeDiagnosticsPlugin::FPS))
+        .and_then(|d| d.smoothed());
+    let entities = world.entities().count_spawned();
+    let counts = resource_counts(world);
+    info!(
+        "[PERF] fps {} entita {} risorse {}",
+        fps.map_or("?".into(), |f| format!("{f:.0}")),
+        entities,
+        counts
+    );
 }
 
 #[cfg(test)]
