@@ -360,9 +360,13 @@ pub(crate) fn blocked_map(dbg: &DebugPlace, village: &VillageInfo, island: &Isla
             }
         }
     }
+    // Tutto il ponte, non solo i capi: una betulla cresciuta a metà fermava chi lo attraversava
+    // (segnalazione 2026-11-19_22-29-52).
     for (x, y) in &island.bridges {
-        b.stamp(*x, 3.0);
-        b.stamp(*y, 3.0);
+        let steps = (x.distance(*y).ceil() as usize).max(1);
+        for k in 0..=steps {
+            b.stamp(x.lerp(*y, k as f32 / steps as f32), 3.0);
+        }
     }
     for pl in &dbg.items {
         let radius = match pl.kind.as_str() {

@@ -1,0 +1,39 @@
+# Mare, erba vicino alle mura e ponte del continente (blocco 2).
+god on
+ora 12
+meteo sereno
+# 2026-11-19_21-11-52: dalla spiaggia si entra in mare (prima la barriera stava sulla sabbia).
+tp 20.1 2 87.5
+aspetta 1.5
+camera 234 5
+premi w 4
+aspetta 0.5
+foto mare
+dump mare
+verifica x > 22.5
+# 2026-11-19_21-33-28: sull'erba vicino alle mura si va a piena velocità (prima la conca sotto il
+# livello del mare contava come acqua e dimezzava il passo).
+tp -30.7 1 -8.1
+aspetta 1.5
+dump erba-inizio
+camera 0 5
+premi w 2
+dump erba
+verifica z < -15
+# 2026-11-19_22-29-52: al nord il ponte si attraversa (la barriera di riva seguiva le sponde del fiume).
+regione nord
+aspetta 4
+god on
+ora 12
+# Il ponte va da (140; 212) a (140; 192): da un capo all'altro senza scendere nel fiume.
+tp 140 6 214
+aspetta 2
+dump ponte-inizio
+camera 0 5
+premi w 5
+aspetta 0.5
+foto ponte
+dump ponte
+verifica z < 191
+verifica y > 2
+esci

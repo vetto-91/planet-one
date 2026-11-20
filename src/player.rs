@@ -703,11 +703,19 @@ fn water_depth(field: &crate::terrain::TerrainField, pos: Vec3) -> Option<(f32, 
         lake_level
     } else if field.in_fresh_water(pos.x, pos.z) {
         ground + 0.35
-    } else if ground < crate::terrain::SEA_LEVEL {
+    } else if ground < crate::terrain::SEA_LEVEL && field.in_sea(pos.x, pos.z) {
+        // Solo il mare aperto: una conca d'erba più bassa del mare, vicino alle mura, rallentava
+        // come un guado (segnalazione 2026-11-19_21-33-28).
         crate::terrain::SEA_LEVEL
     } else {
         return None;
     };
+    // Sopra l'acqua (ponti, moli, passerelle) i piedi sono asciutti: prima sul ponte del nord si
+    // andava a metà passo come in un guado (segnalazione 2026-11-19_22-29-52). Il centro della
+    // capsula sta 0,85 m sopra i piedi.
+    if pos.y - 0.85 > level + 0.15 {
+        return None;
+    }
     let depth = level - ground;
     (depth > 0.05).then_some((depth, level))
 }

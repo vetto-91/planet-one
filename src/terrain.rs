@@ -36,9 +36,14 @@ const HEIGHTMAP_SIZE: f32 = 100.0;
 pub(crate) fn step() -> f32 {
     crate::region::current().step()
 }
-/// Quota (m) del livello del mare e della riva (dove si ferma il giocatore).
+/// Quota (m) del livello del mare.
 pub const SEA_LEVEL: f32 = -1.0;
-const SHORE_LEVEL: f32 = -0.3;
+/// Fondale (m) oltre cui la barriera di riva ferma il giocatore: 3,5 m d'acqua, si entra in mare,
+/// si nuota e si arriva alla cassa sommersa del relitto. Prima era −0,3 m, sulla sabbia asciutta, e
+/// non si poteva nemmeno bagnarsi i piedi (segnalazione 2026-11-19_21-11-52).
+const SHORE_LEVEL: f32 = SEA_LEVEL - 3.5;
+/// Quota (m) della battigia: da qui si misura la distanza dalle onde.
+const WAVE_LINE: f32 = -0.3;
 /// Scala verticale della heightmap: i valori 0..255 diventano -1..+1 e poi
 /// vengono moltiplicati per `HEIGHT_SCALE` (m).
 const HEIGHT_SCALE: f32 = 4.0;
@@ -467,7 +472,8 @@ pub fn update_terrain(
         .unwrap_or_default();
     let fence = cliff_fence(&field, &island);
     let barrier = build_barrier(&field, &shore_mask, &fence, &piers);
-    let shore = shore_points(&field, &shore_mask);
+    // La linea di riva (onde, gabbiani, paletti del debug) resta alla battigia, non alla barriera.
+    let shore = shore_points(&field, &flood_ocean(&field, WAVE_LINE));
     info!(
         "[TERRAIN] riva: {} punti; sabbia: {} vertici",
         shore.len(),
