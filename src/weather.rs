@@ -540,7 +540,9 @@ pub fn update_precip(
     };
     let dt = time.delta_secs().min(0.1);
     let t = time.elapsed_secs();
-    let open = (1.0 - 0.9 * state.sheltered) * settings.gfx.particle_scale();
+    // Al coperto non cade nemmeno una goccia: con il 10% di prima pioveva dentro la grotta e nelle
+    // case (segnalazione 2026-11-19_22-04-37); fuori dalla porta si sente ancora la pioggia.
+    let open = (1.0 - state.sheltered) * settings.gfx.particle_scale();
     let rain_n = (state.rain * RAIN_POOL as f32 * open) as usize;
     let snow_n = (state.snow * SNOW_POOL as f32 * open) as usize;
     let field = &*field;
