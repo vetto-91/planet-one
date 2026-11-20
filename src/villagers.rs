@@ -153,6 +153,120 @@ struct Chore {
     done: bool,
 }
 
+/// Dopo quanti secondi bloccato un abitante può passare attraverso l'ostacolo (se non visto).
+const STUCK_PASS: f32 = 2.0;
+/// Anche se visto, dopo tanto tempo bloccato passa comunque.
+const STUCK_GIVE_UP: f32 = 12.0;
+/// Quanto dura il passaggio attraverso un muro (s): il tempo di arrivare dall'altra parte.
+const GHOST_TIME: f32 = 1.2;
+/// Oltre questa distanza dalla camera chi passa attraverso un muro non si nota.
+const UNSEEN_FAR: f32 = 25.0;
+/// Capsula con cui si controlla il passo: un poco più stretta del corpo, per le porte.
+const WALK_RADIUS: f32 = 0.3;
+const WALK_LENGTH: f32 = 0.9;
+
+/// Ciò che serve per camminare senza attraversare le cose (segnalazioni 2026-11-19_20-43-51,
+/// 22-21-49: gli abitanti passavano attraverso muri, portoni e porte).
+/// Muri e porte: ciò che ferma gli abitanti.
+type WallFilter = Or<(With<crate::scene::Wall>, With<crate::hut::DoorCollider>)>;
+
+struct Walk<'a, 'w, 's> {
+    spatial: &'a SpatialQuery<'w, 's>,
+    /// Muri e porte: solo loro fermano gli abitanti (mobili e bancarelle stanno sulle loro strade).
+    walls: &'a Query<'w, 's, (), WallFilter>,
+    /// Pavimenti, moli, camminamenti (`Ground`): ci si appoggia sopra.
+    floors: &'a Query<'w, 's, (), With<crate::scene::Ground>>,
+    /// Camera: posizione e direzione dello sguardo.
+    eye: Option<(Vec3, Vec3)>,
+}
+
+impl Walk<'_, '_, '_> {
+    /// C'è un muro o una porta entro `dist` nella direzione `dir`?
+    fn blocked(&self, me: Entity, at: Vec3, dir: Vec2, dist: f32) -> bool {
+        let Ok(d) = Dir3::new(Vec3::new(dir.x, 0.0, dir.y)) else {
+            return false;
+        };
+        self.spatial
+            .cast_shape_predicate(
+                &Collider::capsule(WALK_RADIUS, WALK_LENGTH),
+                at + Vec3::Y * 0.15,
+                Quat::IDENTITY,
+                d,
+                &ShapeCastConfig::from_max_distance(dist + 0.05),
+                &SpatialQueryFilter::from_excluded_entities([me]),
+                &|e| self.walls.contains(e),
+            )
+            .is_some()
+    }
+
+    /// Quota dei piedi: il pavimento sotto l'abitante se sta più in alto del terreno `base`
+    /// (case con il pavimento rialzato, al nord gli abitanti affondavano fino alle ginocchia:
+    /// segnalazione 2026-11-19_22-40-16), altrimenti `base`.
+    fn floor(&self, me: Entity, at: Vec3, base: f32) -> f32 {
+        // Dall'altezza della vita in giù: un soffitto sopra la testa non conta.
+        let from = Vec3::new(at.x, at.y.max(base + CENTER_Y) + 0.3, at.z);
+        self.spatial
+            .cast_ray_predicate(
+                from,
+                Dir3::NEG_Y,
+                CENTER_Y + 1.5,
+                true,
+                &SpatialQueryFilter::from_excluded_entities([me]),
+                &|e| self.floors.contains(e),
+            )
+            .map(|hit| from.y - hit.distance)
+            .filter(|y| *y > base)
+            .unwrap_or(base)
+    }
+
+    /// Lo vede qualcuno? Vicino alla camera e davanti a lei.
+    fn seen(&self, at: Vec3) -> bool {
+        self.eye.is_some_and(|(eye, fwd)| {
+            let to = at - eye;
+            to.length() < UNSEEN_FAR && to.normalize_or_zero().dot(fwd) > 0.3
+        })
+    }
+
+    /// Un passo verso `dir`: dritto se libero, altrimenti di lato (45° e 90°, a destra e a
+    /// sinistra). Restituisce la direzione presa (nessuna se fermo) e se è passato oltre
+    /// l'ostacolo perché bloccato da troppo tempo e non visto.
+    #[allow(clippy::too_many_arguments)]
+    fn step(
+        &self,
+        me: Entity,
+        at: Vec3,
+        dir: Vec2,
+        dist: f32,
+        stuck: &mut f32,
+        ghost: &mut f32,
+        dt: f32,
+    ) -> (Option<Vec2>, bool) {
+        if *ghost > 0.0 {
+            *ghost -= dt;
+            return (Some(dir), false);
+        }
+        if !self.blocked(me, at, dir, dist) {
+            *stuck = 0.0;
+            return (Some(dir), false);
+        }
+        // Di lato si prova, ma il tempo conta lo stesso: un passo di lato e uno indietro verso la
+        // meta facevano oscillare sul posto per sempre (Rosa davanti a casa, `zz-secondarie`).
+        *stuck += dt;
+        let side = [45.0f32, -45.0, 90.0, -90.0]
+            .iter()
+            .map(|deg| Vec2::from_angle(deg.to_radians()).rotate(dir))
+            .find(|d| !self.blocked(me, at, *d, dist));
+        // Bloccato e non visto: passa oltre. Visto, aspetta; ma non per sempre, o la sua giornata
+        // (e le storie che lo aspettano) si fermerebbe lì.
+        if (*stuck > STUCK_PASS && !self.seen(at)) || *stuck > STUCK_GIVE_UP {
+            *stuck = 0.0;
+            *ghost = GHOST_TIME;
+            return (Some(dir), true);
+        }
+        (side, false)
+    }
+}
+
 /// Un compagno segue il giocatore a qualche passo, raggiungendolo se resta indietro.
 #[allow(clippy::too_many_arguments)]
 fn follow(
@@ -218,6 +332,10 @@ pub struct Villager {
     called: Option<(Vec2, Vec2)>,
     /// Il posto della storia è appena cambiato: chi è per strada cambia subito direzione.
     recall: bool,
+    /// Da quanto (s) non riesce ad avanzare: oltre [`STUCK_PASS`] passa oltre, se nessuno lo vede.
+    stuck: f32,
+    /// Sta passando attraverso un muro (s rimasti): niente controlli finché non è dall'altra parte.
+    ghost: f32,
 }
 
 /// Stato di un abitante nel salvataggio.
@@ -579,6 +697,8 @@ pub fn spawn_villager(
                 chore: None,
                 called: None,
                 recall: false,
+                stuck: 0.0,
+                ghost: 0.0,
             },
             RigidBody::Kinematic,
             Collider::capsule(0.35, 1.0),
@@ -847,10 +967,26 @@ pub fn villager_routine(
     )>,
     mut lanterns: Query<(Entity, &mut PointLight), With<GuardLantern>>,
     mut gear: Query<GearItem, GearOnly>,
-    players: Query<&GlobalTransform, With<crate::player::Player>>,
+    (players, spatial, walls, floors, cameras): (
+        Query<&GlobalTransform, With<crate::player::Player>>,
+        SpatialQuery,
+        Query<(), WallFilter>,
+        Query<(), With<crate::scene::Ground>>,
+        Query<&GlobalTransform, With<Camera3d>>,
+    ),
 ) {
     let Some(field) = field else {
         return;
+    };
+    let eye = cameras
+        .iter()
+        .next()
+        .map(|c| (c.translation(), *c.forward()));
+    let walk = Walk {
+        spatial: &spatial,
+        walls: &walls,
+        floors: &floors,
+        eye,
     };
     if graph.is_none() && !info.spec.roads.is_empty() {
         *graph = Some(RoadGraph::build(&info.spec.roads));
@@ -897,6 +1033,9 @@ pub fn villager_routine(
             follow(
                 &mut tf, &mut v, &mut vis, &mut npc, &field, piers, target, dt,
             );
+            // Dietro al giocatore anche dentro le case: sul pavimento, non sul terreno di sotto.
+            let base = tf.translation.y - CENTER_Y;
+            tf.translation.y = walk.floor(entity, tf.translation, base) + CENTER_Y;
             continue;
         }
         if v.following {
@@ -1200,10 +1339,30 @@ pub fn villager_routine(
                 } else {
                     let step = (WALK_SPEED * dt).min(to.length());
                     let dir = to.normalize();
-                    tf.translation.x += dir.x * step;
-                    tf.translation.z += dir.y * step;
-                    let want_rot = Quat::from_rotation_y(yaw_towards(dir));
-                    tf.rotation = tf.rotation.slerp(want_rot, (8.0 * dt).clamp(0.0, 1.0));
+                    // Muri e porte fermano anche gli abitanti: si prova di lato e, se resta
+                    // bloccato a lungo senza che nessuno lo veda, passa oltre.
+                    let vv = &mut *v;
+                    let (moved_dir, pass) = walk.step(
+                        entity,
+                        tf.translation,
+                        dir,
+                        step,
+                        &mut vv.stuck,
+                        &mut vv.ghost,
+                        dt,
+                    );
+                    if let Some(d) = moved_dir {
+                        tf.translation.x += d.x * step;
+                        tf.translation.z += d.y * step;
+                        let want_rot = Quat::from_rotation_y(yaw_towards(d));
+                        tf.rotation = tf.rotation.slerp(want_rot, (8.0 * dt).clamp(0.0, 1.0));
+                    }
+                    if pass {
+                        info!(
+                            "[VILLAGERS] {} bloccato e non visto: passa oltre ({:.1} {:.1})",
+                            v.def.name, tf.translation.x, tf.translation.z
+                        );
+                    }
                 }
             }
         } else if matches!(v.phase, Phase::Night | Phase::Rest) {
@@ -1245,7 +1404,8 @@ pub fn villager_routine(
                 enable_collider(&mut commands, entity, &mut collider_off);
             }
         }
-        tf.translation.y = ground_y(&field, piers, tf.translation.x, tf.translation.z) + CENTER_Y;
+        let base = ground_y(&field, piers, tf.translation.x, tf.translation.z);
+        tf.translation.y = walk.floor(entity, tf.translation, base) + CENTER_Y;
     }
 }
 

@@ -203,12 +203,14 @@ fn blocked_ahead(
     let Ok(d) = Dir3::new(Vec3::new(dir.x, 0.0, dir.y)) else {
         return false;
     };
+    // Una sfera piccola invece di un raggio: il raggio passava di sbieco sugli spigoli.
     spatial
-        .cast_ray_predicate(
+        .cast_shape_predicate(
+            &Collider::sphere(0.12),
             from,
+            Quat::IDENTITY,
             d,
-            dist,
-            true,
+            &ShapeCastConfig::from_max_distance(dist),
             &SpatialQueryFilter::from_excluded_entities([me]),
             // Il corpo dell'animale (un collider figlio) non è un ostacolo per sé stesso.
             &|e| !grounds.contains(e) && parents.get(e).map_or(true, |p| p.parent() != me),
@@ -749,9 +751,21 @@ fn move_hens(
     grounds: Query<(), With<crate::scene::Ground>>,
     parents: Query<&ChildOf>,
     mut hens: Query<(Entity, &mut Hen, &mut Transform, &mut Visibility)>,
+    buildings: Query<(&GlobalTransform, &crate::world_props::BuildingFootprint), Without<Hen>>,
 ) {
     let (Some(field), Ok(me)) = (field, player.single()) else {
         return;
+    };
+    // Le galline non vanno dentro le case: nessuna meta nell'impronta di un edificio
+    // (segnalazione 2026-11-19_21-59-45).
+    let outdoors = |p: Vec2| {
+        !buildings.iter().any(|(g, fp)| {
+            let local =
+                g.affine()
+                    .inverse()
+                    .transform_point3(Vec3::new(p.x, g.translation().y, p.y));
+            local.x.abs() < fp.half.x + 0.3 && local.z.abs() < fp.half.y + 0.3
+        })
     };
     let dt = time.delta_secs();
     let now = time.elapsed_secs();
@@ -769,7 +783,7 @@ fn move_hens(
         let mut peck = 0.0;
         if h.pos.distance(me) < 1.4 {
             let (home, radius, pos) = (h.home, h.radius, h.pos);
-            h.target = flee_spot(pos, me, |p| p.distance(home) <= radius);
+            h.target = flee_spot(pos, me, |p| p.distance(home) <= radius && outdoors(p));
         }
         if let Some(target) = h.target {
             let to = target - h.pos;
@@ -792,7 +806,7 @@ fn move_hens(
             h.wait -= dt;
             if h.wait <= 0.0 {
                 let (home, radius) = (h.home, h.radius);
-                h.target = pick_spot(&mut h.rng, home, radius, |_| true);
+                h.target = pick_spot(&mut h.rng, home, radius, outdoors);
                 h.wait = 2.0;
             }
         }

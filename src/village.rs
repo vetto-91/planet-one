@@ -1014,6 +1014,7 @@ pub fn sync_village(
                     Collider::cuboid(size.x, size.y, size.z),
                     Transform::from_translation(center).with_rotation(Quat::from_rotation_y(yaw)),
                     BlocksCamera,
+                    crate::scene::Wall,
                 ));
             }
             // Camminamenti e gradini: sono "terreno" per il controllo di appoggio del giocatore.
