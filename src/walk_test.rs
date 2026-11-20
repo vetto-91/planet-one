@@ -197,23 +197,29 @@ mod tests {
             "locanda",
             "caserma",
         ] {
-            let int = model(k, 7).interior;
-            // Dal piede dell'ultima rampa (le rampe di sotto le prova `every_bed_…`) su fino in
-            // cima e fuori dal vano, nel sottotetto. Il primo gradino è un pianerottolo pieno:
-            // la capsula della prova non sale gli scalini, si parte già sulla rampa.
-            let (c, rot, size) = *int.ramps.last().unwrap();
-            let (x, n) = (rot * Vec3::X, rot * Vec3::Y);
-            let mid = c + n * (size.y / 2.0);
-            let low = mid - x * (size.x / 2.0);
-            let route = int.routes.last().unwrap();
-            let path = vec![
-                low + Vec3::Y * 0.05,
-                route[route.len() - 2],
-                // Fuori dal vano, 30 cm più indietro: il punto degli abitanti sfiora il muretto.
-                route[route.len() - 1] - Vec3::Z * 0.3,
-            ];
-            if let Err(e) = can_walk(&int, &path) {
-                bad.push(format!("{k}: {e}"));
+            // Seme 7, quello della casa del porticciolo (3,2; 90,5: segnalazione 2026-11-18_23-48-25,
+            // la scala della soffitta non si saliva) e altri: ogni seme cambia la disposizione.
+            let porticciolo = 320u32 ^ 9050u32.rotate_left(11);
+            for seed in [7, porticciolo].into_iter().chain(1..20) {
+                let int = model(k, seed).interior;
+                // Dal piede dell'ultima rampa (le rampe di sotto le prova `every_bed_…`) su fino in
+                // cima e fuori dal vano, nel sottotetto. Il primo gradino è un pianerottolo pieno:
+                // la capsula della prova non sale gli scalini, si parte già sulla rampa.
+                let (c, rot, size) = *int.ramps.last().unwrap();
+                let (x, n) = (rot * Vec3::X, rot * Vec3::Y);
+                let mid = c + n * (size.y / 2.0);
+                let low = mid - x * (size.x / 2.0);
+                let route = int.routes.last().unwrap();
+                let path = vec![
+                    low + Vec3::Y * 0.05,
+                    route[route.len() - 2],
+                    // Fuori dal vano, proprio dove si fermano gli abitanti: prima qui il muretto del
+                    // sottotetto bloccava il giocatore (la prova arretrava di 30 cm e non lo vedeva).
+                    route[route.len() - 1],
+                ];
+                if let Err(e) = can_walk(&int, &path) {
+                    bad.push(format!("{k} seme {seed}: {e}"));
+                }
             }
         }
         assert!(bad.is_empty(), "{}", bad.join("\n"));

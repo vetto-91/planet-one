@@ -1029,31 +1029,10 @@ fn house(
         rooms::furnish(b, int, kind, &room, f, seed);
         int.lights.push(Vec3::new(0.0, y + 2.1, (z0 + z1) / 2.0));
     }
-    // Sottotetto: pareti basse (quella posteriore si ferma alla rampa), soffitto e ripostiglio.
-    // Nelle case piccole la rampa arriva a pochi centimetri dal muretto davanti: lì il muretto
-    // (e la fascia sotto la gronda) si fermano alla rampa anche sul davanti, se no in cima la
-    // testa ci sbatte e non si scende nel sottotetto.
-    let arrival = layout
-        .routes
-        .last()
-        .and_then(|r| r.last())
-        .map_or(0.0, |p| p.z);
-    let crowded = arrival + 0.45 > knee;
-    let stop_at_flight = |s: f32| s < 0.0 || crowded;
-    b.force = Some(Mat::Planks);
-    for s in [-1.0f32, 1.0] {
-        let right = if stop_at_flight(s) {
-            layout.top_x0 - 0.05
-        } else {
-            x1
-        };
-        let cx = (x0 + right) / 2.0;
-        let c = Vec3::new(cx, attic_y + 0.9, s * (knee + 0.05));
-        let size = Vec3::new(right - x0, 1.8, 0.1);
-        b.cuboid_c(c, size, [0.4, 0.3, 0.2, 1.0]);
-        int.walls.push((c, size));
-    }
-    b.force = None;
+    // Sottotetto: soffitto e ripostiglio. Niente più pareti basse né fascia sotto la gronda: il
+    // tetto a V lo chiude già (le falde hanno i loro collider), e in cima alla scala delle case
+    // piccole il muretto, a pochi centimetri dalla rampa, non faceva entrare nel sottotetto
+    // (segnalazioni 2026-11-18_23-46-45 e 23-48-25).
     let ceiling_y = attic_y + 2.15;
     int.walls.push((
         Vec3::new(0.0, ceiling_y + 0.6, 0.0),
@@ -1064,21 +1043,6 @@ fn house(
         int.walls.push((
             Vec3::new(s * (hw - t / 2.0), attic_y + 1.1, 0.0),
             Vec3::new(t, 2.2, 2.0 * knee + 0.4),
-        ));
-        // Sul fondo la fascia si ferma alla rampa del sottotetto, come il muretto: piena, faceva
-        // sbattere la testa a chi sale (forno, segnalazione 37).
-        let right = if stop_at_flight(s) {
-            layout.top_x0 - 0.05
-        } else {
-            hw
-        };
-        int.walls.push((
-            Vec3::new(
-                (-hw + right) / 2.0,
-                wh + 0.6,
-                s * (knee + 0.1 + (hd - knee) / 2.0),
-            ),
-            Vec3::new(right + hw, 1.2, hd - knee - 0.1),
         ));
     }
     let attic_room = rooms::Room {
