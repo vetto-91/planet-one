@@ -1,0 +1,44 @@
+# Grotta (segnalazioni del 2026-11-19): le stesse inquadrature, di giorno.
+# - 21-49-13 / 21-53-53: dalla galleria si vede l'accampamento dei ladri, come da sottoterra;
+# - 21-52-43: buco per uscire dalla mappa sopra le gallerie;
+# - 22-08-49: si affonda nel cumulo di massi sopra la camera;
+# - 22-10-52: il forziere davanti alla Porta Sommersa chiude il passaggio.
+god on
+ora 12
+meteo sereno
+tp 92.9 1.6 38.5
+aspetta 1
+camera 83.7 2.9
+aspetta 0.5
+foto galleria-accampamento
+dump galleria
+# Dal tetto della discesa, dove sporge dalla collina, si cammina verso la collina (+z): prima si
+# finiva sotto la superficie del terreno (fino a z 34 e oltre), ora la roccia ferma prima.
+tp 93.0 6.0 28.0
+aspetta 1.5
+dump tetto-scoperto
+camera 180 10
+premi w 4
+aspetta 1
+foto buco-fuori-mappa
+dump buco
+verifica z < 31.5
+verifica sopra_terreno > -1
+# La collina vista da fuori, dall'accampamento.
+tp 76.0 4.0 36.0
+aspetta 1
+camera 90 -10 8
+aspetta 0.5
+foto collina
+tp 90.5 7.5 24.7
+aspetta 1.5
+camera 348.4 31.1
+aspetta 0.5
+foto tetto-massi
+dump tetto
+tp 84.9 1.7 41.2
+aspetta 1
+camera 184.3 16.2
+aspetta 0.5
+foto nicchia
+esci

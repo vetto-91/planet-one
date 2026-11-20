@@ -302,12 +302,18 @@ fn cave_depths(b: &mut B, int: &mut Interior) {
         // Parete est con il varco del cunicolo (z da -21,2 a -19,7).
         (v(0.4, LO, -19.7), v(1.0, CEIL, -17.8)),
         (v(0.4, LO, -24.6), v(1.0, CEIL, -21.2)),
+        // Sopra il varco, dal soffitto basso del cunicolo a quello della sala: senza, restava una
+        // finestra da cui si vedeva l'accampamento dei ladri (segnalazione 2026-11-19_21-49-13).
+        (v(0.4, LOW, -21.2), v(1.0, CEIL, -19.7)),
         (v(-6.6, CEIL, -24.6), v(1.0, CEIL + 0.6, -17.8)),
     ] {
         rock(b, int, min, max);
     }
     campfire(b, int, v(-3.0, FL, -20.2));
     rooms::chest(b, int, -4.8, -23.2, FL);
+    // Il forziere della nicchia: stava davanti alla Porta Sommersa e chiudeva il passaggio
+    // (segnalazione 2026-11-19_22-10-52).
+    rooms::chest(b, int, -2.8, -23.4, FL);
     rooms::barrel(b, int, -0.9, -23.2, FL);
     rooms::crate_box(b, int, -5.3, -19.2, FL, 0.7);
     // Cunicolo stretto (soffitto basso): va a est e gira a sud fino a una nicchia.
@@ -326,7 +332,6 @@ fn cave_depths(b: &mut B, int: &mut Interior) {
     ] {
         rock(b, int, min, max);
     }
-    rooms::chest(b, int, 5.3, -26.2, FL);
     campfire(b, int, v(5.3, FL, -23.2));
     sunken_passage(b, int);
 }
@@ -667,6 +672,124 @@ pub fn well_grate(
 #[derive(Component)]
 pub struct CaveMouth;
 
+/// La collina sopra le gallerie della grotta è già stata riempita di roccia.
+#[derive(Component)]
+pub struct CaveFilled;
+
+/// Le gallerie sotto la collina (coordinate locali della grotta): x, z minimi e massimi e quota del
+/// tetto (faccia di sopra). Discesa, laghetto e sala del tesoro hanno il tetto a `CEIL + 0,6`;
+/// cunicolo e corridoio della Porta Sommersa a `LOW + 0,6`. Vedi [`cave_depths`].
+const CAVE_GALLERIES: [(f32, f32, f32, f32, f32); 5] = [
+    (-4.2, -0.8, -18.4, -8.8, 3.1),
+    (-8.4, -3.6, -18.2, -12.4, 3.1),
+    (-6.6, 1.0, -24.6, -17.8, 3.1),
+    (0.4, 6.6, -27.6, -19.1, 1.55),
+    (4.0, 6.6, -32.4, -27.6, 1.55),
+];
+/// Riquadro (locale) riempito: tutte le gallerie, dal fondo della camera in giù.
+const CAVE_FILL: (Vec2, Vec2) = (Vec2::new(-8.4, -32.4), Vec2::new(6.6, -8.8));
+/// Lato delle colonne di roccia.
+const CAVE_FILL_CELL: f32 = 1.0;
+/// Quota (locale) da cui partono le colonne fuori dalle gallerie: la base delle loro pareti.
+const CAVE_FILL_LOW: f32 = -1.6;
+
+/// Colonne di roccia sopra le gallerie, fino al terreno: `(min, max)` locali per ogni cella in cui
+/// il terreno sta più in alto del tetto. Il terreno è un heightfield e la collina sopra le gallerie
+/// arriva a 6-8,5 m mentre i tetti stanno a 3,6-5,1 m: nello spazio in mezzo si camminava sotto la
+/// superficie, si vedeva fuori da sottoterra e si usciva dalla mappa (segnalazioni del
+/// 2026-11-19: 21-49-13, 21-52-43, 21-53-53). `ground(x, z)` è la quota del terreno nel punto
+/// locale, già riportata in coordinate locali.
+pub fn cave_fill_columns(ground: impl Fn(f32, f32) -> f32) -> Vec<(Vec3, Vec3)> {
+    let (lo, hi) = CAVE_FILL;
+    let nx = ((hi.x - lo.x) / CAVE_FILL_CELL).ceil() as i32;
+    let nz = ((hi.y - lo.y) / CAVE_FILL_CELL).ceil() as i32;
+    let mut out = Vec::new();
+    for iz in 0..nz {
+        for ix in 0..nx {
+            let x0 = lo.x + ix as f32 * CAVE_FILL_CELL;
+            let z0 = lo.y + iz as f32 * CAVE_FILL_CELL;
+            let (x1, z1) = (
+                (x0 + CAVE_FILL_CELL).min(hi.x),
+                (z0 + CAVE_FILL_CELL).min(hi.y),
+            );
+            // Sopra una galleria si parte dal tetto più alto che tocca la cella, così la colonna
+            // non entra mai in una stanza; altrove dalla base delle pareti.
+            let bottom = CAVE_GALLERIES
+                .iter()
+                .filter(|(gx0, gx1, gz0, gz1, _)| x0 < *gx1 && x1 > *gx0 && z0 < *gz1 && z1 > *gz0)
+                .map(|g| g.4)
+                .reduce(f32::max)
+                .unwrap_or(CAVE_FILL_LOW);
+            // La quota più alta della cella: la colonna chiude anche il lato in salita.
+            let top = [
+                (x0, z0),
+                (x1, z0),
+                (x0, z1),
+                (x1, z1),
+                ((x0 + x1) / 2.0, (z0 + z1) / 2.0),
+            ]
+            .into_iter()
+            .map(|(x, z)| ground(x, z))
+            .fold(f32::MIN, f32::max);
+            if top > bottom + 0.05 {
+                out.push((Vec3::new(x0, bottom, z0), Vec3::new(x1, top, z1)));
+            }
+        }
+    }
+    out
+}
+
+/// Sistema: quando la grotta è appoggiata al terreno, riempie di roccia la collina sopra le
+/// gallerie ([`cave_fill_columns`]): collider e, per i punti in cui spunta, la pietra.
+#[allow(clippy::type_complexity)]
+pub fn fill_cave_hill(
+    mut commands: Commands,
+    field: Option<Res<TerrainField>>,
+    caves: Query<
+        (Entity, &Transform),
+        (
+            With<CaveMouth>,
+            Without<CaveFilled>,
+            Without<crate::props::SnapToGround>,
+        ),
+    >,
+    pbr: Option<Res<crate::pbr::PbrMaterials>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+) {
+    let (Some(field), Some(pbr)) = (field, pbr) else {
+        return;
+    };
+    for (cave, tf) in &caves {
+        let columns = cave_fill_columns(|x, z| {
+            let w = tf.transform_point(Vec3::new(x, 0.0, z));
+            field.height_at(w.x, w.z) - tf.translation.y
+        });
+        let mut b = B::default();
+        for (min, max) in &columns {
+            b.cuboid(*min, *max, STONE_DARK);
+        }
+        info!(
+            "[MONDO] collina della grotta riempita: {} colonne di roccia",
+            columns.len()
+        );
+        commands.entity(cave).insert(CaveFilled).with_children(|c| {
+            for (m, mesh) in b.finish_parts() {
+                c.spawn((
+                    Mesh3d(meshes.add(crate::pbr::gpu_only(mesh))),
+                    MeshMaterial3d(pbr.get(m)),
+                ));
+            }
+            for (min, max) in columns {
+                c.spawn((
+                    avian3d::prelude::Collider::cuboid(max.x - min.x, max.y - min.y, max.z - min.z),
+                    Transform::from_translation((min + max) / 2.0),
+                    crate::camera::BlocksCamera,
+                ));
+            }
+        });
+    }
+}
+
 /// La lastra della Porta Sommersa: chiusa finché le stele non risuonano, poi scende nel pavimento.
 #[derive(Component)]
 pub struct SunkenDoor {
@@ -911,8 +1034,9 @@ fn cave(b: &mut B, int: &mut Interior) {
                 hgt / 2.0,
                 1.0 + cave_rnd(k + 5) * 0.7,
             );
+            let center = Vec3::new(x, base - 0.1 + half.y, z);
             b.cuboid_c(
-                Vec3::new(x, base - 0.1 + half.y, z),
+                center,
                 half * 2.0,
                 if k.is_multiple_of(3) {
                     STONE
@@ -920,9 +1044,23 @@ fn cave(b: &mut B, int: &mut Interior) {
                     STONE_DARK
                 },
             );
+            // Solidi anche loro: si cammina sul cumulo, non ci si affonda dentro
+            // (segnalazione 2026-11-19_22-08-49).
+            int.walls.push((center, half * 2.0));
         }
     }
-    b.pyramid(Vec3::new(0.0, H + 2.2, -3.0), 5.4, 2.6, STONE_DARK);
+    let (peak_base, peak_half, peak_h) = (Vec3::new(0.0, H + 2.2, -3.0), 5.4, 2.6);
+    b.pyramid(peak_base, peak_half, peak_h, STONE_DARK);
+    // La cima a piramide, solida a gradoni (quattro strati sempre più stretti).
+    const LAYERS: usize = 4;
+    for i in 0..LAYERS {
+        let layer_h = peak_h / LAYERS as f32;
+        let half = peak_half * (1.0 - (i as f32 + 0.5) / LAYERS as f32);
+        int.walls.push((
+            peak_base + Vec3::Y * (layer_h * (i as f32 + 0.5)),
+            Vec3::new(half * 2.0, layer_h, half * 2.0),
+        ));
+    }
     cave_depths(b, int);
     campfire(b, int, Vec3::new(-1.6, 0.06, -3.0));
     bedroll(b, Vec3::new(-3.0, 0.06, -4.4));
@@ -1372,7 +1510,14 @@ pub fn fast_travel(
 }
 
 pub fn plugin(app: &mut App) {
-    app.add_systems(Update, ((sunken_door, sunken_glow).chain(), well_grate));
+    app.add_systems(
+        Update,
+        (
+            (sunken_door, sunken_glow).chain(),
+            well_grate,
+            fill_cave_hill,
+        ),
+    );
     app.add_systems(
         Update,
         (
@@ -1398,6 +1543,41 @@ pub fn plugin(app: &mut App) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_hill_over_the_galleries_is_filled_without_entering_them() {
+        // Collina come quella misurata sopra le gallerie: 6-8,5 m nel mondo, 4-6,5 m dalla base.
+        let columns = cave_fill_columns(|_, z| if z < -12.0 { 6.0 } else { 0.9 });
+        assert!(!columns.is_empty());
+        let mut b = B::default();
+        let mut int = Interior::default();
+        cave(&mut b, &mut int);
+        // Nessuna colonna tocca l'aria delle gallerie: un punto a mezza altezza di ogni stanza
+        // (pavimento -1,2) resta fuori da tutte.
+        for (x0, x1, z0, z1, top) in CAVE_GALLERIES {
+            let room_air = Vec3::new((x0 + x1) / 2.0, (-1.2 + top - 0.6) / 2.0, (z0 + z1) / 2.0);
+            for (min, max) in &columns {
+                let inside = room_air.cmpgt(*min).all() && room_air.cmplt(*max).all();
+                assert!(
+                    !inside,
+                    "colonna {min} {max} dentro la galleria a {room_air}"
+                );
+            }
+        }
+        // Sopra le gallerie la roccia arriva al terreno: niente spazio in cui stare in piedi.
+        let over_descent = Vec3::new(-2.5, 5.0, -15.0);
+        assert!(
+            columns
+                .iter()
+                .any(|(min, max)| over_descent.cmpgt(*min).all() && over_descent.cmplt(*max).all()),
+            "sopra la discesa resta un vuoto"
+        );
+    }
+
+    #[test]
+    fn no_rock_where_the_ground_is_below_the_roofs() {
+        assert!(cave_fill_columns(|_, _| -2.0).is_empty());
+    }
 
     fn top_of(int: &Interior) -> f32 {
         int.ground
