@@ -1,0 +1,69 @@
+# Zona del faro (segnalazione 2026-11-19_21-10-31: «qua il gioco continua a crashare»).
+# Tramonto e sera attorno al faro: si accendono lampioni e lanterne. Non deve andare in panic.
+god on
+ora 17.5
+tp -10 3 84
+aspetta 3
+dump inizio
+tp -10 3 84
+aspetta 6
+tp -4 3 92
+aspetta 6
+tp -14 3 95
+aspetta 6
+tp 2 3 100
+aspetta 6
+tp 9 3 103
+aspetta 6
+tp -7 3 94
+aspetta 6
+tp -10 3 84
+aspetta 6
+dump giro1
+tp -10 3 84
+aspetta 6
+tp -4 3 92
+aspetta 6
+tp -14 3 95
+aspetta 6
+tp 2 3 100
+aspetta 6
+tp 9 3 103
+aspetta 6
+tp -7 3 94
+aspetta 6
+tp -10 3 84
+aspetta 6
+dump giro2
+tp -10 3 84
+aspetta 6
+tp -4 3 92
+aspetta 6
+tp -14 3 95
+aspetta 6
+tp 2 3 100
+aspetta 6
+tp 9 3 103
+aspetta 6
+tp -7 3 94
+aspetta 6
+tp -10 3 84
+aspetta 6
+dump giro3
+tp -10 3 84
+aspetta 6
+tp -4 3 92
+aspetta 6
+tp -14 3 95
+aspetta 6
+tp 2 3 100
+aspetta 6
+tp 9 3 103
+aspetta 6
+tp -7 3 94
+aspetta 6
+tp -10 3 84
+aspetta 6
+dump giro4
+verifica fps > 5
+esci

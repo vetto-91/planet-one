@@ -540,6 +540,77 @@ pub fn graphics_ui(ui: &mut egui::Ui, audio: &mut AudioSettings) {
     }
 }
 
+/// Una luce puntiforme che può fare ombra: chi la gestisce (lampioni, luci degli edifici, stufa,
+/// lanterne) dice solo se la *vorrebbe*; [`budget_point_shadows`] la accende davvero solo alle più
+/// vicine. Ogni ombra di una luce puntiforme è un cubo di sei facce: con 50-60 luci che la
+/// volevano tutte, di sera la VRAM saliva di circa 1,4 GB e gli FPS crollavano (segnalazione
+/// 2026-11-19_22-17-36, copione `zz-lunga-sessione`).
+#[derive(Component, Clone, Copy, Default, PartialEq, Eq, Debug)]
+pub struct ShadowWanted(pub bool);
+
+impl ShadowWanted {
+    /// Scrive solo se cambia, per non segnare la componente come cambiata a ogni fotogramma.
+    pub fn set(&mut self, on: bool) {
+        if self.0 != on {
+            self.0 = on;
+        }
+    }
+}
+
+/// Quante luci puntiformi fanno ombra insieme, secondo la qualità delle ombre.
+pub fn point_shadow_budget(shadows: Shadows) -> usize {
+    match shadows {
+        Shadows::Off => 0,
+        Shadows::Minimal => 1,
+        Shadows::Low => 2,
+        Shadows::Medium => 3,
+        Shadows::High => 4,
+    }
+}
+
+/// Oltre questa distanza dalla camera una luce puntiforme non fa ombra.
+const POINT_SHADOW_RANGE: f32 = 30.0;
+
+/// Sceglie le luci che fanno ombra: tra quelle che la vogliono, accese e visibili entro
+/// [`POINT_SHADOW_RANGE`], solo le [`point_shadow_budget`] più vicine alla camera. Ricalcola
+/// quattro volte al secondo, così le ombre non si accendono e spengono a ogni passo.
+pub fn budget_point_shadows(
+    time: Res<Time>,
+    settings: Res<AudioSettings>,
+    cameras: Query<&GlobalTransform, With<Camera3d>>,
+    mut lights: Query<(
+        Entity,
+        &mut PointLight,
+        &ShadowWanted,
+        &GlobalTransform,
+        &InheritedVisibility,
+    )>,
+    mut timer: Local<f32>,
+    mut picks: Local<Vec<(f32, Entity)>>,
+) {
+    *timer -= time.delta_secs();
+    if *timer > 0.0 && !settings.is_changed() {
+        return;
+    }
+    *timer = 0.25;
+    let Some(cam) = cameras.iter().next().map(GlobalTransform::translation) else {
+        return;
+    };
+    picks.clear();
+    picks.extend(lights.iter().filter_map(|(e, l, want, t, vis)| {
+        let d = t.translation().distance(cam);
+        (want.0 && vis.get() && l.intensity > 1.0 && d <= POINT_SHADOW_RANGE).then_some((d, e))
+    }));
+    picks.sort_by(|a, b| a.0.total_cmp(&b.0));
+    picks.truncate(point_shadow_budget(settings.gfx.shadows));
+    for (e, mut l, ..) in &mut lights {
+        let on = picks.iter().any(|(_, p)| *p == e);
+        if l.shadow_maps_enabled != on {
+            l.shadow_maps_enabled = on;
+        }
+    }
+}
+
 /// Aggira un difetto di Bevy 0.20.1: `extract_lights` considera solo le luci cambiate in questo
 /// fotogramma e toglie le liste di visibilità delle ombre a tutte le altre, mentre le viste delle
 /// facce esistono ancora e vanno in panic («Failed to get point light visible entities»).
@@ -559,7 +630,8 @@ pub fn plugin(app: &mut App) {
             (
                 apply_graphics,
                 apply_present_mode,
-                keep_shadow_lights_extracted,
+                budget_point_shadows,
+                keep_shadow_lights_extracted.after(budget_point_shadows),
             ),
         )
         .add_systems(Last, limit_frame_rate);

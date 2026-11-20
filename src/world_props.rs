@@ -775,9 +775,12 @@ pub fn sync_world_props(
                                 color: Color::srgb(1.0, 0.78, 0.5),
                                 intensity: INTERIOR_LUMENS,
                                 range: 12.0,
-                                shadow_maps_enabled: true,
+                                // L'ombra la decide `graphics::budget_point_shadows`.
+                                shadow_maps_enabled: false,
                                 ..default()
                             },
+                            // La vuole o no secondo le opzioni: `interior_light_shadows`.
+                            crate::graphics::ShadowWanted::default(),
                             Transform::from_translation(at),
                             Visibility::Hidden,
                         ));
@@ -1125,6 +1128,7 @@ pub fn sync_world_props(
                                     shadow_normal_bias: 0.25,
                                     ..default()
                                 },
+                                crate::graphics::ShadowWanted::default(),
                                 Transform::from_xyz(0.0, 3.1, 0.0),
                             ));
                             c.spawn((
@@ -1210,21 +1214,20 @@ pub fn update_interior_lights(
     }
 }
 
-/// Sistema: le luci interne fanno ombra solo con le ombre delle luci piccole (ADR 0057). Si scrive
-/// solo quando cambiano le opzioni o nascono luci nuove: con l'opzione attiva resta tutto com'era.
+/// Sistema: le luci interne vogliono l'ombra solo con le ombre delle luci piccole (ADR 0057); quali
+/// la fanno davvero lo decide `graphics::budget_point_shadows`. Si scrive solo quando cambiano le
+/// opzioni o nascono luci nuove.
 pub fn interior_light_shadows(
     settings: Res<crate::audio::AudioSettings>,
     added: Query<(), Added<InteriorLight>>,
-    mut lights: Query<&mut PointLight, With<InteriorLight>>,
+    mut lights: Query<&mut crate::graphics::ShadowWanted, With<InteriorLight>>,
 ) {
     if !settings.is_changed() && added.is_empty() {
         return;
     }
     let on = settings.gfx.small_shadows;
-    for mut l in &mut lights {
-        if l.shadow_maps_enabled != on {
-            l.shadow_maps_enabled = on;
-        }
+    for mut want in &mut lights {
+        want.set(on);
     }
 }
 
@@ -1270,35 +1273,20 @@ pub fn update_street_lamps(
     clock: Res<GameClock>,
     weather: Res<crate::weather::WeatherState>,
     settings: Res<crate::audio::AudioSettings>,
-    mut lights: Query<(&GlobalTransform, &mut PointLight), With<LampLight>>,
-    cameras: Query<&GlobalTransform, With<Camera3d>>,
+    mut lights: Query<(&mut PointLight, &mut crate::graphics::ShadowWanted), With<LampLight>>,
     bulbs: Query<&LampBulb>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut dists: Local<Vec<f32>>,
 ) {
     // Accesi anche con il cielo molto scuro (temporale).
     let on = clock.lamps_on() || weather.cloud > 0.95;
     let k = (time.delta_secs() * 1.5).min(1.0);
     let mut level = 0.0;
-    // Le ombre (luce che non passa le pareti) solo per i 3 lampioni più vicini alla camera, entro 30 m.
-    let cam = cameras
-        .single()
-        .map(|c| c.translation())
-        .unwrap_or_default();
-    dists.clear();
-    dists.extend(lights.iter().map(|(t, _)| t.translation().distance(cam)));
-    dists.sort_by(|a, b| a.total_cmp(b));
-    let limit = dists.get(2).copied().unwrap_or(f32::MAX).min(30.0);
-    for (t, mut l) in &mut lights {
+    for (mut l, mut want) in &mut lights {
         let target = if on { LAMP_LUMENS } else { 0.0 };
         let intensity = l.intensity + (target - l.intensity) * k;
-        // Un lampione spento (meno di 1 lm su 50 000) non disegna ombre: sei facce in meno
-        // per lampione di giorno, a schermo non cambia nulla (ADR 0056).
-        let shadows =
-            settings.gfx.lamp_shadows && t.translation().distance(cam) <= limit && intensity > 1.0;
-        if l.shadow_maps_enabled != shadows {
-            l.shadow_maps_enabled = shadows;
-        }
+        // Le ombre (luce che non passa le pareti) le fanno solo i lampioni accesi più vicini alla
+        // camera: le sceglie `graphics::budget_point_shadows` (ADR 0056).
+        want.set(settings.gfx.lamp_shadows);
         if l.intensity != intensity {
             l.intensity = intensity;
         }

@@ -1181,11 +1181,12 @@ pub fn spawn_hut(
             .with_children(|s| {
                 s.spawn((
                     StoveLight,
+                    crate::graphics::ShadowWanted::default(),
                     PointLight {
                         color: Color::srgb(1.0, 0.55, 0.25),
                         intensity: 0.0,
                         range: 6.0,
-                        shadow_maps_enabled: true,
+                        shadow_maps_enabled: false,
                         shadow_depth_bias: 0.012,
                         shadow_normal_bias: 0.25,
                         ..default()
@@ -1338,11 +1339,12 @@ pub fn spawn_hut(
         ));
         c.spawn((
             HouseLampLight,
+            crate::graphics::ShadowWanted::default(),
             PointLight {
                 color: Color::srgb(1.0, 0.78, 0.5),
                 intensity: 180_000.0,
                 range: 9.0,
-                shadow_maps_enabled: true,
+                shadow_maps_enabled: false,
                 shadow_depth_bias: 0.012,
                 shadow_normal_bias: 0.25,
                 ..default()
@@ -1822,7 +1824,7 @@ pub fn animate_sliders(
 /// Luce di casa: lampada (emissivo e luce) e levetta seguono l'interruttore.
 pub fn apply_house_light(
     switches: Query<(&PropKind, &PropId, &PropState)>,
-    mut lights: Query<&mut PointLight, With<HouseLampLight>>,
+    mut lights: Query<(&mut PointLight, &mut crate::graphics::ShadowWanted), With<HouseLampLight>>,
     lamps: Query<&MeshMaterial3d<StandardMaterial>, With<HouseLamp>>,
     mut levers: Query<&mut Transform, With<SwitchLever>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -1838,15 +1840,13 @@ pub fn apply_house_light(
     // Si scrive solo ciò che cambia: luce, materiale e levetta restano fermi finché
     // l'interruttore non scatta (prima si ricaricavano a ogni fotogramma, ADR 0056).
     let intensity = if on { 180_000.0 } else { 0.0 };
-    for mut l in &mut lights {
+    for (mut l, mut want) in &mut lights {
         if l.intensity != intensity {
             l.intensity = intensity;
         }
         // La lampada spenta non disegna ombre; nemmeno senza le ombre delle luci piccole (ADR 0057).
-        let shadows = on && settings.gfx.small_shadows;
-        if l.shadow_maps_enabled != shadows {
-            l.shadow_maps_enabled = shadows;
-        }
+        // Se la fa davvero lo decide `graphics::budget_point_shadows`.
+        want.set(on && settings.gfx.small_shadows);
     }
     let emissive = if on {
         LinearRgba::new(1.4, 0.9, 0.35, 1.0)
@@ -1874,7 +1874,7 @@ pub fn apply_house_light(
 pub fn stove_light(
     time: Res<Time>,
     stoves: Query<(&PropKind, &PropState, &Children)>,
-    mut lights: Query<&mut PointLight, With<StoveLight>>,
+    mut lights: Query<(&mut PointLight, &mut crate::graphics::ShadowWanted), With<StoveLight>>,
     settings: Res<crate::audio::AudioSettings>,
 ) {
     let t = time.elapsed_secs();
@@ -1883,7 +1883,7 @@ pub fn stove_light(
             continue;
         }
         for child in children.iter() {
-            if let Ok(mut l) = lights.get_mut(child) {
+            if let Ok((mut l, mut want)) = lights.get_mut(child) {
                 let intensity = if st.on {
                     60_000.0 * (1.0 + 0.2 * (t * 9.0).sin() * (t * 3.7).cos())
                 } else {
@@ -1893,10 +1893,7 @@ pub fn stove_light(
                     l.intensity = intensity;
                 }
                 // La stufa spenta non disegna ombre (ADR 0056), né senza le ombre piccole (ADR 0057).
-                let shadows = st.on && settings.gfx.small_shadows;
-                if l.shadow_maps_enabled != shadows {
-                    l.shadow_maps_enabled = shadows;
-                }
+                want.set(st.on && settings.gfx.small_shadows);
             }
         }
     }

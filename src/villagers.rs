@@ -619,6 +619,7 @@ pub fn spawn_villager(
                         shadow_maps_enabled: false,
                         ..default()
                     },
+                    crate::graphics::ShadowWanted::default(),
                     Transform::from_xyz(0.0, 0.26, 0.0),
                 ));
             }
@@ -808,20 +809,14 @@ fn lie_in_bed(tf: &mut Transform, pos: Vec3, head: Vec3) {
         * Quat::from_rotation_x(std::f32::consts::FRAC_PI_2);
 }
 
-/// Sistema: le lanterne delle guardie vicine al giocatore fanno ombra, così la luce non attraversa i muri.
+/// Sistema: le lanterne delle guardie vogliono l'ombra, così la luce non attraversa i muri; quali la
+/// fanno davvero (le più vicine) lo decide `graphics::budget_point_shadows`.
 pub fn lantern_shadows(
-    players: Query<&GlobalTransform, With<crate::player::Player>>,
-    mut lanterns: Query<(&mut PointLight, &GlobalTransform), With<GuardLantern>>,
+    mut lanterns: Query<&mut crate::graphics::ShadowWanted, With<GuardLantern>>,
     settings: Res<crate::audio::AudioSettings>,
 ) {
-    let Ok(me) = players.single() else {
-        return;
-    };
-    for (mut l, g) in &mut lanterns {
-        let near = settings.gfx.small_shadows && me.translation().distance(g.translation()) < 22.0;
-        if l.shadow_maps_enabled != near {
-            l.shadow_maps_enabled = near;
-        }
+    for mut want in &mut lanterns {
+        want.set(settings.gfx.small_shadows);
     }
 }
 
