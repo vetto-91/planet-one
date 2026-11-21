@@ -22,6 +22,10 @@ const WALK_SPEED: f32 = 1.3;
 const PATROL_SPEED: f32 = 1.3;
 /// Entro questa distanza dal giocatore una guardia di ronda si ferma (per parlarle).
 const PATROL_STOP: f32 = 2.8;
+/// Distanza (m) dal centro del mirino entro cui un passante si sente chiamato.
+const HAIL_AIM: f32 = 0.6;
+/// Secondi che un passante aspetta, guardato, che gli si parli.
+const HAIL_WAIT: f32 = 5.0;
 const CENTER_Y: f32 = 0.85;
 
 /// Dati di un abitante letti da `abitanti.txt`.
@@ -336,6 +340,8 @@ pub struct Villager {
     stuck: f32,
     /// Sta passando attraverso un muro (s rimasti): niente controlli finché non è dall'altra parte.
     ghost: f32,
+    /// Secondi che aspetta fermo, guardato dal giocatore (`HAIL_WAIT` al massimo).
+    hail: f32,
 }
 
 /// Stato di un abitante nel salvataggio.
@@ -713,6 +719,7 @@ pub fn spawn_villager(
                 recall: false,
                 stuck: 0.0,
                 ghost: 0.0,
+                hail: 0.0,
             },
             RigidBody::Kinematic,
             Collider::capsule(0.35, 1.0),
@@ -1373,15 +1380,21 @@ pub fn villager_routine(
             npc.mode = NpcMode::Ready;
             disable_collider(&mut commands, entity, &mut collider_off);
             // Chi gli si avvicina guardandolo lo fa fermare: si volta e aspetta che gli si parli.
-            let hailed = player.filter(|pp| {
-                pp.distance(tf.translation) < PATROL_STOP
-                    && eye.is_some_and(|(o, f)| {
-                        (tf.translation + Vec3::Y * 0.3 - o)
-                            .normalize_or_zero()
-                            .dot(f)
-                            > 0.9
-                    })
+            // Deve averlo nel mirino (entro mezzo metro dal centro dello schermo), non solo davanti
+            // alla camera; e se non gli si parla, dopo `HAIL_WAIT` secondi riprende la strada.
+            let near = player.filter(|pp| pp.distance(tf.translation) < PATROL_STOP);
+            let aimed = eye.is_some_and(|(o, f)| {
+                let to = tf.translation + Vec3::Y * 0.3 - o;
+                let along = to.dot(f);
+                along > 0.0 && (to - f * along).length() < HAIL_AIM
             });
+            if near.is_none() {
+                v.hail = 0.0;
+            }
+            let hailed = near.filter(|_| aimed && v.hail < HAIL_WAIT);
+            if hailed.is_some() {
+                v.hail += dt;
+            }
             if let Some(pp) = hailed.filter(|_| !talking) {
                 let to = (pp - tf.translation).xz();
                 let want_rot = Quat::from_rotation_y(yaw_towards(to));
