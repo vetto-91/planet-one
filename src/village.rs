@@ -461,6 +461,18 @@ pub fn sync_village(
         }
     }
     let mut stair_zones: Vec<(f32, f32)> = Vec::new();
+    // Impronte degli edifici visitabili (centro, rotazione, semilati): le scale non ci entrano.
+    let footprints: Vec<(Vec2, f32, Vec2)> = dbg
+        .items
+        .iter()
+        .filter_map(|p| crate::buildings::interior_half(&p.kind).map(|h| (p, h)))
+        .flat_map(|(p, h)| {
+            p.points
+                .iter()
+                .enumerate()
+                .map(move |(j, q)| (*q, p.yaw(j), h))
+        })
+        .collect();
 
     let mut patrol: Vec<(f32, Vec3)> = Vec::new();
     let mut walk_colliders: Vec<(Vec3, Vec3, f32)> = Vec::new();
@@ -478,15 +490,34 @@ pub fn sync_village(
                 })
             })
         };
-        let mut guard = 0;
-        while in_tower(a) && guard < 40 {
-            a += 0.1;
-            guard += 1;
-        }
         let inner = |s: f32| {
             let (p, t, out) = lp.at(s);
             (p + out * INNER_LANE_U, t)
         };
+        // Né pianerottolo e rampa dentro un edificio: una scala entrava nella casa del fabbro
+        // (segnalazione 2026-11-19_20-57-33).
+        let in_building = |s: f32| {
+            let (lc, _) = inner(s + LANDING / 2.0);
+            let (_, _, out) = lp.at(s + LANDING / 2.0);
+            let mut pts = vec![inner(s).0, inner(s + LANDING).0];
+            pts.extend(
+                (0..=PERP_STEPS)
+                    .map(|k| lc - out * (LANE_HALF_INNER + (k as f32 + 0.5) * STEP_RUN)),
+            );
+            pts.iter().any(|q| {
+                footprints.iter().any(|(c, yaw, half)| {
+                    let d = *q - *c;
+                    let (sn, co) = yaw.sin_cos();
+                    let (lx, lz) = (d.x * co - d.y * sn, d.x * sn + d.y * co);
+                    lx.abs() < half.x + 0.6 && lz.abs() < half.y + 0.6
+                })
+            })
+        };
+        let mut guard = 0;
+        while (in_tower(a) || in_building(a)) && guard < 120 {
+            a += 0.1;
+            guard += 1;
+        }
         // Scala a L (segnalazione 30): un pianerottolo in fondo alla corsia, contro la testa del
         // muro pieno, e una rampa corta perpendicolare al muro che scende verso il paese. Prima la
         // scala partiva da terra contro il muro e ci si saliva solo di lato.
@@ -615,8 +646,6 @@ pub fn sync_village(
             };
             let h = height_at(sm);
             let half = (sb - sa) / 2.0 + 0.02;
-            let hs = [lp.at(sa).0, p, lp.at(sb - 0.01).0].map(|q| ground(q + out * WALL_CENTER_U));
-            let lo = hs.iter().cloned().fold(f32::MAX, f32::min) - 1.2;
             let yaw = (-t.y).atan2(t.x);
             let on_stair = stair_zones
                 .iter()
@@ -633,6 +662,16 @@ pub fn sync_village(
             };
             let body_half_len = half + (e0 + e1) / 2.0;
             let body = p + out * body_u + t * ((e1 - e0) / 2.0);
+            // Il fondo scende sotto il punto più basso degli angoli del muro, non solo della sua
+            // linea centrale: dove il terreno cala verso l'esterno la faccia di fuori restava
+            // sospesa (mura di Fortebruma, segnalazione 2026-11-19_22-38-32).
+            let lo = [-1.0f32, 0.0, 1.0]
+                .iter()
+                .flat_map(|a| [-1.0f32, 1.0].map(|b| (*a, b)))
+                .map(|(a, b)| ground(body + t * (a * body_half_len) + out * (b * body_half)))
+                .chain(std::iter::once(ground(p + out * WALL_CENTER_U)))
+                .fold(f32::MAX, f32::min)
+                - 1.2;
             stone.obox(body, lo, h, body_half_len, body_half, t, tint(STONE, rnd()));
             walk_colliders.push((
                 Vec3::new(body.x, (lo + h) / 2.0, body.y),
