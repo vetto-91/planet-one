@@ -295,6 +295,8 @@ pub fn parse_key(name: &str) -> Option<PilotKey> {
         "invio" | "enter" => K::Enter,
         "esc" => K::Escape,
         "tab" => K::Tab,
+        "+" | "piu" | "più" => K::Equal,
+        "-" | "meno" => K::Minus,
         "su" | "up" => K::ArrowUp,
         "giu" | "giù" | "down" => K::ArrowDown,
         "sinistra" | "left" => K::ArrowLeft,
