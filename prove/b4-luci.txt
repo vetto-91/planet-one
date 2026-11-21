@@ -1,0 +1,36 @@
+# Blocco 4: luci e ombre (segnalazioni del 2026-11-18/19).
+god on
+meteo sereno
+# 18_23-38-36: le finestrelle del faro si vedono da fuori, sui lati nord e sud.
+ora 12
+tp -14.0 3 84.0
+aspetta 1.5
+prima-persona
+camera 180 -32
+aspetta 0.6
+foto faro-nord
+tp -14.0 3 105.0
+aspetta 1.5
+camera 0 -32
+aspetta 0.6
+foto faro-sud
+prima-persona off
+# 18_23-17-34: di notte si entra nel faro e si esce: la stanza resta illuminata vista dalla porta.
+ora 0.8
+tp -14.0 2.5 95.0
+aspetta 1.5
+tp -6.6 2 94.2
+aspetta 1.5
+prima-persona
+camera 88.1 6
+aspetta 0.6
+foto faro-porta-notte
+prima-persona off
+# 19_20-41-42: sotto i lampioni niente ombre del lampione stesso.
+ora 23.7
+tp -1.0 3 70.0
+aspetta 5
+camera 180 12 9
+aspetta 0.6
+foto lampione
+esci

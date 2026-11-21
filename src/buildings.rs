@@ -1884,14 +1884,31 @@ fn lighthouse(b: &mut B, int: &mut Interior) {
     door_front(b, int, 0.0, 1.95, door_w, door_h);
     int.door_inside = Some(Vec3::new(0.0, y0, 1.3));
     int.routes = vec![Vec::new()];
-    // Finestrelle, visibili anche da dentro.
+    // Finestrelle, visibili anche da dentro. Fuori stanno sulla faccia della sezione in cui
+    // cadono: prima erano dentro lo spessore del muro e da fuori non si vedevano (segnalazione
+    // 2026-11-18_23-38-36).
     for (i, h) in [3.4f32, 6.0, 8.6, 11.2].iter().enumerate() {
         let n = if i % 2 == 0 { Vec3::X } else { Vec3::NEG_X };
+        let section = ((h - 1.0) / 2.6).floor();
+        let outer = 1.95 - section * 0.14;
         b.cuboid_c(
-            Vec3::new(n.x * (1.78 - i as f32 * 0.1), *h, 0.0),
-            Vec3::new(0.08, 0.6, 0.4),
+            Vec3::new(n.x * (outer + 0.02), *h, 0.0),
+            Vec3::new(0.04, 0.6, 0.4),
             GLASS,
         );
+        // Cornice di legno attorno al vetro.
+        for (dy, dz, sy, sz) in [
+            (0.33, 0.0, 0.06, 0.52),
+            (-0.33, 0.0, 0.06, 0.52),
+            (0.0, 0.23, 0.6, 0.06),
+            (0.0, -0.23, 0.6, 0.06),
+        ] {
+            b.cuboid_c(
+                Vec3::new(n.x * (outer + 0.04), *h + dy, dz),
+                Vec3::new(0.06, sy, sz),
+                TIMBER,
+            );
+        }
         let inner = [1.7, 1.7, 1.15, 1.15][i];
         inner_window(b, Vec3::new(n.x * (inner - 0.01), *h, 0.0), -n, (0.4, 0.6));
     }
