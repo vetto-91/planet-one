@@ -54,7 +54,7 @@ SIGNS = [
 ]
 # strade secondarie (polilinee): larghezza 2.4
 ROADS = [
-    ("piccola", 2.4, [(3.0, 10.0), (12.0, 10.5), (22.0, 10.8)]),            # via Est
+    ("piccola", 2.4, [(1.5, 6.0), (9.9, 6.2), (12.0, 10.5), (22.0, 10.8)]),  # via Est (a nord della casa P-0064)
     ("piccola", 2.4, [(-0.6, 0.8), (-10.0, 0.4), (-22.0, 0.4)]),            # via Ovest
     ("piccola", 2.4, [(-1.0, 17.5), (-6.0, 17.1), (-14.5, 18.6)]),          # via Sud-Ovest (fra la bancarella del pesce e la casa)
     ("piccola", 2.6, [(-5.5, 10.2), (-7.2, 12.0)]),                          # sagrato

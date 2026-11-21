@@ -1,0 +1,36 @@
+# Via Est (vita-paese): parte dalla piazza a nord della casa P-0064 (6, 13), fra la bancarella
+# della frutta e la Capanna del Viandante, e non entra più nella casa. Vista dalla mappa e da terra.
+god on
+meteo sereno
+ora 12
+tp 5.5 1 6.0
+aspetta 2
+premi m
+aspetta 1
+premi c
+aspetta 0.3
+premi +
+aspetta 0.2
+premi +
+aspetta 0.2
+premi +
+aspetta 0.2
+premi +
+aspetta 0.2
+premi +
+aspetta 0.2
+premi +
+aspetta 0.2
+premi +
+aspetta 0.2
+premi +
+aspetta 0.2
+premi +
+aspetta 1
+foto mappa
+premi esc
+aspetta 1
+camera 270 12 5
+aspetta 1
+foto via
+esci
