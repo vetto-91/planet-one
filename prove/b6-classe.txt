@@ -1,0 +1,45 @@
+# Blocco 6: tra i rottami vale l'oggetto nel mirino (18_22-46-44): con lo Studioso alle spalle e la
+# borsa del Mercante nel mirino si raccoglie la borsa. La sbarra del Guerriero non sta più sotto
+# le botti (18_22-49-24).
+god on
+ia off
+meteo sereno
+ora 9
+aspetta 2
+risveglio nuovo
+aspetta 2
+tp 32.5 3 85.3
+aspetta 2
+premi e
+aspetta 1
+risveglio eta maturo
+aspetta 1
+verifica /personaggio/risveglio = 1
+# Fra lo Studioso (32, 89) e il Mercante (33.5, 87.5), entrambi a portata.
+tp 32.6 3 88.6
+aspetta 2
+prima-persona
+camera 321 50
+aspetta 1
+foto mira-mercante
+premi e
+aspetta 1
+verifica app = Awakening
+verifica /personaggio/risveglio_pannello = Class(Merchant)
+premi esc
+aspetta 1
+camera 124 65
+aspetta 1
+premi e
+aspetta 1
+verifica /personaggio/risveglio_pannello = Class(Scholar)
+premi esc
+aspetta 1
+prima-persona off
+# La sbarra del Guerriero, libera dalle botti.
+tp 24.0 3 88.5
+aspetta 2
+camera 250 35 3.5
+aspetta 1
+foto guerriero
+esci

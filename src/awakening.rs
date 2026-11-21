@@ -18,12 +18,15 @@ use crate::inventory::{Inventory, ItemKind, Relic};
 /// La pozza dove ci si specchia, e i quattro oggetti tra i rottami (classe, punto).
 pub const POOL: Vec2 = Vec2::new(34.0, 84.5);
 pub const RELICS: [(Class, Vec2); 4] = [
-    (Class::Warrior, Vec2::new(27.0, 86.0)),
+    // Il Guerriero lontano dalle botti, che lo coprivano (segnalazione 2026-11-18_22-49-24).
+    (Class::Warrior, Vec2::new(25.8, 87.2)),
     (Class::Explorer, Vec2::new(28.0, 89.0)),
     (Class::Scholar, Vec2::new(32.0, 89.0)),
     (Class::Merchant, Vec2::new(33.5, 87.5)),
 ];
 const REACH: f32 = 1.8;
+/// Distanza (m) dal centro del mirino entro cui un oggetto dei rottami è «guardato».
+const RELIC_AIM: f32 = 0.7;
 /// Il centro dei rottami, e la distanza oltre la quale gli oggetti non scelti spariscono.
 const RELICS_CENTER: Vec2 = Vec2::new(30.5, 87.5);
 const RELICS_HIDE: f32 = 14.0;
@@ -309,6 +312,7 @@ pub fn beach_prompts(
     dialog: Res<crate::entities::DialogState>,
     players: Query<&GlobalTransform, With<crate::player::Player>>,
     relics: Query<(&GlobalTransform, &WreckRelic)>,
+    cameras: Query<&GlobalTransform, With<Camera3d>>,
     mut awakening: ResMut<Awakening>,
     mut nearest: ResMut<crate::entities::NearestInteract>,
     mut next: ResMut<NextState<AppState>>,
@@ -332,11 +336,27 @@ pub fn beach_prompts(
             offer("[E] Guarda il tuo riflesso", Panel::Mirror);
         }
         1 => {
-            if let Some((_, r)) = relics
+            // Vale l'oggetto nel mirino; se non se ne guarda nessuno, solo se ce n'è uno a portata.
+            // Prima vinceva il primo trovato, anche alle spalle (segnalazione 2026-11-18_22-46-44).
+            let near: Vec<_> = relics
                 .iter()
-                .find(|(t, _)| t.translation().xz().distance(p) <= REACH)
-            {
-                offer("[E] Raccogli", Panel::Class(r.0));
+                .filter(|(t, _)| t.translation().xz().distance(p) <= REACH)
+                .collect();
+            let aimed = cameras.single().ok().and_then(|cam| {
+                let (o, f) = (cam.translation(), *cam.forward());
+                near.iter()
+                    .filter_map(|(t, r)| {
+                        let to = t.translation() - o;
+                        let along = to.dot(f);
+                        let off = (to - f * along).length();
+                        (along > 0.0 && off < RELIC_AIM).then_some((off, r.0))
+                    })
+                    .min_by(|a, b| a.0.total_cmp(&b.0))
+                    .map(|(_, c)| c)
+            });
+            let pick = aimed.or_else(|| (near.len() == 1).then(|| near[0].1.0));
+            if let Some(class) = pick {
+                offer("[E] Raccogli", Panel::Class(class));
             }
         }
         // Gaspare ha chiesto il nome: il pannello si apre da solo.
@@ -412,6 +432,7 @@ pub fn awakening_window(
     mut progress: ResMut<crate::skills::Progress>,
     mut session: ResMut<crate::save::Session>,
     mut next: ResMut<NextState<AppState>>,
+    keys: Res<ButtonInput<KeyCode>>,
 ) {
     let mut chosen = awakening.request.take();
     let Ok(ctx) = contexts.ctx_mut() else {
@@ -471,6 +492,10 @@ pub fn awakening_window(
                             }
                             if ui.button("No: scelgo io i miei modi").clicked() {
                                 awakening.panel = Panel::Custom;
+                            }
+                            // Raccolto l'oggetto sbagliato si torna tra i rottami senza scegliere.
+                            if ui.button("Lascialo lì").clicked() {
+                                back_to_class = Some(());
                             }
                         });
                     }
@@ -545,6 +570,10 @@ pub fn awakening_window(
                 }
             });
         });
+    // Esc chiude l'indole e la scelta libera come «Lascialo lì» e «Indietro».
+    if matches!(panel, Panel::Class(_) | Panel::Custom) && keys.just_pressed(KeyCode::Escape) {
+        back_to_class = Some(());
+    }
     if back_to_class.is_some() {
         awakening.panel = Panel::Mirror;
         next.set(AppState::Playing);

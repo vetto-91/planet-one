@@ -1223,6 +1223,10 @@ pub fn snapshot(world: &mut World) -> Value {
         "scudo_orlo": scudo_orlo,
         "lanterna": lanterna,
         "risveglio": who.awakening,
+        // Pannello del risveglio aperto (o l'ultimo aperto): `Class(Merchant)`, `Mirror`…
+        "risveglio_pannello": world
+            .get_resource::<crate::awakening::Awakening>()
+            .map(|a| format!("{:?}", a.panel)),
         "eta": who.age.key(),
         "classe": who.class.name(),
         "nome": who.name.clone(),
