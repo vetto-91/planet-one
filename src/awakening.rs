@@ -178,44 +178,97 @@ pub fn stage_beach(
     let ground = |p: Vec2| Vec3::new(p.x, field.height_at(p.x, p.y), p.y);
     if character.awakening == 0 && pools.is_empty() {
         let rock = pbr.get(crate::pbr::Mat::Stone);
-        // Acqua ferma e limpida: si vede il fondo, ma riflette ancora il cielo (ci si specchia).
+        let wood = pbr.get(crate::pbr::Mat::Planks);
+        // L'anello stende la texture una volta su tutto il giro (6 m) e su tutta l'altezza: la
+        // pietra si ripete invece ogni 2,5 m, come sugli edifici.
+        let ring_rock = materials
+            .get(&rock)
+            .cloned()
+            .map(|mut m| {
+                m.uv_transform = bevy::math::Affine2::from_scale(Vec2::new(2.4, 0.48));
+                materials.add(m)
+            })
+            .unwrap_or_else(|| rock.clone());
+        // Acqua scura e ferma, quasi uno specchio: non se ne vede il fondo (ci si specchia).
         let water = materials.add(StandardMaterial {
-            reflectance: 0.7,
-            perceptual_roughness: 0.04,
+            base_color: Color::srgba(0.02, 0.06, 0.08, 0.94),
+            reflectance: 0.9,
+            perceptual_roughness: 0.02,
             ..crate::buildings::clear_water_material()
         });
         let g = ground(POOL);
+        let upright = Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2);
         commands
             .spawn((
                 MirrorPool,
                 crate::scene::SceneNode,
                 Transform::from_translation(g),
                 Visibility::default(),
+                avian3d::prelude::RigidBody::Static,
             ))
             .with_children(|c| {
-                // Bordo: un anello di pietra unico. Le dodici pietre di prima si sovrapponevano
-                // agli angoli interni (segnalazione 2026-11-18_22-36-48); ora l'orlo è più alto e
-                // l'acqua sta sotto, con il fondo scuro più giù: una vasca di sorgente, non una
-                // pozzanghera.
-                let rim = Extrusion::new(Annulus::new(0.66, 1.08), 0.5);
+                // Un pozzo vero (segnalazione 2026-11-18_22-36-48: «non sembra un pozzo, non è
+                // fondo, sembra una pozzanghera», e le pietre del bordo si sovrapponevano agli
+                // angoli interni): parapetto tondo di pietra alto 80 cm, copertina, l'acqua scura
+                // giù dentro, i due montanti con la traversa, la corda e il secchio.
+                const RIM_H: f32 = 0.8;
                 c.spawn((
-                    Mesh3d(meshes.add(crate::pbr::with_tangents(rim))),
-                    MeshMaterial3d(rock.clone()),
-                    Transform::from_xyz(0.0, 0.17, 0.0)
-                        .with_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)),
-                ));
-                // Fondo di pietra sotto l'acqua, che si vede attraverso.
-                c.spawn((
-                    Mesh3d(meshes.add(crate::pbr::with_tangents(Cylinder::new(0.68, 0.2)))),
-                    MeshMaterial3d(rock.clone()),
-                    Transform::from_xyz(0.0, -0.12, 0.0),
+                    Mesh3d(meshes.add(crate::pbr::with_tangents(Extrusion::new(
+                        Annulus::new(0.62, 0.95),
+                        RIM_H + 0.4,
+                    )))),
+                    MeshMaterial3d(ring_rock.clone()),
+                    // Scende 40 cm sotto il terreno: sulla spiaggia in pendenza non resta sospeso.
+                    Transform::from_xyz(0.0, RIM_H / 2.0 - 0.2, 0.0).with_rotation(upright),
                 ));
                 c.spawn((
-                    Mesh3d(meshes.add(Circle::new(0.68))),
+                    Mesh3d(meshes.add(crate::pbr::with_tangents(Extrusion::new(
+                        Annulus::new(0.58, 1.0),
+                        0.08,
+                    )))),
+                    // Liscia: sulle facce piatte dell'anello la texture girava a vortice.
+                    MeshMaterial3d(materials.add(StandardMaterial {
+                        base_color: Color::srgb(0.5, 0.48, 0.44),
+                        perceptual_roughness: 0.85,
+                        ..default()
+                    })),
+                    Transform::from_xyz(0.0, RIM_H + 0.04, 0.0).with_rotation(upright),
+                ));
+                c.spawn((
+                    Mesh3d(meshes.add(Circle::new(0.62))),
                     MeshMaterial3d(water),
-                    Transform::from_xyz(0.0, 0.3, 0.0)
-                        .with_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)),
+                    Transform::from_xyz(0.0, 0.2, 0.0).with_rotation(upright),
                     bevy::light::NotShadowCaster,
+                ));
+                // Montanti, traversa, corda e secchio.
+                let post = meshes.add(crate::pbr::with_tangents(Cuboid::new(0.12, 1.7, 0.12)));
+                for x in [-1.05f32, 1.05] {
+                    c.spawn((
+                        Mesh3d(post.clone()),
+                        MeshMaterial3d(wood.clone()),
+                        Transform::from_xyz(x, 0.85, 0.0),
+                    ));
+                }
+                c.spawn((
+                    Mesh3d(meshes.add(crate::pbr::with_tangents(Cuboid::new(2.3, 0.1, 0.1)))),
+                    MeshMaterial3d(wood.clone()),
+                    Transform::from_xyz(0.0, 1.62, 0.0),
+                ));
+                c.spawn((
+                    Mesh3d(meshes.add(Cylinder::new(0.012, 0.6))),
+                    MeshMaterial3d(wood.clone()),
+                    Transform::from_xyz(0.0, 1.27, 0.0),
+                ));
+                c.spawn((
+                    Mesh3d(meshes.add(crate::pbr::with_tangents(Cylinder::new(0.13, 0.22)))),
+                    MeshMaterial3d(wood.clone()),
+                    Transform::from_xyz(0.0, 0.88, 0.0),
+                ));
+                // Solido: il parapetto non si attraversa.
+                c.spawn((
+                    avian3d::prelude::Collider::cylinder(0.95, RIM_H + 0.08),
+                    Transform::from_xyz(0.0, (RIM_H + 0.08) / 2.0, 0.0),
+                    crate::camera::BlocksCamera,
                 ));
             });
     }
