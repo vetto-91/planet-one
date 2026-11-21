@@ -137,6 +137,11 @@ pub fn material(server: &AssetServer, name: &str, uv_scale: Vec2) -> StandardMat
         perceptual_roughness: 1.0,
         metallic: 1.0,
         uv_transform: Affine2::from_scale(uv_scale),
+        // A due facce: teli, tavolati, falde e passatoi sono fogli singoli. Visti da dietro
+        // sparivano: il lato della tenda da dentro (segnalazione 2026-11-19_22-06-07), il
+        // passatoio dei portoni da sotto (21-31-17), le torri «a fettine» (21-28-45).
+        double_sided: true,
+        cull_mode: None,
         ..default()
     }
 }
