@@ -1,0 +1,32 @@
+# Blocco 5: si parla anche a chi cammina per strada (19_22-33-06). Avvicinandosi e guardandolo si
+# ferma e si volta; col dialogo aperto resta fermo e poi riprende la strada.
+god on
+meteo sereno
+tp -1.2 3 14
+ora 17.9
+aspetta 4
+attendi npc:nina:anim = Walk_Loop 30
+tp nina
+prima-persona
+aspetta 0.2
+guarda nina
+aspetta 1.5
+guarda nina
+aspetta 0.2
+verifica npc:nina:anim = Idle_Loop
+premi e
+aspetta 0.5
+verifica parla = Nina
+aspetta 2
+verifica npc:nina:anim = Idle_Talking_Loop
+verifica npc:nina:sguardo < 15
+prima-persona off
+camera 0 20 5
+aspetta 0.3
+foto parla
+premi esc
+aspetta 0.3
+guarda 0 0
+aspetta 3
+verifica npc:nina:anim = Walk_Loop
+esci

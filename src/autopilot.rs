@@ -1066,11 +1066,16 @@ pub fn snapshot(world: &mut World) -> Value {
         let p = g.translation();
         let dist = p.distance(pos);
         if dist < 25.0 {
+            // Gradi tra dove guarda l'abitante (il suo -Z) e la direzione del giocatore.
+            let ahead = (g.rotation() * Vec3::NEG_Z).xz().normalize_or_zero();
+            let to = (pos - p).xz().normalize_or_zero();
+            let gaze = ahead.dot(to).clamp(-1.0, 1.0).acos().to_degrees().round();
             near.push((
                 dist,
                 json!({
                     "tipo": "npc",
                     "nome": npc.name,
+                    "sguardo": gaze,
                     "dist": (dist * 10.0).round() / 10.0,
                     "pos": [p.x, p.y, p.z],
                     "modo": format!("{:?}", npc.mode),

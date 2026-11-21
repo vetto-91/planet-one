@@ -1,0 +1,24 @@
+# Blocco 5: chi parla col giocatore si volta a guardarlo, anche se lo si prende alle spalle (18_23-01-40).
+god on
+meteo sereno
+ora 10
+aspetta 2
+attendi npc:pietro:modo = Ready 60
+tp -3.9 1 14.4
+aspetta 1
+camera 330 25 5
+aspetta 0.5
+foto prima
+verifica npc:pietro:sguardo > 60
+guarda pietro
+aspetta 0.3
+premi e
+aspetta 0.5
+verifica parla = Pietro
+camera 330 25 5
+aspetta 2.5
+verifica npc:pietro:sguardo < 15
+foto dopo
+premi esc
+aspetta 1
+esci

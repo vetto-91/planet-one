@@ -1330,9 +1330,25 @@ pub fn villager_routine(
         }
         let here = Vec2::new(tf.translation.x, tf.translation.z);
         if let Some(&next) = v.path.front() {
-            npc.mode = NpcMode::Busy;
+            // Per strada si può fermare e parlargli (segnalazione 2026-11-19_22-33-06); il collider
+            // resta spento finché cammina, per non spingere il giocatore.
+            npc.mode = NpcMode::Ready;
             disable_collider(&mut commands, entity, &mut collider_off);
-            if !talking {
+            // Chi gli si avvicina guardandolo lo fa fermare: si volta e aspetta che gli si parli.
+            let hailed = player.filter(|pp| {
+                pp.distance(tf.translation) < PATROL_STOP
+                    && eye.is_some_and(|(o, f)| {
+                        (tf.translation + Vec3::Y * 0.3 - o)
+                            .normalize_or_zero()
+                            .dot(f)
+                            > 0.9
+                    })
+            });
+            if let Some(pp) = hailed.filter(|_| !talking) {
+                let to = (pp - tf.translation).xz();
+                let want_rot = Quat::from_rotation_y(yaw_towards(to));
+                tf.rotation = tf.rotation.slerp(want_rot, (6.0 * dt).clamp(0.0, 1.0));
+            } else if !talking {
                 let to = next - here;
                 if to.length() < 0.15 {
                     v.path.pop_front();
@@ -1399,10 +1415,8 @@ pub fn villager_routine(
                 let want_rot = Quat::from_rotation_y(yaw_towards(look));
                 tf.rotation = tf.rotation.slerp(want_rot, (6.0 * dt).clamp(0.0, 1.0));
             }
-            if npc.mode == NpcMode::Busy {
-                npc.mode = NpcMode::Ready;
-                enable_collider(&mut commands, entity, &mut collider_off);
-            }
+            npc.mode = NpcMode::Ready;
+            enable_collider(&mut commands, entity, &mut collider_off);
         }
         let base = ground_y(&field, piers, tf.translation.x, tf.translation.z);
         tf.translation.y = walk.floor(entity, tf.translation, base) + CENTER_Y;
@@ -1504,6 +1518,39 @@ pub fn warn_blocked_doors(homes: Res<crate::world_props::Homes>, mut done: Local
     }
 }
 
+/// Sistema: chi parla col giocatore (dialogo scritto o chat con la IA) si volta a guardarlo, anche
+/// se gli si era arrivati alle spalle o di lato (segnalazione 2026-11-18_23-01-40).
+pub fn face_speaker(
+    time: Res<Time>,
+    dialog: Res<DialogState>,
+    chat: Res<crate::ai::AiChat>,
+    app_state: Res<State<crate::AppState>>,
+    players: Query<&GlobalTransform, With<crate::player::Player>>,
+    mut npcs: Query<(Entity, &mut Transform, &Npc), Without<ChildOf>>,
+) {
+    let chatting = *app_state.get() == crate::AppState::Chat;
+    if !dialog.open && !chatting {
+        return;
+    }
+    let Ok(player) = players.single() else {
+        return;
+    };
+    let dt = time.delta_secs();
+    for (entity, mut tf, npc) in &mut npcs {
+        let speaking = (dialog.open && dialog.speaker_entity == Some(entity))
+            || (chatting && chat.npc_name == npc.name);
+        if !speaking || npc.mode == NpcMode::Asleep {
+            continue;
+        }
+        let to = (player.translation() - tf.translation).xz();
+        if to.length() < 0.2 {
+            continue;
+        }
+        let want = Quat::from_rotation_y(yaw_towards(to));
+        tf.rotation = tf.rotation.slerp(want, (5.0 * dt).clamp(0.0, 1.0));
+    }
+}
+
 pub fn plugin(app: &mut App) {
     app.add_systems(
         Update,
@@ -1515,6 +1562,9 @@ pub fn plugin(app: &mut App) {
                 warn_blocked_doors,
             )
                 .chain(),
+            face_speaker
+                .after(villager_routine)
+                .after(crate::hut::keeper_routine),
             lantern_shadows,
         ),
     );
