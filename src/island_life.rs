@@ -37,6 +37,9 @@ const TOLL_RANGE: f32 = 45.0;
 /// EC-02: dove sta il carretto, dove sta Lino, da dove escono i predoni (e dove vanno).
 const CART: Vec2 = Vec2::new(1.7, -24.0);
 const CARTER_AT: Vec2 = Vec2::new(-0.7, -22.8);
+/// Coseno dell'angolo dallo sguardo oltre cui il carretto è fuori vista (circa 75°).
+const CART_UNSEEN_COS: f32 = 0.26;
+
 pub const CARTER: &str = "Lino il carrettiere";
 const RAIDERS: [(Vec2, Vec2); 2] = [
     (Vec2::new(15.0, -31.0), Vec2::new(3.0, -25.0)),
@@ -314,6 +317,7 @@ pub fn cart_in_the_mud(
     raiders: Query<&crate::combat::EnemyHealth, With<Raider>>,
     mut fight: Local<u8>,
     mut session: ResMut<crate::save::Session>,
+    cameras: Query<&GlobalTransform, With<Camera3d>>,
 ) {
     let (Some(field), Ok(player)) = (field, players.single()) else {
         return;
@@ -325,6 +329,16 @@ pub fn cart_in_the_mud(
     let dusk = (18.0..20.5).contains(&clock.hour);
     let wanted = open && near && (step > 0 || dusk);
     if !wanted {
+        // Lino e il carretto se ne vanno solo quando non li guardi: prima sparivano davanti agli
+        // occhi appena chiuso l'evento (segnalazione 2026-11-19_21-41-04).
+        let seen = near
+            && cameras.iter().any(|c| {
+                let to = Vec3::new(CART.x, c.translation().y, CART.y) - c.translation();
+                to.normalize_or_zero().dot(*c.forward()) > CART_UNSEEN_COS
+            });
+        if seen {
+            return;
+        }
         for e in &scene {
             commands.entity(e).despawn();
         }

@@ -1,0 +1,24 @@
+# Blocco 5: a evento chiuso Lino e il carretto se ne vanno solo quando non li si guarda (19_21-41-04).
+god on
+ia off
+meteo sereno
+ora 18.6
+missioni on
+missione ec02 3
+tp -0.3 1 -19.0
+aspetta 3
+guarda lino
+aspetta 0.5
+verifica npc:lino:modo = Ready
+foto carretto
+missione ec02 4
+aspetta 2
+verifica npc:lino:modo = Ready
+foto ancora-li
+guarda 180 0
+aspetta 2
+verifica npc:lino:modo = null
+guarda lino
+aspetta 0.5
+foto via
+esci
