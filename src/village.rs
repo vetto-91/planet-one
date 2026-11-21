@@ -1079,7 +1079,8 @@ pub fn sync_village(
     );
 }
 
-/// Sistema: i cancelli si aprono all'alba e si chiudono la sera (il varco pedonale resta libero).
+/// Sistema: i cancelli si aprono all'alba e si chiudono la sera (di notte li aprono gli abitanti
+/// che passano, `gate_for_villagers`).
 pub fn gate_schedule(
     clock: Res<GameClock>,
     mut gates: Query<&mut PropState, With<GateHandle>>,
@@ -1090,6 +1091,46 @@ pub fn gate_schedule(
         *last = Some(open);
         for mut s in &mut gates {
             s.on = open;
+        }
+    }
+}
+
+/// Sistema: di notte, a cancello chiuso, un abitante che arriva lo apre e, passato, lo richiude.
+/// Prima le guardie che andavano o tornavano dalla caserma (fuori dal cancello Nord)
+/// attraversavano i battenti chiusi (copione `vita-paese`).
+pub fn gate_for_villagers(
+    time: Res<Time>,
+    clock: Res<GameClock>,
+    mut gates: Query<(Entity, &Transform, &mut PropState), With<GateHandle>>,
+    walkers: Query<(&Transform, &Visibility), With<crate::villagers::Villager>>,
+    mut opened: Local<Vec<(Entity, f32)>>,
+) {
+    /// Distanza dal centro del cancello a cui si apre, e secondi prima di richiuderlo.
+    const OPEN_NEAR: f32 = 4.0;
+    const CLOSE_AFTER: f32 = 2.0;
+    let dt = time.delta_secs();
+    for (e, tf, mut state) in &mut gates {
+        let at = tf.translation.xz();
+        let near = walkers.iter().any(|(t, vis)| {
+            *vis != Visibility::Hidden && t.translation.xz().distance(at) < OPEN_NEAR
+        });
+        let mine = opened.iter().position(|(g, _)| *g == e);
+        match (near, mine) {
+            (true, None) if !state.on => {
+                state.on = true;
+                opened.push((e, 0.0));
+            }
+            (true, Some(i)) => opened[i].1 = 0.0,
+            (false, Some(i)) => {
+                opened[i].1 += dt;
+                if opened[i].1 > CLOSE_AFTER {
+                    if !clock.awake() {
+                        state.on = false;
+                    }
+                    opened.swap_remove(i);
+                }
+            }
+            _ => {}
         }
     }
 }
@@ -1571,7 +1612,13 @@ pub fn plugin(app: &mut App) {
         .add_systems(Startup, init_village)
         .add_systems(
             Update,
-            (sync_village, gate_schedule, village_banner, scan_walls),
+            (
+                sync_village,
+                gate_schedule,
+                gate_for_villagers.after(gate_schedule),
+                village_banner,
+                scan_walls,
+            ),
         );
 }
 
