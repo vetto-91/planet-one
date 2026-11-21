@@ -1,0 +1,18 @@
+# Blocco 5: in prima persona, guardando in basso, non si vede dentro il colletto (18_22-41-55).
+god on
+meteo sereno
+ora 12
+tp 0.0 3 70.0
+aspetta 1.5
+prima-persona
+camera 200 88
+aspetta 0.6
+foto giu
+camera 200 60
+aspetta 0.6
+foto mezzo
+camera 200 30
+aspetta 0.6
+foto avanti
+prima-persona off
+esci

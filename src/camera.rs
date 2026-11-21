@@ -464,7 +464,10 @@ pub fn follow(
             let rot = Quat::from_rotation_y(state.yaw) * Quat::from_rotation_x(-state.pitch);
             // Occhi a 1,70 m da terra (il centro della capsula è a 0,85 m), appena davanti al
             // viso: la testa è nascosta (`player_visibility`), così non entra mai nell'inquadratura.
-            let ahead = Quat::from_rotation_y(state.yaw) * Vec3::NEG_Z * 0.12;
+            // Guardando in basso gli occhi si sporgono in avanti, oltre il petto: da sopra la testa
+            // nascosta si vedeva dentro il colletto (segnalazione 2026-11-18_22-41-55).
+            let lean = (state.pitch / 1.54).clamp(0.0, 1.0);
+            let ahead = Quat::from_rotation_y(state.yaw) * Vec3::NEG_Z * (0.12 + 0.24 * lean);
             camera.translation = player.translation() + Vec3::Y * FIRST_PERSON_EYE + ahead;
             camera.rotation = rot;
         }
