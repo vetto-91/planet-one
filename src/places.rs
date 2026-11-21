@@ -277,13 +277,10 @@ fn cave_depths(b: &mut B, int: &mut Interior) {
     ] {
         rock(b, int, min, max);
     }
-    b.force = Some(Mat::Plain);
-    b.cuboid_c(
-        v(-6.2, FL + 0.05, -15.2),
-        v(3.2, 0.1, 3.0),
-        [0.08, 0.22, 0.32, 1.0],
-    );
-    b.force = None;
+    // Acqua vera, trasparente: era una lastra azzurra opaca («questa dovrebbe essere acqua?»,
+    // segnalazione 2026-11-19_21-48-27). Sotto, il fondo scuro della sala.
+    int.water
+        .push((v(-6.2, FL + 0.1, -15.2), Vec2::new(1.6, 1.5)));
     for (x, z, h) in [
         (-7.2, -13.4, 1.1),
         (-5.6, -16.6, 0.8),
@@ -359,13 +356,8 @@ fn sunken_passage(b: &mut B, int: &mut Interior) {
         cave_floor(b, int, v(4.6, LO, z - 0.6), v(6.0, top, z));
     }
     cave_floor(b, int, v(4.6, LO, -31.8), v(6.0, FL - 0.75, -30.8));
-    b.force = Some(Mat::Plain);
-    b.cuboid_c(
-        v(5.3, FL - 0.3, -30.4),
-        v(1.4, 0.04, 2.8),
-        [0.05, 0.16, 0.24, 1.0],
-    );
-    b.force = None;
+    int.water
+        .push((v(5.3, FL - 0.28, -30.4), Vec2::new(0.7, 1.4)));
     for (min, max) in [
         (v(4.0, LO, -32.4), v(4.6, TOP, -27.6)),
         (v(6.0, LO, -32.4), v(6.6, TOP, -27.6)),

@@ -467,6 +467,14 @@ pub fn update_terrain(
     let foam_mesh = build_foam_mesh(&mesh, &field, &ocean);
     let snow_mesh = build_sand_mesh(&mesh, &snow_weights(&field, &ocean, &sand_w, &road_w));
     let sea_mesh = build_sea_mesh(&field, &ocean);
+    // Quanto sta più in alto il centro della mesh del mare rispetto alla schiuma (vedi sotto).
+    let foam_lift = {
+        let (lo, hi) = field
+            .h
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(a, b), y| (a.min(*y), b.max(*y)));
+        (lo + hi) / 2.0 - SEA_LEVEL
+    };
     // I moli (piazzamenti `molo`) interrompono la barriera di riva: ci si cammina sopra.
     let piers: Vec<(Vec2, f32)> = dbg
         .map(|d| {
@@ -621,7 +629,9 @@ pub fn update_terrain(
                 base_color: Color::srgba(0.05, 0.22, 0.33, 0.86),
                 reflectance: 0.6,
                 alpha_mode: AlphaMode::Blend,
-                // Il mare si disegna dopo sabbia e strade (anche dall'alto, nella mappa).
+                // Il mare si disegna dopo sabbia e strade (anche dall'alto, nella mappa): l'ordine
+                // dei trasparenti usa il centro della mesh più questo bias, e la mesh del mare ha il
+                // centro alla quota degli strati del terreno (`build_sea_mesh`).
                 depth_bias: 4.0,
                 perceptual_roughness: 0.2,
                 metallic: 0.0,
@@ -659,7 +669,10 @@ pub fn update_terrain(
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: Color::srgba(0.95, 0.97, 1.0, 0.6),
             alpha_mode: AlphaMode::Blend,
-            depth_bias: 5.0,
+            // Dopo il mare: la schiuma è piatta sull'acqua, il mare ha il centro della mesh alzato
+            // alla quota degli strati del terreno (`build_sea_mesh`); il bias recupera la
+            // differenza.
+            depth_bias: 5.0 + foam_lift,
             perceptual_roughness: 0.6,
             unlit: false,
             ..Default::default()
@@ -1547,6 +1560,16 @@ fn build_sea_mesh(field: &Field, ocean: &[bool]) -> Mesh {
     quad(-big, h, big, big);
     quad(-big, -h, -h, h);
     quad(h, -h, big, h);
+    // Un vertice non usato da nessun triangolo porta il centro del riquadro della mesh alla quota
+    // del centro degli strati del terreno (sabbia, strade, sentieri, neve). L'ordine dei
+    // trasparenti parte da quel centro: con il mare piatto a -1 m, guardando in basso la sabbia
+    // sotto l'acqua veniva disegnata dopo e copriva il mare vicino alla riva (segnalazione
+    // 2026-11-18_22-54-38). Così decide solo il `depth_bias`, a ogni inclinazione della camera.
+    let (lo, hi) = field
+        .h
+        .iter()
+        .fold((f32::MAX, f32::MIN), |(a, b), y| (a.min(*y), b.max(*y)));
+    pos.push([0.0, lo + hi - 2.0 * SEA_LEVEL, 0.0]);
     let count = pos.len();
     let mut mesh = Mesh::new(
         PrimitiveTopology::TriangleList,
