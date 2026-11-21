@@ -11,7 +11,7 @@ Legge docs/voci/ladro.txt e docs/voci/viandante.txt e salva in:
 Per sicurezza genera SOLO i clip mancanti (quelli esistenti, nati con un'altra voce, non vengono
 toccati); usa --force per rigenerarli tutti con la voce di Piper.
 
-Uso: scripts/gen_tts_voci.py [--force] [--voice NOME] [--piper PERCORSO]
+Uso: scripts/gen_tts_voci.py [--force] [--solo viandante|ladro] [--voice NOME] [--piper PERCORSO]
 """
 import argparse
 import os
@@ -29,7 +29,7 @@ AUDIO_VOCI = ROOT / "assets/audio/voci"
 # Voce Piper e velocità (length_scale: >1 = più lenta) per ogni personaggio.
 CHARACTERS = {
     "ladro": {"txt": DOCS_VOCI / "ladro.txt", "voice": "it_IT-riccardo-x_low", "length_scale": 0.92},
-    "viandante": {"txt": DOCS_VOCI / "viandante.txt", "voice": "it_IT-riccardo-x_low", "length_scale": 1.05},
+    "viandante": {"txt": DOCS_VOCI / "viandante.txt", "voice": "it_IT-riccardo-x_low", "length_scale": 1.0},
 }
 
 
@@ -117,11 +117,14 @@ def main():
     ap.add_argument("--force", action="store_true", help="rigenera anche i clip già esistenti")
     ap.add_argument("--voice", help="voce Piper da usare per tutti i personaggi (es. it_IT-paola-medium)")
     ap.add_argument("--piper", help="percorso dell'eseguibile di Piper")
+    ap.add_argument("--solo", choices=sorted(CHARACTERS), help="genera solo questo personaggio")
     args = ap.parse_args()
 
     piper = find_piper(args.piper)
     voices = data_dir() / "ai" / "voices"
     for key, conf in CHARACTERS.items():
+        if args.solo and key != args.solo:
+            continue
         out_dir = AUDIO_VOCI / key
         out_dir.mkdir(parents=True, exist_ok=True)
         model = voices / f"{args.voice or conf['voice']}.onnx"
