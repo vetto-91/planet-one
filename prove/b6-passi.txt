@@ -1,0 +1,19 @@
+# Blocco 6: sul molo, fino alla punta, i passi sono di legno (18_23-14-37); nel torrente si sente
+# l'acqua (19_21-46-59).
+god on
+meteo sereno
+ora 12
+tp 8.5 1 100.0
+aspetta 2
+vai 8.5 104.5
+aspetta 0.5
+verifica /giocatore/passi = Wood
+vai 8.5 108.0
+aspetta 0.5
+verifica /giocatore/passi = Wood
+tp 68.9 2.5 -12.0
+aspetta 2
+vai 68.9 -15.0
+aspetta 0.5
+verifica /giocatore/passi = Water
+esci

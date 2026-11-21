@@ -263,7 +263,7 @@ pub fn synth_gull(seed: u32) -> Vec<u8> {
 pub fn synth_step(surface: Surface, seed: u32) -> Vec<u8> {
     let mut rng = Noise(seed.wrapping_mul(2_654_435_761) | 1);
     let dur = match surface {
-        Surface::Water => 0.34,
+        Surface::Water => 0.45,
         Surface::Crops => 0.42,
         Surface::Sand | Surface::Snow => 0.26,
         _ => 0.2,
@@ -271,6 +271,15 @@ pub fn synth_step(surface: Surface, seed: u32) -> Vec<u8> {
     let n = (RATE as f32 * dur) as usize;
     let (mut lo, mut band, mut mid) = (0.0f32, 0.0f32, 0.0f32);
     let mut grain = 1.0f32;
+    // Gocce che ricadono dopo il passo nell'acqua: istante e tono di ognuna.
+    let mut drop_rng = Noise(seed.wrapping_mul(7_919).wrapping_add(13) | 1);
+    let drops: Vec<(f32, f32)> = (0..4)
+        .map(|_| {
+            let at = 0.05 + (drop_rng.next() + 1.0) * 0.14;
+            let pitch = 1300.0 + (drop_rng.next() + 1.0) * 1000.0;
+            (at, pitch)
+        })
+        .collect();
     let mut out = Vec::with_capacity(n);
     for i in 0..n {
         let t = i as f32 / RATE as f32;
@@ -309,9 +318,29 @@ pub fn synth_step(surface: Surface, seed: u32) -> Vec<u8> {
                     + thud(95.0, 16.0) * 0.4
                     + hi * (-t * 140.0).exp() * 0.5
             }
+            // Acqua bassa: lo sciabordio del piede che entra e di quello che esce (rumore grave),
+            // un fruscio di schizzi e qualche goccia che ricade. Prima era un «bloop» che saliva di
+            // tono e sembrava un incantesimo (segnalazioni 2026-11-18_23-14-37, 2026-11-19_21-46-59).
             Surface::Water => {
-                let bubble = (TAU * (420.0 * t + 900.0 * t * t)).sin() * (-t * 14.0).exp();
-                hi * (-t * 9.0).exp() * 0.9 + bubble * 0.3
+                let slosh = |t0: f32| {
+                    let x = t - t0;
+                    if x < 0.0 {
+                        0.0
+                    } else {
+                        (x * 40.0).min(1.0) * (-x * 9.0).exp()
+                    }
+                };
+                let body = (mid * 1.4 + lo * 1.6) * (slosh(0.0) + 0.6 * slosh(0.13));
+                let fizz = hi * (t * 60.0).min(1.0) * (-t * 16.0).exp() * 0.35;
+                let drip: f32 = drops
+                    .iter()
+                    .filter(|(at, _)| t > *at)
+                    .map(|(at, f)| {
+                        let x = t - at;
+                        (TAU * f * x * (1.0 + 1.5 * x)).sin() * (-x * 70.0).exp() * 0.22
+                    })
+                    .sum();
+                body + fizz + drip
             }
         };
         out.push(s * attack);
@@ -383,6 +412,7 @@ pub fn last_step() -> String {
 /// Superficie sotto i piedi: `feet` è la quota del giocatore, `at_sea` dice se il punto è sul
 /// mare aperto. Una conca dell'entroterra più bassa del mare (il fossato fuori dalle mura) resta
 /// erba: conta la maschera del mare, non la quota.
+/// `on_deck`: sotto i piedi c'è un oggetto solido (assi del molo, barca, ponte), non il terreno.
 pub fn step_surface(
     ground: Surface,
     feet: f32,
@@ -390,10 +420,12 @@ pub fn step_surface(
     at_sea: bool,
     on_wall: bool,
     snow: f32,
+    on_deck: bool,
 ) -> Surface {
     if at_sea && terrain_y < SEA_LEVEL {
-        // Sopra il mare si sta su un molo o si è in acqua bassa.
-        return if feet > SEA_LEVEL + 0.7 {
+        // Sopra il mare si sta su un molo o si è in acqua bassa. Le assi in fondo al molo stanno
+        // poco sopra l'acqua: prima lì si sentiva l'acqua (segnalazione 2026-11-18_23-14-37).
+        return if on_deck || feet > SEA_LEVEL + 0.7 {
             Surface::Wood
         } else {
             Surface::Water
@@ -670,10 +702,12 @@ fn footsteps(
     sounds: Option<Res<AmbienceSounds>>,
     dbg: Res<crate::debug_place::DebugPlace>,
     buildings: Query<(&GlobalTransform, &crate::world_props::BuildingFootprint)>,
-    player: Query<(&Transform, &GroundedState), With<Player>>,
+    player: Query<(Entity, &Transform, &GroundedState), With<Player>>,
+    spatial: avian3d::prelude::SpatialQuery,
     mut st: Local<Steps>,
 ) {
-    let (Some(field), Some(sounds), Ok((t, grounded))) = (field, sounds, player.single()) else {
+    let (Some(field), Some(sounds), Ok((me, t, grounded))) = (field, sounds, player.single())
+    else {
         return;
     };
     let dt = time.delta_secs().max(1e-4);
@@ -706,6 +740,16 @@ fn footsteps(
     let terrain_y = field.height_at(p.x, p.z);
     // All'atterraggio la capsula è ancora un soffio sopra il suolo.
     let feet = p.y - FEET_BELOW_CENTER - if landed { 0.3 } else { 0.0 };
+    // Cosa regge i piedi: un collider sopra il fondale (assi del molo, barca, ponte di legno).
+    let on_deck = spatial
+        .cast_ray(
+            p,
+            Dir3::NEG_Y,
+            FEET_BELOW_CENTER + 0.35,
+            true,
+            &avian3d::prelude::SpatialQueryFilter::from_excluded_entities([me]),
+        )
+        .is_some_and(|hit| p.y - hit.distance > terrain_y + 0.15);
     let surface = step_surface(
         field.surface_at(p.x, p.z),
         feet,
@@ -713,6 +757,7 @@ fn footsteps(
         field.in_sea(p.x, p.z),
         on_wall,
         weather.snow_cover,
+        on_deck,
     );
     let surface = if field.in_fresh_water(p.x, p.z) && feet < terrain_y + 0.25 {
         Surface::Water
@@ -933,15 +978,38 @@ mod tests {
     #[test]
     fn surface_follows_where_the_feet_are() {
         use Surface::*;
-        assert_eq!(step_surface(Grass, 3.0, 3.0, false, false, 0.0), Grass);
-        assert_eq!(step_surface(Grass, 3.0, 3.0, false, false, 0.8), Snow);
-        assert_eq!(step_surface(Stone, 3.0, 3.0, false, false, 0.8), Stone);
-        assert_eq!(step_surface(Grass, 3.5, 3.0, false, false, 0.8), Wood);
-        assert_eq!(step_surface(Grass, 8.0, 3.0, false, true, 0.0), Stone);
-        assert_eq!(step_surface(Sand, 0.1, -2.0, true, false, 0.0), Wood);
-        assert_eq!(step_surface(Sand, -1.4, -2.0, true, false, 0.0), Water);
+        assert_eq!(
+            step_surface(Grass, 3.0, 3.0, false, false, 0.0, false),
+            Grass
+        );
+        assert_eq!(
+            step_surface(Grass, 3.0, 3.0, false, false, 0.8, false),
+            Snow
+        );
+        assert_eq!(
+            step_surface(Stone, 3.0, 3.0, false, false, 0.8, false),
+            Stone
+        );
+        assert_eq!(
+            step_surface(Grass, 3.5, 3.0, false, false, 0.8, false),
+            Wood
+        );
+        assert_eq!(
+            step_surface(Grass, 8.0, 3.0, false, true, 0.0, false),
+            Stone
+        );
+        assert_eq!(step_surface(Sand, 0.1, -2.0, true, false, 0.0, false), Wood);
+        assert_eq!(
+            step_surface(Sand, -1.4, -2.0, true, false, 0.0, false),
+            Water
+        );
+        // Le assi basse in fondo al molo, poco sopra l'acqua: legno.
+        assert_eq!(step_surface(Sand, -1.4, -2.0, true, false, 0.0, true), Wood);
         // Beta v0.0.63, n. 26: il fossato erboso fuori dalle mura è sotto il livello del mare
         // (terreno a -1,4 m), ma non è mare: si sente l'erba, non lo sciabordio.
-        assert_eq!(step_surface(Grass, -1.3, -1.4, false, false, 0.0), Grass);
+        assert_eq!(
+            step_surface(Grass, -1.3, -1.4, false, false, 0.0, false),
+            Grass
+        );
     }
 }
