@@ -118,7 +118,7 @@ pub fn bundle_in(
         PropKind::Container,
         PropState { on: false },
         Interactable {
-            prompt: format!("[E] Apri {}", kind.name()),
+            prompt: container_prompt(kind, false),
             range: 2.6,
             aim: Some(0.45),
             use_from: None,
@@ -340,6 +340,14 @@ impl Containers {
         });
         self.open = Some((c.key.clone(), c.kind));
         info!("[CONTAINER] aperto {} ({})", c.key, c.kind.name());
+    }
+
+    /// Il mobile è vuoto? Senza aprirlo: se non è mai stato aperto conta il contenuto iniziale.
+    pub fn is_empty(&self, c: &Container) -> bool {
+        match self.stores.get(&c.key) {
+            Some(store) => store.items.is_empty(),
+            None => starting_items(c.kind, &c.building, &c.home, &c.key).is_empty(),
+        }
     }
 
     /// Mobili aperti almeno una volta e ormai vuoti (chiave e tipo): il bottino può tornare.
@@ -588,8 +596,37 @@ pub fn container_window(
     }
 }
 
+/// Prompt di un mobile: «(Vuoto)» accanto se non contiene niente, così non serve aprirlo per
+/// saperlo (segnalazione 2026-11-18_22-56-48).
+fn container_prompt(kind: ContainerKind, empty: bool) -> String {
+    let base = format!("[E] Apri {}", kind.name());
+    if empty {
+        format!("{base} (Vuoto)")
+    } else {
+        base
+    }
+}
+
+/// Sistema: aggiorna i prompt dei mobili quando il loro contenuto cambia o ne compaiono di nuovi.
+pub fn label_empty_containers(
+    containers: Res<Containers>,
+    mut all: Query<(&Container, &mut Interactable)>,
+    added: Query<(), Added<Container>>,
+) {
+    if !containers.is_changed() && added.is_empty() {
+        return;
+    }
+    for (c, mut inter) in &mut all {
+        let want = container_prompt(c.kind, containers.is_empty(c));
+        if inter.prompt != want {
+            inter.prompt = want;
+        }
+    }
+}
+
 pub fn plugin(app: &mut App) {
-    app.init_resource::<Containers>();
+    app.init_resource::<Containers>()
+        .add_systems(Update, label_empty_containers);
 }
 
 #[cfg(test)]
