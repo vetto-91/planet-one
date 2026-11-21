@@ -1,0 +1,38 @@
+# Via Sud-Ovest (19-11 vita-paese): la casa di Agnese ha la porta sulla strada, la strada passa
+# fra la bancarella del pesce e la casa di Nina senza entrarci. Vista dalla mappa.
+god on
+meteo sereno
+ora 12
+tp -9.0 1 17.3
+aspetta 2
+premi m
+aspetta 1
+premi c
+aspetta 0.5
+premi +
+aspetta 0.2
+premi +
+aspetta 0.2
+premi +
+aspetta 0.2
+premi +
+aspetta 0.2
+premi +
+aspetta 0.2
+premi +
+aspetta 0.2
+premi +
+aspetta 0.2
+premi +
+aspetta 0.2
+premi +
+aspetta 1
+foto mappa
+premi esc
+aspetta 1
+tp -14.5 1 17.6
+aspetta 1.5
+camera 180 12 5
+aspetta 1
+foto porta-agnese
+esci

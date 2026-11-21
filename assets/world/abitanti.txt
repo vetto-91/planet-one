@@ -192,7 +192,7 @@ casa: casa-media 1 0
 ruolo: pescivendola
 modello: civile-f-rosa
 negozio: pesce
-lavoro: -6.4 15.4 1 0
+lavoro: -6.4 14.8 1 0
 orari: 7 18 20
 
 [Gaspare]

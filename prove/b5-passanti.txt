@@ -28,5 +28,6 @@ premi esc
 aspetta 0.3
 guarda 0 0
 aspetta 3
-verifica npc:nina:anim = Walk_Loop
+# Riprende la sua strada (o è già arrivata alla bancarella, che è a pochi passi).
+verifica npc:nina:anim != Idle_Talking_Loop
 esci

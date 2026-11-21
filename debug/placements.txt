@@ -228,7 +228,7 @@ punto: x -14.50, z 22.00
 quantità: 1   seed: 1
 nota: villaggio
 punti: (-14.50,22.00)
-rotazioni: 0
+rotazioni: 180
 
 [P-0211] tipo: lampione | modalità: singolo
 quando: generato da gen_villaggio.py
@@ -416,10 +416,10 @@ rotazioni: 270
 
 [P-0302] tipo: bancarella-pesce | modalità: singolo
 quando: generato da gen_mercato.py
-punto: x -5.20, z 15.40
+punto: x -5.20, z 14.80
 quantità: 1   seed: 1
 nota: mercato
-punti: (-5.20,15.40)
+punti: (-5.20,14.80)
 rotazioni: 90
 
 [P-0303] tipo: pagliaio | modalità: singolo

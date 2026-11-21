@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PL = ROOT / "debug/placements.txt"
 TAG = "gen_mercato.py"
 
-STALLS = [("bancarella-erbe", -5.2, 7.4, 90), ("bancarella-frutta", 3.6, 8.6, 270), ("bancarella-pesce", -5.2, 15.4, 90)]
+STALLS = [("bancarella-erbe", -5.2, 7.4, 90), ("bancarella-frutta", 3.6, 8.6, 270), ("bancarella-pesce", -5.2, 14.8, 90)]
 EXTRAS = [("pagliaio", -6.5, -22.0, 0), ("pagliaio", -5.2, -25.5, 40), ("pagliaio", -8.5, 41.0, 20),
           ("spaventapasseri", -18.0, -26.0, 0), ("spaventapasseri", -20.0, -16.0, 30), ("spaventapasseri", -20.0, 40.5, 0)]
 FIELDS = [("campo", [(-27, -33), (-9, -33), (-9, -21), (-27, -21)]),

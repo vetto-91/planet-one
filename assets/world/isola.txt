@@ -37,7 +37,7 @@ gregge: pecora 34 38 9 8
 # pollaio: x z raggio quante
 pollaio: -1.2 10 5 5
 pollaio: 12 10.5 1.8 3
-pollaio: -14.5 21 1.8 3
+pollaio: -10.8 22 1.0 3
 # gabbiani: x z quanti (girano sopra quel punto)
 gabbiani: 2 92 7
 

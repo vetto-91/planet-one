@@ -34,7 +34,7 @@ BUILDINGS = [
     ("casa-media", -19.5, 4.5, 180, ""),
     # a sud
     ("casa-media", -7.0, 21.0, 90, ""),
-    ("casa-piccola", -14.5, 22.0, 0, ""),
+    ("casa-piccola", -14.5, 22.0, 180, ""),  # porta sulla via Sud-Ovest, non verso le mura
 ]
 LAMPS = [
     (-3.0, -5.5), (2.9, -6.4), (-3.4, 0.0), (-3.4, 15.0), (3.2, 18.0), (2.4, 24.0), (-3.2, 23.0),
@@ -56,7 +56,7 @@ SIGNS = [
 ROADS = [
     ("piccola", 2.4, [(3.0, 10.0), (12.0, 10.5), (22.0, 10.8)]),            # via Est
     ("piccola", 2.4, [(-0.6, 0.8), (-10.0, 0.4), (-22.0, 0.4)]),            # via Ovest
-    ("piccola", 2.4, [(-1.0, 17.5), (-6.0, 18.5), (-14.5, 19.4)]),          # via Sud-Ovest
+    ("piccola", 2.4, [(-1.0, 17.5), (-6.0, 17.1), (-14.5, 18.6)]),          # via Sud-Ovest (fra la bancarella del pesce e la casa)
     ("piccola", 2.6, [(-5.5, 10.2), (-7.2, 12.0)]),                          # sagrato
 ]
 FOOT = {"chiesa": 9.0, "locanda": 6.5, "fabbro": 6.0, "stalla": 5.5, "casa-grande": 5.0,
