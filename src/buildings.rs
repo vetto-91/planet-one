@@ -1174,21 +1174,32 @@ fn church(b: &mut B, r: &mut Rng, int: &mut Interior) {
         Vec3::new(-nd_w / 2.0, y0 + nd_h, z_front - t),
         Vec3::new(nd_w / 2.0, wh, z_front),
     );
-    b.gable((-hw, hw, z_back, z_front), wh, 3.2, 0.5, false, roof, wall);
+    // Il tetto della navata finisce contro il campanile: con la gronda di 0,5 m entrava nella torre
+    // e da dentro se ne vedeva lo spigolo a V (segnalazione 2026-11-19_20-59-34).
+    let roof_front = t_back - 0.5;
+    b.gable(
+        (-hw, hw, z_back, roof_front),
+        wh,
+        3.2,
+        0.5,
+        false,
+        roof,
+        wall,
+    );
     // Interno del tetto a vista.
     b.force = Some(Mat::Planks);
     for s in [-1.0f32, 1.0] {
         b.quad(
             Vec3::new(s * (hw + 0.5), wh - 0.1, z_back),
-            Vec3::new(s * (hw + 0.5), wh - 0.1, z_front),
-            Vec3::new(0.0, wh + 3.1, z_front),
+            Vec3::new(s * (hw + 0.5), wh - 0.1, t_back),
+            Vec3::new(0.0, wh + 3.1, t_back),
             Vec3::new(0.0, wh + 3.1, z_back),
             Vec3::new(-s, -1.0, 0.0),
             [0.4, 0.3, 0.2, 1.0],
         );
     }
     b.force = None;
-    for (z, nz) in [(z_back + 0.02, 1.0f32), (z_front - 0.02, -1.0)] {
+    for (z, nz) in [(z_back + 0.02, 1.0f32), (z_front - t - 0.02, -1.0)] {
         b.tri(
             Vec3::new(-hw, wh, z),
             Vec3::new(hw, wh, z),
@@ -1337,9 +1348,16 @@ fn church(b: &mut B, r: &mut Rng, int: &mut Interior) {
             TIMBER,
         );
     }
+    // Il perno entra nella campana e la appende a una trave da muro a muro: prima tra campana e
+    // perno restava un vuoto e la campana galleggiava (segnalazione 2026-11-19_20-59-34).
     b.cuboid_c(
-        Vec3::new(0.0, 10.25, tz),
+        Vec3::new(0.0, 10.12, tz),
         Vec3::new(0.08, 0.5, 0.08),
+        TIMBER,
+    );
+    b.cuboid_c(
+        Vec3::new(0.0, 10.3, tz),
+        Vec3::new(2.0 * (thw - tt), 0.2, 0.2),
         TIMBER,
     );
     b.cuboid(
