@@ -385,15 +385,18 @@ const LANTERN_RANGE: f32 = 24.0;
 pub fn carried_lantern(
     mut commands: Commands,
     equip: Res<Equipment>,
-    players: Query<&GlobalTransform, With<crate::player::Player>>,
+    visuals: Query<&GlobalTransform, With<crate::player::PlayerVisual>>,
     mut lights: Query<(Entity, &mut Transform), With<CarriedLantern>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let Ok(player) = players.single() else {
+    let Ok(body) = visuals.single() else {
         return;
     };
-    let at = player.translation() + player.right() * 0.35 + Vec3::Y * 0.1;
+    // Appesa alla cintura sul fianco sinistro, un poco in avanti: illumina davanti a sé. Il corpo
+    // fisico del giocatore non ruota mai (ruota solo la figura), e con la sua «destra» la lanterna
+    // restava sempre dallo stesso lato del mondo, come sospesa (segnalazione 2026-11-19_21-08-11).
+    let at = body.translation() + body.forward() * 0.22 - body.right() * 0.3 + Vec3::Y * 0.05;
     if !equip.lantern {
         for (e, _) in &lights {
             commands.entity(e).despawn();
