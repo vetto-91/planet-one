@@ -1,0 +1,45 @@
+god on
+ora 1
+meteo sereno
+tp -31.4 1.5 -69.3
+aspetta 1.5
+prima-persona
+premi q
+aspetta 1.5
+camera 0 8
+aspetta 0.4
+foto y000
+camera 30 8
+aspetta 0.4
+foto y030
+camera 60 8
+aspetta 0.4
+foto y060
+camera 90 8
+aspetta 0.4
+foto y090
+camera 120 8
+aspetta 0.4
+foto y120
+camera 150 8
+aspetta 0.4
+foto y150
+camera 180 8
+aspetta 0.4
+foto y180
+camera 210 8
+aspetta 0.4
+foto y210
+camera 240 8
+aspetta 0.4
+foto y240
+camera 270 8
+aspetta 0.4
+foto y270
+camera 300 8
+aspetta 0.4
+foto y300
+camera 330 8
+aspetta 0.4
+foto y330
+esci

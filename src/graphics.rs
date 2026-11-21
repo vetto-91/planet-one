@@ -611,6 +611,27 @@ pub fn budget_point_shadows(
     }
 }
 
+/// Luci con una mesh che il frustum può ancora scartare.
+type CulledLitMesh = (
+    With<PointLight>,
+    With<Mesh3d>,
+    Without<bevy::camera::visibility::NoFrustumCulling>,
+);
+
+/// Una luce puntiforme sulla stessa entità di una mesh (sfera di luce, dardi, lanterne) si accende
+/// solo se quell'entità è visibile, e la visibilità la decide il riquadro della mesh: in prima
+/// persona la sfera di luce sta appena sopra gli occhi e, girando lo sguardo, la sua pallina usciva
+/// dall'inquadratura e la luce si spegneva (segnalazioni 2026-11-18_22-57-56, 2026-11-19_21-15-51,
+/// 21-18-35; copione `b4-sfera`). Queste entità non si scartano più per il frustum: le mesh sono
+/// piccole, il costo è nullo.
+fn keep_lit_meshes_visible(mut commands: Commands, lit: Query<Entity, CulledLitMesh>) {
+    for e in &lit {
+        commands
+            .entity(e)
+            .insert(bevy::camera::visibility::NoFrustumCulling);
+    }
+}
+
 /// Aggira un difetto di Bevy 0.20.1: `extract_lights` considera solo le luci cambiate in questo
 /// fotogramma e toglie le liste di visibilità delle ombre a tutte le altre, mentre le viste delle
 /// facce esistono ancora e vanno in panic («Failed to get point light visible entities»).
@@ -631,6 +652,7 @@ pub fn plugin(app: &mut App) {
                 apply_graphics,
                 apply_present_mode,
                 budget_point_shadows,
+                keep_lit_meshes_visible,
                 keep_shadow_lights_extracted.after(budget_point_shadows),
             ),
         )
