@@ -128,6 +128,8 @@ pub fn spawn_world(
         }
         .build(),
         Transform::from_xyz(4.0, 10.0, 4.0).looking_at(Vec3::ZERO, Vec3::Y),
+        // Il sole fa ombra anche con la testa del giocatore, nascosta alla camera in prima persona.
+        bevy::camera::visibility::RenderLayers::from_layers(&[0, crate::camera::HEAD_LAYER]),
     ));
 
     // Luna: luce direzionale bluastra, senza ombre (regolata da `daynight::update_sky`).

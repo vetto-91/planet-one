@@ -12,6 +12,7 @@
 //! - Se il lock è attivo, rilasciare RMB NON fa tornare in terza persona.
 
 use crate::player::Player;
+use bevy::camera::visibility::RenderLayers;
 use bevy::prelude::*;
 use bevy::window::CursorMoved;
 
@@ -186,9 +187,14 @@ pub fn tag_player_head(
     }
 }
 
+/// Livello di rendering della testa del giocatore in prima persona: la camera non lo disegna, il
+/// sole sì (vedi `scene.rs`), così l'ombra resta intera.
+pub const HEAD_LAYER: usize = 2;
+
 /// Nasconde/mostra il mesh visivo del player: in prima persona non si deve vedere.
-#[allow(clippy::type_complexity)]
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub fn player_visibility(
+    mut commands: Commands,
     // Nascondi sia il corpo fisico (Player) sia il gruppo mesh (PlayerVisual):
     // il corpo ha Visibility perche' e' parent dei mesh figli.
     mut bodies: Query<
@@ -198,9 +204,12 @@ pub fn player_visibility(
             Without<PlayerHead>,
         ),
     >,
-    mut heads: Query<&mut Visibility, With<PlayerHead>>,
+    heads: Query<Entity, With<PlayerHead>>,
+    new_heads: Query<(), Added<PlayerHead>>,
+    children: Query<&Children>,
     state: Res<OrbitCamera>,
     cheats: Res<crate::shell::Cheats>,
+    mut shown: Local<Option<CameraMode>>,
 ) {
     // In prima persona il corpo resta: guardando in basso ci si vede, con ciò che si impugna.
     let target = if cheats.invisible {
@@ -211,14 +220,23 @@ pub fn player_visibility(
     for mut v in &mut bodies {
         v.set_if_neq(target);
     }
-    // In prima persona la testa sparisce: la camera sta dove sono gli occhi.
-    let head = if state.mode == CameraMode::FirstPerson {
-        Visibility::Hidden
+    // In prima persona la testa non si vede (la camera sta dove sono gli occhi), ma fa ombra:
+    // prima era nascosta e l'ombra del giocatore restava senza testa (segnalazione
+    // 2026-11-18_22-43-32). Si sposta su un livello che solo il sole guarda.
+    if *shown == Some(state.mode) && new_heads.is_empty() {
+        return;
+    }
+    *shown = Some(state.mode);
+    let layer = if state.mode == CameraMode::FirstPerson {
+        RenderLayers::layer(HEAD_LAYER)
     } else {
-        Visibility::Inherited
+        RenderLayers::layer(0)
     };
-    for mut v in &mut heads {
-        v.set_if_neq(head);
+    for head in &heads {
+        commands.entity(head).insert(layer.clone());
+        for e in children.iter_descendants(head) {
+            commands.entity(e).insert(layer.clone());
+        }
     }
 }
 
