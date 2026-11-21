@@ -1,0 +1,39 @@
+# Blocco 6: la Prova dell'Arco dà anche un arco a chi non ne ha (19_21-49-56), e nessun arco in
+# più a chi ne ha già uno.
+god on
+ia off
+meteo sereno
+ora 10
+missioni on
+missione qs14 1
+aspetta 2
+verifica Bow = null
+tp silvia
+aspetta 1
+attendi npc:silvia:modo = Ready 90
+davanti silvia
+aspetta 0.5
+guarda silvia
+aspetta 1
+premi e
+aspetta 1
+avanza
+scegli Arrivederci
+attendi /missioni/qs14 = 2 15
+verifica Bow = 1
+verifica Arrow = 12
+# Di nuovo, con l'arco già in tasca: solo le frecce.
+missione qs14 1
+aspetta 2
+davanti silvia
+aspetta 0.5
+guarda silvia
+aspetta 1
+premi e
+aspetta 1
+avanza
+scegli Arrivederci
+attendi /missioni/qs14 = 2 15
+verifica Bow = 1
+verifica Arrow = 24
+esci

@@ -193,6 +193,8 @@ pub struct Step {
     /// Oggetti consegnati (tolti dall'inventario) e ricevuti a tappa fatta.
     pub takes: Vec<(crate::inventory::ItemKind, u32)>,
     pub gives: Vec<(crate::inventory::ItemKind, u32)>,
+    /// Ricevuti solo se non se ne ha già nessuno (`dai-se-manca: arco 1`).
+    pub gives_missing: Vec<(crate::inventory::ItemKind, u32)>,
     /// Cose sbloccate nel mondo (per esempio `continente`).
     pub unlocks: Vec<String>,
     /// Effetti in più (karma, fiducia, statistiche: ADR 0044).
@@ -381,6 +383,10 @@ pub fn parse(text: &str) -> Vec<Mission> {
             },
             ("dai", Some(s)) => match item_qty(value) {
                 Some(x) => s.gives.push(x),
+                None => warn!("[MISSIONI] oggetto sconosciuto: {line}"),
+            },
+            ("dai-se-manca", Some(s)) => match item_qty(value) {
+                Some(x) => s.gives_missing.push(x),
                 None => warn!("[MISSIONI] oggetto sconosciuto: {line}"),
             },
             ("quando", Some(s)) => {
@@ -1186,6 +1192,11 @@ pub fn track_missions(
         for (kind, n) in &step.gives {
             inventory.add(*kind, *n);
         }
+        for (kind, n) in &step.gives_missing {
+            if inventory.qty(*kind) == 0 {
+                inventory.add(*kind, *n);
+            }
+        }
         for effect in &step.effects {
             match effect {
                 Effect::Time(hour, days, kind) => {
@@ -1320,6 +1331,7 @@ mod tests {
                 let mut wanted: Vec<&str> = Vec::new();
                 if let Some(v) = line
                     .strip_prefix("dai:")
+                    .or_else(|| line.strip_prefix("dai-se-manca:"))
                     .or_else(|| line.strip_prefix("prendi:"))
                 {
                     wanted.push(v);

@@ -4,6 +4,7 @@
 #   quando: ha <oggetto> <n> | libero <x> <z> <raggio>  (nessun nemico vivo lì attorno)
 #   quando: conta <contatore> <n> | sbloccato <cosa> | fatte <n>
 #   prendi: <oggetto> <n>   oggetto consegnato        dai: <oggetto> <n>   oggetto ricevuto
+#   dai-se-manca: <oggetto> <n>   ricevuto solo se non se ne ha già (l'arco della Prova dell'Arco)
 #   karma: <n> [#valore] <motivo> · fiducia: <abitante> <n> · stat: <statistica> <n> · tempo: <ora> [giorni] [meteo]
 #   scegli: [requisito] testo => effetto; effetto   risposta a fine dialogo (requisito: «carisma 12»,
 #                                                   «sbloccato porta-sommersa»; effetto «fine» chiude la missione)
@@ -665,8 +666,9 @@ obiettivo: Parla con Silvia della prova
 quando: parla Silvia
 > Chi tira bene non ha le braccia forti, {nome}: ha il respiro quieto. Vuoi vedere quanto è quieto il tuo?
 > Oltre il ponte di legno, lungo il ruscello, ho appeso tre anelli di ferro. Uno vicino, uno a mezza strada, uno lontano.
-> Tre frecce, una per anello, in quest'ordine. Se ne sbagli una ricominci dal primo. Ti servono un arco e queste.
+> Tre frecce, una per anello, in quest'ordine. Se ne sbagli una ricominci dal primo. Tieni queste, e se non hai un arco prendi il mio vecchio.
 dai: freccia 12
+dai-se-manca: arco 1
 
 [tappa]
 obiettivo: Raggiungi il ponte di legno sul ruscello, a est del paese
