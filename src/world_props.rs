@@ -1187,16 +1187,21 @@ pub struct HearthFlame {
 #[derive(Component)]
 pub struct SwitchedBy(pub Entity);
 
+/// Distanza (m) dall'edificio oltre cui le sue luci interne si spengono, una volta uscito.
+const LIGHTS_KEEP_M: f32 = 20.0;
+
 /// Sistema: accende le luci dell'edificio in cui si trova il giocatore (e nessun'altra); quelle
 /// con l'interruttore seguono soltanto l'interruttore, anche da fuori (si vedono dalle finestre).
+#[allow(clippy::too_many_arguments)]
 pub fn update_interior_lights(
     settings: Res<crate::audio::AudioSettings>,
     player: Query<&GlobalTransform, With<crate::player::Player>>,
-    buildings: Query<(&GlobalTransform, &BuildingFootprint, &Children)>,
+    buildings: Query<(Entity, &GlobalTransform, &BuildingFootprint, &Children)>,
     mut lights: Query<(&mut Visibility, Option<&SwitchedBy>), With<InteriorLight>>,
     switches: Query<&crate::hut::PropState>,
     mut flames: Query<(&HearthFlame, &mut Visibility, &mut Transform), Without<InteriorLight>>,
     time: Res<Time>,
+    mut lit: Local<std::collections::HashSet<Entity>>,
 ) {
     let Ok(player) = player.single() else {
         return;
@@ -1217,13 +1222,26 @@ pub fn update_interior_lights(
             tf.scale = Vec3::new(k, k * 1.3, k);
         }
     }
-    for (tf, footprint, children) in &buildings {
+    for (key, tf, footprint, children) in &buildings {
         let local = tf.affine().inverse().transform_point3(p);
-        let inside = settings.gfx.interior_lights
-            && local.x.abs() <= footprint.half.x + 2.5
+        let inside = local.x.abs() <= footprint.half.x + 2.5
             && local.z.abs() <= footprint.half.y + 2.5
             && local.y > -2.0;
-        let wanted = if inside {
+        // Accese entrando, restano accese finché il giocatore non si allontana di
+        // `LIGHTS_KEEP_M` dall'edificio: uscendo dalla porta la stanza diventava subito buia
+        // (segnalazione 2026-11-18_23-17-34).
+        let away = Vec2::new(
+            (local.x.abs() - footprint.half.x).max(0.0),
+            (local.z.abs() - footprint.half.y).max(0.0),
+        )
+        .length();
+        if inside {
+            lit.insert(key);
+        } else if away > LIGHTS_KEEP_M {
+            lit.remove(&key);
+        }
+        let on = settings.gfx.interior_lights && lit.contains(&key);
+        let wanted = if on {
             Visibility::Inherited
         } else {
             Visibility::Hidden
