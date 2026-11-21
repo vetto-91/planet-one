@@ -188,6 +188,31 @@ def kept_attributes(prim: dict) -> dict:
     return {a: i for a, i in prim["attributes"].items() if a in used}
 
 
+# Di quanto scende il bordo del collo (m) e quanto si allarga: riempie lo scollo della camicia.
+NECK_DROP = 0.18
+NECK_TAPER = 1.12
+
+
+def lower_neck(pos: np.ndarray, tris: np.ndarray) -> np.ndarray:
+    """Allunga in basso il collo tagliato dal corpo base: l'anello di bordo più basso scende e si
+    allarga un poco, così riempie lo scollo e resta dentro il colletto anche quando la testa si
+    gira o si china parlando. Prima entrava nel colletto per 3-4 cm e se ne vedeva il bordo staccato dal corpo
+    (segnalazione 2026-11-19_21-41-04, Lino il carrettiere)."""
+    pos = pos.copy()
+    edges = np.sort(np.concatenate([tris[:, [0, 1]], tris[:, [1, 2]], tris[:, [2, 0]]]), axis=1)
+    uniq, count = np.unique(edges, axis=0, return_counts=True)
+    border = np.unique(uniq[count == 1])
+    bottom = pos[:, 1].min()
+    ring = border[pos[border, 1] < bottom + 0.04]
+    if len(ring) == 0:
+        return pos
+    cx, cz = pos[ring, 0].mean(), pos[ring, 2].mean()
+    pos[ring, 1] -= NECK_DROP
+    pos[ring, 0] = cx + (pos[ring, 0] - cx) * NECK_TAPER
+    pos[ring, 2] = cz + (pos[ring, 2] - cz) * NECK_TAPER
+    return pos
+
+
 def add_part(w: Writer, src: Gltf, armature: int, name_to_node: dict, tex_map, *, head_only=False, factor=None):
     """Aggiunge a `w` le mesh con skin di `src`; `head_only` tiene solo testa e collo del corpo."""
     j = src.j
@@ -223,6 +248,7 @@ def add_part(w: Writer, src: Gltf, armature: int, name_to_node: dict, tex_map, *
                     acc = j["accessors"][acc_i]
                     extra = {"normalized": True} if acc.get("normalized") else {}
                     if attr == "POSITION":
+                        arr = lower_neck(arr, new_idx)
                         extra = {"min": [float(v) for v in arr.min(axis=0)], "max": [float(v) for v in arr.max(axis=0)]}
                     attrs[attr] = w.add_array(arr.tobytes(), acc["componentType"], acc["type"], len(arr), 34962, extra)
                 indices = w.add_array(new_idx.tobytes(), 5125, "SCALAR", new_idx.size, 34963)
