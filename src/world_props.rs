@@ -1117,26 +1117,34 @@ pub fn sync_world_props(
                     commands
                         .spawn((root, RigidBody::Static))
                         .with_children(|c| {
+                            // Il lampione non fa ombra: palo e lanterna, attorno alla sua luce,
+                            // facevano un'ombra spezzata o piena proprio sotto (segnalazione
+                            // 2026-11-19_20-41-42). Le ombre restano a chi passa nella luce.
+                            use bevy::light::NotShadowCaster;
                             c.spawn((
                                 Mesh3d(base_mesh.clone()),
                                 MeshMaterial3d(iron.clone()),
                                 Transform::from_xyz(0.0, -0.05, 0.0),
+                                NotShadowCaster,
                             ));
                             c.spawn((
                                 Mesh3d(pole_mesh.clone()),
                                 MeshMaterial3d(iron.clone()),
                                 Transform::from_xyz(0.0, 1.3, 0.0),
+                                NotShadowCaster,
                             ));
                             c.spawn((
                                 LampBulb(bulb_mat.clone()),
                                 Mesh3d(lantern_mesh.clone()),
                                 MeshMaterial3d(bulb_mat.clone()),
                                 Transform::from_xyz(0.0, 3.15, 0.0),
+                                NotShadowCaster,
                             ));
                             c.spawn((
                                 Mesh3d(cap_mesh.clone()),
                                 MeshMaterial3d(iron.clone()),
                                 Transform::from_xyz(0.0, 3.46, 0.0),
+                                NotShadowCaster,
                             ));
                             c.spawn((
                                 LampLight,
