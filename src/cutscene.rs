@@ -8,9 +8,18 @@ use bevy_egui::{EguiContexts, egui};
 
 use crate::region::Region;
 
-/// Secondi per ogni riga, e di dissolvenza all'inizio.
-const LINE_SECS: f32 = 3.2;
+/// Secondi di dissolvenza all'inizio.
 const FADE_SECS: f32 = 1.2;
+
+/// Secondi di una riga: il tempo di leggerla con calma (e di sentirla dalla voce narrante, che dice
+/// circa 17 caratteri al secondo); prima erano 3,2 s per tutte e le righe lunghe correvano via
+/// (segnalazione 2026-11-19_22-24-39).
+pub fn line_secs(line: &str) -> f32 {
+    (line.chars().count() as f32 / 16.0 + 2.5).max(4.5)
+}
+
+/// Chi legge le righe: le clip sono `prologo/narratore-<hash>` (`scripts/gen_voci_prologo.py`).
+const NARRATOR: &str = "Narratore";
 
 /// Scena in corso e avvisi in coda.
 #[derive(Resource, Default, Debug)]
@@ -61,7 +70,23 @@ impl Cutscene {
     }
 
     fn duration(&self) -> f32 {
-        FADE_SECS + self.lines.len() as f32 * LINE_SECS
+        FADE_SECS + self.lines.iter().map(|l| line_secs(l)).sum::<f32>()
+    }
+
+    /// La riga in corso, con i secondi passati da quando è comparsa e la sua durata.
+    fn current(&self) -> Option<(usize, f32, f32)> {
+        let mut t = self.elapsed - FADE_SECS;
+        if t < 0.0 {
+            return None;
+        }
+        for (k, line) in self.lines.iter().enumerate() {
+            let secs = line_secs(line);
+            if t < secs {
+                return Some((k, t, secs));
+            }
+            t -= secs;
+        }
+        None
     }
 }
 
@@ -112,6 +137,8 @@ pub fn run_cutscene(
     mut travel: ResMut<crate::save::TravelRequest>,
     mut session: ResMut<crate::save::Session>,
     mut notice_timer: Local<f32>,
+    mut voice: ResMut<crate::voice::VoiceQueue>,
+    mut spoken: Local<Option<usize>>,
 ) {
     *notice_timer -= time.delta_secs();
     if *notice_timer <= 0.0 && !cutscene.notices.is_empty() {
@@ -123,7 +150,19 @@ pub fn run_cutscene(
         return;
     }
     cutscene.elapsed += time.delta_secs();
+    // La voce narrante legge ogni riga quando compare.
+    let now = cutscene.current().map(|(k, ..)| k);
+    if now != *spoken {
+        *spoken = now;
+        if let Some(line) = now.and_then(|k| cutscene.lines.get(k)) {
+            let clips = crate::voice::line_clip(NARRATOR, line);
+            if !clips.is_empty() {
+                voice.play(clips, crate::voice::VoiceKind::Dialog);
+            }
+        }
+    }
     if cutscene.elapsed >= cutscene.duration() {
+        *spoken = None;
         cutscene.lines.clear();
         if let Some(to) = cutscene.travel.take() {
             crate::crossing::set_deep(cutscene.deep);
@@ -152,16 +191,13 @@ pub fn draw_cutscene(mut contexts: EguiContexts, cutscene: Res<Cutscene>) {
         egui::CornerRadius::ZERO,
         egui::Color32::from_black_alpha((fade * 250.0) as u8),
     );
-    let t = cutscene.elapsed - FADE_SECS;
-    if t < 0.0 {
+    let Some((k, local, secs)) = cutscene.current() else {
         return;
-    }
-    let k = (t / LINE_SECS) as usize;
+    };
     let Some(line) = cutscene.lines.get(k) else {
         return;
     };
-    let local = t - k as f32 * LINE_SECS;
-    let alpha = (local / 0.6).min((LINE_SECS - local) / 0.6).clamp(0.0, 1.0);
+    let alpha = (local / 0.6).min((secs - local) / 0.6).clamp(0.0, 1.0);
     let galley = painter.layout(
         line.clone(),
         egui::FontId::proportional(26.0),

@@ -1,0 +1,29 @@
+# Blocco 5: la traversata per la via del mare si legge con calma e la legge una voce narrante
+# (19_22-24-39). Le righe sono in `cutscene::departure_lines`, le voci in `gen_voci_prologo.py`.
+god on
+ia off
+meteo sereno
+missioni on
+missione mp01 30
+missione mp03 30
+missione mp04 30
+missione mp05 3
+ora 6
+aspetta 2
+tp gaspare
+aspetta 1
+attendi npc:gaspare:modo = Ready 90
+tp gaspare
+aspetta 1
+guarda gaspare
+aspetta 1
+premi e
+aspetta 1
+avanza
+dump scelte
+scegli mare
+aspetta 9
+foto riga
+attendi regione = nord 120
+attendi app = Playing 90
+esci

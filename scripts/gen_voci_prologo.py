@@ -123,7 +123,30 @@ def bark_lines(path: Path):
     return out
 
 
+# Voce narrante delle scene raccontate (la traversata, `src/cutscene.rs`), un po' più lenta.
+NARRATOR = "Narratore"
+NARRATOR_VOICE = ("it_IT-paola-medium", 1.12)
+# Funzioni Rust con le righe delle scene raccontate: (file, nome della funzione).
+NARRATED = [(ROOT / "src/cutscene.rs", "departure_lines"), (ROOT / "src/crossing.rs", "return_lines")]
+
+
+def narration_lines():
+    """(Narratore, riga) per ogni stringa delle funzioni in NARRATED (fino alla graffa di chiusura in colonna 0)."""
+    out = []
+    for path, fn in NARRATED:
+        src = path.read_text(encoding="utf-8")
+        start = src.index(f"fn {fn}(")
+        end = src.index("\n}\n", start)
+        for m in re.finditer(r'"((?:[^"\\]|\\.)*)"', src[start:end]):
+            text = m.group(1).strip()
+            if text and text not in ("profonda", "mare"):
+                out.append((NARRATOR, text))
+    return out
+
+
 def persona(speaker: str):
+    if speaker == NARRATOR:
+        return NARRATOR_VOICE
     voce, scale = MALE, 1.0
     path = PERSONE / f"{slug(speaker)}.txt"
     if path.is_file():
@@ -149,7 +172,7 @@ def main():
     ap.add_argument("--piper")
     ap.add_argument("--elenco", action="store_true", help="mostra le battute senza generare nulla")
     args = ap.parse_args()
-    pairs = [p for path in MISSIONS for p in mission_lines(path)] + secret_lines(SECRETS) + companion_lines(COMPANIONS) + bark_lines(BARKS)
+    pairs = [p for path in MISSIONS for p in mission_lines(path)] + secret_lines(SECRETS) + companion_lines(COMPANIONS) + bark_lines(BARKS) + narration_lines()
     wanted = {clip_name(s, l): (s, l) for s, l in pairs}
     if args.elenco:
         for name, (s, l) in sorted(wanted.items()):
