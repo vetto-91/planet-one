@@ -259,28 +259,40 @@ pub fn sync_site(
         commands.entity(e).despawn();
     }
     *shown = Some(house.stage);
-    let stone = pbr.get(crate::pbr::Mat::Stone);
-    let wood = pbr.get(crate::pbr::Mat::Planks);
+    use crate::pbr::Mat;
     let ground = |p: Vec2| Vec3::new(p.x, field.height_at(p.x, p.y), p.y);
-    let mut block = |commands: &mut Commands, at: Vec3, size: Vec3, yaw: f32, mat, solid: bool| {
-        let mut e = commands.spawn((
-            SiteProp,
-            crate::scene::SceneNode,
-            Mesh3d(meshes.add(crate::pbr::with_tangents(Cuboid::new(
-                size.x, size.y, size.z,
-            )))),
-            MeshMaterial3d(mat),
-            Transform::from_translation(at + Vec3::Y * size.y / 2.0)
-                .with_rotation(Quat::from_rotation_y(yaw)),
-        ));
-        if solid {
-            e.insert((
-                avian3d::prelude::RigidBody::Static,
-                avian3d::prelude::Collider::cuboid(size.x, size.y, size.z),
-                crate::camera::BlocksCamera,
+    // Blocchi con le UV in metri, come gli edifici (`buildings::B`): con un `Cuboid` la texture
+    // si stendeva su tutta la faccia e sul cordolo lungo 6 m la pietra era tirata (segnalazione
+    // 2026-11-19_21-14-23).
+    let mut block =
+        |commands: &mut Commands, at: Vec3, size: Vec3, yaw: f32, mat: Mat, solid: bool| {
+            let mut b = crate::buildings::B::default();
+            b.force = Some(mat);
+            b.cuboid_c(Vec3::Y * size.y / 2.0, size, [1.0, 1.0, 1.0, 1.0]);
+            let mut e = commands.spawn((
+                SiteProp,
+                crate::scene::SceneNode,
+                Transform::from_translation(at).with_rotation(Quat::from_rotation_y(yaw)),
+                Visibility::default(),
             ));
-        }
-    };
+            e.with_children(|c| {
+                for (m, mesh) in b.finish_parts() {
+                    c.spawn((Mesh3d(meshes.add(mesh)), MeshMaterial3d(pbr.get(m))));
+                }
+            });
+            if solid {
+                e.insert((
+                    avian3d::prelude::RigidBody::Static,
+                    crate::camera::BlocksCamera,
+                ))
+                .with_children(|c| {
+                    c.spawn((
+                        avian3d::prelude::Collider::cuboid(size.x, size.y, size.z),
+                        Transform::from_translation(Vec3::Y * size.y / 2.0),
+                    ));
+                });
+            }
+        };
     // Catasta di tronchi al margine del bosco.
     let w = ground(WOOD_SPOT);
     for (i, (dx, dy)) in [
@@ -298,7 +310,7 @@ pub fn sync_site(
             w + Vec3::new(dx, dy, 0.0),
             Vec3::new(0.42, 0.4, 2.4 - 0.1 * i as f32),
             0.3,
-            wood.clone(),
+            Mat::Planks,
             i < 3,
         );
     }
@@ -314,7 +326,7 @@ pub fn sync_site(
             s + Vec3::new(dx, -0.1, dz),
             size,
             yaw,
-            stone.clone(),
+            Mat::Stone,
             true,
         );
     }
@@ -329,7 +341,7 @@ pub fn sync_site(
             c + Vec3::new(sx * (HALF.x + 0.3), 0.0, sz * (HALF.y + 0.3)),
             Vec3::new(0.1, 1.0, 0.1),
             0.0,
-            wood.clone(),
+            Mat::Planks,
             false,
         );
     }
@@ -352,7 +364,7 @@ pub fn sync_site(
                 Vec3::new(0.4, 0.45, HALF.y * 2.0),
             ),
         ] {
-            block(&mut commands, c + at, size, 0.0, stone.clone(), true);
+            block(&mut commands, c + at, size, 0.0, Mat::Stone, true);
         }
     }
 }

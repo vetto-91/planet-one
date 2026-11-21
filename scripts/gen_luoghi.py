@@ -37,7 +37,9 @@ PATHS = [
     (1.4, [(-70.0, 20.0), (-63.0, 22.0)]),
     (1.4, [(70.0, 35.0), (76.0, 36.0)]),
     (1.4, [(29.0, -44.5), (29.0, -33.5)]),
-    (1.4, [(85.0, 10.5), (90.5, 10.8)]),
+    # Dal cartello della grotta al sentiero che porta al piede della rampa d'ingresso: prima i
+    # sentieri entravano nel cumulo della grotta (segnalazione 2026-11-19_21-50-57).
+    (1.4, [(82.0, 8.5), (84.0, 4.0)]),
 ]
 
 

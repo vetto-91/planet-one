@@ -2105,34 +2105,77 @@ fn boat(b: &mut B, r: &mut Rng) {
         [0.6, 0.25, 0.2, 1.0],
     ]);
     let wood: Col = [0.55, 0.4, 0.25, 1.0];
-    b.cuboid(
-        Vec3::new(-0.55, -0.25, -1.4),
-        Vec3::new(0.55, 0.45, 1.0),
+    let v = Vec3::new;
+    // Scafo vero invece di tre blocchi (segnalazione 2026-11-18_23-12-54): fondo stretto, fianchi
+    // svasati, specchio di poppa dritto e prua che si chiude a punta. Le tavole sono fogli: il
+    // materiale è a due facce e si vedono anche da dentro.
+    let (bot_y, top_y) = (-0.2, 0.45);
+    let (bot_x, top_x) = (0.3, 0.6);
+    let (stern, bow) = (-1.4, 1.0);
+    let (keel_tip, stem_tip) = (v(0.0, -0.1, 1.5), v(0.0, 0.52, 1.8));
+    for s in [-1.0f32, 1.0] {
+        // Fianco.
+        b.quad(
+            v(s * bot_x, bot_y, stern + 0.1),
+            v(s * bot_x, bot_y, bow + 0.2),
+            v(s * top_x, top_y, bow),
+            v(s * top_x, top_y, stern),
+            v(s, 0.4, 0.0),
+            hull,
+        );
+        // Prua: il fianco si chiude sulla ruota di prua.
+        b.quad(
+            v(s * bot_x, bot_y, bow + 0.2),
+            keel_tip,
+            stem_tip,
+            v(s * top_x, top_y, bow),
+            v(s, 0.3, 0.6),
+            hull,
+        );
+        // Falchetta (il bordo in cima al fianco), di legno chiaro.
+        b.beam(
+            v(s * top_x, top_y, stern),
+            v(s * top_x, top_y, bow),
+            0.035,
+            wood,
+        );
+        b.beam(v(s * top_x, top_y, bow), stem_tip, 0.035, wood);
+    }
+    // Fondo e specchio di poppa.
+    b.quad(
+        v(-bot_x, bot_y, stern + 0.1),
+        v(bot_x, bot_y, stern + 0.1),
+        v(bot_x, bot_y, bow + 0.2),
+        v(-bot_x, bot_y, bow + 0.2),
+        Vec3::NEG_Y,
         hull,
     );
-    // Prua a punta e poppa dritta.
-    b.cuboid(
-        Vec3::new(-0.38, -0.2, 1.0),
-        Vec3::new(0.38, 0.45, 1.4),
+    b.tri(
+        v(-bot_x, bot_y, bow + 0.2),
+        v(bot_x, bot_y, bow + 0.2),
+        keel_tip,
+        Vec3::NEG_Y,
         hull,
     );
-    b.cuboid(
-        Vec3::new(-0.18, -0.15, 1.4),
-        Vec3::new(0.18, 0.5, 1.75),
+    b.quad(
+        v(-bot_x, bot_y, stern + 0.1),
+        v(bot_x, bot_y, stern + 0.1),
+        v(top_x, top_y, stern),
+        v(-top_x, top_y, stern),
+        Vec3::NEG_Z,
         hull,
     );
-    // Interno: fondo e sedili.
+    // Pagliolato sul fondo, panche e remi.
     b.cuboid(
-        Vec3::new(-0.45, 0.4, -1.3),
-        Vec3::new(0.45, 0.46, 0.95),
+        v(-bot_x + 0.04, bot_y + 0.02, stern + 0.2),
+        v(bot_x - 0.04, bot_y + 0.06, bow),
         [0.35, 0.25, 0.15, 1.0],
     );
-    for z in [-0.6f32, 0.2] {
-        b.cuboid_c(Vec3::new(0.0, 0.58, z), Vec3::new(1.05, 0.08, 0.3), wood);
+    for (z, half) in [(-0.6f32, 0.52), (0.2, 0.5)] {
+        b.cuboid_c(v(0.0, 0.3, z), v(2.0 * half, 0.06, 0.28), wood);
     }
-    // Remi.
-    for x in [-0.8f32, 0.8] {
-        b.cuboid_c(Vec3::new(x, 0.75, -0.2), Vec3::new(0.05, 0.05, 1.7), wood);
+    for x in [-0.45f32, 0.45] {
+        b.cuboid_c(v(x, 0.38, -0.2), v(0.05, 0.05, 1.7), wood);
     }
 }
 

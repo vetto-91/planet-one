@@ -1,0 +1,128 @@
+# Blocco 3: le inquadrature delle segnalazioni (posizione, sguardo e ora presi da stato.json).
+god on
+meteo sereno
+# 22-36-48: il pozzo non sembra un pozzo, angoli interni sovrapposti
+ora 10.61
+tp 31.91 2.01 85.03
+aspetta 1.2
+prima-persona
+camera 284.9 32.5
+aspetta 0.6
+foto pozzo-fuori
+# 23-57-19: acqua e tetto del pozzo spariscono
+ora 15.72
+tp -0.41 0.65 11.57
+aspetta 1.2
+prima-persona off
+camera 14.8 17.3
+aspetta 0.6
+foto pozzo-piazza
+# Dentro la canna del pozzo della piazza, dall'alto: l'acqua giù in fondo.
+tp -1.2 4 10
+aspetta 1.2
+prima-persona
+camera 0 85
+aspetta 0.6
+foto pozzo-dentro
+prima-persona off
+# 23-52-52: la grata è un buco nel paesaggio
+ora 12.07
+tp 0.36 0.91 9.28
+aspetta 1.2
+prima-persona
+camera 191.7 23.8
+aspetta 0.6
+foto grata
+# 20-59-34: tetto dentro il campanile, campana che galleggia
+ora 15.23
+tp -7.61 7.53 12.07
+aspetta 1.2
+prima-persona
+camera 82.6 16.2
+aspetta 0.6
+foto campanile
+# 21-28-45: torri a fettine
+ora 12.31
+tp -1.66 1.42 -14.60
+aspetta 1.2
+prima-persona
+camera 223.1 -30.9
+aspetta 0.6
+foto torri
+# 21-31-17: passatoio dei portoni invisibile da sotto
+ora 14.19
+tp -1.99 1.24 -12.11
+aspetta 1.2
+prima-persona
+camera 231.6 -25.0
+aspetta 0.6
+foto passatoio
+# 20-57-33: scala delle mura dentro la casa del fabbro
+ora 13.82
+tp -8.17 0.97 -5.58
+aspetta 1.2
+prima-persona
+camera 300.3 28.8
+aspetta 0.6
+foto fabbro
+# 21-14-23: texture tirate sulle fondamenta della casa
+ora 12.00
+tp -35.61 3.25 35.52
+aspetta 1.2
+prima-persona
+camera 138.5 18.5
+aspetta 0.6
+foto fondamenta
+# 23-12-54: barche immerse nella sabbia
+ora 12.00
+tp 4.33 0.98 97.53
+aspetta 1.2
+prima-persona off
+camera 190.2 18.3
+aspetta 0.6
+foto barche
+# 22-06-07: lato della tenda che sparisce da dentro
+ora 12.10
+tp 78.81 7.21 40.94
+aspetta 1.2
+prima-persona
+camera 20.7 16.0
+aspetta 0.6
+foto tenda
+# 21-48-27: questa dovrebbe essere acqua?
+ora 12.00
+tp 92.26 1.95 32.13
+aspetta 1.2
+prima-persona off
+camera 255.8 20.6
+aspetta 0.6
+foto acqua-grotta
+# 21-50-57: sentiero che entra nella grotta e sale sulla roccia
+ora 12.00
+tp 85.47 3.18 11.02
+aspetta 1.2
+prima-persona
+camera 176.6 14.4
+aspetta 0.6
+foto sentiero
+# 22-54-38: abbassando la visuale il mare scompare
+ora 17.85
+tp 22.02 1.09 90.80
+aspetta 1.2
+prima-persona off
+camera 190.0 16.0
+aspetta 0.6
+foto mare-basso
+regione nord
+aspetta 4
+god on
+meteo sereno
+# 22-38-32: le mura di Fortebruma galleggiano
+ora 15.83
+tp -59.11 3.52 -292.30
+aspetta 1.2
+prima-persona
+camera 315.5 4.3
+aspetta 0.6
+foto mura-fortebruma
+esci

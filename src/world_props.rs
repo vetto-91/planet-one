@@ -356,7 +356,20 @@ pub fn sync_world_props(
                 // Molo e barche stanno sul mare (quota fissa), il resto si appoggia al terreno.
                 let fixed_y = match pl.kind.as_str() {
                     "molo" | "palafitta" => Some(crate::terrain::SEA_LEVEL),
-                    "barca" => Some(crate::terrain::SEA_LEVEL + 0.05),
+                    // In acqua galleggia; tirata in secco si appoggia sulla sabbia sotto lo scafo
+                    // (prima stava sempre a quota del mare e sulla spiaggia ci affondava,
+                    // segnalazione 2026-11-18_23-12-54).
+                    "barca" => {
+                        let (sn, co) = yaw.sin_cos();
+                        let at = |x: f32, z: f32| {
+                            field.height_at(p.x + x * co + z * sn, p.y - x * sn + z * co)
+                        };
+                        let sand = [(0.0, -1.3), (0.0, 1.4), (-0.5, 0.0), (0.5, 0.0), (0.0, 0.0)]
+                            .iter()
+                            .map(|(x, z)| at(*x, *z))
+                            .fold(f32::MIN, f32::max);
+                        Some((crate::terrain::SEA_LEVEL + 0.05).max(sand + 0.2))
+                    }
                     _ => None,
                 };
                 let kind = pl.kind.clone();
