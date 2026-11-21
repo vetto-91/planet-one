@@ -794,6 +794,15 @@ impl RoadGraph {
     fn build(roads: &[Road]) -> Self {
         let mut nodes: Vec<Vec2> = Vec::new();
         let mut road_nodes: Vec<Vec<usize>> = Vec::new();
+        // Le piazze (strade larghissime): un nodo al centro, collegato a ogni strada che ci arriva.
+        let plazas: Vec<(usize, f32)> = roads
+            .iter()
+            .filter(|r| r.width >= 8.0 && !r.pts.is_empty())
+            .map(|r| {
+                nodes.push(r.pts[0]);
+                (nodes.len() - 1, r.width / 2.0 + 1.0)
+            })
+            .collect();
         for r in roads.iter().filter(|r| r.width < 8.0) {
             let ids: Vec<usize> = r
                 .pts
@@ -823,7 +832,61 @@ impl RoadGraph {
                 }
             }
         }
+        // Incroci a T: una strada che finisce a metà di un'altra si collega ai due capi del tratto.
+        // Senza, interi pezzi di strada restavano isolati e chi partiva da lì andava dritto alla
+        // meta, attraverso le mura (la sera di Agnese, copione `vita-paese`).
+        let ends: Vec<usize> = road_nodes
+            .iter()
+            .flat_map(|ids| [ids[0], ids[ids.len() - 1]])
+            .collect();
+        for &e in &ends {
+            for (k, ids) in road_nodes.iter().enumerate() {
+                if road_nodes[k].contains(&e) {
+                    continue;
+                }
+                for w in ids.windows(2) {
+                    let (a, b) = (nodes[w[0]], nodes[w[1]]);
+                    let ab = b - a;
+                    let t =
+                        ((nodes[e] - a).dot(ab) / ab.length_squared().max(1e-6)).clamp(0.0, 1.0);
+                    if nodes[e].distance(a + ab * t) < 2.5 {
+                        for n in [w[0], w[1]] {
+                            if !edges[e].contains(&n) {
+                                link(e, n, &mut edges);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        for &(c, reach) in &plazas {
+            for i in 0..nodes.len() {
+                if i != c && nodes[i].distance(nodes[c]) <= reach && !edges[c].contains(&i) {
+                    link(c, i, &mut edges);
+                }
+            }
+        }
         Self { nodes, edges }
+    }
+
+    /// Per ogni nodo, il numero del gruppo di nodi collegati fra loro a cui appartiene (per i test).
+    #[cfg(test)]
+    fn groups(&self) -> Vec<usize> {
+        let mut group = vec![usize::MAX; self.nodes.len()];
+        for start in 0..self.nodes.len() {
+            if group[start] != usize::MAX {
+                continue;
+            }
+            let mut stack = vec![start];
+            while let Some(u) = stack.pop() {
+                if group[u] != usize::MAX {
+                    continue;
+                }
+                group[u] = start;
+                stack.extend(self.edges[u].iter().copied());
+            }
+        }
+        group
     }
 
     fn nearest(&self, p: Vec2) -> Option<usize> {
@@ -1836,6 +1899,32 @@ mod tests {
                 "nessuna ronda sulle mura alle {hour}"
             );
         }
+    }
+
+    #[test]
+    fn every_road_of_the_village_is_reachable() {
+        // Sull'isola ogni strada e sentiero è raggiungibile da ogni altro.
+        let spec = crate::village::parse_spec(include_str!("../assets/world/villaggio.txt"));
+        let g = RoadGraph::build(&spec.roads);
+        let groups = g.groups();
+        assert!(
+            groups.iter().all(|k| *k == groups[0]),
+            "strade isolate sull'isola"
+        );
+        // Sul continente i sentieri oltre i ponti restano a parte (il ponte rotto resta rotto):
+        // basta che Fontebruma, entro 120 m dalla piazza, sia tutta collegata.
+        let spec = crate::village::parse_spec(include_str!("../assets/world/nord/villaggio.txt"));
+        let g = RoadGraph::build(&spec.roads);
+        let groups = g.groups();
+        let plaza = Vec2::new(0.0, -250.0);
+        let town: Vec<usize> = (0..g.nodes.len())
+            .filter(|i| g.nodes[*i].distance(plaza) < 120.0)
+            .map(|i| groups[i])
+            .collect();
+        assert!(
+            town.iter().all(|k| *k == town[0]),
+            "strade isolate a Fontebruma"
+        );
     }
 
     #[test]

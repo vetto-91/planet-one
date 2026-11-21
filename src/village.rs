@@ -44,7 +44,7 @@ pub struct VillageSpec {
     pub roads: Vec<Road>,
 }
 
-fn parse_spec(text: &str) -> VillageSpec {
+pub(crate) fn parse_spec(text: &str) -> VillageSpec {
     let mut s = VillageSpec {
         name: "Villaggio".into(),
         ..Default::default()

@@ -50,5 +50,5 @@ strada: sentiero 1.6 | -37.00 -36.00, -37.00 -42.00
 strada: sentiero 1.4 | -58.00 50.00, -56.00 58.00
 strada: sentiero 1.4 | -70.00 20.00, -63.00 22.00
 strada: sentiero 1.4 | 70.00 35.00, 76.00 36.00
-strada: sentiero 1.4 | 29.00 -44.50, 29.00 -33.50
+strada: sentiero 1.4 | 29.00 -48.00, 29.00 -33.50
 strada: sentiero 1.4 | 82.00 8.50, 84.00 4.00
