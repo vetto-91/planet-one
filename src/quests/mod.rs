@@ -19,6 +19,8 @@ use std::collections::HashMap;
 
 /// Durata (s) di un fumetto.
 pub const BARK_SECS: f32 = 3.0;
+/// Secondi che il fumetto resta dopo la fine della sua voce.
+const BARK_AFTER_VOICE: f32 = 1.2;
 
 // ---------------------------------------------------------------------------
 // Testi (dialoghi.txt)
@@ -380,10 +382,20 @@ impl Barks {
 }
 
 /// Sistema: scala il tempo dei fumetti e scarta quelli scaduti o orfani.
-pub fn tick_barks(time: Res<Time>, mut barks: ResMut<Barks>, entities: Query<Entity>) {
+pub fn tick_barks(
+    time: Res<Time>,
+    mut barks: ResMut<Barks>,
+    voice: Res<crate::voice::VoiceQueue>,
+    entities: Query<Entity>,
+) {
     let dt = time.delta_secs();
+    // Il fumetto resta finché la sua voce parla, e poco più (segnalazione 2026-11-18_22-59-58).
+    let speaking = voice.bark_speaker();
     barks.0.retain_mut(|b| {
         b.remaining -= dt;
+        if speaking == Some(b.entity) {
+            b.remaining = b.remaining.max(BARK_AFTER_VOICE);
+        }
         b.remaining > 0.0 && entities.contains(b.entity)
     });
 }

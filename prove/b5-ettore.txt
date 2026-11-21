@@ -1,0 +1,17 @@
+# Blocco 5: Ettore scende dal faro e aspetta sulla spiaggia accanto al molo, non tra la barca e il
+# molo; il suo fumetto resta finché parla (18_22-59-58).
+god on
+ia off
+meteo sereno
+ora 10
+missioni on
+tp 13.0 1 95.0
+aspetta 2
+verifica /missioni/mp01 = 3
+attendi npc:ettore:dist < 4.5 90
+aspetta 3
+dump arrivo
+camera 200 25 6
+aspetta 0.5
+foto ettore
+esci

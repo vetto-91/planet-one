@@ -602,8 +602,10 @@ pub fn shell_answers(
     }
 }
 
-/// Dove aspetta Ettore, sceso dal faro: accanto a Gaspare sul molo, girato verso la spiaggia.
-pub const ETTORE_ON_PIER: (Vec2, Vec2) = (Vec2::new(10.2, 102.0), Vec2::new(-0.6, -0.8));
+/// Dove aspetta Ettore, sceso dal faro: sulla spiaggia accanto al molo, sulla sabbia libera e girato
+/// verso il paese; prima stava tra la barca e il molo e sembrava incastrato (segnalazione
+/// 2026-11-18_22-59-58).
+pub const ETTORE_ON_PIER: (Vec2, Vec2) = (Vec2::new(13.2, 98.8), Vec2::new(-0.5, -0.85));
 /// A che distanza ti saluta.
 const ETTORE_HAIL: f32 = 8.0;
 

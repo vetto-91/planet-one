@@ -155,6 +155,11 @@ impl VoiceQueue {
         !self.pending.is_empty() || self.interrupt
     }
 
+    /// Chi sta dicendo un fumetto ad alta voce (clip in corso o in coda), se c'è.
+    pub fn bark_speaker(&self) -> Option<Entity> {
+        self.speaker.filter(|_| self.kind == Some(VoiceKind::Bark))
+    }
+
     /// Ferma la voce se è del tipo indicato.
     pub fn stop(&mut self, kind: VoiceKind) {
         if self.kind == Some(kind) {
