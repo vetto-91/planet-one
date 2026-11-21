@@ -1006,6 +1006,11 @@ pub fn snapshot(world: &mut World) -> Value {
                 crate::quests::Target::At(p) => json!([p.x, p.y]),
                 crate::quests::Target::Npc(n) => json!(n),
             }),
+            // Il punto della tappa sta nella regione in cui si è (altrimenti la bussola tace).
+            "verso_qui": picked.map(|e| {
+                !matches!(e.target, Some(crate::quests::Target::At(_)))
+                    || e.region == crate::region::current()
+            }),
         })
     };
     let interfaccia = json!({

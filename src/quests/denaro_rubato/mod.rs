@@ -595,6 +595,7 @@ pub fn journal_entry(quest: &QuestState, d: &Dialogs) -> Option<QuestEntry> {
         // Il ladro e le monete si muovono: la bussola li cerca da sé (`menu::quest_target`).
         target: matches!(stage, QuestStage::Returning)
             .then(|| super::Target::Npc("Viandante".to_string())),
+        region: crate::region::Region::Isola,
         title: d.text("diario_titolo", &vars),
         summary,
         status: if stage == QuestStage::Completed {

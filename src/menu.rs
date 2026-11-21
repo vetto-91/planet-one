@@ -939,6 +939,8 @@ fn quest_target(
     }
     match entry.target.as_ref()? {
         crate::quests::Target::Npc(name) => npc_position(q, name),
+        // Un punto dell'altra regione qui non esiste: niente bussola né segnalino.
+        crate::quests::Target::At(_) if entry.region != crate::region::current() => None,
         crate::quests::Target::At(p) => {
             let ground = q
                 .field

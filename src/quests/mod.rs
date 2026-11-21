@@ -248,6 +248,9 @@ pub struct QuestEntry {
     pub objectives: Vec<(String, ObjState)>,
     /// Dove andare per la tappa in corso, se si sa.
     pub target: Option<Target>,
+    /// Regione delle coordinate di `target`: nell'altra regione un punto non vale (isola e
+    /// continente hanno coordinate proprie; segnalazione 2026-11-19_22-37-08).
+    pub region: crate::region::Region,
 }
 
 /// La missione seguita (bussola, segnalino e TAB). Vuota: la prima della storia ancora aperta.

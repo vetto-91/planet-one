@@ -1,0 +1,21 @@
+# Blocco 6: al nord la bussola non indica i punti delle missioni dell'isola (19_22-37-08): isola e
+# continente hanno coordinate proprie.
+god on
+ia off
+meteo sereno
+ora 12
+missioni on
+missione qs05 2
+segui qs05
+aspetta 2
+verifica /interfaccia/seguita/id = qs05
+verifica /interfaccia/seguita/verso/0 = -66
+verifica /interfaccia/seguita/verso_qui = true
+regione nord
+attendi regione = nord 90
+attendi app = Playing 90
+aspetta 3
+verifica /interfaccia/seguita/id = qs05
+verifica /interfaccia/seguita/verso_qui = false
+foto nord
+esci

@@ -258,6 +258,8 @@ pub struct Mission {
     pub event: bool,
     /// Si ripete: compiuta, torna da capo dopo tanti giorni (`ripeti: 7`, ADR 0053).
     pub repeat: Option<u32>,
+    /// Regione in cui si svolge (`regione: nord`; di base l'isola): vale per i punti delle tappe.
+    pub region: crate::region::Region,
     pub steps: Vec<Step>,
 }
 
@@ -308,6 +310,10 @@ pub fn parse(text: &str) -> Vec<Mission> {
             ("titolo", None) => m.title = value.to_string(),
             ("sommario", None) => m.summary = value.to_string(),
             ("ripeti", None) => m.repeat = value.parse().ok().filter(|d: &u32| *d > 0),
+            ("regione", None) => match crate::region::Region::parse(value) {
+                Some(r) => m.region = r,
+                None => warn!("[MISSIONI] regione sconosciuta: {line}"),
+            },
             ("tipo", None) => {
                 m.event = value == "evento";
                 m.side = value == "secondaria" || m.event;
@@ -825,6 +831,7 @@ impl Missions {
                         super::QuestKind::Main
                     },
                     target: m.steps.get(p).and_then(Step::target),
+                    region: m.region,
                     title: m.title.clone(),
                     summary: m.summary.clone(),
                     status: if finished {

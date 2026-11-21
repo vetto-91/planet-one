@@ -2,6 +2,7 @@
 # Fonte: Trama-Planet-One, documenti 01, 06 e 09. «Denaro Rubato» (MP-02) è la quest nel codice.
 #
 # [missione <id>]   titolo, sommario, dopo: <id di un'altra missione> | denaro_rubato
+#                   regione: isola | nord   (di base isola: i punti della bussola valgono solo lì)
 # [tappa]           obiettivo: testo nel diario
 #                   quando: una condizione per riga, devono valere tutte:
 #                     vicino <x> <z> <raggio> | sotto <quota> | sopra <quota> | ora <da> <a>
