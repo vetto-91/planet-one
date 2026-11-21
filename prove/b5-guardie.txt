@@ -1,0 +1,43 @@
+# Blocco 5: la guardia tiene la lancia dritta come un bastone e, parlando, la porta sulla schiena
+# invece di puntarla in faccia al giocatore (19_20-49-02).
+god on
+meteo sereno
+ora 10.4
+aspetta 2
+tp guardia carlo
+aspetta 1
+camera 150 10 3.5
+aspetta 0.5
+foto ferma
+tp -3.9 1 23.6
+prima-persona
+aspetta 0.5
+guarda guardia carlo
+aspetta 0.5
+foto ferma-lato
+tp -1.2 1 25.8
+aspetta 0.5
+guarda guardia carlo
+aspetta 0.5
+foto ferma-fronte
+prima-persona off
+tp guardia carlo
+aspetta 0.5
+guarda guardia carlo
+aspetta 0.3
+premi e
+aspetta 0.5
+verifica parla = Guardia Carlo
+prima-persona
+aspetta 2
+foto parla
+prima-persona off
+camera 120 5 2.5
+aspetta 0.5
+foto parla-lato
+premi esc
+aspetta 1
+camera 150 10 3.5
+aspetta 0.5
+foto dopo
+esci

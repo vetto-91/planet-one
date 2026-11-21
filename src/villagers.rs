@@ -486,7 +486,21 @@ pub struct GuardLantern;
 #[derive(Component)]
 pub struct GuardGear;
 
-type GearItem = (Entity, &'static mut Visibility);
+/// Lancia impugnata: sta dritta davanti alla mano, come un bastone da passeggio.
+#[derive(Component)]
+pub struct HandSpear;
+
+/// Lancia a tracolla sulla schiena: la guardia la porta così mentre parla, al posto di quella in
+/// mano che gesticolando finiva puntata in faccia al giocatore (segnalazione 2026-11-19_20-49-02).
+#[derive(Component)]
+pub struct BackSpear;
+
+type GearItem = (
+    Entity,
+    &'static mut Visibility,
+    Has<HandSpear>,
+    Has<BackSpear>,
+);
 type GearOnly = (With<GuardGear>, Without<Villager>);
 
 /// Turni delle guardie (ore di gioco, fine esclusa; il terzo attraversa la mezzanotte).
@@ -710,13 +724,29 @@ pub fn spawn_villager(
             crate::figure::spawn_character(c, asset_server, &model);
             if guard {
                 // Lancia nella destra: l'asse dell'osso `hand_r` punta verso le dita (in basso a riposo).
+                // Nella destra: la posa la sistema `upright_spears` a ogni fotogramma.
                 c.spawn((
                     GuardGear,
+                    HandSpear,
                     crate::figure::AttachToHand { right: true },
-                    // Impugnata a un terzo dell'asta, dritta e con la punta in alto: un bastone d'arma.
-                    Transform::from_xyz(-0.02, -0.15, 0.04)
-                        .with_rotation(Quat::from_rotation_x(std::f32::consts::PI)),
+                    Transform::default(),
                     Visibility::default(),
+                ))
+                .with_children(|s| {
+                    s.spawn((Mesh3d(spear.clone()), MeshMaterial3d(wood.clone())));
+                    s.spawn((
+                        Mesh3d(spear_tip.clone()),
+                        MeshMaterial3d(steel.clone()),
+                        Transform::from_xyz(0.0, 1.38, 0.0),
+                    ));
+                });
+                // A tracolla, in diagonale dietro la schiena con la punta in alto a destra.
+                c.spawn((
+                    GuardGear,
+                    BackSpear,
+                    crate::figure::AttachToBack,
+                    Transform::from_xyz(0.0, 0.45, 0.2).with_rotation(Quat::from_rotation_z(-0.5)),
+                    Visibility::Hidden,
                 ))
                 .with_children(|s| {
                     s.spawn((Mesh3d(spear.clone()), MeshMaterial3d(wood.clone())));
@@ -1007,13 +1037,21 @@ pub fn villager_routine(
         let target = if dark && !asleep { 60_000.0 } else { 0.0 };
         l.intensity += (target - l.intensity) * (dt * 2.0).min(1.0);
     }
-    for (entity, mut vis) in &mut gear {
+    for (entity, mut vis, in_hand, on_back) in &mut gear {
         let asleep = parents
             .iter_ancestors(entity)
             .any(|a| q.get(a).is_ok_and(|(.., v, _, _, _)| v.hidden));
         // Le lanterne si portano soltanto al buio: di giorno restano riposte.
         let stowed = lanterns.contains(entity) && !dark;
-        let wanted = if asleep || stowed {
+        // Parlando la lancia passa sulla schiena.
+        let talking = (in_hand || on_back)
+            && parents.iter_ancestors(entity).any(|a| {
+                (dialog.open && dialog.speaker_entity == Some(a))
+                    || (*app_state.get() == crate::AppState::Chat
+                        && q.get(a).is_ok_and(|(_, _, n, ..)| chat.npc_name == n.name))
+            });
+        let swapped = (in_hand && talking) || (on_back && !talking);
+        let wanted = if asleep || stowed || swapped {
             Visibility::Hidden
         } else {
             Visibility::Inherited
@@ -1518,6 +1556,91 @@ pub fn warn_blocked_doors(homes: Res<crate::world_props::Homes>, mut done: Local
     }
 }
 
+/// Sistema: la lancia in mano resta dritta (appena inclinata in avanti) davanti alla mano, qualunque
+/// cosa faccia il braccio: agganciata all'osso seguiva il polso e finiva dietro il braccio.
+#[allow(clippy::type_complexity)]
+pub fn upright_spears(
+    mut spears: Query<(&mut Transform, &ChildOf), (With<HandSpear>, Without<Villager>)>,
+    globals: Query<&GlobalTransform>,
+    bodies: Query<&GlobalTransform, With<Villager>>,
+    parents: Query<&ChildOf>,
+) {
+    for (mut tf, hand) in &mut spears {
+        let Ok(bone) = globals.get(hand.parent()) else {
+            continue;
+        };
+        let Some(body) = parents
+            .iter_ancestors(hand.parent())
+            .find_map(|a| bodies.get(a).ok())
+        else {
+            continue;
+        };
+        let yaw = body.compute_transform().rotation;
+        let ahead = yaw * Vec3::NEG_Z;
+        // Impugnata a un terzo dell'asta (lunga 2,5 m): il centro sta 0,42 m sopra la mano.
+        let rot = yaw * Quat::from_rotation_x(-0.12);
+        let grip = bone.translation() + ahead * 0.05;
+        let center = grip + rot * Vec3::Y * 0.42;
+        let world = bevy::math::Affine3A::from_rotation_translation(rot, center);
+        let local = bone.affine().inverse() * world;
+        let want = Transform::from_matrix(local.into());
+        if tf.translation.distance(want.translation) > 1e-4
+            || tf.rotation.angle_between(want.rotation) > 1e-4
+        {
+            *tf = want;
+        }
+    }
+}
+
+/// Avambraccio destro (`lowerarm_r`) di una guardia: con la lancia in mano resta piegato a 90°.
+#[derive(Component)]
+pub struct SpearArm {
+    forearm: Entity,
+    spear: Entity,
+}
+
+/// Piega del gomito con la lancia in mano (radianti, attorno all'asse X dell'osso).
+const SPEAR_ELBOW: f32 = 1.45;
+
+/// Sistema: trova l'avambraccio destro delle guardie, appena il modello è caricato.
+#[allow(clippy::type_complexity)]
+pub fn find_spear_arms(
+    mut commands: Commands,
+    guards: Query<(Entity, &Children), (With<Villager>, Without<SpearArm>)>,
+    spears: Query<(), With<HandSpear>>,
+    children: Query<&Children>,
+    names: Query<&Name>,
+) {
+    for (body, kids) in &guards {
+        let Some(spear) = kids.iter().find(|k| spears.contains(*k)) else {
+            continue;
+        };
+        let forearm = children
+            .iter_descendants(body)
+            .find(|e| names.get(*e).is_ok_and(|n| n.as_str() == "lowerarm_r"));
+        if let Some(forearm) = forearm {
+            commands.entity(body).insert(SpearArm { forearm, spear });
+        }
+    }
+}
+
+/// Sistema (dopo le animazioni): con la lancia in mano il gomito si piega a 90° e la mano va in
+/// avanti, come chi si appoggia a un bastone; prima il braccio pendeva e l'asta finiva dietro.
+pub fn bend_spear_arms(
+    arms: Query<&SpearArm>,
+    shown: Query<&Visibility>,
+    mut bones: Query<&mut Transform>,
+) {
+    for arm in &arms {
+        if shown.get(arm.spear).is_ok_and(|v| *v == Visibility::Hidden) {
+            continue;
+        }
+        if let Ok(mut tf) = bones.get_mut(arm.forearm) {
+            tf.rotation *= Quat::from_rotation_x(SPEAR_ELBOW);
+        }
+    }
+}
+
 /// Sistema: chi parla col giocatore (dialogo scritto o chat con la IA) si volta a guardarlo, anche
 /// se gli si era arrivati alle spalle o di lato (segnalazione 2026-11-18_23-01-40).
 pub fn face_speaker(
@@ -1553,6 +1676,12 @@ pub fn face_speaker(
 
 pub fn plugin(app: &mut App) {
     app.add_systems(
+        PostUpdate,
+        bend_spear_arms
+            .after(bevy::app::AnimationSystems)
+            .before(bevy::transform::TransformSystems::Propagate),
+    );
+    app.add_systems(
         Update,
         (
             (
@@ -1562,6 +1691,8 @@ pub fn plugin(app: &mut App) {
                 warn_blocked_doors,
             )
                 .chain(),
+            upright_spears.after(villager_routine),
+            find_spear_arms,
             face_speaker
                 .after(villager_routine)
                 .after(crate::hut::keeper_routine),
