@@ -2153,13 +2153,12 @@ fn well(b: &mut B, int: &mut Interior) -> Vec<(Vec3, Vec3)> {
     ] {
         b.cuboid(min, max, STONE_DARK);
     }
-    // Fondo scuro della canna: si vede attraverso l'acqua.
-    b.cuboid(
-        Vec3::new(-IN, -1.0, -IN),
-        Vec3::new(IN, -0.7, IN),
-        STONE_DARK,
-    );
-    int.water.push((Vec3::new(0.0, 0.45, 0.0), Vec2::splat(IN)));
+    // L'acqua sta giù in fondo alla canna, al livello della vasca nella Camera di Risonanza
+    // (la canna scende cava dentro la colonna, `places::resonance_chamber`).
+    int.water.push((
+        Vec3::new(0.0, crate::places::WELL_WATER_Y, 0.0),
+        Vec2::splat(IN),
+    ));
     for s in [-1.0f32, 1.0] {
         b.cuboid_c(
             Vec3::new(s * 1.0, 1.8, 0.0),
@@ -2193,6 +2192,9 @@ pub fn clear_water_material() -> StandardMaterial {
         reflectance: 0.5,
         alpha_mode: AlphaMode::Blend,
         perceptual_roughness: 0.08,
+        // Si vede anche da sotto (prima il pozzo, guardato dal basso, perdeva l'acqua).
+        double_sided: true,
+        cull_mode: None,
         ..Default::default()
     }
 }

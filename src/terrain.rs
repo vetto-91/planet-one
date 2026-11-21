@@ -416,6 +416,13 @@ pub fn update_terrain(
                     "pozzo" => Some((p, crate::places::WELL_HOLE)),
                     _ => None,
                 })
+                // Il pozzo ha anche la canna, dentro il parapetto.
+                .chain(
+                    d.items
+                        .iter()
+                        .filter(|p| p.kind == "pozzo")
+                        .map(|p| (p, crate::places::WELL_SHAFT_HOLE)),
+                )
                 .flat_map(|(p, (min, max))| {
                     p.points.iter().enumerate().map(move |(j, q)| TerrainHole {
                         center: *q,

@@ -403,6 +403,16 @@ fn sunken_passage(b: &mut B, int: &mut Interior) {
 /// La Camera di Risonanza sotto il pozzo della piazza (QS-12, ADR 0052): il pozzetto con la scala
 /// a chiocciola, accanto al pozzo (minimo e massimo locali x, z), dove il terreno non c'è.
 pub const WELL_HOLE: (Vec2, Vec2) = (Vec2::new(1.6, 1.6), Vec2::new(4.0, 4.0));
+/// La canna del pozzo (semilato interno): dal parapetto scende vuota fino alla vasca della camera.
+pub const WELL_SHAFT: f32 = 0.8;
+/// Buco nel terreno dentro il parapetto: senza, la canna finiva sul prato a 45 cm dal bordo.
+pub const WELL_SHAFT_HOLE: (Vec2, Vec2) = (
+    Vec2::new(-WELL_SHAFT, -WELL_SHAFT),
+    Vec2::new(WELL_SHAFT, WELL_SHAFT),
+);
+/// Quota (locale del pozzo) dell'acqua: quella della vasca nella Camera di Risonanza, 4 m sotto il
+/// bordo (segnalazioni 2026-11-18_22-36-48 e 23-57-19: il pozzo sembrava una pozzanghera).
+pub const WELL_WATER_Y: f32 = RES_FLOOR + 0.34;
 /// Pavimento e soffitto della camera (quote locali del pozzo).
 const RES_FLOOR: f32 = -3.4;
 const RES_CEIL: f32 = -0.6;
@@ -427,23 +437,54 @@ pub fn resonance_chamber(b: &mut B, int: &mut Interior) {
         ),
         (v(x0, RES_FLOOR - 0.3, z0 - 0.5), v(x1, RES_CEIL, z0)),
         (v(x0, RES_FLOOR - 0.3, z1), v(x1, RES_CEIL, z1 + 0.5)),
-        (v(x0 - 0.5, RES_CEIL, z0 - 0.5), v(x1 + 0.5, -0.05, hz0)),
+        // Il soffitto lascia aperta la canna del pozzo (x e z da -0,8 a 0,8).
+        (v(x0 - 0.5, RES_CEIL, z0 - 0.5), v(-WELL_SHAFT, -0.05, hz0)),
+        (v(WELL_SHAFT, RES_CEIL, z0 - 0.5), v(x1 + 0.5, -0.05, hz0)),
+        (
+            v(-WELL_SHAFT, RES_CEIL, z0 - 0.5),
+            v(WELL_SHAFT, -0.05, -WELL_SHAFT),
+        ),
+        (
+            v(-WELL_SHAFT, RES_CEIL, WELL_SHAFT),
+            v(WELL_SHAFT, -0.05, hz0),
+        ),
         (v(x0 - 0.5, RES_CEIL, hz0), v(hx0, -0.05, z1 + 0.5)),
     ] {
         b.cuboid(min, max, STONE);
         int.walls.push(((min + max) / 2.0, max - min));
     }
-    // Il pozzetto: pareti sotto il bordo del buco nel terreno, poi la chiocciola fino al pavimento.
+    // Il pozzetto: pareti sotto il bordo del buco nel terreno su tutti e quattro i lati, poi la
+    // chiocciola fino al pavimento. Le pareti salgono a cordolo un poco sopra il selciato: il
+    // terreno attorno sta più in alto della base del pozzo e tra bordo e parete si vedeva il cielo
+    // (segnalazione 2026-11-18_23-52-52). Il collider resta a filo, niente gradino all'uscita.
+    const CURB: f32 = 0.35;
+    // Il cordolo sporge 0,6 m fuori dal buco: copre dall'alto il bordo del terreno tagliato.
+    const RIM_OUT: f32 = 0.6;
     for (min, max) in [
-        (v(x1, RES_CEIL, hz0), v(x1 + 0.5, 0.0, z1 + 0.5)),
-        (v(hx0, RES_CEIL, z1), v(x1, 0.0, z1 + 0.5)),
+        (
+            v(x1, RES_CEIL, hz0 - RIM_OUT),
+            v(x1 + RIM_OUT, CURB, z1 + RIM_OUT),
+        ),
+        (v(hx0 - RIM_OUT, RES_CEIL, z1), v(x1, CURB, z1 + RIM_OUT)),
+        (v(hx0 - RIM_OUT, RES_CEIL, hz0 - RIM_OUT), v(hx0, CURB, z1)),
+        (v(hx0, RES_CEIL, hz0 - RIM_OUT), v(x1, CURB, hz0)),
     ] {
         b.cuboid(min, max, STONE_DARK);
-        int.walls.push(((min + max) / 2.0, max - min));
+        let solid = Vec3::new(max.x, max.y.min(0.0), max.z);
+        int.walls.push(((min + solid) / 2.0, solid - min));
     }
     rooms::square_helix(b, int, (hx0, x1, hz0, z1), RES_FLOOR, 0.06, 0.8);
-    // La colonna del pozzo scende fino a una vasca d'acqua ferma.
-    rock(b, int, v(-1.0, RES_FLOOR, -1.0), v(1.0, RES_CEIL, 1.0));
+    // La colonna del pozzo scende fino a una vasca d'acqua ferma: cava, è la canna del pozzo, e
+    // dall'alto si vede l'acqua della vasca giù in fondo.
+    let (o, i) = (1.0, WELL_SHAFT);
+    for (min, max) in [
+        (v(-o, RES_FLOOR + 0.3, -o), v(o, -0.05, -i)),
+        (v(-o, RES_FLOOR + 0.3, i), v(o, -0.05, o)),
+        (v(-o, RES_FLOOR + 0.3, -i), v(-i, -0.05, i)),
+        (v(i, RES_FLOOR + 0.3, -i), v(o, -0.05, i)),
+    ] {
+        rock(b, int, min, max);
+    }
     b.cuboid(
         v(-1.8, RES_FLOOR, -1.8),
         v(1.8, RES_FLOOR + 0.35, 1.8),
@@ -594,7 +635,9 @@ pub fn well_grate(
     let open = missions.unlocked("camera-risonanza");
     let size = WELL_HOLE.1 - WELL_HOLE.0;
     let center = (WELL_HOLE.0 + WELL_HOLE.1) / 2.0;
-    let closed_tf = Transform::from_xyz(center.x, 0.08, center.y);
+    // Chiusa, appoggiata sul cordolo del pozzetto: a livello del selciato attorno (segnalazione
+    // 2026-11-18_23-52-52), non più giù nel buco.
+    let closed_tf = Transform::from_xyz(center.x, 0.37, center.y);
     // Aperta: alzata e appoggiata al pozzo, di taglio.
     let open_tf =
         Transform::from_xyz(1.3, 1.1, center.y).with_rotation(Quat::from_rotation_z(1.25));
