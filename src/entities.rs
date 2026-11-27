@@ -344,6 +344,126 @@ type BestInteract<'a> = (
     Option<&'a crate::hut::PropKind>,
 );
 
+/// Gradino più alto che un nemico sale camminando (m): i gradoni di pietra e le scale.
+pub const ENEMY_STEP: f32 = 0.55;
+
+/// Distanza dal centro al suolo d'appoggio più alto sotto il corpo (centro e quattro raggi attorno,
+/// come `player::update_grounded`, più uno spostato di `ahead`), entro `reach`.
+fn ground_distance(
+    spatial: &SpatialQuery,
+    filter: &SpatialQueryFilter,
+    footing: &dyn Fn(Entity) -> bool,
+    center: Vec3,
+    reach: f32,
+    ahead: Vec2,
+) -> Option<f32> {
+    std::iter::once(Vec2::ZERO)
+        .chain(crate::player::RAY_OFFSETS)
+        .chain((ahead != Vec2::ZERO).then_some(ahead))
+        .filter_map(|o| {
+            spatial
+                .cast_ray_predicate(
+                    center + Vec3::new(o.x, 0.0, o.y),
+                    Dir3::NEG_Y,
+                    reach,
+                    true,
+                    filter,
+                    &|e| footing(e),
+                )
+                .filter(|h| h.normal.y >= crate::player::MIN_GROUND_NORMAL_Y)
+                .map(|h| h.distance)
+        })
+        .reduce(f32::min)
+}
+
+/// Un passo di cammino di un corpo cinematico (nemici): appoggiato a terra scende fino al suolo
+/// nello stesso passo, come il giocatore (`FEET_BELOW_CENTER`, `SNAP_SLACK`), altrimenti cade; se
+/// un ostacolo basso lo ferma, riprova sollevato di [`ENEMY_STEP`] e si appoggia sul gradino.
+/// `footing` dice su cosa ci si può appoggiare. Restituisce posizione e velocità nuove.
+#[allow(clippy::too_many_arguments)]
+pub fn walk_step(
+    ms: &MoveAndSlide,
+    spatial: &SpatialQuery,
+    entity: Entity,
+    collider: &Collider,
+    pos: Vec3,
+    rot: Quat,
+    velocity: Vec3,
+    dt: std::time::Duration,
+    footing: &dyn Fn(Entity) -> bool,
+) -> (Vec3, Vec3) {
+    use crate::player::{GROUND_SNAP_DISTANCE, MAX_SNAP_SPEED, SNAP_SLACK};
+    let secs = dt.as_secs_f32().max(1e-4);
+    // Dal centro ai piedi: dipende dalla capsula (0,85 come il giocatore, 0,8 i ladri).
+    let aabb = collider.aabb(Vec3::ZERO, Quat::IDENTITY, 0.0);
+    let (feet, radius) = (-aabb.min.y, aabb.max.x);
+    let filter = SpatialQueryFilter::from_excluded_entities([entity]);
+    let gap = ground_distance(
+        spatial,
+        &filter,
+        footing,
+        pos,
+        GROUND_SNAP_DISTANCE + 0.55,
+        Vec2::ZERO,
+    )
+    .filter(|d| *d <= GROUND_SNAP_DISTANCE.max(feet + 0.1));
+    let mut v = velocity;
+    match gap {
+        Some(d) if v.y <= 0.0 => {
+            let below = d - feet;
+            v.y = if below > SNAP_SLACK {
+                -(below / secs).min(MAX_SNAP_SPEED)
+            } else {
+                0.0
+            };
+        }
+        _ => v.y -= crate::player::GRAVITY * secs,
+    }
+    let slide = |from: Vec3, vel: Vec3| {
+        ms.move_and_slide(
+            collider,
+            from,
+            rot,
+            vel,
+            dt,
+            &MoveAndSlideConfig::default(),
+            &filter,
+            |_| MoveAndSlideHitResponse::Accept,
+        )
+    };
+    let out = slide(pos, v);
+    let want = Vec2::new(v.x, v.z).length() * secs;
+    let got = (out.position - pos).xz().length();
+    if gap.is_some() && want > 1e-4 && got < want * 0.5 {
+        let lifted = pos + Vec3::Y * ENEMY_STEP;
+        if spatial
+            .shape_intersections(collider, lifted, rot, &filter)
+            .is_empty()
+        {
+            let high = slide(lifted, Vec3::new(v.x, 0.0, v.z));
+            let ahead = (high.position - pos).xz().length();
+            if ahead > got + want * 0.3
+                && let Some(d) = ground_distance(
+                    spatial,
+                    &filter,
+                    footing,
+                    high.position,
+                    ENEMY_STEP + feet + 0.05,
+                    // Il gradino comincia appena oltre il bordo della capsula, che lo tocca.
+                    Vec2::new(v.x, v.z).normalize_or_zero() * (radius + 0.08),
+                )
+            {
+                let mut p = high.position;
+                p.y -= d - feet;
+                let mut nv = high.projected_velocity;
+                nv.y = 0.0;
+                return (p, nv);
+            }
+        }
+    }
+    (out.position, out.projected_velocity)
+}
+
 /// Distanza orizzontale sotto cui un oggetto davanti al giocatore si usa anche senza mirarlo.
 pub const CLOSE_REACH: f32 = 1.2;
 
@@ -836,6 +956,7 @@ pub fn enemy_patrol(
         ),
         With<Enemy>,
     >,
+    bodies: Query<&RigidBody>,
 ) {
     let me = players.single().ok().map(|p| p.translation());
     let eye = cameras
@@ -892,22 +1013,23 @@ pub fn enemy_patrol(
         };
         velocity.x = dir.x * speed;
         velocity.z = dir.z * speed;
-        velocity.y -= 20.0 * time.delta_secs(); // stessa gravità del player
         let before = transform.translation;
-
-        let output = move_and_slide.move_and_slide(
+        // Snap a terra come il giocatore e gradini fino a `ENEMY_STEP` (segnalazione
+        // 2026-11-27_12-40-17: i banditi restavano sotto i gradoni).
+        let footing = |e: Entity| bodies.get(e).ok().is_none_or(|b| b.is_static());
+        let (pos, vel) = walk_step(
+            &move_and_slide,
+            &spatial,
+            entity,
             collider,
             transform.translation,
             transform.rotation,
             velocity.0,
             time.delta(),
-            &MoveAndSlideConfig::default(),
-            &SpatialQueryFilter::from_excluded_entities([entity]),
-            |_hit| MoveAndSlideHitResponse::Accept,
+            &footing,
         );
-
-        transform.translation = output.position;
-        velocity.0 = output.projected_velocity;
+        transform.translation = pos;
+        velocity.0 = vel;
 
         // Fermo contro un ostacolo: prima prova ad aggirarlo, un lato e poi l'altro; se non basta,
         // e il giocatore non lo vede, passa oltre (appoggiato a terra).

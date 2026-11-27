@@ -351,3 +351,103 @@ mod tests {
         }
     }
 }
+
+/// Nemico di prova: cammina verso +Z con `entities::walk_step`.
+#[derive(Component)]
+struct Climber;
+
+fn climb(
+    ms: MoveAndSlide,
+    spatial: SpatialQuery,
+    time: Res<Time>,
+    bodies: Query<&RigidBody>,
+    mut q: Query<(Entity, &mut Transform, &Collider, &mut LinearVelocity), With<Climber>>,
+) {
+    for (e, mut t, c, mut v) in &mut q {
+        v.x = 0.0;
+        v.z = 2.6;
+        let footing = |e: Entity| bodies.get(e).ok().is_none_or(|b| b.is_static());
+        let (p, nv) = crate::entities::walk_step(
+            &ms,
+            &spatial,
+            e,
+            c,
+            t.translation,
+            t.rotation,
+            v.0,
+            time.delta(),
+            &footing,
+        );
+        t.translation = p;
+        v.0 = nv;
+    }
+}
+
+/// Fa salire a un ladro (capsula 0,4 × 0,8) una scalinata di `steps` gradini alti `rise`, profondi
+/// 0,8 m; restituisce la quota dei piedi dopo 8 secondi.
+pub fn enemy_climbs(rise: f32, steps: usize) -> f32 {
+    let mut app = App::new();
+    app.add_plugins((
+        MinimalPlugins,
+        TransformPlugin,
+        AssetPlugin::default(),
+        PhysicsPlugins::default(),
+    ))
+    .init_asset::<Mesh>()
+    .insert_resource(Time::<Fixed>::from_seconds(STEP as f64))
+    .insert_resource(bevy::time::TimeUpdateStrategy::ManualDuration(
+        Duration::from_secs_f32(STEP),
+    ))
+    .add_systems(FixedUpdate, climb);
+    // Prato largo sotto, poi i gradini pieni fino a terra.
+    app.world_mut().spawn((
+        RigidBody::Static,
+        Collider::cuboid(20.0, 1.0, 40.0),
+        Transform::from_xyz(0.0, -0.5, 0.0),
+    ));
+    for i in 0..steps {
+        let h = rise * (i + 1) as f32;
+        app.world_mut().spawn((
+            RigidBody::Static,
+            Collider::cuboid(4.0, h, 0.8),
+            Transform::from_xyz(0.0, h / 2.0, 2.0 + 0.8 * i as f32 + 0.4),
+        ));
+    }
+    // Pianerottolo in cima.
+    let top = rise * steps as f32;
+    app.world_mut().spawn((
+        RigidBody::Static,
+        Collider::cuboid(4.0, top, 30.0),
+        Transform::from_xyz(0.0, top / 2.0, 2.0 + 0.8 * steps as f32 + 15.0),
+    ));
+    let id = app
+        .world_mut()
+        .spawn((
+            RigidBody::Kinematic,
+            Collider::capsule(0.4, 0.8),
+            LinearVelocity::ZERO,
+            CustomPositionIntegration,
+            Climber,
+            Transform::from_xyz(0.0, 0.8, 0.0),
+        ))
+        .id();
+    app.finish();
+    app.cleanup();
+    for _ in 0..(8 * 60) {
+        app.update();
+    }
+    app.world().get::<Transform>(id).unwrap().translation.y - 0.8
+}
+
+#[cfg(test)]
+mod enemy_tests {
+    /// I banditi sui gradoni di pietra (segnalazione 2026-11-27_12-40-17): gradini da 40 cm si
+    /// salgono, un muro da 1 m no.
+    #[test]
+    fn enemies_climb_steps_but_not_walls() {
+        let top = super::enemy_climbs(0.4, 5);
+        assert!((top - 2.0).abs() < 0.1, "piedi a {top:.2}");
+        let wall = super::enemy_climbs(1.0, 1);
+        assert!(wall < 0.1, "piedi a {wall:.2}");
+    }
+}
