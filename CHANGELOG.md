@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non ancora rilasciato — Camminata e prestazioni
+## v0.0.70.0 — Camminata e prestazioni (2026-11-27)
 
 - **Camminata regolare**:
   - il giocatore si muove a passo fisso (64 Hz) ma ora la sua posizione e la rotazione del corpo sono
