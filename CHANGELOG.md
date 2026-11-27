@@ -2,7 +2,9 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non ancora rilasciato — Misure delle prestazioni e correzioni della beta 068
+## v0.0.71.0 — Misure delle prestazioni e correzioni della beta 068 (2026-11-27)
+
+ADR 0064, 0065.
 
 ### Misure delle prestazioni e segnalazioni private
 

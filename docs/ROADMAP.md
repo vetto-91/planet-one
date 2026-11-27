@@ -97,6 +97,7 @@ Strategia: **vertical slice prima**. Una demo giocabile (1 quest, 1 NPC, 1 nemic
 | 15.12 — Correzioni della beta 067 | Le segnalazioni del 18–19 novembre in sei blocchi: FPS e ombre, grotta, collisioni, modelli, luci e ombre, abitanti che si voltano e si fermano, cancelli di notte, grafo delle strade, risveglio col mirino, mobili «(Vuoto)», arco prestato, passi su molo e acqua, bussola per regione; crediti in `CREDITS.md` (ADR 0062) | `v0.0.68.0` |
 | 15.13 — IA locale avviata dal gioco | Ollama scaricato una volta da `setup_ai --ollama` nella cartella dati, avviato dal gioco solo su 127.0.0.1 a una porta a caso e chiuso all'uscita, con la IA spenta o dopo un crash (guardiano, job object); script di installazione nei pacchetti, `package_linux.sh`; README riscritto (ADR 0063) | `v0.0.69.0`, `v0.0.69.1` |
 | 15.14 — Camminata e prestazioni | Posizione del giocatore e dei nemici interpolata fra i passi di fisica, snap a terra in discesa (copione `camminata-discesa`), VSync acceso di base, `[PERF]` con ora/meteo/regione, prove senza limite di FPS | `v0.0.70.0` |
+| 15.15 — Misure e beta 068 | `[PERF]` con tempi del fotogramma, tick e viste; `diagnosi` e `salta` nella shell; segnalazioni F12 private con `prestazioni.txt`; guida per la prova su Windows; orto, interazione da vicino, pozzo, nemici sulle scale, fuoco che scotta; dialoghi sullo Stretto (ADR 0064, 0065) | `v0.0.71.0` |
 
 ## Backlog (fasi future, non ancora pianificate nel dettaglio)
 

@@ -5,7 +5,8 @@ RPG 3D open source in terza persona, con grafica realistica PBR. Scritto in **Ru
 [egui](https://github.com/emilk/egui). Un naufrago si risveglia sulla spiaggia dell'Isola di Fontevivo
 senza ricordare nulla: la storia del Prologo lo porta fino al Continente del Nord.
 
-> **Stato**: ultimo rilascio **`v0.0.70.0`** (fase 15.14: camminata regolare, VSync di base). La IA locale è
+> **Stato**: ultimo rilascio **`v0.0.71.0`** (fase 15.15: misure delle prestazioni, segnalazioni private,
+> correzioni della beta 068). La IA locale è
 > avviata e chiusa dal gioco (ADR 0063).
 > L'Isola di Fontevivo ha la storia completa del Prologo: 5 missioni principali, 14 secondarie e 11 eventi.
 > Il Continente del Nord è esplorabile.
