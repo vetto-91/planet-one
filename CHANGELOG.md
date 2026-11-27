@@ -2,6 +2,18 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## v0.0.69.1 — Correzioni dell'installazione della IA (2026-11-27)
+
+Trovate provando la IA integrata con l'Ollama vero e `gemma4:e4b` su Linux (RTX 3080 Ti):
+- `setup_ai.sh --ollama` scarica Ollama accanto alla sua destinazione e non più in `/tmp`, che spesso sta in
+  RAM ed è troppo piccola per l'archivio da 1,65 GB: il download falliva con l'errore 23 di curl.
+- `setup_ai.sh` esce con 0 quando va tutto bene. Prima chiudeva di nuovo il server temporaneo già fermo e
+  usciva con 1.
+- Il log dice quale parte del modello sta sulla scheda video («tutto sulla scheda video», oppure «solo il
+  N%»), non più i GB. Ollama 0.40 riporta solo una parte della memoria: diceva 0,3 GB per un modello che ne
+  occupa circa 4,7.
+- Istruzioni per gli assistenti di programmazione in `AGENTS.md`, comune a tutti; `CLAUDE.md` rimanda lì.
+
 ## v0.0.69.0 — IA locale avviata dal gioco (2026-11-27)
 
 ADR 0063.
