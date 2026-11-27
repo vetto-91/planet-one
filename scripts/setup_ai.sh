@@ -81,9 +81,10 @@ if [ "$OLLAMA" = 1 ] && [ -z "$(ollama_exe)" ]; then
     read -r -p "Scarico e installo? [s/N] " ans
     case "$ans" in s|S|y|Y) ;; *) echo "Annullato."; exit 0 ;; esac
   fi
-  ol_tmp="$(mktemp -d)"; trap 'rm -rf "$ol_tmp"' EXIT
-  curl -fL --progress-bar -o "$ol_tmp/sha256sum.txt" "$OLLAMA_URL/sha256sum.txt"
+  # Lo scaricamento sta accanto alla destinazione: /tmp spesso è in RAM e l'archivio pesa quasi 2 GB.
   mkdir -p "$OL"
+  ol_tmp="$(mktemp -d "$OL/.scarico.XXXXXX")"; trap 'rm -rf "$ol_tmp"' EXIT
+  curl -fL --progress-bar -o "$ol_tmp/sha256sum.txt" "$OLLAMA_URL/sha256sum.txt"
   for p in $PKGS; do
     curl -fL --progress-bar -o "$ol_tmp/$p" "$OLLAMA_URL/$p"
     want="$(awk -v f="$p" '$2==f || $2=="./"f || $2=="*"f {print $1}' "$ol_tmp/sha256sum.txt")"
@@ -123,6 +124,7 @@ else
     echo "Modello $MODEL non ancora installato. Per scaricarlo:  ./scripts/setup_ai.sh --pull"
   fi
   kill "$SERVER" 2>/dev/null; wait "$SERVER" 2>/dev/null || true
+  trap 'rm -rf "${ol_tmp:-}"' EXIT
   unset OLLAMA_HOST
 fi
 
@@ -218,3 +220,4 @@ if [ "$STT" = 1 ]; then
   fi
   echo "Fatto. Attiva il microfono nel menu Esc o con il comando stt on nella shell."
 fi
+exit 0
