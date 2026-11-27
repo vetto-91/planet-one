@@ -126,7 +126,7 @@ pub fn trigger_dash(
     info!("[GIOCATORE] scatto");
 }
 /// Accelerazione di gravità (m/s²), manuale perché il corpo è kinematico.
-const GRAVITY: f32 = 20.0;
+pub(crate) const GRAVITY: f32 = 20.0;
 /// Quanto si va più veloci in noclip.
 const NOCLIP_FACTOR: f32 = 2.0;
 
@@ -136,17 +136,17 @@ const NOCLIP_FACTOR: f32 = 2.0;
 const GROUND_DETECT_DISTANCE: f32 = 1.50;
 /// Distanza entro cui il terreno viene "snapputo" (gravità azzerata): più
 /// corta del detect, così in caduta libera a >0.95 m non si ferma in aria.
-const GROUND_SNAP_DISTANCE: f32 = 0.95;
+pub(crate) const GROUND_SNAP_DISTANCE: f32 = 0.95;
 /// Dal centro del corpo ai piedi (metà capsula 0,5 + raggio 0,35).
-const FEET_BELOW_CENTER: f32 = 0.85;
+pub(crate) const FEET_BELOW_CENTER: f32 = 0.85;
 /// Spazio sotto i piedi tollerato senza tirare giù il corpo (m).
-const SNAP_SLACK: f32 = 0.02;
+pub(crate) const SNAP_SLACK: f32 = 0.02;
 /// Velocità massima con cui lo snap porta il corpo a terra (m/s): oltre è una caduta.
-const MAX_SNAP_SPEED: f32 = 8.0;
+pub(crate) const MAX_SNAP_SPEED: f32 = 8.0;
 /// Normale minima (y) per considerare una superficie "suolo".
-const MIN_GROUND_NORMAL_Y: f32 = 0.5;
+pub(crate) const MIN_GROUND_NORMAL_Y: f32 = 0.5;
 /// Offset laterali dei 4 raycast aggiuntivi (m), entro il raggio capsula (0.35).
-const RAY_OFFSETS: [Vec2; 4] = [
+pub(crate) const RAY_OFFSETS: [Vec2; 4] = [
     Vec2::new(0.25, 0.0),
     Vec2::new(-0.25, 0.0),
     Vec2::new(0.0, 0.25),

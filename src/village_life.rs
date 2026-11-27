@@ -133,7 +133,7 @@ pub struct MillSails;
 
 /// Fuoco di un falò: fiamma e luce tremolano.
 #[derive(Component)]
-struct Campfire {
+pub struct Campfire {
     seed: f32,
 }
 
@@ -445,12 +445,90 @@ pub fn plugin(app: &mut App) {
             shutter_schedule,
             hearth_glow,
         ),
+    )
+    .add_systems(
+        Update,
+        burn_player.run_if(in_state(crate::AppState::Playing)),
     );
+}
+
+/// Danno di una scottatura (vita) e ogni quanti secondi si ripete restando nel fuoco (ADR 0064).
+pub const BURN_DAMAGE: f32 = 4.0;
+pub const BURN_EVERY: f32 = 0.8;
+/// Raggio (m) delle fiamme di un falò e di un focolare, attorno al loro centro.
+const CAMPFIRE_RADIUS: f32 = 0.45;
+const HEARTH_RADIUS: f32 = 0.35;
+
+/// I piedi del giocatore (centro del corpo `center`, capsula larga 0,35 m) sono nelle fiamme che
+/// stanno in `fire` con raggio `radius`? Le fiamme salgono di 0,9 m dal loro centro.
+pub fn in_flames(center: Vec3, fire: Vec3, radius: f32) -> bool {
+    let feet = center.y - crate::player::FEET_BELOW_CENTER;
+    let flat = Vec2::new(center.x - fire.x, center.z - fire.z).length();
+    flat < radius + 0.2 && feet > fire.y - 0.6 && feet < fire.y + 0.9
+}
+
+/// Sistema: stare nelle fiamme di un falò o di un focolare acceso toglie vita a intervalli, con
+/// uno sfrigolio e un avviso (segnalazione 2026-11-27_12-37-35, «il fuoco non fa danno»).
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
+fn burn_player(
+    time: Res<Time>,
+    cheats: Res<crate::shell::Cheats>,
+    mut session: ResMut<crate::save::Session>,
+    mut player: Query<
+        (&GlobalTransform, &mut crate::player::PlayerHealth),
+        With<crate::player::Player>,
+    >,
+    fires: Query<&GlobalTransform, With<Campfire>>,
+    hearths: Query<(&GlobalTransform, &crate::world_props::HearthFlame)>,
+    states: Query<&crate::hut::PropState>,
+    mut wait: Local<f32>,
+) {
+    let Ok((body, mut hp)) = player.single_mut() else {
+        return;
+    };
+    let p = body.translation();
+    let burning = fires
+        .iter()
+        .any(|f| in_flames(p, f.translation(), CAMPFIRE_RADIUS))
+        || hearths.iter().any(|(f, h)| {
+            states.get(h.state).is_ok_and(|s| s.on) && in_flames(p, f.translation(), HEARTH_RADIUS)
+        });
+    if !burning {
+        // Uscito dal fuoco: la prossima volta brucia subito.
+        *wait = 0.0;
+        return;
+    }
+    *wait -= time.delta_secs();
+    if *wait > 0.0 {
+        return;
+    }
+    *wait = BURN_EVERY;
+    if cheats.god || hp.current <= 0.0 {
+        return;
+    }
+    hp.current = (hp.current - BURN_DAMAGE).max(0.0);
+    crate::sfx::play(crate::sfx::Sfx::Burn);
+    session.notify("Ti stai bruciando!");
+    info!("[FUOCO] scottatura, vita {:.0}", hp.current);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Il falò della grotta delle stele (segnalazione 2026-11-27_12-37-35): in piedi nel fuoco
+    /// si brucia, accanto no, e nemmeno saltandoci sopra in alto.
+    #[test]
+    fn standing_in_a_fire_burns_but_beside_it_does_not() {
+        let fire = Vec3::new(10.0, 1.0, 5.0);
+        let stand = |dx: f32, dy: f32| Vec3::new(10.0 + dx, 1.0 + 0.85 + dy, 5.0);
+        assert!(in_flames(stand(0.0, 0.0), fire, CAMPFIRE_RADIUS));
+        assert!(in_flames(stand(0.6, 0.0), fire, CAMPFIRE_RADIUS));
+        assert!(!in_flames(stand(1.0, 0.0), fire, CAMPFIRE_RADIUS));
+        assert!(!in_flames(stand(0.0, 1.5), fire, CAMPFIRE_RADIUS));
+        // Il focolare è più piccolo.
+        assert!(!in_flames(stand(0.6, 0.0), fire, HEARTH_RADIUS));
+    }
 
     #[test]
     fn clock_jumps_are_told_from_normal_time() {

@@ -790,8 +790,27 @@ pub struct RoadGraph {
     edges: Vec<Vec<usize>>,
 }
 
+/// Ingombro che le strade aggirano: (centro, raggio) dei pozzi (segnalazione 2026-11-27_12-58-46,
+/// gli abitanti passavano attraverso il pozzo della piazza).
+pub fn road_obstacles(items: &[crate::debug_place::Placement]) -> Vec<(Vec2, f32)> {
+    items
+        .iter()
+        .filter(|p| p.kind == "pozzo")
+        .flat_map(|p| p.points.iter().map(|q| (*q, WELL_RADIUS)))
+        .collect()
+}
+
+/// Raggio del pozzo (2,4 × 2,4 m, mezza diagonale) più il margine di una spalla.
+const WELL_RADIUS: f32 = 1.75 + 0.35;
+
 impl RoadGraph {
+    #[cfg(test)]
     fn build(roads: &[Road]) -> Self {
+        Self::build_around(roads, &[])
+    }
+
+    /// Come `build`, con i percorsi che girano attorno agli `obstacles` (centro, raggio).
+    fn build_around(roads: &[Road], obstacles: &[(Vec2, f32)]) -> Self {
         let mut nodes: Vec<Vec2> = Vec::new();
         let mut road_nodes: Vec<Vec<usize>> = Vec::new();
         // Le piazze (strade larghissime): un nodo al centro, collegato a ogni strada che ci arriva.
@@ -866,7 +885,102 @@ impl RoadGraph {
                 }
             }
         }
-        Self { nodes, edges }
+        let mut g = Self { nodes, edges };
+        for &(c, r) in obstacles {
+            g.detour(c, r);
+        }
+        g
+    }
+
+    /// Toglie i nodi dentro il cerchio (c, r) e i tratti che lo attraversano; al loro posto un anello
+    /// di nodi poco fuori, collegato ai vicini rimasti: chi passa di lì gira attorno.
+    fn detour(&mut self, c: Vec2, r: f32) {
+        const SIDES: usize = 8;
+        // Gli spigoli dell'ottagono restano fuori dal cerchio.
+        let ring_r = r / (std::f32::consts::PI / SIDES as f32).cos() + 0.05;
+        let crosses = |a: Vec2, b: Vec2| {
+            let ab = b - a;
+            let t = ((c - a).dot(ab) / ab.length_squared().max(1e-6)).clamp(0.0, 1.0);
+            c.distance(a + ab * t) < r
+        };
+        let inside: Vec<bool> = self.nodes.iter().map(|n| n.distance(c) < r).collect();
+        if !inside.iter().any(|i| *i)
+            && !(0..self.nodes.len()).any(|u| {
+                self.edges[u]
+                    .iter()
+                    .any(|&v| crosses(self.nodes[u], self.nodes[v]))
+            })
+        {
+            return;
+        }
+        let first = self.nodes.len();
+        for k in 0..SIDES {
+            let a = k as f32 / SIDES as f32 * std::f32::consts::TAU;
+            self.nodes.push(c + Vec2::new(a.cos(), a.sin()) * ring_r);
+            self.edges.push(Vec::new());
+        }
+        let ring: Vec<usize> = (first..first + SIDES).collect();
+        for k in 0..SIDES {
+            let (a, b) = (ring[k], ring[(k + 1) % SIDES]);
+            self.edges[a].push(b);
+            self.edges[b].push(a);
+        }
+        // Nodi da agganciare all'anello: chi era collegato a un nodo dentro o lungo un tratto che
+        // attraversava il cerchio.
+        let mut hook: Vec<usize> = Vec::new();
+        for u in 0..first {
+            let mut keep = Vec::new();
+            for &v in &self.edges[u] {
+                if inside[u] || inside[v] || crosses(self.nodes[u], self.nodes[v]) {
+                    if !inside[u] {
+                        hook.push(u);
+                    }
+                } else {
+                    keep.push(v);
+                }
+            }
+            self.edges[u] = keep;
+        }
+        hook.sort_unstable();
+        hook.dedup();
+        for u in hook {
+            let p = self.nodes[u];
+            // I nodi dell'anello raggiungibili in linea retta senza tagliare il cerchio.
+            let mut near: Vec<usize> = ring
+                .iter()
+                .copied()
+                .filter(|&k| !crosses(p, self.nodes[k] + (p - self.nodes[k]) * 0.02))
+                .collect();
+            near.sort_by(|a, b| {
+                p.distance(self.nodes[*a])
+                    .total_cmp(&p.distance(self.nodes[*b]))
+            });
+            for k in near.into_iter().take(2) {
+                self.edges[u].push(k);
+                self.edges[k].push(u);
+            }
+        }
+        // Via i nodi dentro il cerchio, rinumerando gli altri.
+        let mut map = vec![usize::MAX; self.nodes.len()];
+        let mut nodes = Vec::new();
+        for (i, n) in self.nodes.iter().enumerate() {
+            if i >= first || !inside[i] {
+                map[i] = nodes.len();
+                nodes.push(*n);
+            }
+        }
+        let edges = (0..self.nodes.len())
+            .filter(|i| map[*i] != usize::MAX)
+            .map(|i| {
+                self.edges[i]
+                    .iter()
+                    .filter(|v| map[**v] != usize::MAX)
+                    .map(|v| map[*v])
+                    .collect()
+            })
+            .collect();
+        self.nodes = nodes;
+        self.edges = edges;
     }
 
     /// Per ogni nodo, il numero del gruppo di nodi collegati fra loro a cui appartiene (per i test).
@@ -1089,7 +1203,10 @@ pub fn villager_routine(
         eye,
     };
     if graph.is_none() && !info.spec.roads.is_empty() {
-        *graph = Some(RoadGraph::build(&info.spec.roads));
+        *graph = Some(RoadGraph::build_around(
+            &info.spec.roads,
+            &road_obstacles(&dbg.items),
+        ));
     }
     // I moli si raccolgono una volta sola, e di nuovo solo se i piazzamenti cambiano (ADR 0056).
     if pier_cache.is_none() || dbg.is_changed() {
@@ -1925,6 +2042,65 @@ mod tests {
             town.iter().all(|k| *k == town[0]),
             "strade isolate a Fontebruma"
         );
+    }
+
+    /// Pozzi del file dei piazzamenti (lettura minima, senza toccare la regione corrente).
+    fn wells_in(text: &str) -> Vec<(Vec2, f32)> {
+        let mut out = Vec::new();
+        let mut well = false;
+        for line in text.lines() {
+            if line.starts_with('[') {
+                well = line.contains("tipo: pozzo ");
+            } else if well && let Some(pts) = line.strip_prefix("punti:") {
+                for pair in pts.split(") (") {
+                    let xy: Vec<f32> = pair
+                        .trim_matches(|c: char| c == '(' || c == ')' || c.is_whitespace())
+                        .split(',')
+                        .filter_map(|v| v.trim().parse().ok())
+                        .collect();
+                    if let [x, z] = xy[..] {
+                        out.push((Vec2::new(x, z), WELL_RADIUS));
+                    }
+                }
+            }
+        }
+        out
+    }
+
+    /// Gli abitanti attraversavano il pozzo della piazza (segnalazione 2026-11-27_12-58-46):
+    /// nessun tratto del grafo passa sul pozzo, le strade restano tutte collegate e chi attraversa
+    /// la piazza da nord a sud gira attorno al pozzo.
+    #[test]
+    fn roads_go_around_the_plaza_well() {
+        let spec = crate::village::parse_spec(include_str!("../assets/world/villaggio.txt"));
+        let wells = wells_in(include_str!("../debug/placements.txt"));
+        assert!(!wells.is_empty());
+        let g = RoadGraph::build_around(&spec.roads, &wells);
+        let groups = g.groups();
+        assert!(groups.iter().all(|k| *k == groups[0]), "strade isolate");
+        let clear = |a: Vec2, b: Vec2| {
+            wells.iter().all(|&(c, r)| {
+                let ab = b - a;
+                let t = ((c - a).dot(ab) / ab.length_squared().max(1e-6)).clamp(0.0, 1.0);
+                c.distance(a + ab * t) >= r - 1e-3
+            })
+        };
+        for (u, vs) in g.edges.iter().enumerate() {
+            for &v in vs {
+                assert!(
+                    clear(g.nodes[u], g.nodes[v]),
+                    "{:?}-{:?}",
+                    g.nodes[u],
+                    g.nodes[v]
+                );
+            }
+        }
+        let route = g.route(Vec2::new(0.1, -3.0), Vec2::new(0.0, 22.0));
+        let pts: Vec<Vec2> = route.into_iter().collect();
+        assert!(pts.len() >= 3);
+        for w in pts.windows(2) {
+            assert!(clear(w[0], w[1]), "{w:?}");
+        }
     }
 
     #[test]

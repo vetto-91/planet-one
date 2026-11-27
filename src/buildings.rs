@@ -2651,16 +2651,22 @@ pub fn crop_field_mesh(kind: &str, pts: &[Vec2], height: &dyn Fn(Vec2) -> f32) -
             soil,
         );
         if kind == "orto" {
-            b.cuboid_c(
-                Vec3::new(p.x, y + 0.08, p.y),
-                Vec3::new(0.55, 0.05, 0.55),
-                [0.22, 0.5, 0.22, 1.0],
-            );
-            b.cuboid_c(
-                Vec3::new(p.x, y + 0.24, p.y),
-                Vec3::new(0.34, 0.3, 0.34),
-                [0.4, 0.7, 0.32, 1.0],
-            );
+            // Cespo basso di foglie (segnalazione 2026-11-27_12-30-35: erano cubi verdi):
+            // un giro esterno di foglie larghe e piegate verso terra, uno interno più dritto.
+            let c = Vec3::new(p.x, y + 0.04, p.y);
+            let turn = j(5) * std::f32::consts::TAU;
+            for (ring, count, len, rise, curl, col) in [
+                (0, 7, 0.36, 0.55, 0.55, [0.2, 0.42, 0.16, 1.0]),
+                (1, 5, 0.26, 1.4, 0.2, [0.36, 0.6, 0.24, 1.0]),
+                (2, 3, 0.16, 2.6, 0.0, [0.55, 0.74, 0.34, 1.0]),
+            ] {
+                for k in 0..count {
+                    let a = turn
+                        + (k as f32 + 0.5 * ring as f32) / count as f32 * std::f32::consts::TAU;
+                    let len = len * (1.0 + j(13 + k + ring * 7) * 0.3);
+                    leaf(&mut b, c, a, len, rise, curl, col);
+                }
+            }
         } else {
             for (dx, dz) in [
                 (-0.2, -0.2),
@@ -2685,6 +2691,24 @@ pub fn crop_field_mesh(kind: &str, pts: &[Vec2], height: &dyn Fn(Vec2) -> f32) -
         }
     }
     b.finish()
+}
+
+/// Foglia di un cespo dell'orto: una carta a losanga piegata in due, dal centro verso l'esterno
+/// (angolo `a`); `rise` dà la pendenza della prima metà, `curl` quanto la punta ricade.
+/// Le due facce si vedono entrambe (il materiale dei campi non è a due facce).
+fn leaf(b: &mut B, c: Vec3, a: f32, len: f32, rise: f32, curl: f32, col: Col) {
+    let out = Vec3::new(a.cos(), 0.0, a.sin());
+    let side = Vec3::new(-a.sin(), 0.0, a.cos()) * (len * 0.42);
+    let mid = c + (out + Vec3::Y * rise).normalize() * (len * 0.5);
+    let tip = mid + (out + Vec3::Y * (rise * 0.5 - curl)).normalize() * (len * 0.55);
+    // Le metà della foglia salgono un poco verso i bordi: la foglia è a coppa.
+    let (l, r) = (mid - side + Vec3::Y * 0.03, mid + side + Vec3::Y * 0.03);
+    let up = (Vec3::Y - out * 0.3).normalize();
+    let pale = [col[0] * 1.15, col[1] * 1.1, col[2] * 1.1, 1.0];
+    for hint in [up, -up] {
+        b.tri(c, l, r, hint, col);
+        b.tri(l, tip, r, hint, pale);
+    }
 }
 
 #[cfg(test)]

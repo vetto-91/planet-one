@@ -1,0 +1,15 @@
+# Beta 0.0.68 (2026-11-27_12-40-17): i banditi vicino al laghetto restavano incastrati sotto i
+# gradoni di pietra. Atteso: inseguendo il giocatore li salgono e lo raggiungono in cima.
+god on
+meteo sereno
+ora 13
+tp 85.5 7.6 39
+aspetta 4
+tp 88.5 10 39.7
+aspetta 1
+attendi /vicini/0/dist < 2.6 30
+verifica /vicini/0/tipo = nemico
+verifica /vicini/0/pos/1 > 8.5
+camera 90 25 6
+foto gradoni
+esci

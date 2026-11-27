@@ -1,0 +1,18 @@
+# Beta 0.0.68 (2026-11-27_12-58-46): gli abitanti passavano attraverso il pozzo della piazza.
+# Il giocatore resta fermo (noclip) sopra il centro del pozzo, all'altezza degli abitanti: chi
+# attraversa la piazza la mattina deve girargli attorno, mai entro 1,6 m.
+god on
+meteo sereno
+ora 8.2
+tp -1.2 3 14
+aspetta 3
+noclip on
+tp -1.2 0.6 10.0
+aspetta 1
+mai npc:pietro:dist < 1.6 40
+mai npc:guardia_dino:dist < 1.6 20
+mai npc:guardia_carlo:dist < 1.6 20
+camera 0 60 8
+foto piazza
+noclip off
+esci

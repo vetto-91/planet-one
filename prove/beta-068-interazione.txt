@@ -1,0 +1,13 @@
+# Beta 0.0.68 (2026-11-27_12-33-44): a 0,7 m dal baule in cima alla torre antica il tasto di
+# interazione spariva (il mirino passava sopra il baule). Atteso: da vicino il baule davanti vale.
+god on
+meteo sereno
+tp 58.75 22.6 -57.0
+aspetta 3
+camera 176 44
+aspetta 0.5
+foto baule
+verifica /personaggio/prompt contiene Apri
+# Gli abitanti passano dallo stesso `entities::close_offset` (test `a_chest_right_in_front_is_usable_without_aiming`);
+# qui non si provano: teletrasportati addosso si finisce alle spalle e vale il prompt del borseggio.
+esci

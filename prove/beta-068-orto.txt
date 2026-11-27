@@ -1,0 +1,14 @@
+# Beta 0.0.68 (2026-11-27_12-30-35): l'orto sotto lo spaventapasseri era fatto di cubi verdi.
+# Atteso: cespi bassi di foglie sulle zolle (foto da confrontare col riferimento).
+god on
+meteo sereno
+ora 10.8
+tp -28 0.4 -18
+aspetta 3
+camera 270 30 6
+aspetta 0.5
+foto orto
+camera 300 12 3
+aspetta 0.5
+foto orto-vicino
+esci

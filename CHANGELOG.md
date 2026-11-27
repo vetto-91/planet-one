@@ -2,7 +2,9 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non ancora rilasciato — Misure delle prestazioni e segnalazioni private
+## Non ancora rilasciato — Misure delle prestazioni e correzioni della beta 068
+
+### Misure delle prestazioni e segnalazioni private
 
 ADR 0065. Dalle segnalazioni Windows del 27 novembre: FPS da 122 a 18 in un'ora e mezza con tutti i
 contatori fermi.
@@ -22,6 +24,27 @@ contatori fermi.
     giugno;
   - guida `docs/beta/PROVA-WINDOWS-FPS.md` per la prova su Windows, per l'autore e per
     l'assistente.
+
+### Mondo e interazione
+
+Correzioni di mondo e interazione dalla prova della v0.0.68.0 su Windows (segnalazioni F12 del
+27-11-2026), branch `fix/beta-068`; copioni del pilota `prove/beta-068-*.txt`.
+- **Orto**: le piante sotto lo spaventapasseri erano cubi verdi; ora sono cespi bassi di foglie a
+  coppa, in tre giri dal più largo e scuro al cuore chiaro (`buildings::crop_field_mesh`).
+- **Tasto di interazione da vicino**: a meno di 1,2 m un oggetto o un abitante davanti al giocatore
+  (entro 60° dalla direzione della camera) si usa anche se il mirino gli passa sopra. Prima, a 0,7 m
+  dal baule in cima alla torre antica, il tasto spariva (`entities::close_offset`).
+- **Pozzo della piazza**: gli abitanti ci passavano attraverso. Il grafo delle strade toglie i nodi e i
+  tratti che stanno sul pozzo e mette al loro posto un anello di otto nodi attorno
+  (`villagers::RoadGraph::detour`); le strade restano tutte collegate.
+- **Nemici sulle scale**: si appoggiano a terra come il giocatore (snap nello stesso passo) e salgono
+  gradini fino a 55 cm (`entities::walk_step`, `ENEMY_STEP`); un muro da 1 m resta un muro. Prima i
+  banditi vicino al laghetto restavano sotto i gradoni di pietra.
+- **Il fuoco scotta** (ADR 0064): nelle fiamme di falò e focolari accesi si perdono 4 punti di vita
+  ogni 0,8 s, con uno sfrigolio e l'avviso «Ti stai bruciando!»; con `god` no.
+- **Camera nell'inventario** (segnalazione `2026-11-27_11-33-20`): verificata, non trema più. Con il mondo
+  in pausa tre foto a un secondo l'una dall'altra sono identiche byte per byte (copione
+  `beta-068-inventario`); il tremolio veniva dal passo fisso non interpolato, corretto nella v0.0.70.0.
 
 ## v0.0.70.0 — Camminata e prestazioni (2026-11-27)
 
