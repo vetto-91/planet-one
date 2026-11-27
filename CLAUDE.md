@@ -5,7 +5,9 @@ RPG 3D open source, grafica realistica PBR in corso (ADR 0015), terza persona. R
 ## Stato e roadmap
 
 - Roadmap e stato reale delle fasi: [docs/ROADMAP.md](docs/ROADMAP.md).
-- Ultima fase completata: Fase 5, vertical slice "Denaro Rubato" (`v0.0.5.0`); ultimo rilascio `v0.0.67.0`.
+- Ultima fase completata: 15.11, correzioni della beta v0.0.63 (`v0.0.67.0`, ultimo rilascio). In prova le correzioni della
+  beta 067 (branch `fix/beta-067-*`, sezione «Non ancora rilasciato» del CHANGELOG, ADR 0062).
+- Crediti e licenze di tutti gli asset: [CREDITS.md](CREDITS.md).
 - Storia dei rilasci: [CHANGELOG.md](CHANGELOG.md). Schema versioni: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Comandi
@@ -42,7 +44,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 
 ## Architettura
 
-- `src/main.rs`: stati dell'app (`MainMenu`, `Loading`, `Playing`, `Paused`, `Journal`, `Wait`, `Map`, `Resetting`) e cablaggio dei sistemi.
+- `src/main.rs`: stati dell'app (`MainMenu`, `Loading`, `Playing`, `Paused`, `Journal`, `Wait`, `Map`, `Chat`, `Inventory`, `Character`, `Container`, `Lockpick`, `Awakening`, `Shell`, `Shop`, `BugNote`, `Resetting`) e cablaggio dei sistemi.
 - `src/scene.rs`: costruzione e reset della scena.
 - `src/region.rs`: regioni del mondo (Isola di Fontevivo, Continente del Nord): misura e passo del terreno, file dei dati, punto d'arrivo; viaggio in `save::start_travel` (ADR 0033). Dati del continente in `assets/world/nord/` e `debug/placements-nord.txt`, generati da `scripts/gen_nord.py`.
 - `src/terrain.rs`: heightmap → mesh e collider, hot-reload; `src/water.rs`: alture, scogliere, ruscello, onde da `assets/world/isola.txt` (ADR 0026).
@@ -53,7 +55,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 - `src/combat.rs`, `src/inventory.rs`, `src/hud.rs`: combattimento, inventario, HUD.
 - `src/quests/mod.rs`: parser dei dialoghi, voci del diario, fumetti (barks), registro quest.
 - `src/quests/<quest>/mod.rs` + `assets/quests/<quest>/dialoghi.txt`: logica e testi (modificabili a mano) di ogni quest. Vedi ADR 0003.
-- `src/quests/missions.rs` + `assets/quests/prologo/missioni.txt` e `secondarie.txt`: missioni a tappe guidate dai file di testo (storia principale del Prologo, ADR 0034; secondarie, ADR 0036; `eventi.txt`, ADR 0037); scelte `scegli: testo => effetti` e oggetti di trama `inventory::Relic` (ADR 0044).
+- `src/quests/missions.rs` + `assets/quests/prologo/missioni.txt` e `secondarie.txt`: missioni a tappe guidate dai file di testo (storia principale del Prologo, ADR 0034; secondarie, ADR 0036; `eventi.txt`, ADR 0037); scelte `scegli: testo => effetti` e oggetti di trama `inventory::Relic` (ADR 0044); `dai-se-manca:` (oggetto dato solo a chi non ce l'ha) e `regione:` (regione dei punti della bussola, di base l'isola; ADR 0062).
 - `src/sky.rs`: cielo da `assets/textures/sky.png` convertito in cubemap a runtime.
 - `src/weather.rs`: meteo deterministico per data (sereno, nuvoloso, pioggia, temporale, nebbia, neve), temperatura, vento, nebbia di distanza, particelle di pioggia/neve, neve a terra, suoni sintetizzati in locale (ADR 0014).
 - `src/seasons.rs`: stagioni visibili (tinte erba/chiome, fiori, neve a terra e sui tetti, foglie che cadono) da `look(giorno)`, ADR 0012.
@@ -65,7 +67,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 - `src/render_scale.rs`: scala di rendering (100/75/50%, `gfx_render_scale`): sotto il 100% la camera 3D disegna su un'immagine stesa sulla finestra da una camera 2D, che riceve il contesto egui (ADR 0058); le query sulla camera di gioco vanno filtrate con `With<Camera3d>`.
 - `src/animation.rs`: macchina a stati delle animazioni per tutti i personaggi, velocità misurata dallo spostamento (ADR 0017).
 - `src/nature.rs`: boschi, cespugli, rocce, fiori ed erba a riquadri, da `assets/world/isola.txt` (ADR 0027).
-- `src/ambience.rs`: suoni d'ambiente e passi per superficie, sintetizzati in locale (ADR 0028); `src/animals.rs`: mucche, pecore, galline, gabbiani, uccelli, pesci, farfalle, dati in `assets/world/isola.txt`; modelli da `scripts/build_animals_trees.py` (Blender) partendo da `assets_src/`.
+- `src/ambience.rs`: suoni d'ambiente e passi per superficie, sintetizzati in locale (ADR 0028; su moli e barche il passo è di legno se un collider regge i piedi); `src/animals.rs`: mucche, pecore, galline, gabbiani, uccelli, pesci, farfalle, dati in `assets/world/isola.txt`; modelli da `scripts/build_animals_trees.py` (Blender) partendo da `assets_src/`.
 - `src/walk_test.rs`: prova di camminata con fisica vera (solo test) per scale e torri (ADR 0030).
 - `src/village_life.rs`: fumo dei camini del paese e torce sulle mura; carretti, botti, casse, panni e reti sono piazzamenti (`buildings::model`, `scripts/gen_paese.py`).
 - `src/places.rs`: luoghi da scoprire e banditi che ricompaiono (ADR 0029), posizioni da `scripts/gen_luoghi.py`, nomi in `isola.txt` (`luogo:`); luoghi scoperti (`Known`) e viaggio veloce dalla mappa (ADR 0037).
@@ -74,7 +76,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 - `src/hut.rs`: casetta-chiosco del Viandante (mesh con UV dalla foto `assets/textures/capanna.png`, fondamenta e scale di pietra, interni, oggetti con stato `PropState`: porta, finestre, stufa con fumo, luce, serranda) e routine giornaliera del negoziante (`Keeper`). Gli oggetti si usano col mirino (`Interactable.aim`, vedi `entities::interact`).
 - `src/map.rs`: mappa (M): camera ortografica dall'alto sulla scena reale + overlay egui (bussola, segnalino); `MapView` per lo zoom.
 - `src/debug_place.rs`: modalità debug piazzamenti (F4), file `debug/placements.txt` (riletto all'avvio).
-- `src/autopilot.rs`: pilota automatico (`PLANET_ONE_SCRIPT`, ADR 0031): copioni con `vai`, `guarda`, `premi`, `verifica`, stato JSON, foto; `src/bugreport.rs`: F12 «Segnala bug» e copia delle ultime righe del log.
+- `src/autopilot.rs`: pilota automatico (`PLANET_ONE_SCRIPT`, ADR 0031): copioni con `vai`, `guarda`, `premi` (anche `+`/`-`), `verifica`, stato JSON (fra gli altri `npc:<nome>:sguardo`, `/personaggio/risveglio_pannello`, `/interfaccia/seguita/verso_qui`), foto; `src/bugreport.rs`: F12 «Segnala bug» e copia delle ultime righe del log.
 - `src/devtools.rs`: variabili d'ambiente di debug (`PLANET_ONE_HOUR/POS/LOOK`) per provare il gioco e fare screenshot.
 - `src/props.rs`: `SnapToGround` (appoggio a terra con raycast).
 - `src/voice.rs`: voci dei personaggi (`assets/audio/voci/`, mappa in `assets/quests/<quest>/voci.txt` generata da `scripts/export_voci.py`).
@@ -93,7 +95,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 - `src/archery.rs`: la Prova dell'Arco, tre anelli lungo il ruscello da centrare in fila (`Trial`; ADR 0043).
 - `src/island_life.rs`: casse delle mareggiate, bottino che torna, banditi del pedaggio (ADR 0046); voci e luoghi esplorati in `places.rs`. `src/island_events.rs`: le cose nel mondo degli eventi raccontati (relitto, bottiglia, farfalle, lampione, ronda, torre, serpente di luce, nave fantasma; ADR 0053).
 - `src/awakening.rs`: il risveglio sulla spiaggia, creazione del personaggio nella scena (età, indole, nome; `AppState::Awakening`; ADR 0047); Ettore che scende dal faro. Battute per età `> [giovane] …` nelle missioni.
-- `src/cutscene.rs`: scene raccontate (dissolvenza e righe) e viaggio alla fine; la partenza dal Prologo (ADR 0048). `src/lanterns.rs`: la Sera delle Lanterne (piazza piena, lanterne); la Porta Sommersa in `places.rs`. `src/side_scenes.rs`: scene delle secondarie con persone sul posto (duello e strada del Sud, Silvia alla grotta, il paese al molo, predoni del mulino, cena alla locanda; ADR 0052); Camera di Risonanza e grata del pozzo in `places.rs`; casa di pietra (`house::STONE_HOUSE`); tappe aggiunte e migrazione dei salvataggi in `missions::MOVES`.
+- `src/cutscene.rs`: scene raccontate (dissolvenza e righe, durata secondo la lunghezza, voce narrante `prologo/narratore-*` da `scripts/gen_voci_prologo.py`) e viaggio alla fine; la partenza dal Prologo (ADR 0048, 0062). `src/lanterns.rs`: la Sera delle Lanterne (piazza piena, lanterne); la Porta Sommersa in `places.rs`. `src/side_scenes.rs`: scene delle secondarie con persone sul posto (duello e strada del Sud, Silvia alla grotta, il paese al molo, predoni del mulino, cena alla locanda; ADR 0052); Camera di Risonanza e grata del pozzo in `places.rs`; casa di pietra (`house::STONE_HOUSE`); tappe aggiunte e migrazione dei salvataggi in `missions::MOVES`.
 - `src/diving.rs`: l'apnea (talento attivo del Nuoto, `Ctrl` in acqua profonda), il fiato e la cassa sommersa al largo del relitto (ADR 0055). Legnaia e porticina sono piazzamenti (`buildings::model`); le carte da sfilare in tasca agli abitanti in `karma::POCKET_CLUES`; `tempo: <ora> estate` in `missions::jump`.
 - `src/crossing.rs`: la traversata (ADR 0054): due arrivi all'Approdo delle Brume (molo e fonte a gradoni sotto la quercia), la via sotto il mare nei due sensi (gradini oltre la Porta Sommersa, fonte sul continente).
 - `src/companions.rs`: compagni Silvia e Guardia Dino (seguono, combattono, si feriscono e si ritirano; viaggiano con te sul continente, `Traveler`; ramo in `villagers::villager_routine`; battute in `assets/world/compagni.txt`; sezione `[compagni]` nei salvataggi; ADR 0049). Armature in `inventory.rs`, Scatto in `player.rs`, Disarmo in `combat.rs`, Calma in `magic.rs`.
@@ -103,8 +105,8 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 - `src/containers.rs`: inventari dei mobili (`AppState::Container`, capienze, contenuto iniziale; ADR 0023).
 - `src/shell.rs`: shell dei trucchi (tasto `\`, `AppState::Shell`, `Cheats` non salvata; ADR 0021).
 - `src/interiors.rs`: arredi, solai e scale degli edifici (ADR 0019), porte e luci in `world_props.rs`, spiazzi in `terrain.rs`, letti in `abitanti.txt` (`casa:`).
-- `src/village.rs` e `src/buildings.rs`: villaggio murato (mura da piazzamenti `muro`, cancelli, edifici procedurali con parti per materiale PBR e UV in metri; ADR 0007, ADR 0016; dati in `assets/world/villaggio.txt`).
-- `src/villagers.rs`: abitanti e guardie (turni, `Phase::Rest` alla caserma, posti calcolati dai cancelli e dai camminamenti; ADR 0013) (dati in `assets/world/abitanti.txt`, persona IA in `assets/ai/`), routine e percorsi sulle strade (ADR 0008).
+- `src/village.rs` e `src/buildings.rs`: villaggio murato (mura da piazzamenti `muro`, cancelli, edifici procedurali con parti per materiale PBR e UV in metri; ADR 0007, ADR 0016; dati in `assets/world/villaggio.txt`); di notte gli abitanti aprono i cancelli chiusi (`gate_for_villagers`, ADR 0062).
+- `src/villagers.rs`: abitanti e guardie (turni, `Phase::Rest` alla caserma, posti calcolati dai cancelli e dai camminamenti; ADR 0013) (dati in `assets/world/abitanti.txt`, persona IA in `assets/ai/`), routine e percorsi sulle strade (ADR 0008; il grafo `RoadGraph` collega incroci a T e piazze, ADR 0062); chi parla si volta verso il giocatore (`face_speaker`), un passante nel mirino si ferma; lancia delle guardie dritta in mano o a tracolla (`upright_spears`, `bend_spear_arms`).
 - `src/shop.rs`, `src/equipment.rs`, `src/inventory.rs`, `src/combat.rs`: negozi con le monete, armi/scudo/arco impugnabili e frecce (ADR 0009).
 - `src/bells.rs`: campana della chiesa sintetizzata e rintocchi alle ore; porto, faro e molo in `buildings.rs`/`world_props.rs` (ADR 0010, `scripts/gen_porto.py`).
 - `src/menu.rs`: UI egui (menu Esc, dialogo, FPS, diario J, bussola, fumetti).
@@ -114,6 +116,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 - Scrivere in italiano nelle note e nei documenti per l'utente; il codice, i commit e le identificazioni tecniche restano in inglese.
 - Mantenere la scelta di avvio: fullscreen di default, F11 per alternare, cursore catturato solo in fullscreen e in gioco.
 - Le decisioni significative vanno in `docs/decisions/` come ADR (template nel file del registro).
+- Ogni asset nuovo (modello, texture, suono, voce, font) va in `CREDITS.md` nello stesso commit, con autore, licenza e link.
 - Non ottimizzare prima della Fase 5 di performance: la priorità è la giocabilità.
 
 ## Repository e sincronizzazione

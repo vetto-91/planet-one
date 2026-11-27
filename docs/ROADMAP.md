@@ -17,11 +17,15 @@ Strategia: **vertical slice prima**. Una demo giocabile (1 quest, 1 NPC, 1 nemic
 | 4 — HUD / Inventario / Combattimento | Barra vita, crosshair, inventario con pickup, melee, morte e respawn | `v0.0.4.0`–`v0.0.4.9` |
 | 4.x — Camera e input | Prima persona (RMB/V), barre nemico/player, fullscreen F11, cattura cursore, log input | `v0.0.4.2`–`v0.0.4.9` |
 | 5 — Vertical slice | Quest "Denaro Rubato", bussola, obiettivi (TAB), loot | `v0.0.5.0` |
-| 5.x — Rifiniture | Diario quest (J), quest in cartelle con dialoghi in file, texture erba e cielo, fumetti NPC/ladro, ciclo giorno/notte (T Aspetta), skin dei personaggi, targhette, tema UI | `v0.0.6.0` |
-| 5.y — Isola e rifiniture debug | Terreno a isola (300 m) con mare, F4 col mirino e Ctrl, rotazione con freccia rossa, niente compenetrazioni, niente interazioni attraverso i muri | `v0.0.11.0` |
-| 5.z — Casetta e costa | Interazioni da dentro, finestre a vetro scorrevole + scuri, vista attraverso banco e vetri, mare solo attorno all'isola, barriera di riva, spiaggia di sabbia, F3 leggero | `v0.0.12.0` |
-| 5.w2 — Interazioni e appoggio | Oggetti a parete con lato d'uso, dialoghi solo col mirino, appoggio a terra esatto all'avvio, pannello F4 stabile | `v0.0.13.0` |
-| 5.m — Multipiattaforma | Windows e macOS (CI), impostazioni per piattaforma, piazzamenti incorporati | `v0.0.14.0` |
+| 5.1 — Rifiniture | Diario quest (J), quest in cartelle con dialoghi in file, texture erba e cielo, fumetti NPC/ladro, ciclo giorno/notte (T Aspetta), skin dei personaggi, targhette, tema UI | `v0.0.6.0` |
+| 5.2 — Mondo vivo | Colonna sonora con volume, casetta-chiosco esplorabile (porta, interni, stufa con fumo), routine giorno/notte del Viandante, voci dei personaggi, versione nel menu | `v0.0.7.0` |
+| 5.3 — Mondo vivo, rifiniture | Interazione col mirino, casetta con serranda/interruttore/finestre e luci con ombre, routine del Viandante v2, voci normalizzate con ducking della musica | `v0.0.8.0` |
+| 5.4 — Mappa e strumenti | Mappa dall'alto (M) con bussola e zoom, modalità debug piazzamenti (F4) con file `debug/placements.txt`, vetri e scuri spessi, il Viandante chiude porta e finestre | `v0.0.9.0` |
+| 5.5 — Strumenti debug e oggetti veri | Poligono/griglia/linea/gomma/sposta in F4, mappa spostabile, musica notturna, alberi/fiori/panchina/lampione da `debug/placements.txt`, tetto spesso, ronda notturna per la luce | `v0.0.10.0` |
+| 5.6 — Isola e rifiniture debug | Terreno a isola (300 m) con mare, F4 col mirino e Ctrl, rotazione con freccia rossa, niente compenetrazioni, niente interazioni attraverso i muri | `v0.0.11.0` |
+| 5.7 — Casetta e costa | Interazioni da dentro, finestre a vetro scorrevole + scuri, vista attraverso banco e vetri, mare solo attorno all'isola, barriera di riva, spiaggia di sabbia, F3 leggero | `v0.0.12.0` |
+| 5.8 — Interazioni e appoggio | Oggetti a parete con lato d'uso, dialoghi solo col mirino, appoggio a terra esatto all'avvio, pannello F4 stabile | `v0.0.13.0` |
+| 5.9 — Multipiattaforma | Windows e macOS (CI), impostazioni per piattaforma, piazzamenti incorporati | `v0.0.14.0` |
 | 6.1 — IA locale (testo) | Dialoghi con Ollama solo in locale: "Parliamo d'altro…", repliche suggerite e testo libero, interruttore nel menu | `v0.0.15.0` |
 | 6.2 — IA locale (voce) | Risposte dei dialoghi IA lette con Piper in locale, voce per personaggio, `gen_tts_voci.py` locale | `v0.0.16.0` |
 | 7.1 — Villaggio | Fontevivo: mura, cancelli, selciato, case, chiesa, cartelli, nome sulla mappa | `v0.0.17.0` |
@@ -90,20 +94,25 @@ Strategia: **vertical slice prima**. Una demo giocabile (1 quest, 1 NPC, 1 nemic
 | 15.9 — Isola, Prologo e traversata completi | Ricompense uniche e scene delle secondarie, gli otto eventi raccontati nel mondo, la traversata con due arrivi all'Approdo delle Brume e la via sotto il mare nei due sensi, i compagni che viaggiano con te, luoghi nuovi sulla mappa, la legnaia e la pedinata di Pietro, l'apnea, le carte da sfilare e la partenza d'estate (ADR 0051–0055) | `v0.0.65.0` |
 | 15.10 — Gioco più leggero e schede integrate | Generazione del mondo su tutti i core, mesh e texture solo sulla GPU, aggiornamenti solo quando serve; preset Integrata scelto da solo su Intel e AMD integrate, texture ridotte e risoluzione della scena (ADR 0056–0058) | `v0.0.66.0` |
 | 15.11 — Correzioni della beta v0.0.63 | Le 47 segnalazioni: guida verso la tappa seguita, tipi di missione, pausa vera, nome nei dialoghi, prima persona, finestre e camini veri, scale a L, faro, mare che sfuma, brusio del mercato, F4 con annulla e camera libera (ADR 0059–0061) | `v0.0.67.0` |
-| 5.y — Mondo vivo | Colonna sonora con volume, casetta-chiosco esplorabile (porta, interni, stufa con fumo), routine giorno/notte del Viandante, voci dei personaggi, versione nel menu | `v0.0.7.0` |
-| 5.z — Mondo vivo, rifiniture | Interazione col mirino, casetta con serranda/interruttore/finestre e luci con ombre, routine del Viandante v2, voci normalizzate con ducking della musica | `v0.0.8.0` |
-| 5.w — Mappa e strumenti | Mappa dall'alto (M) con bussola e zoom, modalità debug piazzamenti (F4) con file `debug/placements.txt`, vetri e scuri spessi, il Viandante chiude porta e finestre | `v0.0.9.0` |
-| 5.x — Strumenti debug e oggetti veri | Poligono/griglia/linea/gomma/sposta in F4, mappa spostabile, musica notturna, alberi/fiori/panchina/lampione da `debug/placements.txt`, tetto spesso, ronda notturna per la luce | `v0.0.10.0` |
+| 15.12 — Correzioni della beta 067 *(in prova)* | Le segnalazioni del 18–19 novembre in sei blocchi: FPS e ombre, grotta, collisioni, modelli, luci e ombre, abitanti che si voltano e si fermano, cancelli di notte, grafo delle strade, risveglio col mirino, mobili «(Vuoto)», arco prestato, passi su molo e acqua, bussola per regione; crediti in `CREDITS.md` (ADR 0062) | non ancora rilasciata |
 
 ## Backlog (fasi future, non ancora pianificate nel dettaglio)
 
-- **Game over / schermata di vittoria**: non ancora implementate nella slice.
-- **Salvataggio su file** (serde): rimandato; la slice non salva su disco.
+- **Funzioni nuove chieste nella beta 067** (dopo le correzioni):
+  - pugni sinistro e destro con i due tasti del mouse, prima persona veloce col tasto centrale;
+  - faro rifatto: più alto, scala esterna, riflettore su ingranaggi;
+  - mappe dei sotterranei;
+  - isola e continente in un'unica mappa con coordinate comuni;
+  - completamento con TAB nella shell;
+  - F12 con l'elenco delle segnalazioni da cancellare e un tasto «Annulla».
+- **Continente del Nord**: missioni ed eventi (oggi è esplorabile, con abitanti e negozi).
+- **Game over / schermata di vittoria**: non ancora implementate.
 - **Input gamepad**: opzionale.
-- **Audio**: musica di sottofondo con volume nel menu (bevy_audio) fatta; restano effetti sonori e voci dei personaggi (testi in `docs/voci/`).
 - **UI**: restano da valutare i confini tra egui (attuale) e bevy_ui.
-- **Asset**: personaggi glTF CC0 Quaternius fatti (ADR 0015); mondo e materiali PBR fatti (ADR 0016); animazioni fatte (ADR 0017).
 - **Fuori scope v1**: multiplayer. Web build (WASM) da valutare dopo la stabilità su Linux.
+
+Già fatti e tolti dal backlog: salvataggi su file (`v0.0.36.0`), effetti sonori e voci dei personaggi (`v0.0.39.0`,
+`v0.0.47.0`, `v0.0.63.0`), personaggi glTF, mondo PBR e animazioni (ADR 0015–0017).
 
 ## Decisioni architetturali
 
