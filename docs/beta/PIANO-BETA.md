@@ -71,7 +71,7 @@ ma è lento e cieco: non sa dove sono gli NPC né cosa succede. Da qui la Fase 0
 - Probabilmente non usati:
   - `assets/textures/abitante-*.png` (7 file, circa 2,5 MB: vecchie texture degli abitanti a blocchi);
   - la cartella vuota `assets/scenes/`.
-- Da controllare a vista: tutte le texture PBR caricate con nome composto (`pbr::load`), le voci (`assets/audio/voci/`, 102 file) rispetto alle battute in `dialoghi.txt` (`scripts/export_voci.py`), le licenze in `assets/models/LICENSES.md` rispetto ai modelli presenti.
+- Da controllare a vista: tutte le texture PBR caricate con nome composto (`pbr::load`), le voci (`assets/audio/voci/`, 102 file) rispetto alle battute in `dialoghi.txt` (`scripts/export_voci.py`), le licenze in `CREDITS.md` rispetto agli asset presenti.
 
 ---
 

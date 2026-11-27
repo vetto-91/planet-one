@@ -10,7 +10,7 @@ I personaggi erano parallelepipedi e tutto il mondo cel-shaded a colori di verti
 ## Decisione
 - Si abbandona il cel-shading a favore di materiali PBR. Non è fotorealismo da tripla A.
 - Asset CC0 di Quaternius, livello gratuito, scaricati una volta sola: Universal Base Characters, Modular Character Outfits – Fantasy, Universal Animation Library. Tutto poi gira in locale.
-  I grezzi stanno in `assets_src/` (fuori da git e da Drive); nel gioco va solo il risultato, in `assets/models/characters/`. Provenienza e licenze: `assets/models/LICENSES.md`.
+  I grezzi stanno in `assets_src/` (fuori da git e da Drive); nel gioco va solo il risultato, in `assets/models/characters/`. Provenienza e licenze: `CREDITS.md`.
 - I tre pacchetti hanno lo stesso scheletro da 65 ossa con gli stessi nomi (verificato sui file): `scripts/build_characters.py` non usa Blender, unisce i glTF in puro Python. Ogni parte tiene le proprie matrici di bind,
   quindi la testa del corpo intero (tagliata per peso delle ossa `Head`/`neck_01`) e i capelli seguono le ossa dell'abito. Texture ridotte a 1024 px e condivise; varianti di colore generate dalle due texture per abito.
 - Le clip (`animations.gltf`) sono filtrate: rotazioni di tutte le ossa e traslazione del solo bacino, così non deformano le proporzioni dei modelli.
