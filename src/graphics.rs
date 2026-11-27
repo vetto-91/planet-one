@@ -259,11 +259,23 @@ impl Default for GfxOptions {
 pub const FPS_LIMITS: [u16; 8] = [0, 30, 60, 90, 120, 144, 165, 240];
 
 /// Frequenza di aggiornamento: fuori dai preset di qualità.
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct FpsOptions {
     pub vsync: bool,
     /// Limite in FPS (0 = illimitati).
     pub limit: u16,
+}
+
+impl Default for FpsOptions {
+    /// VSync acceso: senza, la scheda video disegna più fotogrammi che può e resta sempre a pieno
+    /// carico (ventole al massimo, calore, frequenze che calano col tempo). Chi lo vuole spento lo
+    /// sceglie nel menu.
+    fn default() -> Self {
+        Self {
+            vsync: true,
+            limit: 0,
+        }
+    }
 }
 
 impl FpsOptions {
