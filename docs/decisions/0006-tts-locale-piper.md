@@ -20,6 +20,9 @@ Le risposte della IA (ADR 0005) devono essere lette ad alta voce, in italiano, r
 - Una voce per personaggio (`voce:` in `assets/ai/<nome>.txt`), override nel menu, casella "Voce IA".
 - `scripts/gen_tts_voci.py` passa da edge-tts (servizio Microsoft online) a Piper locale; i clip esistenti non vengono
   toccati (solo i mancanti, `--force` per rigenerare).
+- Aggiornamento (beta 067, ADR 0062): i clip fatti con edge-tts sono stati tutti rigenerati con Piper
+  (`--force --solo viandante|ladro`); oggi ogni voce del gioco è locale e un personaggio ha la stessa voce nei dialoghi
+  scritti e nella chat con la IA.
 
 ## Conseguenze
 - Senza Piper o con la voce spenta il gioco mostra solo il testo, senza errori.

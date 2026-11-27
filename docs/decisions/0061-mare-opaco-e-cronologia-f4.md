@@ -62,12 +62,13 @@ Dalla beta v0.0.63 sono arrivate quattro segnalazioni su mare, suoni ed editor d
 - Lo stato del pilota ha `giocatore.passi` (ultima superficie) per i copioni.
 
 ### Brusio del mercato
-- «Vita tra i banchi» dell'autore (mp3 fuori da git) è convertita con ffmpeg in
+- «Vita tra i banchi» (mp3 fuori da git; generata con l'IA di Google, come dicono i suoi metadati C2PA con
+  filigrana SynthID, e non registrata dall'autore come scritto in origine: vedi `CREDITS.md`) è convertita con ffmpeg in
   `assets/audio/ambience/vita_tra_i_banchi.ogg` (Vorbis q5).
   - L'originale sfuma a zero negli ultimi 14 s. Il ciclo usa 0–160 s con gli ultimi 6 s sfumati sopra i
     primi 6, così il giro non ha buchi.
   - Si carica dall'`AssetServer` al posto di `synth_market()`, con lo stesso livello per distanza, ora e
-    pioggia. Il guadagno scende da 0,6 a 0,35, perché la registrazione è più forte.
+    pioggia. Il guadagno scende da 0,6 a 0,35, perché il file è più forte del mormorio sintetico.
 
 ### Editor F4
 - **Cronologia senza limite** (`DebugPlace::undo`/`redo`).

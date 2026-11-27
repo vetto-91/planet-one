@@ -1,5 +1,10 @@
 # Piano di beta test, debug e correzioni — Planet One v0.0.55.0
 
+> **Nota (novembre 2026):** questo piano è stato scritto per la v0.0.55.0 e resta come storia del primo giro di beta.
+> Le prove successive sono le correzioni della beta v0.0.63 (ADR 0059–0061, `v0.0.67.0`) e della beta 067 (ADR 0062),
+> con i copioni del pilota in `prove/` (`prove/b1…b6-*.txt` per l'ultima). Lo stato attuale è nella
+> [ROADMAP](../ROADMAP.md).
+
 Obiettivo: arrivare a una versione **stabile** prima di riprendere lo sviluppo. Il lavoro va in quattro fasi:
 prima gli strumenti per giocare e controllare il gioco in automatico, poi i bug bloccanti, poi un giro
 sistematico di ogni sistema, infine documenti e pulizia.

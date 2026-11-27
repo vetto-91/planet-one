@@ -25,8 +25,8 @@ Pro, contro, impatto sul codice e sulla roadmap.
 
 | ADR | Titolo | Stato |
 |---|---|---|
-| 0001 | Rust + Bevy come stack del motore | accettato |
-| 0002 | Versioning a 4 segmenti vMAJOR.MINOR.FEATURE.BUGFIX | accettato |
+| 0001 | Rust + Bevy come stack del motore | accettato (solo nel registro: file non scritto) |
+| 0002 | Versioning a 4 segmenti vMAJOR.MINOR.FEATURE.BUGFIX | accettato (solo nel registro: vedi [VERSIONING.md](../VERSIONING.md)) |
 | 0003 | Quest in cartelle con dialoghi in file di testo | accettato |
 | 0004 | Porting Windows e macOS con build in CI | accettato |
 | 0005 | Dialoghi con IA solo locale (Ollama) | accettato |
@@ -34,7 +34,6 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0007 | Villaggio murato con edifici procedurali | accettato |
 | 0008 | Abitanti e guardie con dialoghi IA | accettato |
 | 0009 | Negozi, armi e mercato | accettato |
-
 | 0010 | Strada del sud, faro, porticciolo e campane | accettato |
 | 0011 | Calendario, velocità del tempo e sole stagionale | accettato (Fase 1) |
 | 0012 | Stagioni visibili | accettato (Fase 2) |
@@ -87,3 +86,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0059 | Le correzioni della beta v0.0.63 | accettato |
 | 0060 | Finestre vere, focolari aperti e scale a L | accettato |
 | 0061 | Mare opaco con la distanza e cronologia dell'editor F4 | accettato |
+| 0062 | Le correzioni della beta 067 | accettato |
