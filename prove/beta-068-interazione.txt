@@ -1,0 +1,21 @@
+# Beta 0.0.68 (2026-11-27_12-33-44): a 0,7 m dal baule in cima alla torre antica il tasto di
+# interazione spariva (il mirino passava sopra il baule). Atteso: da vicino il baule davanti vale.
+god on
+meteo sereno
+tp 58.75 22.6 -57.0
+aspetta 3
+camera 176 44
+aspetta 0.5
+foto baule
+verifica /personaggio/prompt contiene Apri
+# Anche un abitante addosso: davanti a Nina, camera alta, il dialogo si apre.
+tp -1.2 3 14
+ora 10
+aspetta 3
+tp nina
+aspetta 0.5
+guarda nina
+camera 0 50 3
+aspetta 1
+verifica /personaggio/prompt contiene Nina
+esci

@@ -344,6 +344,26 @@ type BestInteract<'a> = (
     Option<&'a crate::hut::PropKind>,
 );
 
+/// Distanza orizzontale sotto cui un oggetto davanti al giocatore si usa anche senza mirarlo.
+pub const CLOSE_REACH: f32 = 1.2;
+
+/// Oggetto (o NPC) a meno di [`CLOSE_REACH`] dal giocatore, davanti a lui nella direzione della
+/// camera (entro 60°) e non più in alto o in basso di un piano: lo scarto da usare al posto di
+/// quello del mirino, minore quanto più l'oggetto è dritto davanti (sempre entro `radius`).
+pub fn close_offset(player: Vec3, pos: Vec3, cam_forward: Vec3, radius: f32) -> Option<f32> {
+    let flat = |v: Vec3| Vec3::new(v.x, 0.0, v.z);
+    let to = flat(pos - player);
+    if to.length() > CLOSE_REACH || (pos.y - player.y).abs() > 1.6 {
+        return None;
+    }
+    let ahead = to
+        .normalize_or_zero()
+        .dot(flat(cam_forward).normalize_or_zero());
+    // Proprio sotto i piedi la direzione non conta.
+    let ahead = if to.length() < 0.15 { 1.0 } else { ahead };
+    (ahead > 0.5).then_some((1.0 - ahead) * radius)
+}
+
 /// Sistema di interazione: trova l'`Interactable` più vicino al player entro
 /// range e, se il tasto E è premuto, apre il dialogo.
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
@@ -428,13 +448,23 @@ pub fn interact(
                 continue;
             }
             let pos = t.translation();
-            let to = pos - origin;
-            let along = to.dot(*dir);
-            if along <= 0.0 || pos.distance(p) > inter.range {
+            if pos.distance(p) > inter.range {
                 continue;
             }
-            let off = (pos - (origin + *dir * along)).length();
-            if off > radius || off >= best_off {
+            let to = pos - origin;
+            let along = to.dot(*dir);
+            let aimed = (along > 0.0).then(|| (pos - (origin + *dir * along)).length());
+            // Da vicino il mirino passa sopra l'oggetto (baule ai piedi, NPC addosso): conta
+            // anche essergli davanti (segnalazione 2026-11-27_12-33-44).
+            let close = close_offset(p, pos, *dir, radius);
+            let Some(off) = [aimed.filter(|o| *o <= radius), close]
+                .into_iter()
+                .flatten()
+                .reduce(f32::min)
+            else {
+                continue;
+            };
+            if off >= best_off {
                 continue;
             }
             // Visibilità: niente uso attraverso i muri.
@@ -967,6 +997,23 @@ pub fn enemy_patrol(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Il baule a 0,7 m in cima alla torre (segnalazione 2026-11-27_12-33-44): la camera guarda
+    /// in avanti e un poco in basso, il mirino gli passa sopra, ma il baule davanti vale.
+    #[test]
+    fn a_chest_right_in_front_is_usable_without_aiming() {
+        let player = Vec3::new(0.0, 0.9, 0.0);
+        let chest = Vec3::new(0.0, 0.4, -0.7);
+        let forward = Vec3::new(0.0, -0.2, -1.0).normalize();
+        let off = close_offset(player, chest, forward, 0.45).expect("davanti");
+        assert!(off < 0.05, "{off}");
+        // Di lato a 45° vale ancora, alle spalle no, oltre 1,2 m no, un piano sotto no.
+        let side = Vec3::new(0.5, 0.4, -0.5);
+        assert!(close_offset(player, side, forward, 0.45).is_some_and(|o| o < 0.45));
+        assert!(close_offset(player, Vec3::new(0.0, 0.4, 0.7), forward, 0.45).is_none());
+        assert!(close_offset(player, Vec3::new(0.0, 0.4, -1.5), forward, 0.45).is_none());
+        assert!(close_offset(player, Vec3::new(0.0, -2.5, -0.5), forward, 0.45).is_none());
+    }
 
     #[test]
     fn a_stuck_enemy_detours_both_ways_then_hops() {
