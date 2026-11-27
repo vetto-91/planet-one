@@ -1,0 +1,73 @@
+# Battute sullo Stretto più chiare (segnalazioni del 27-11-2026): scogli neri che attirano il ferro,
+# partenza quando il vortice si calma, chiodi strappati dallo scafo.
+# Il nome comincia per z perché un copione nuovo non sposti le risoluzioni degli altri.
+god on
+ia off
+meteo sereno
+ora 10
+aspetta 2
+# La confidenza di Gaspare (segreti.txt): i chiodi strappati dallo scafo.
+fiducia gaspare 30
+tp gaspare
+aspetta 1
+attendi npc:gaspare:modo = Ready 90
+davanti gaspare
+aspetta 0.5
+guarda gaspare
+aspetta 1
+premi e
+aspetta 1
+verifica parla = Gaspare
+verifica /segreti contiene gaspare
+premi invio
+aspetta 1
+verifica /dialogo/riga contiene strappato i chiodi dallo scafo
+avanza
+scegli Arrivederci
+aspetta 1
+verifica dialogo = false
+# Gino al mulino (MP-03, seconda tappa): seconda battuta.
+missioni on
+missione mp01 7
+# Le Voci delle Pietre Antiche vengono dopo «Denaro Rubato».
+quest completata
+missione mp03 2
+tp gino
+aspetta 1
+attendi npc:gino:modo = Ready 90
+davanti gino
+aspetta 0.5
+guarda gino
+aspetta 1
+premi e
+aspetta 1
+verifica parla = Gino
+premi invio
+aspetta 1
+verifica /dialogo/riga contiene scogli neri che attirano il ferro come calamite
+foto gino-stretto
+avanza
+aspetta 1
+verifica dialogo = false
+# Gaspare al molo (MP-05, prima tappa): il bronzo e la partenza prima dell'alba.
+missione mp05 1
+aspetta 2
+tp gaspare
+aspetta 1
+attendi npc:gaspare:modo = Ready 90
+tp gaspare
+aspetta 1
+guarda gaspare
+aspetta 1
+premi e
+aspetta 1
+verifica parla = Gaspare
+verifica /dialogo/riga contiene gli scogli neri non hanno ferro da attirare
+premi invio
+aspetta 1
+verifica /dialogo/riga contiene quando il vortice si calma
+foto gaspare-partenza
+avanza
+aspetta 1
+verifica dialogo = false
+esci
