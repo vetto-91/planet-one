@@ -2,9 +2,8 @@
 
 RPG 3D open source, in terza persona, con grafica realistica in corso (personaggi veri da `v0.0.25.0`, mondo e materiali PBR da `v0.0.26.0`, animazioni dei personaggi da `v0.0.28.0`). Scritto in **Rust** con il motore **[Bevy](https://bevy.org)**. Obiettivo iniziale: una **vertical slice** giocabile (1 quest, 1 NPC, 1 nemico, inventario minimale).
 
-> Stato: ultimo rilascio **`v0.0.67.0`** (fase 15.11, correzioni della beta). In prova le
-> **correzioni della beta 067** (sei blocchi: urgenze, collisioni, modelli, luci, NPC, gioco): vedi la
-> sezione «Non ancora rilasciato» del [CHANGELOG](CHANGELOG.md).
+> Stato: ultimo rilascio **`v0.0.68.0`** (fase 15.12): le **correzioni della beta 067** in sei blocchi
+> (urgenze, collisioni, modelli, luci, NPC, gioco), vedi il [CHANGELOG](CHANGELOG.md).
 > L'Isola di Fontevivo ha la storia completa del Prologo (5 missioni principali, 14 secondarie,
 > 11 eventi); il Continente del Nord è esplorabile. Roadmap e fasi: [docs/ROADMAP.md](docs/ROADMAP.md).
 > Crediti di modelli, texture, audio e voci: [CREDITS.md](CREDITS.md).

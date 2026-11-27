@@ -2,7 +2,7 @@
 
 - Stato: accettato
 - Data: 2026-11-27
-- Versione: non ancora rilasciata (branch `fix/beta-067-*`, dopo `v0.0.67.0`)
+- Versione: v0.0.68.0
 
 ## Contesto
 

@@ -5,8 +5,7 @@ RPG 3D open source, grafica realistica PBR in corso (ADR 0015), terza persona. R
 ## Stato e roadmap
 
 - Roadmap e stato reale delle fasi: [docs/ROADMAP.md](docs/ROADMAP.md).
-- Ultima fase completata: 15.11, correzioni della beta v0.0.63 (`v0.0.67.0`, ultimo rilascio). In prova le correzioni della
-  beta 067 (branch `fix/beta-067-*`, sezione «Non ancora rilasciato» del CHANGELOG, ADR 0062).
+- Ultima fase completata: 15.12, correzioni della beta 067 (`v0.0.68.0`, ultimo rilascio; ADR 0062).
 - Crediti e licenze di tutti gli asset: [CREDITS.md](CREDITS.md).
 - Storia dei rilasci: [CHANGELOG.md](CHANGELOG.md). Schema versioni: [docs/VERSIONING.md](docs/VERSIONING.md).
 

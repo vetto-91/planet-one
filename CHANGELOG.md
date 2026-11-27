@@ -2,10 +2,12 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non ancora rilasciato — Correzioni della beta 067 (ADR 0062)
+## v0.0.68.0 — Correzioni della beta 067 (2026-11-27)
+
+ADR 0062.
 
 Le segnalazioni F12 del 18 e 19 novembre, sistemate in sei blocchi (branch `fix/beta-067-*`), ognuna con un copione del
-pilota automatico in `prove/b1…b6-*.txt`. Versione e tag dopo la prova a mano.
+pilota automatico in `prove/b1…b6-*.txt`.
 
 ### Blocco 1 — Urgenze
 
