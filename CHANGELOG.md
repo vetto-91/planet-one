@@ -46,6 +46,15 @@ Correzioni di mondo e interazione dalla prova della v0.0.68.0 su Windows (segnal
   in pausa tre foto a un secondo l'una dall'altra sono identiche byte per byte (copione
   `beta-068-inventario`); il tremolio veniva dal passo fisso non interpolato, corretto nella v0.0.70.0.
 
+### Dialoghi più chiari
+
+- il patto col ladro di «Denaro Rubato» ora si legge al volo: «Dividiamocele: sei a te e sei a me,
+  e io non ti ho mai visto»;
+- Gino e Gaspare spiegano lo Stretto: gli scogli neri attirano il ferro come calamite (per questo lo
+  scafo è fissato col bronzo), si parte prima dell'alba quando il vortice si calma, e a Gaspare gli
+  scogli strapparono i chiodi dallo scafo. Voci rigenerate con Piper in locale;
+- copione `prove/zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz-dialoghi-stretto.txt` che controlla le battute nuove.
+
 ## v0.0.70.0 — Camminata e prestazioni (2026-11-27)
 
 - **Camminata regolare**:

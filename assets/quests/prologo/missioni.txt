@@ -76,7 +76,7 @@ pensiero: Passano dieci giorni. L'isola si veste di primavera, e la domanda del 
 obiettivo: Parla con Gino al mulino, a nord
 quando: parla Gino
 > Senti come tira? Viene dal nord, e porta semi che qui non crescono e una polvere color ocra.
-> Dietro il mulino l'isola finisce. Di là c'è lo Stretto: da una parte gli scogli che tirano il ferro, dall'altra il vortice.
+> Dietro il mulino l'isola finisce. Di là c'è lo Stretto: da una parte gli scogli neri che attirano il ferro come calamite, dall'altra il vortice che inghiotte le barche.
 > Se vuoi vedere dove finisce il mare, sali sulla torre antica in una notte limpida. Io la vela te la cucio, quando sarà il momento.
 
 [tappa]
@@ -156,8 +156,8 @@ dopo: mp04
 obiettivo: Parla con Gaspare al molo della traversata
 quando: parla Gaspare
 tempo: 19.5 estate sereno
-> L'hai vista davvero, la terra a nord? Allora è deciso, {nome}. La barca regge: Ferruccio ha fissato lo scafo col bronzo, niente ferro per gli scogli che tirano.
-> Gino porta la vela, Ettore terrà acceso il faro tutta la notte. Si parte prima dell'alba, quando lo Stretto respira.
+> L'hai vista davvero, la terra a nord? Allora è deciso, {nome}. La barca regge: Ferruccio ha fissato lo scafo col bronzo, così gli scogli neri non hanno ferro da attirare.
+> Gino porta la vela, Ettore terrà acceso il faro tutta la notte. Si parte prima dell'alba, quando il vortice si calma e lo Stretto ci lascia passare.
 > Stasera però resta in paese: accendono le lanterne in piazza. Una partenza senza un saluto porta male.
 
 [tappa]
