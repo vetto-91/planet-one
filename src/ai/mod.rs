@@ -391,13 +391,10 @@ pub fn ai_pump(
             }
             Event::Models(list) => ai.models = list,
             Event::Preloaded(model, result) => match result {
-                Ok((total, vram, _)) if total > 0.0 && vram + 0.05 < total => warn!(
-                    "[AI] {model}: solo {vram:.1} GB su {total:.1} sulla scheda video, il resto va \
-                     sul processore e le risposte saranno lente"
-                ),
-                Ok((total, _, secs)) => {
-                    info!("[AI] {model} in memoria ({total:.1} GB sulla scheda video, {secs:.0} s)")
-                }
+                Ok((total, vram, secs)) => match placement_note(&model, total, vram, secs) {
+                    (true, line) => warn!("{line}"),
+                    (false, line) => info!("{line}"),
+                },
                 Err(e) => {
                     warn!("[AI] {model} non caricato in anticipo: {e}");
                     ai.preloaded = None;
@@ -446,6 +443,38 @@ pub fn ai_pump(
                 }
             }
         }
+    }
+}
+
+/// La riga del log su dove sta il modello; `true` se è un avviso (in parte sul processore).
+///
+/// Si dice la **quota** sulla scheda video, non i GB: Ollama 0.40 in `/api/ps` riporta come
+/// `size` e `size_vram` solo una parte della memoria (0,3 GB per `gemma4:e4b`, che sulla scheda
+/// ne occupa circa 4,7), ma il rapporto fra i due resta giusto.
+fn placement_note(model: &str, total: f32, vram: f32, secs: f32) -> (bool, String) {
+    let time = if secs > 0.0 {
+        format!(", caricato in {secs:.0} s")
+    } else {
+        String::new()
+    };
+    if total <= 0.0 {
+        return (false, format!("[AI] {model} in memoria{time}"));
+    }
+    let share = (vram / total).clamp(0.0, 1.0);
+    if share >= 0.99 {
+        (
+            false,
+            format!("[AI] {model} in memoria, tutto sulla scheda video{time}"),
+        )
+    } else {
+        (
+            true,
+            format!(
+                "[AI] {model}: solo il {:.0}% sulla scheda video, il resto va sul processore e \
+                 le risposte saranno lente{time}",
+                share * 100.0
+            ),
+        )
     }
 }
 
@@ -576,4 +605,22 @@ pub fn plugin(app: &mut App) {
         .add_systems(OnEnter(AppState::Chat), ai_enter_chat)
         .add_systems(OnExit(AppState::Chat), ai_exit_chat)
         .add_systems(Update, ai_handle_action.run_if(in_state(AppState::Chat)));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::placement_note;
+
+    #[test]
+    fn placement_is_told_as_a_share_of_the_model() {
+        // Quello che riporta Ollama 0.40 per gemma4:e4b tutto sulla scheda video.
+        let (warn, line) = placement_note("gemma4:e4b", 0.30, 0.30, 39.0);
+        assert!(!warn);
+        assert!(line.contains("tutto sulla scheda video"), "{line}");
+        assert!(!line.contains("GB"), "{line}");
+        let (warn, line) = placement_note("gemma4:e4b", 8.0, 2.0, 0.0);
+        assert!(warn);
+        assert!(line.contains("25%") && !line.contains("caricato"), "{line}");
+        assert!(!placement_note("m", 0.0, 0.0, 1.0).0);
+    }
 }

@@ -190,7 +190,8 @@ fn clean(s: &str, max: usize) -> String {
 }
 
 /// Carica il modello in memoria prima della prima chat (la prima risposta altrimenti aspetta il
-/// caricamento) e dice quanta parte sta sulla scheda video: (GB totali, GB in VRAM, secondi).
+/// caricamento) e dice quanta parte sta sulla scheda video: (totale, in VRAM, secondi). I valori di
+/// `/api/ps` valgono come rapporto, non come GB (vedi `placement_note`).
 pub fn preload(host: &str, model: &str) -> Result<(f32, f32, f32), String> {
     let base = local_base(host).ok_or("host non locale")?;
     let start = std::time::Instant::now();
