@@ -2,6 +2,76 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non ancora rilasciato — Correzioni della beta 067 (ADR 0062)
+
+Le segnalazioni F12 del 18 e 19 novembre, sistemate in sei blocchi (branch `fix/beta-067-*`), ognuna con un copione del
+pilota automatico in `prove/b1…b6-*.txt`. Versione e tag dopo la prova a mano.
+
+### Blocco 1 — Urgenze
+
+- **FPS che calavano col tempo**: solo le luci accese più vicine alla camera fanno ombra, entro un budget; prima le ombre
+  delle luci si accumulavano fino a far scendere il gioco a 13 FPS. Il pilota automatico conta entità e risorse ogni minuto.
+- **La grotta**: la collina sopra le gallerie è chiusa (non si esce più dalla mappa né si vede l'accampamento da sotto),
+  i massi sono solidi, la nicchia è libera.
+- **Niente pioggia sotto un tetto**, anche nella sala della grotta.
+
+### Blocco 2 — Collisioni
+
+- Si sta in piedi e si salta su **casse, pietre e oggetti di scena**; sono solide le casse del molo, il carretto, la
+  tettoia della legnaia e i pagliai.
+- **Muri e porte fermano abitanti e galline**; un abitante incastrato e non visto passa oltre.
+- Sottotetti senza pareti basse e senza la fascia della gronda.
+- Si **entra nel mare** camminando; niente rallentamenti sull'erba dell'entroterra e sui ponti.
+
+### Blocco 3 — Modelli
+
+- Materiali degli edifici **disegnati da entrambi i lati** (torri, passatoi, tende).
+- Le scale delle mura evitano le case; le mura seguono il terreno.
+- **Il pozzo** è un vero pozzo fino alla Camera di Risonanza, con la grata a filo del selciato; anche la pozza del
+  risveglio diventa un pozzo.
+- **La chiesa**: il tetto della navata si ferma al campanile, la campana pende da una trave.
+- **Il mare** resta visibile guardando in basso; il laghetto della grotta è acqua.
+- Barche con lo scafo appoggiato sulla sabbia, fondamenta piastrellate, bordo tondo della vasca, sentieri della grotta.
+- **Il collo** dei personaggi è ben attaccato al colletto.
+
+### Blocco 4 — Luci e ombre
+
+- La **Sfera di luce** resta accesa in prima persona da qualunque parte si guardi.
+- La **lanterna** pende al fianco e segue il corpo.
+- In prima persona l'**ombra** ha la testa.
+- Sotto i **lampioni** non c'è più l'ombra del lampione stesso.
+- Le **stanze** restano illuminate finché non ci si allontana più di 20 m dall'edificio.
+- Le **finestre del faro** si vedono da fuori.
+
+### Blocco 5 — Abitanti, camera e dialoghi
+
+- In prima persona, guardando in basso, la camera si sporge oltre il petto: non si vede più dentro il colletto.
+- **Chi ti parla si volta a guardarti**, anche nella chat con l'IA; un **passante** nel mirino si ferma e ti aspetta per
+  qualche secondo.
+- **Le guardie** tengono la lancia dritta, col gomito piegato, e la mettono a tracolla per parlare.
+- **Ettore** aspetta sulla spiaggia libera accanto al molo; i fumetti restano finché la voce parla.
+- **Lino e il carretto** se ne vanno solo quando non li guardi.
+- Il **Viandante** ha la stessa voce nei dialoghi scritti e nella chat con l'IA (Piper); la **traversata** si legge con
+  calma ed è letta da una voce narrante.
+- **Il paese**: il grafo delle strade collega anche incroci a T e piazze (nessuna strada isolata); di notte gli abitanti
+  aprono il **cancello** chiuso e lo richiudono; la casa di Agnese ha la porta sulla strada, la via Sud-Ovest passa fra la
+  bancarella del pesce e la casa di Nina, la via Est evita la casa piazzata a mano in piazza.
+
+### Blocco 6 — Gioco, suoni e interfaccia
+
+- **Il risveglio**: tra i rottami vale l'oggetto nel mirino; Esc o «Lascialo lì» lo rimettono giù; la sbarra del
+  Guerriero non sta più sotto le botti.
+- Un **mobile vuoto** lo dice accanto al prompt: «(Vuoto)».
+- **La Prova dell'Arco**: Silvia presta il suo arco a chi non ne ha (nuova riga `dai-se-manca:` nei file delle missioni).
+- **Passi**: tutto il molo suona di legno; nell'acqua bassa si sente lo sciabordio, non più un «bloop» magico.
+- **La bussola** non indica al nord i punti delle missioni dell'isola (nuova riga `regione:` nei file delle missioni).
+
+### Documentazione e asset
+
+- Nuovo [CREDITS.md](CREDITS.md): autore, licenza e fonte di ogni modello, texture, musica, voce, font e libreria.
+- Tutte le voci sono generate in locale con Piper (rifatta l'ultima clip del ladro, che era di edge-tts).
+- Tolte le vecchie skin degli abitanti, che il gioco non usava più.
+
 ## v0.0.67.0 — Correzioni della beta: guida alle missioni, pausa vera, finestre, mare ed editor F4 (2026-11-17)
 
 - **Correzioni della beta** (ADR 0059): le segnalazioni della prova della v0.0.63.
@@ -43,7 +113,7 @@ Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/
 
 - **Il mare al tramonto** (beta v0.0.63, n. 22; ADR 0061): sole e luna scendono dietro la linea del mare invece di passarle davanti, e il mare diventa opaco allontanandosi. Il fondale si vede solo vicino a te, fino a una decina di metri. Sparisce la fascia chiara sull'orizzonte: il mare prendeva la luce del fondale che aveva sotto, e oltre l'isola, dove sotto non c'è nulla, una luce sbagliata. Ora si vedono le sue onde vere. È il primo shader del gioco (`assets/shaders/distance_fade.wesl`).
 - **Passi sull'erba** (n. 26): nel fossato erboso fuori dalle mura, più basso del livello del mare, i passi suonavano d'acqua; ora l'acqua si sente solo sul mare vero.
-- **Brusio del mercato** (n. 35): in piazza si sente la registrazione «Vita tra i banchi» dell'autore, in ciclo senza stacchi, al posto del mormorio sintetico. Sale e scende come prima con la distanza, l'ora e la pioggia.
+- **Brusio del mercato** (n. 35): in piazza si sente «Vita tra i banchi», in ciclo senza stacchi, al posto del mormorio sintetico (audio generato con l'IA di Google: vedi [CREDITS.md](CREDITS.md); prima era indicato per errore come una registrazione dell'autore). Sale e scende come prima con la distanza, l'ora e la pioggia.
 - **Editor dei piazzamenti (F4)** (n. 39 e 40):
   - «Annulla ultimo» toglieva l'ultimo oggetto dell'elenco (anche la casa del giocatore); ora **Annulla** e **Ripeti** tornano indietro e avanti fra le modifiche, senza limite di passi, con **Ctrl+Z**, **Ctrl+Y** o Ctrl+Maiusc+Z e con i pulsanti del pannello;
   - il mirino colpisce anche i modelli veri e non solo il terreno; fra più oggetti vicini **Tab** o la **rotella** passano al successivo;
