@@ -2,6 +2,11 @@
 //! (come `dump` del pilota automatico), le ultime righe del log e la nota scritta nel gioco.
 //!
 //! La cartella è `<dati>/segnalazioni/<data-ora>/` (Linux: `~/.local/share/planet-one/`).
+//!
+//! Contenuto: `schermo.png`, `stato.json`, `log.txt` (le ultime 400 righe), `prestazioni.txt` (la
+//! scheda della macchina e lo storico di `[PERF]`, `[EVENTO]`, `[DIAGNOSI]` dell'intera partita) e
+//! `nota.txt`. Tutto passa da `privacy::Redactor`: niente nome utente nei percorsi, niente nome del
+//! personaggio, niente testo della chat con la IA. La cartella resta sul PC.
 
 use bevy::prelude::*;
 use std::collections::VecDeque;
@@ -22,6 +27,7 @@ impl Write for TeeWriter {
         if let Ok(mut recent) = RECENT.lock() {
             let text = strip_ansi(&String::from_utf8_lossy(&buf[..n]));
             for line in text.lines().filter(|l| !l.trim().is_empty()) {
+                crate::perf::remember(line);
                 recent.push_back(line.to_string());
             }
             let excess = recent.len().saturating_sub(KEEP);
@@ -87,6 +93,10 @@ pub struct BugReport {
     back: Option<crate::AppState>,
     /// File da spostare appena la foto è scritta su disco: (da, a, secondi rimasti).
     moves: Vec<(std::path::PathBuf, std::path::PathBuf, f32)>,
+    /// Nome del personaggio, da togliere dai file.
+    player: Option<String>,
+    /// Scheda della macchina e delle impostazioni al momento della foto.
+    machine: String,
 }
 
 /// Il nome dei file di un'inquadratura: la prima è `schermo.png`, poi `schermo-2.png`…
@@ -112,13 +122,66 @@ fn new_report_dir() -> Option<std::path::PathBuf> {
     }
 }
 
+/// La scheda della macchina per `prestazioni.txt`: scheda video, finestra, impostazioni, sessione.
+/// Nessun dato personale: il nome della scheda video e del driver, non quello del computer.
+pub fn machine_card(
+    adapter: Option<&bevy::render::renderer::RenderAdapterInfo>,
+    window: Option<&Window>,
+    settings: &crate::audio::AudioSettings,
+    minutes: f32,
+) -> String {
+    let mut s = format!("Versione: {}\n", crate::version::GAME_VERSION);
+    s.push_str(&format!(
+        "Sistema: {} {}\n",
+        std::env::consts::OS,
+        std::env::consts::ARCH
+    ));
+    if let Some(a) = adapter {
+        s.push_str(&format!(
+            "Scheda video: {} ({:?}, {:?}); driver {} {}\n",
+            a.name, a.device_type, a.backend, a.driver, a.driver_info
+        ));
+    }
+    if let Some(w) = window {
+        s.push_str(&format!(
+            "Finestra: {}x{} pixel, fattore {:.2}, {:?}, {:?}\n",
+            w.resolution.physical_width(),
+            w.resolution.physical_height(),
+            w.resolution.scale_factor(),
+            w.mode,
+            w.present_mode
+        ));
+    }
+    s.push_str(&format!(
+        "VSync {}, limite FPS {}\nGrafica: {:?}\n",
+        settings.fps.vsync,
+        if settings.fps.limit == 0 {
+            "nessuno".to_string()
+        } else {
+            settings.fps.limit.to_string()
+        },
+        settings.gfx
+    ));
+    s.push_str(&format!(
+        "Partita: {minutes:.0} minuti dall'avvio; {}\n",
+        crate::perf::events_summary()
+    ));
+    s
+}
+
 /// Sistema: F12 fa la foto e lo stato, poi apre la casella della nota.
+#[allow(clippy::too_many_arguments)]
 pub fn report_bug(
     keys: Res<ButtonInput<KeyCode>>,
     state: Res<State<crate::AppState>>,
     mut next: ResMut<NextState<crate::AppState>>,
     mut pilot: ResMut<crate::autopilot::Autopilot>,
     mut report: ResMut<BugReport>,
+    character: Res<crate::character::Character>,
+    settings: Res<crate::audio::AudioSettings>,
+    adapter: Option<Res<bevy::render::renderer::RenderAdapterInfo>>,
+    windows: Query<&Window, With<bevy::window::PrimaryWindow>>,
+    time: Res<Time<Real>>,
 ) {
     if report.wait > 0 {
         report.wait -= 1;
@@ -145,8 +208,16 @@ pub fn report_bug(
     let (shot, dump) = (dir.join(shot), dir.join(dump));
     pilot.photo = Some(shot.clone());
     pilot.dump = Some(Some(dump.clone()));
+    report.player = Some(character.name.clone()).filter(|n| !n.trim().is_empty());
+    report.machine = machine_card(
+        adapter.as_deref(),
+        windows.single().ok(),
+        &settings,
+        time.elapsed_secs() / 60.0,
+    );
+    crate::perf::event(crate::perf::Event::Report, &format!("inquadratura {n}"));
     if n == 1 {
-        write_log_and_note(&dir, "");
+        write_log_and_note(&dir, "", &report);
     }
     report.dir = Some(dir.clone());
     report.shots = n;
@@ -155,12 +226,24 @@ pub fn report_bug(
     info!("[BUG] foto {n} in {}", dir.display());
 }
 
-fn write_log_and_note(dir: &std::path::Path, text: &str) {
-    let _ = std::fs::write(dir.join("log.txt"), recent_log().join("\n"));
+/// Cosa contiene la cartella, scritto in `nota.txt` per chi la riceve e per chi la manda.
+const CONTENTS: &str = "Contenuto: schermo, stato del gioco, ultime righe del log, prestazioni della \
+partita. Percorsi dell'utente, nome del personaggio e chat con la IA sono tolti. La cartella resta \
+su questo PC: mandala solo se vuoi.";
+
+fn write_log_and_note(dir: &std::path::Path, text: &str, report: &BugReport) {
+    let r = crate::privacy::Redactor::current(report.player.as_deref());
+    let _ = std::fs::write(dir.join("log.txt"), r.redact(&recent_log().join("\n")));
+    let perf = format!(
+        "{}\n{}\n",
+        report.machine,
+        crate::perf::history().join("\n")
+    );
+    let _ = std::fs::write(dir.join("prestazioni.txt"), r.redact(&perf));
     let _ = std::fs::write(
         dir.join("nota.txt"),
         format!(
-            "Versione: {}\n\n{}\n",
+            "Versione: {}\n{CONTENTS}\n\n{}\n",
             crate::version::GAME_VERSION,
             text.trim()
         ),
@@ -198,7 +281,7 @@ pub fn finish_note(report: &mut BugReport, session: &mut crate::save::Session) {
         return;
     }
     if n == 1 {
-        write_log_and_note(&dir, &text);
+        write_log_and_note(&dir, &text, report);
         session.notify(format!("Segnalazione salvata in {}", dir.display()));
         return;
     }
@@ -214,7 +297,7 @@ pub fn finish_note(report: &mut BugReport, session: &mut crate::save::Session) {
     let (first_shot, first_dump) = shot_names(1);
     report.moves.push((shot, fresh.join(first_shot), MOVE_WAIT));
     report.moves.push((dump, fresh.join(first_dump), MOVE_WAIT));
-    write_log_and_note(&fresh, &text);
+    write_log_and_note(&fresh, &text, report);
     report.dir = Some(fresh.clone());
     report.shots = 1;
     session.notify(format!("Segnalazione salvata in {}", fresh.display()));

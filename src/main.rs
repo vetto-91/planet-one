@@ -54,6 +54,7 @@ mod pbr;
 mod perf;
 mod places;
 mod player;
+mod privacy;
 mod props;
 mod quests;
 mod region;

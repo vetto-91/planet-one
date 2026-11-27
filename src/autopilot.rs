@@ -1355,7 +1355,16 @@ pub fn dump_state(world: &mut World) {
     let Some(request) = world.resource_mut::<Autopilot>().dump.take() else {
         return;
     };
-    let state = snapshot(world);
+    let mut state = snapshot(world);
+    // Lo stato di una segnalazione F12 esce dal PC: senza dati personali (`privacy.rs`).
+    if request
+        .as_ref()
+        .is_some_and(|p| p.components().any(|c| c.as_os_str() == "segnalazioni"))
+    {
+        let name = world.resource::<crate::character::Character>().name.clone();
+        crate::privacy::omit_chat(&mut state);
+        crate::privacy::Redactor::current(Some(&name)).redact_json(&mut state);
+    }
     if let Some(path) = request {
         if let Some(dir) = path.parent() {
             let _ = std::fs::create_dir_all(dir);
