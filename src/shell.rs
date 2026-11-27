@@ -47,6 +47,11 @@ const HELP: &[(&str, &str)] = &[
         "mostra o nasconde l'interfaccia (come il tasto H)",
     ),
     ("ora <0-24>", "cambia l'ora del giorno"),
+    ("salta <ore>", "fa passare ore e giorni come «Aspetta» (T)"),
+    (
+        "diagnosi",
+        "misura quanto costa ogni parte del gioco (circa un minuto, resta fermo)",
+    ),
     (
         "meteo <tempo|auto>",
         "sereno, nuvoloso, pioggia, temporale, nebbia, neve o auto",
@@ -257,6 +262,10 @@ pub enum Cmd {
     Coords(Option<bool>),
     Hud(Option<bool>),
     Hour(f32),
+    /// Fa passare ore come «Aspetta» (T): la data avanza.
+    Skip(f32),
+    /// Misura quanto costa ogni parte del gioco (`diagnosis.rs`).
+    Diagnose,
     Weather(Option<crate::weather::Kind>),
     Ai(AiCmd),
     Tts(TtsCmd),
@@ -463,6 +472,18 @@ pub fn parse(line: &str) -> Result<Cmd, String> {
                 Ok(Cmd::Hour(hour.rem_euclid(24.0)))
             } else {
                 Err("l'ora va da 0 a 24".into())
+            }
+        }
+        "diagnosi" | "diagnose" => Ok(Cmd::Diagnose),
+        "salta" | "skip" => {
+            let hours: f32 = args
+                .first()
+                .and_then(|a| a.replace(',', ".").parse().ok())
+                .ok_or("uso: salta <ore>")?;
+            if hours > 0.0 && hours <= 24.0 * 400.0 {
+                Ok(Cmd::Skip(hours))
+            } else {
+                Err("le ore vanno da 0 a 9600".into())
             }
         }
         "meteo" => match args.first().copied() {
@@ -704,6 +725,7 @@ pub struct ShellCtx<'w, 's> {
     journal_tab: ResMut<'w, crate::menu::JournalTab>,
     tracked: ResMut<'w, crate::quests::Tracked>,
     fast_travel: ResMut<'w, crate::places::FastTravel>,
+    diagnosis: ResMut<'w, crate::diagnosis::Diagnosis>,
     diagnostics: Res<'w, bevy::diagnostic::DiagnosticsStore>,
     every: Query<'w, 's, Entity>,
     enemies: Query<'w, 's, EnemyData, EnemyFilter>,
@@ -1136,6 +1158,32 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
         Cmd::Hour(hour) => {
             ctx.clock.hour = hour;
             shell.say(format!("ora {hour:.1}"));
+        }
+        Cmd::Diagnose => {
+            ctx.diagnosis.start();
+            shell.say(
+                "diagnosi: parte quando chiudi la shell; resta fermo circa un minuto, poi F12"
+                    .to_string(),
+            );
+        }
+        Cmd::Skip(hours) => {
+            // Come il pulsante «Aspetta» di T, a pezzi di un giorno al massimo.
+            let mut left = hours;
+            while left > 0.0 {
+                let step = left.min(24.0);
+                ctx.clock.advance(step);
+                left -= step;
+            }
+            info!(
+                "[TIME] attesa di {hours} h: ora {} del {}",
+                ctx.clock.label(),
+                ctx.clock.date_label()
+            );
+            shell.say(format!(
+                "passate {hours} h: {} — {}",
+                ctx.clock.date_label(),
+                ctx.clock.label()
+            ));
         }
         Cmd::Weather(kind) => {
             ctx.weather.forced = kind;
@@ -1672,6 +1720,8 @@ mod tests {
     fn hour_weather_and_voices() {
         assert_eq!(parse("ora 22,5"), Ok(Cmd::Hour(22.5)));
         assert!(parse("ora 30").is_err());
+        assert_eq!(parse("salta 12"), Ok(Cmd::Skip(12.0)));
+        assert!(parse("salta 0").is_err());
         assert_eq!(parse("meteo auto"), Ok(Cmd::Weather(None)));
         assert!(parse("meteo grandine").is_err());
         assert_eq!(
