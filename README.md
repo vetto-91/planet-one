@@ -274,14 +274,14 @@ cargo fmt            # obbligatorio prima di ogni commit
 cargo clippy         # deve essere pulito prima di ogni commit
 ```
 
-Regole di lavoro, branch, commit e l'elenco commentato di tutti i moduli: [CLAUDE.md](CLAUDE.md). Le scelte di
+Regole di lavoro, branch, commit e l'elenco commentato di tutti i moduli: [AGENTS.md](AGENTS.md). Le scelte di
 progetto sono negli ADR di [docs/decisions/](docs/decisions/README.md).
 
 ### Struttura
 
 ```
 src/        codice del gioco (ECS Bevy): un modulo per sistema (scena, terreno, giocatore, camera, abitanti,
-            missioni, meteo, audio, IA locale in src/ai/…); l'elenco commentato è in CLAUDE.md
+            missioni, meteo, audio, IA locale in src/ai/…); l'elenco commentato è in AGENTS.md
 assets/     modelli glTF, texture, audio, voci, mondo (assets/world/*.txt) e testi delle missioni (assets/quests/)
 scripts/    generatori degli asset e strumenti (beta_check.sh, setup_ai.sh, package_linux.sh, gen_*.py, make_*.py)
 prove/      copioni del pilota automatico (scripts/beta_check.sh)
