@@ -916,7 +916,32 @@ fn resource_counts(world: &mut World) -> Value {
         .iter(world)
         .filter(|l| l.shadow_maps_enabled)
         .count();
+    // Luci che costano davvero: accese e visibili in qualche vista.
+    let lit = world
+        .query::<(&PointLight, &ViewVisibility)>()
+        .iter(world)
+        .filter(|(l, v)| l.intensity > 0.0 && v.get())
+        .count();
+    let lit_shadow = world
+        .query::<(&PointLight, &ViewVisibility)>()
+        .iter(world)
+        .filter(|(l, v)| l.intensity > 0.0 && v.get() && l.shadow_maps_enabled)
+        .count();
+    let playing: usize = world
+        .query::<&AnimationPlayer>()
+        .iter(world)
+        .map(|p| p.playing_animations().count())
+        .sum();
+    let graphs = world.resource::<Assets<AnimationGraph>>().len();
+    let clips = world.resource::<Assets<AnimationClip>>().len();
+    let audio = world.resource::<Assets<AudioSource>>().len();
     json!({
+        "luci_accese": lit,
+        "luci_accese_ombra": lit_shadow,
+        "animazioni": playing,
+        "grafi_anim": graphs,
+        "clip": clips,
+        "audio": audio,
         "luci_ombra": shadow_lights,
         "mesh": meshes,
         "materiali": materials,
@@ -1403,7 +1428,7 @@ fn every(secs: f32) -> impl FnMut(Res<Time<Real>>, Local<f32>) -> bool {
 /// Riga `[PERF]` nel log: FPS, entità vive e risorse, per capire dopo un calo di FPS o un crash
 /// cosa è cresciuto durante la partita (segnalazione 2026-11-19_22-17-36). Le segnalazioni F12
 /// portano con sé le ultime righe del log.
-fn perf_log(world: &mut World) {
+fn perf_log(world: &mut World, mut marks: Local<crate::perf::PerfMarks>) {
     let fps = world
         .get_resource::<DiagnosticsStore>()
         .and_then(|d| d.get(&FrameTimeDiagnosticsPlugin::FPS))
@@ -1417,9 +1442,18 @@ fn perf_log(world: &mut World) {
     let weather = world
         .get_resource::<crate::weather::WeatherState>()
         .map_or("?".into(), |w| w.label());
+    let s = crate::perf::take_sample(world, &mut marks);
     info!(
-        "[PERF] fps {} entita {} ore {} meteo {} regione {:?} risorse {}",
+        "[PERF] fps {} frame {} ms {:.1}/{:.1} tick {:.0}/{:.0} viste {}/{} entita {} ore {} meteo {} \
+         regione {:?} risorse {}",
         fps.map_or("?".into(), |f| format!("{f:.0}")),
+        s.frames,
+        s.ms_avg,
+        s.ms_max,
+        s.main_ticks_per_frame,
+        s.render_ticks_per_frame,
+        s.views,
+        s.views_max,
         entities,
         hour,
         weather,

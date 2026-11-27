@@ -27,6 +27,7 @@ mod cutscene;
 mod daynight;
 mod debug_place;
 mod devtools;
+mod diagnosis;
 mod diving;
 mod entities;
 mod equipment;
@@ -50,6 +51,7 @@ mod menu;
 mod nature;
 mod par;
 mod pbr;
+mod perf;
 mod places;
 mod player;
 mod props;
@@ -251,6 +253,8 @@ fn main() -> AppExit {
         .add_plugins(villagers::plugin)
         .add_plugins(shell::plugin)
         .add_plugins(autopilot::plugin)
+        .add_plugins(perf::plugin)
+        .add_plugins(diagnosis::plugin)
         .init_resource::<bugreport::BugReport>()
         .add_systems(Update, (bugreport::report_bug, bugreport::move_shots))
         .add_plugins(containers::plugin)
