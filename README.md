@@ -368,7 +368,8 @@ Con una qualunque di `POS`, `HOUR`, `LOOK`, `SHELL`, `SCRIPT` si entra subito in
 | `PLANET_ONE_SHELL="god on;ora 22"` | Comandi della shell all'avvio |
 | `PLANET_ONE_SCRIPT=prove/giro.txt` | Pilota automatico (vedi sotto) |
 | `PLANET_ONE_SPEED=4` | Tempo di gioco accelerato |
-| `PLANET_ONE_SIZE=1280x720`, `PLANET_ONE_HEADLESS=1` | Finestra fissa; senza finestra (la camera disegna in un'immagine) |
+| `PLANET_ONE_SIZE=1280x720`, `PLANET_ONE_HEADLESS=1` | Finestra fissa; senza finestra (la camera disegna in un'immagine, a 60 Hz) |
+| `PLANET_ONE_HEADLESS=libero` | Senza finestra e senza limite di FPS: misura quanto costa davvero un fotogramma |
 | `PLANET_ONE_GFX=basso` | Grafica delle prove (`basso`, `medio`, `alto`) senza toccare le impostazioni |
 | `PLANET_ONE_DATA_DIR=/tmp/prova`, `PLANET_ONE_OUT=cartella` | Dati di una partita di prova; dove il pilota scrive foto e rapporto |
 | `PLANET_ONE_GIVE=1` | Tutte le armi, frecce e 200 monete |
@@ -377,7 +378,9 @@ Con una qualunque di `POS`, `HOUR`, `LOOK`, `SHELL`, `SCRIPT` si entra subito in
 | `PLANET_ONE_OLLAMA=/percorso/ollama` | Ollama da avviare al posto di quello nella cartella dati |
 | `PLANET_ONE_ANIM=sprint`, `PLANET_ONE_DELAY_SCALE=0.1`, `PLANET_ONE_SCAN_WALLS=1` | Animazione forzata del giocatore; ritardi del Viandante; diagnostica delle mura (`[SCAN]`) |
 
-I log di riferimento sono `[INPUT]`, `[EVENT]`, `[CURSOR]`, `[QUEST]` e `[AI]`:
+I log di riferimento sono `[INPUT]`, `[EVENT]`, `[CURSOR]`, `[QUEST]` e `[AI]`. Ogni minuto la riga
+`[PERF]` dice FPS, entità, ora, meteo, regione, luci, mesh, materiali e suoni: dopo un calo di FPS, un F12
+porta con sé queste righe.
 
 ```bash
 cargo run 2>&1 | tee run.log

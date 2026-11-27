@@ -2,6 +2,26 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non ancora rilasciato — Camminata e prestazioni
+
+- **Camminata regolare**:
+  - il giocatore si muove a passo fisso (64 Hz) ma ora la sua posizione e la rotazione del corpo sono
+    interpolate fra un passo e l'altro (`TransformInterpolation` di Avian), anche per i nemici;
+  - prima, a seconda del fotogramma, avanzava di 0, 1 o 2 passi: si muoveva a scatti, la camera
+    tremava e la clip della corsa cambiava velocità di continuo;
+  - **in discesa resta coi piedi a terra**: lo snap porta il corpo al suolo nello stesso passo. Prima
+    la velocità verticale era solo azzerata e il corpo restava sospeso fino a 11 cm, poi ricadeva, a
+    gradini. Su una discesa di prova i passi «sospesi» sono passati da 301 su 385 a 1.
+- **VSync acceso di base** per le impostazioni nuove. Senza VSync e senza limite la scheda video resta
+  sempre a pieno carico, con ventole al massimo. Chi ha già giocato ha il valore salvato in
+  `settings.txt`, cioè spento: si accende nel menu Esc → Grafica.
+- **Misure**:
+  - la riga `[PERF]` del log, ogni minuto, dice anche ora, meteo e regione;
+  - `PLANET_ONE_HEADLESS=libero` fa girare le prove senza limite di FPS.
+  - Sul Linux di sviluppo una partita di 15 minuti, sotto la pioggia e col tempo accelerato, non mostra
+    accumuli: entità, luci, mesh e materiali restano fermi e gli FPS dipendono da luogo, ora e meteo
+    (la pioggia costa circa il 30%).
+
 ## v0.0.69.1 — Correzioni dell'installazione della IA (2026-11-27)
 
 Trovate provando la IA integrata con l'Ollama vero e `gemma4:e4b` su Linux (RTX 3080 Ti):
