@@ -1,0 +1,22 @@
+# Beta 0.0.68 (2026-11-27_11-33-20): «nell'inventario la visuale trema leggermente».
+# Atteso: con il mondo in pausa la camera resta ferma; le tre foto devono essere uguali
+# (camera e posizione del giocatore identiche fra un dump e l'altro).
+god on
+meteo sereno
+tp 33 1.5 92
+aspetta 3
+tieni d 1
+aspetta 0.5
+premi i
+aspetta 0.5
+verifica /interfaccia/mondo_in_pausa = true
+dump inv-1
+foto inv-1
+aspetta 1
+dump inv-2
+foto inv-2
+aspetta 1
+foto inv-3
+premi i
+aspetta 0.5
+esci

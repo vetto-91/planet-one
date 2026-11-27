@@ -8,14 +8,6 @@ camera 176 44
 aspetta 0.5
 foto baule
 verifica /personaggio/prompt contiene Apri
-# Anche un abitante addosso: davanti a Nina, camera alta, il dialogo si apre.
-tp -1.2 3 14
-ora 10
-aspetta 3
-tp nina
-aspetta 0.5
-guarda nina
-camera 0 50 3
-aspetta 1
-verifica /personaggio/prompt contiene Nina
+# Gli abitanti passano dallo stesso `entities::close_offset` (test `a_chest_right_in_front_is_usable_without_aiming`);
+# qui non si provano: teletrasportati addosso si finisce alle spalle e vale il prompt del borseggio.
 esci
