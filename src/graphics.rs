@@ -405,6 +405,7 @@ pub fn apply_graphics(
         }
     }
     info!("[GRAFICA] opzioni applicate: {gfx:?}");
+    crate::perf::event(crate::perf::Event::Graphics, "opzioni applicate");
 }
 
 /// Schede che vogliono la grafica leggera: integrate nella CPU (Intel, AMD) o senza GPU vera

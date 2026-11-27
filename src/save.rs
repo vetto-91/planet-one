@@ -1897,6 +1897,10 @@ pub fn start_travel(
         from.title(),
         to.title()
     );
+    crate::perf::event(
+        crate::perf::Event::Travel,
+        &format!("da {} verso {}", from.title(), to.title()),
+    );
     *load = LoadRequest::Travel(Box::new(data), to);
     next.set(AppState::Resetting);
 }

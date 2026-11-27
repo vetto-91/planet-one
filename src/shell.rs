@@ -1174,10 +1174,13 @@ fn run(cmd: Cmd, shell: &mut Shell, ctx: &mut ShellCtx) {
                 ctx.clock.advance(step);
                 left -= step;
             }
-            info!(
-                "[TIME] attesa di {hours} h: ora {} del {}",
-                ctx.clock.label(),
-                ctx.clock.date_label()
+            crate::perf::event(
+                crate::perf::Event::Wait,
+                &format!(
+                    "{hours} h dalla shell, ora {} del {}",
+                    ctx.clock.label(),
+                    ctx.clock.date_label()
+                ),
             );
             shell.say(format!(
                 "passate {hours} h: {} — {}",

@@ -86,6 +86,7 @@ pub fn enter_map(
     let Ok((entity, mut tf, mut proj, mut cam, skybox)) = cameras.single_mut() else {
         return;
     };
+    crate::perf::event(crate::perf::Event::Map, "aperta");
     // L'isola si vede tutta, centrata; il continente è grande: la mappa si apre sul giocatore.
     let big = crate::terrain::size() > 400.0;
     view.max = crate::terrain::size() * 1.3;

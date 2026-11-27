@@ -11,8 +11,86 @@
 use bevy::prelude::*;
 use bevy::render::view::ExtractedView;
 use bevy::render::{Render, RenderApp, RenderSystems};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
+
+/// Eventi della sessione che potrebbero far crescere il costo di un fotogramma: si contano e si
+/// scrivono nel log come `[EVENTO]`, con l'ora reale e quella di gioco.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Event {
+    /// Attesa con T (o `salta` nella shell).
+    Wait,
+    /// Viaggio fra le regioni.
+    Travel,
+    /// Mappa aperta.
+    Map,
+    /// Opzioni grafiche cambiate.
+    Graphics,
+    /// Segnalazione F12.
+    Report,
+}
+
+impl Event {
+    const ALL: [Event; 5] = [
+        Event::Wait,
+        Event::Travel,
+        Event::Map,
+        Event::Graphics,
+        Event::Report,
+    ];
+
+    fn label(self) -> &'static str {
+        match self {
+            Event::Wait => "attese",
+            Event::Travel => "viaggi",
+            Event::Map => "mappa aperta",
+            Event::Graphics => "grafica cambiata",
+            Event::Report => "segnalazioni F12",
+        }
+    }
+}
+
+static EVENTS: [AtomicU32; 5] = [const { AtomicU32::new(0) }; 5];
+
+/// Conta un evento e lo scrive nel log.
+pub fn event(kind: Event, detail: &str) {
+    let i = Event::ALL.iter().position(|k| *k == kind).unwrap_or(0);
+    let n = EVENTS[i].fetch_add(1, Ordering::Relaxed) + 1;
+    info!("[EVENTO] {} n. {n}: {detail}", kind.label());
+}
+
+/// Riassunto degli eventi della sessione, per `prestazioni.txt`.
+pub fn events_summary() -> String {
+    Event::ALL
+        .iter()
+        .enumerate()
+        .map(|(i, k)| format!("{} {}", k.label(), EVENTS[i].load(Ordering::Relaxed)))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// Righe da tenere per tutta la partita (le altre del log si perdono dopo 400 righe).
+const HISTORY_TAGS: [&str; 4] = ["[PERF]", "[EVENTO]", "[DIAGNOSI]", "[GRAFICA]"];
+/// Al massimo: più di un giorno di partita a una riga `[PERF]` al minuto.
+const HISTORY_KEEP: usize = 4000;
+static HISTORY: Mutex<Vec<String>> = Mutex::new(Vec::new());
+
+/// Dal log: tiene le righe utili a capire un calo di FPS.
+pub fn remember(line: &str) {
+    if HISTORY_TAGS.iter().any(|t| line.contains(t))
+        && let Ok(mut h) = HISTORY.lock()
+    {
+        if h.len() >= HISTORY_KEEP {
+            h.remove(0);
+        }
+        h.push(line.to_string());
+    }
+}
+
+/// Lo storico delle righe utili della partita.
+pub fn history() -> Vec<String> {
+    HISTORY.lock().map(|h| h.clone()).unwrap_or_default()
+}
 
 /// Valori scritti dal mondo del render e letti dal principale.
 #[derive(Resource, Clone, Default)]

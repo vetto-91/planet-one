@@ -470,6 +470,15 @@ pub fn ui(
                 });
             if wait_now {
                 q.clock.advance(q.wait.hours as f32);
+                crate::perf::event(
+                    crate::perf::Event::Wait,
+                    &format!(
+                        "{} h, ora {} del {}",
+                        q.wait.hours,
+                        q.clock.label(),
+                        q.clock.date_label()
+                    ),
+                );
                 info!(
                     "[TIME] attesa di {} h: ora {}",
                     q.wait.hours,
