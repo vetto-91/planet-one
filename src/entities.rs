@@ -776,6 +776,14 @@ pub fn dialog_walk_away(
 }
 
 /// Patrol del nemico: si muove verso il waypoint corrente con MoveAndSlide.
+/// I nemici si muovono in FixedUpdate come il giocatore: la loro posizione disegnata è interpolata
+/// fra un passo di fisica e l'altro, per qualunque nemico compaia (ladro, banditi, predoni).
+pub fn smooth_enemies(mut commands: Commands, added: Query<Entity, Added<Enemy>>) {
+    for e in &added {
+        commands.entity(e).insert(TransformInterpolation);
+    }
+}
+
 /// Gira in FixedUpdate come il player.
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn enemy_patrol(

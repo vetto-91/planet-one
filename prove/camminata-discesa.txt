@@ -1,0 +1,14 @@
+# In discesa il giocatore resta coi piedi a terra (segnalazione del 27-11-2026: «sembra che saltelli»).
+# Prima lo snap azzerava solo la velocità verticale: il corpo restava sospeso fino a 11 cm e poi
+# ricadeva, a gradini. Il centro del corpo sta 0,85 m sopra i piedi.
+god on
+ia off
+tp porta sud
+camera 180 10
+aspetta 3
+premi w 6
+aspetta 1
+tieni s 6
+mai sopra_terreno > 0.92 6
+verifica sopra_terreno < 0.92
+esci

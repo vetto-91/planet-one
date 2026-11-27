@@ -137,6 +137,12 @@ const GROUND_DETECT_DISTANCE: f32 = 1.50;
 /// Distanza entro cui il terreno viene "snapputo" (gravità azzerata): più
 /// corta del detect, così in caduta libera a >0.95 m non si ferma in aria.
 const GROUND_SNAP_DISTANCE: f32 = 0.95;
+/// Dal centro del corpo ai piedi (metà capsula 0,5 + raggio 0,35).
+const FEET_BELOW_CENTER: f32 = 0.85;
+/// Spazio sotto i piedi tollerato senza tirare giù il corpo (m).
+const SNAP_SLACK: f32 = 0.02;
+/// Velocità massima con cui lo snap porta il corpo a terra (m/s): oltre è una caduta.
+const MAX_SNAP_SPEED: f32 = 8.0;
 /// Normale minima (y) per considerare una superficie "suolo".
 const MIN_GROUND_NORMAL_Y: f32 = 0.5;
 /// Offset laterali dei 4 raycast aggiuntivi (m), entro il raggio capsula (0.35).
@@ -169,6 +175,10 @@ pub fn spawn(commands: &mut Commands, asset_server: &AssetServer) {
             LockedAxes::ROTATION_LOCKED,
             LinearVelocity::ZERO,
             CustomPositionIntegration,
+            // Il corpo si muove a passo fisso (FixedUpdate, 64 Hz): fra un passo e l'altro la
+            // posizione disegnata è interpolata, altrimenti a schermo avanza a scatti (0, 1 o 2
+            // passi per fotogramma) e la camera che lo segue trema.
+            TransformInterpolation,
             GroundedState::default(),
             JumpBuffer::default(),
             PlayerHealth::default(),
@@ -177,10 +187,16 @@ pub fn spawn(commands: &mut Commands, asset_server: &AssetServer) {
             Transform::from_xyz(0.0, 1.0, 0.0),
         ))
         .with_children(|body| {
-            body.spawn((PlayerVisual, Transform::default(), Visibility::default()))
-                .with_children(|visual| {
-                    crate::figure::spawn_character(visual, asset_server, "giocatore");
-                });
+            // Anche la rotazione del corpo visivo (`facing`, in FixedUpdate) va interpolata.
+            body.spawn((
+                PlayerVisual,
+                Transform::default(),
+                Visibility::default(),
+                TransformInterpolation,
+            ))
+            .with_children(|visual| {
+                crate::figure::spawn_character(visual, asset_server, "giocatore");
+            });
         });
 }
 
@@ -395,7 +411,16 @@ pub fn movement(
         // Snap al terreno solo se molto vicino (non in caduta libera).
         let snapped = state.grounded_now && state.ground_dist <= GROUND_SNAP_DISTANCE;
         if snapped && velocity.y <= 0.0 {
-            velocity.y = 0.0;
+            // Appoggiato: si scende fino al suolo in questo stesso passo (lo sweep di
+            // MoveAndSlide si ferma al contatto). Prima la velocità verticale era solo azzerata:
+            // in discesa il corpo restava sospeso finché lo spazio superava lo snap, poi cadeva
+            // e si riappoggiava, a gradini (il «saltellare» della camminata).
+            let gap = state.ground_dist - FEET_BELOW_CENTER;
+            velocity.y = if gap > SNAP_SLACK {
+                -(gap / time.delta_secs()).min(MAX_SNAP_SPEED)
+            } else {
+                0.0
+            };
         } else {
             velocity.y -= GRAVITY * time.delta_secs();
         }

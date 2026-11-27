@@ -199,7 +199,7 @@ fn main() -> AppExit {
             .disable::<bevy::winit::WinitPlugin>()
             .disable::<bevy::gilrs::GilrsPlugin>()
             .add(bevy::app::ScheduleRunnerPlugin::run_loop(
-                std::time::Duration::from_secs_f64(1.0 / 60.0),
+                devtools::headless_frame(),
             ))
     } else {
         defaults
@@ -381,6 +381,7 @@ fn main() -> AppExit {
             FixedUpdate,
             entities::enemy_patrol.run_if(in_state(AppState::Playing)),
         )
+        .add_systems(Update, entities::smooth_enemies)
         // Camera in Update (dopo il FixedUpdate): segue il pg con delta reale.
         .add_systems(
             Update,
