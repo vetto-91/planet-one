@@ -14,7 +14,7 @@ Il villaggio (ADR 0007) deve essere abitato, con personaggi che parlano e con cu
 - Routine semplice: lavoro di giorno, piazza la sera (percorso Dijkstra sul grafo delle strade di `villaggio.txt`),
   di notte nascosti in casa; le guardie sempre al posto con lanterna notturna.
 - Solo il Viandante parla delle quest; per gli altri vale il saluto della persona e poi l'offerta "Parliamo d'altro…".
-- Skin ricolorate dalla skin del Viandante (`make_skin_abitanti.py`, solo locale).
+- Skin ricolorate dalla skin del Viandante (`make_skin_abitanti.py`, solo locale). Superato dai personaggi glTF di ADR 0015: script e skin tolti a novembre 2026.
 
 ## Conseguenze
 - Tutto resta locale; con IA o voce spente restano il saluto scritto e il testo.
