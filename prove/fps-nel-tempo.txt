@@ -1,0 +1,461 @@
+# FPS nel tempo (segnalazioni Windows del 27-11-2026: da 122 a 18 FPS in un'ora e mezza, con entità,
+# mesh e luci ferme e i tick del render oltre 3,26 miliardi).
+# Rifà quella partita: grafica «medio», giri in paese, al faro e al laghetto, salti di T (`salta`)
+# fino a fine giugno. Ogni giro misura nello stesso punto, alla stessa ora e col sereno (dump misuraNN):
+# confrontare "fps" della prima e dell'ultima misura e le righe [PERF] (tick, viste, ms).
+# Lungo: si fa girare da solo, senza limite di FPS:
+#   PLANET_ONE_HEADLESS=libero TIMEOUT=5400 scripts/beta_check.sh prove/fps-nel-tempo.txt
+# env: PLANET_ONE_GFX=medio
+god on
+ia off
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura01
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura02
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura03
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura04
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura05
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura06
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura07
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura08
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura09
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura10
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura11
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura12
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura13
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura14
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura15
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura16
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura17
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura18
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura19
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura20
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura21
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura22
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura23
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura24
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura25
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura26
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura27
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura28
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura29
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+ora 11
+meteo sereno
+tp 4.5 1.2 96.4
+camera 0 12
+aspetta 8
+dump misura30
+meteo auto
+tp porta nord
+corri chiesa
+vai marta
+tp -10 4 84
+aspetta 15
+tp 90 8 36
+aspetta 15
+salta 72
+esci
