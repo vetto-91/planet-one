@@ -1,0 +1,13 @@
+# Beta 0.0.68 (2026-11-27_12-37-35): nel falò della grotta delle stele il fuoco non faceva danno.
+# Atteso: in piedi nelle fiamme la vita scende a scatti (con `god` no).
+meteo sereno
+tp 93.66 2.0 38.16
+aspetta 0.5
+dump fuoco
+attendi vita < 80 6
+foto falo
+god on
+tp 93.66 2.0 38.16
+aspetta 0.5
+dump con-god
+esci

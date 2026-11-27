@@ -20,6 +20,8 @@ pub enum Sfx {
     Unlock,
     /// Lastra di pietra che scorre (la Porta Sommersa).
     Grind,
+    /// Scottatura: uno sfrigolio breve (fuoco di falò, bracieri e focolari, ADR 0064).
+    Burn,
 }
 
 static QUEUE: Mutex<Vec<Sfx>> = Mutex::new(Vec::new());
@@ -137,6 +139,34 @@ pub fn synth_grind() -> Vec<u8> {
         .pipe(|s| to_wav(&s, 0.7))
 }
 
+/// Scottatura: soffio di rumore chiaro che sfrigola a scoppiettii, con un colpo basso all'inizio.
+pub fn synth_burn() -> Vec<u8> {
+    let n = (RATE as f32 * 0.45) as usize;
+    let mut seed: u32 = 0x1234_5678;
+    let mut prev = 0.0f32;
+    (0..n)
+        .map(|i| {
+            let t = i as f32 / RATE as f32;
+            seed ^= seed << 13;
+            seed ^= seed >> 17;
+            seed ^= seed << 5;
+            let noise = seed as f32 / u32::MAX as f32 * 2.0 - 1.0;
+            // Rumore passa-alto: il sibilo della pelle sul fuoco.
+            let hiss = noise - prev;
+            prev = noise;
+            let crackle = if seed.is_multiple_of(400) {
+                noise.signum()
+            } else {
+                0.0
+            };
+            let env = (t * 60.0).min(1.0) * (-t * 7.0).exp();
+            let thump = (TAU * 110.0 * t).sin() * (-t * 30.0).exp();
+            (hiss * 0.45 + crackle * 0.8) * env + thump * 0.5
+        })
+        .collect::<Vec<_>>()
+        .pipe(|s| to_wav(&s, 0.6))
+}
+
 /// Ronzio della Luce Viva: un'ora di elettricità in un secondo che si ripete senza scatti (100 Hz e
 /// armoniche, con un battito lento come un polso).
 pub fn synth_hum() -> Vec<u8> {
@@ -172,7 +202,7 @@ impl SfxSounds {
 
 /// I suoni pronti.
 #[derive(Resource)]
-pub struct SfxSounds([Handle<AudioSource>; 6]);
+pub struct SfxSounds([Handle<AudioSource>; 7]);
 
 fn setup(mut commands: Commands, mut sources: ResMut<Assets<AudioSource>>) {
     let mut add = |bytes: Vec<u8>| {
@@ -187,6 +217,7 @@ fn setup(mut commands: Commands, mut sources: ResMut<Assets<AudioSource>>) {
         add(synth_unlock()),
         add(synth_grind()),
         add(synth_hum()),
+        add(synth_burn()),
     ]));
 }
 
@@ -210,6 +241,7 @@ pub fn play_queued(
             Sfx::Pin => (&sounds.0[2], 0.6),
             Sfx::Unlock => (&sounds.0[3], 0.8),
             Sfx::Grind => (&sounds.0[4], 0.9),
+            Sfx::Burn => (&sounds.0[6], 0.7),
         };
         commands.spawn((
             AudioPlayer::new(handle.clone()),
