@@ -84,7 +84,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 - `scripts/gen_voci_abitanti.py`: clip delle prime battute degli abitanti e dei congedi (Piper locale), `voice::greeting_clips`/`farewell_clip`.
 - `docs/voci/` + `scripts/export_voci.py`: battute per creare le voci; rigenerare dopo aver cambiato `dialoghi.txt`.
 - `src/ui_style.rs`: palette, targhette (`plate`) e tema egui condiviso (stesso stile dei dialoghi).
-- `src/ai/`: dialoghi con IA SOLO LOCALE (Ollama su loopback, niente TLS/cloud; ADR 0005): `ollama.rs` client, `persona.rs` prompt da `assets/ai/<nome>.txt`, `tts.rs` voce con Piper locale (ADR 0006), `stt.rs` microfono con whisper.cpp locale (ADR 0022), `ui.rs` chat; stato `AppState::Chat`.
+- `src/ai/`: dialoghi con IA SOLO LOCALE (Ollama su loopback, niente TLS/cloud; ADR 0005): `server.rs` avvia l'Ollama scaricato da `setup_ai.sh --ollama` nella cartella dati su una porta a caso e lo chiude all'uscita, anche dopo un crash (guardiano `--ollama-guard`, job object su Windows; ADR 0063), `ollama.rs` client, `persona.rs` prompt da `assets/ai/<nome>.txt`, `tts.rs` voce con Piper locale (ADR 0006), `stt.rs` microfono con whisper.cpp locale (ADR 0022), `ui.rs` chat; stato `AppState::Chat`.
 - `src/main_menu.rs`, `src/settings_ui.rs`, `src/save.rs`: menu principale, impostazioni e salvataggi di testo (ADR 0025).
 - `src/character.rs`: statistiche, classi, portata ed effetti (ADR 0024).
 - `src/skills.rs`: abilità che crescono con l'uso, livello, Nodi d'Oro e talenti (`train`, `reward`, `rank`; ADR 0038); pannello in `character.rs`.

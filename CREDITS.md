@@ -104,15 +104,16 @@ Librerie principali (`Cargo.toml`); l'elenco completo delle dipendenze si vede c
 | serde, serde_json | 1.0 | MIT OR Apache-2.0 | https://serde.rs |
 | cpal | 0.17 | Apache-2.0 | https://github.com/RustAudio/cpal |
 | libc (solo Unix) | 0.2 | MIT OR Apache-2.0 | https://github.com/rust-lang/libc |
+| windows-sys (solo Windows) | 0.61 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs |
 
 ## Strumenti di IA (installati dal giocatore, non distribuiti col gioco)
 
-Il gioco usa l'IA **solo in locale** (ADR 0005, 0006, 0022). Questi strumenti li scarica il giocatore
-con `scripts/setup_ai.sh` (o `setup_ai.ps1`), accettandone le licenze:
+Il gioco usa l'IA **solo in locale** (ADR 0005, 0006, 0022, 0063). Questi strumenti li scarica il giocatore
+con `setup_ai.sh` (o `setup_ai.ps1`, inclusi nei pacchetti), accettandone le licenze, nella cartella dati del gioco:
 
 | Strumento | Versione | Licenza | Fonte |
 |---|---|---|---|
-| Ollama | ultima | MIT | https://ollama.com/download |
+| Ollama (avviato e chiuso dal gioco, ADR 0063) | v0.40.18 | MIT | https://github.com/ollama/ollama/releases |
 | Modello di testo `gemma4:e4b` (o `gemma4:e2b`) | — | [termini d'uso di Gemma](https://ai.google.dev/gemma/terms) | https://ollama.com/library/gemma4 |
 | Piper (sintesi vocale) | 2023.11.14-2 | MIT | https://github.com/rhasspy/piper/releases |
 | Voci italiane di Piper: riccardo x_low, paola medium, serena medium/high | — | vedi ogni model card | https://huggingface.co/rhasspy/piper-voices/tree/main/it/it_IT |

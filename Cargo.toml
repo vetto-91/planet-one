@@ -25,6 +25,10 @@ cpal = "0.17"
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
+# Job object: l'Ollama avviato dal gioco si chiude anche se il gioco va in crash (ADR 0063).
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading"] }
+
 # Ottimizzazione build in dev: il codice del gioco a opt-level 1, le dipendenze a 3
 [profile.dev]
 opt-level = 1

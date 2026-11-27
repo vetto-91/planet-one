@@ -27,3 +27,4 @@ e i dialoghi scritti, con un interruttore per i PC poco potenti.
 - Con IA spenta o Ollama assente il gioco è identico a prima (nessuna opzione, nessun errore).
 - Con la IA in generazione la GPU è condivisa col gioco: il framerate può calare (da misurare).
 - `ai_host` non locale ⇒ stato "host non locale: rifiutato".
+- Ollama ora lo avvia e lo chiude il gioco, da una copia nella sua cartella dati: vedi ADR 0063.

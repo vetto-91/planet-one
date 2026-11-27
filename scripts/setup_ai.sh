@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # Prepara i dialoghi con IA di Planet One (SOLO IN LOCALE, nessun servizio esterno).
 #
-# Fase 1 (testo):  controlla Ollama e, con --pull, scarica il modello.
+# Fase 1 (testo):  con --ollama scarica l'Ollama del gioco e il modello; con --pull solo il modello.
+#                  Il gioco avvia da sé questo Ollama e lo chiude all'uscita (ADR 0063).
 # Fase 2 (voce):   con --tts scarica Piper (programma locale) e le voci italiane.
 # Fase 3 (microfono): con --stt compila whisper.cpp e scarica un modello multilingue.
 #
 # Uso:
 #   ./scripts/setup_ai.sh                          # controlla soltanto e mostra cosa fare
-#   ./scripts/setup_ai.sh --pull                   # in più scarica il modello di testo (5-10 GB)
+#   ./scripts/setup_ai.sh --ollama                 # Ollama del gioco (~1,7 GB) + modello (~10 GB)
+#   ./scripts/setup_ai.sh --ollama --amd           # in più il supporto alle schede AMD (ROCm, ~1 GB)
+#   ./scripts/setup_ai.sh --pull                   # solo il modello, se Ollama c'è già
 #   MODEL=gemma4:e2b ./scripts/setup_ai.sh --pull  # modello più leggero
 #   ./scripts/setup_ai.sh --tts                    # Piper + voce it_IT-riccardo-x_low
 #   ./scripts/setup_ai.sh --tts --voice it_IT-paola-medium
@@ -21,7 +24,8 @@
 set -euo pipefail
 
 MODEL="${MODEL:-gemma4:e4b}"
-HOST="${OLLAMA_HOST:-127.0.0.1:11434}"
+OLLAMA_TAG="v0.40.18"
+OLLAMA_URL="https://github.com/ollama/ollama/releases/download/$OLLAMA_TAG"
 PIPER_TAG="2023.11.14-2"
 WHISPER_TAG="v1.9.5"
 WHISPER_MODEL="ggml-base.bin"
@@ -29,10 +33,12 @@ WHISPER_MODEL_SHA256="60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345f
 VOICES_URL="https://huggingface.co/rhasspy/piper-voices/resolve/main/it/it_IT"
 IT_VOICES="riccardo/x_low paola/medium serena/medium serena/high"
 
-PULL=0; TTS=0; STT=0; ALL=0; YES=0; DRY=0; VOICE="it_IT-riccardo-x_low"
+PULL=0; OLLAMA=0; AMD=0; TTS=0; STT=0; ALL=0; YES=0; DRY=0; VOICE="it_IT-riccardo-x_low"
 while [ $# -gt 0 ]; do
   case "$1" in
     --pull) PULL=1 ;;
+    --ollama) OLLAMA=1; PULL=1 ;;
+    --amd) AMD=1 ;;
     --tts) TTS=1 ;;
     --stt) STT=1 ;;
     --all-it) ALL=1 ;;
@@ -51,27 +57,73 @@ esac
 
 echo "== Planet One: dialoghi con IA locale =="
 
-# ---------- Fase 1: Ollama ----------
-if ! command -v ollama >/dev/null 2>&1; then
-  echo "Ollama non è installato."
-  echo "Installalo dal sito ufficiale (https://ollama.com/download), poi rilancia questo script."
+# ---------- Fase 1: Ollama del gioco + modello ----------
+# Va nella cartella dati del gioco, non nel sistema: nessun servizio installato, nessuna porta aperta
+# finché il gioco non lo avvia (solo su 127.0.0.1, su una porta a caso).
+OL="$AI/ollama"
+ollama_exe() { for c in "$OL/bin/ollama" "$OL/ollama"; do [ -x "$c" ] && { echo "$c"; return; }; done; }
+
+if [ "$OLLAMA" = 1 ] && [ -z "$(ollama_exe)" ]; then
+  case "$(uname -s)-$(uname -m)" in
+    Linux-x86_64) PKGS="ollama-linux-amd64.tar.zst"; [ "$AMD" = 1 ] && PKGS="$PKGS ollama-linux-amd64-rocm.tar.zst" ;;
+    Linux-aarch64) PKGS="ollama-linux-arm64.tar.zst" ;;
+    Darwin-*) PKGS="ollama-darwin.tgz" ;;
+    *) echo "Ollama: piattaforma non supportata da questo script ($(uname -s)-$(uname -m))."; exit 1 ;;
+  esac
+  echo
+  echo "Ollama del gioco: verranno scaricati, UNA TANTUM, dal sito ufficiale (licenza MIT):"
+  for p in $PKGS; do echo "  - $OLLAMA_URL/$p"; done
+  echo "  e poi il modello $MODEL (circa 10 GB per gemma4:e4b, 7 GB per gemma4:e2b)."
+  echo "  Destinazione: $OL   (il gioco lo avvia e lo chiude da sé)"
+  if [ "$DRY" = 1 ]; then echo "[dry-run] nessun download eseguito."; exit 0; fi
+  case "$PKGS" in *.zst*) command -v zstd >/dev/null 2>&1 || { echo "Serve zstd per estrarre Ollama (es. sudo apt install zstd)."; exit 1; } ;; esac
+  if [ "$YES" != 1 ]; then
+    read -r -p "Scarico e installo? [s/N] " ans
+    case "$ans" in s|S|y|Y) ;; *) echo "Annullato."; exit 0 ;; esac
+  fi
+  ol_tmp="$(mktemp -d)"; trap 'rm -rf "$ol_tmp"' EXIT
+  curl -fL --progress-bar -o "$ol_tmp/sha256sum.txt" "$OLLAMA_URL/sha256sum.txt"
+  mkdir -p "$OL"
+  for p in $PKGS; do
+    curl -fL --progress-bar -o "$ol_tmp/$p" "$OLLAMA_URL/$p"
+    want="$(awk -v f="$p" '$2==f || $2=="./"f || $2=="*"f {print $1}' "$ol_tmp/sha256sum.txt")"
+    got="$(sha256sum "$ol_tmp/$p" 2>/dev/null || shasum -a 256 "$ol_tmp/$p")"
+    [ -n "$want" ] && [ "${got%% *}" = "$want" ] || { echo "Hash di $p errato: annullato."; exit 1; }
+    case "$p" in
+      *.zst) zstd -dc "$ol_tmp/$p" | tar -x -C "$OL" ;;
+      *) tar -xzf "$ol_tmp/$p" -C "$OL" ;;
+    esac
+    rm -f "$ol_tmp/$p"
+  done
+  [ -n "$(ollama_exe)" ] || { echo "Nell'archivio non c'è l'eseguibile di Ollama: annullato."; exit 1; }
+  echo "Ollama $OLLAMA_TAG installato in $OL"
+fi
+
+EXE="$(ollama_exe)"
+if [ -z "$EXE" ]; then
   OLLAMA_OK=0
+  echo "Ollama del gioco non installato. Per installarlo:  ./scripts/setup_ai.sh --ollama"
+  echo "(Senza, il gioco prova un Ollama già avviato su 127.0.0.1:11434.)"
 else
   OLLAMA_OK=1
-  echo "Ollama trovato: $(ollama --version 2>&1 | head -1)"
-  case "$HOST" in
-    127.0.0.1*|localhost*|\[::1\]*) ;;
-    *) echo "ATTENZIONE: OLLAMA_HOST=$HOST non è locale. Planet One rifiuta host non locali:"
-       echo "            imposta OLLAMA_HOST=127.0.0.1:11434 (o toglilo) per non esporre il servizio in rete."
-       exit 1 ;;
-  esac
-  if ollama list 2>/dev/null | awk 'NR>1{print $1}' | grep -qx "$MODEL"; then
+  echo "Ollama del gioco: $("$EXE" --version 2>&1 | tail -1)"
+  # Un server temporaneo, come quello del gioco: solo loopback, porta a caso, modelli nella cartella
+  # del gioco. Si chiude alla fine dello script.
+  PORT=$((20000 + RANDOM % 20000))
+  OLLAMA_HOST="127.0.0.1:$PORT" OLLAMA_MODELS="$OL/models" OLLAMA_NO_CLOUD=1 "$EXE" serve >"$OL/setup.log" 2>&1 &
+  SERVER=$!
+  trap 'kill "$SERVER" 2>/dev/null; rm -rf "${ol_tmp:-}"' EXIT
+  for _ in $(seq 1 60); do curl -fs "http://127.0.0.1:$PORT/api/version" >/dev/null 2>&1 && break; sleep 0.5; done
+  export OLLAMA_HOST="127.0.0.1:$PORT"
+  if "$EXE" list 2>/dev/null | awk 'NR>1{print $1}' | grep -qx "$MODEL"; then
     echo "Modello $MODEL già installato."
   elif [ "$PULL" = 1 ]; then
-    if [ "$DRY" = 1 ]; then echo "[dry-run] ollama pull $MODEL"; else echo "Scarico $MODEL (una tantum)..."; ollama pull "$MODEL"; fi
+    if [ "$DRY" = 1 ]; then echo "[dry-run] ollama pull $MODEL"; else echo "Scarico $MODEL (una tantum)..."; "$EXE" pull "$MODEL"; fi
   else
-    echo "Modello $MODEL non ancora installato. Per scaricarlo:  ollama pull $MODEL   (oppure --pull)"
+    echo "Modello $MODEL non ancora installato. Per scaricarlo:  ./scripts/setup_ai.sh --pull"
   fi
+  kill "$SERVER" 2>/dev/null; wait "$SERVER" 2>/dev/null || true
+  unset OLLAMA_HOST
 fi
 
 # ---------- Fase 2: Piper + voci ----------

@@ -50,7 +50,7 @@ jobs:
           mkdir "$N"
           cp target/release/planet-one.exe "$N/"
           cp -r assets "$N/assets"
-          cp README.md CREDITS.md LICENSE-MIT LICENSE-APACHE "$N/"
+          cp README.md CREDITS.md LICENSE-MIT LICENSE-APACHE scripts/setup_ai.ps1 "$N/"
           7z a -tzip "$N.zip" "$N"
           echo "ASSET=$N.zip" >> "$GITHUB_ENV"
       - name: Upload to release
@@ -83,7 +83,7 @@ jobs:
             target/x86_64-apple-darwin/release/planet-one
           strip "$N/planet-one"
           cp -r assets "$N/assets"
-          cp README.md CREDITS.md LICENSE-MIT LICENSE-APACHE "$N/"
+          cp README.md CREDITS.md LICENSE-MIT LICENSE-APACHE scripts/setup_ai.sh "$N/"
           tar czf "$N.tar.gz" "$N"
           echo "ASSET=$N.tar.gz" >> "$GITHUB_ENV"
       - name: Upload to release

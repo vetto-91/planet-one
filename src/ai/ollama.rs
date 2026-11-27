@@ -47,6 +47,11 @@ fn agent(secs: u64) -> ureq::Agent {
         .build()
 }
 
+/// Il server risponde? (avvio dell'Ollama del gioco, `server.rs`)
+pub fn is_up(base: &str) -> bool {
+    agent(2).get(&format!("{base}/api/version")).call().is_ok()
+}
+
 /// Controlla che Ollama risponda e che il modello sia presente.
 pub fn probe(host: &str, model: &str) -> Probe {
     let Some(base) = local_base(host) else {

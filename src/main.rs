@@ -142,6 +142,10 @@ pub enum AppState {
 }
 
 fn main() -> AppExit {
+    // Lanciato come guardiano dell'Ollama del gioco: fa solo quello (ADR 0063).
+    if ai::server::run_guard() {
+        return AppExit::Success;
+    }
     // `PLANET_ONE_HEADLESS=1`: niente finestra (né winit), la camera disegna in un'immagine sulla
     // GPU e il gioco gira a 60 Hz; serve al pilota automatico quando lo schermo non è disponibile.
     let headless = devtools::headless();
@@ -200,7 +204,7 @@ fn main() -> AppExit {
     } else {
         defaults
     };
-    App::new()
+    let exit = App::new()
         .add_plugins((
             defaults,
             PhysicsPlugins::default(),
@@ -532,7 +536,10 @@ fn main() -> AppExit {
         )
         .add_systems(OnEnter(AppState::Resetting), scene::reset_scene)
         // Il codice d'uscita conta per il pilota automatico (1 = verifiche fallite).
-        .run()
+        .run();
+    // L'Ollama avviato dal gioco si chiude con lui (ADR 0063).
+    ai::server::stop();
+    exit
 }
 
 /// Disattiva di default il wireframe dei collider all'avvio.

@@ -1,39 +1,94 @@
 # Prepara i dialoghi con IA di Planet One (SOLO IN LOCALE, nessun servizio esterno). Windows.
 #
-# Fase 1 (testo): controlla Ollama e, con -Pull, scarica il modello (5-10 GB).
+# Fase 1 (testo): con -Ollama scarica l'Ollama del gioco (~1,7 GB) e il modello (~10 GB); con -Pull
+#                 solo il modello. Il gioco avvia da sé questo Ollama e lo chiude all'uscita (ADR 0063).
 # Fase 2 (voce):  con -Tts scarica Piper (programma locale) e le voci italiane.
 # Fase 3 (microfono): con -Stt compila whisper.cpp (servono cmake e Visual Studio) e scarica ggml-base.bin (148 MB).
 #   .\scripts\setup_ai.ps1                         # controlla soltanto
-#   .\scripts\setup_ai.ps1 -Pull                   # in più scarica il modello di testo
+#   .\scripts\setup_ai.ps1 -Ollama                 # Ollama del gioco + modello di testo
+#   .\scripts\setup_ai.ps1 -Ollama -Amd            # in più il supporto alle schede AMD (ROCm)
+#   .\scripts\setup_ai.ps1 -Pull                   # solo il modello, se Ollama c'è già
 #   .\scripts\setup_ai.ps1 -Tts                    # Piper + voce it_IT-riccardo-x_low
 #   .\scripts\setup_ai.ps1 -Tts -Voice it_IT-paola-medium
 #   .\scripts\setup_ai.ps1 -Tts -AllIt             # tutte le voci italiane (da provare)
 #   aggiungi -Yes per non chiedere conferma, -DryRun per vedere cosa verrebbe scaricato
 # I download sono l'unico momento in cui serve internet (una tantum); dopo, tutto offline.
-param([switch]$Pull, [switch]$Tts, [switch]$Stt, [switch]$AllIt, [switch]$Yes, [switch]$DryRun, [string]$Voice = "it_IT-riccardo-x_low")
+param([switch]$Ollama, [switch]$Amd, [switch]$Pull, [switch]$Tts, [switch]$Stt, [switch]$AllIt, [switch]$Yes, [switch]$DryRun, [string]$Voice = "it_IT-riccardo-x_low")
 
 $model = if ($env:MODEL) { $env:MODEL } else { "gemma4:e4b" }
-$ollamaHost = if ($env:OLLAMA_HOST) { $env:OLLAMA_HOST } else { "127.0.0.1:11434" }
+$ollamaTag = "v0.40.18"
+$ollamaUrl = "https://github.com/ollama/ollama/releases/download/$ollamaTag"
 $piperTag = "2023.11.14-2"
 $voicesUrl = "https://huggingface.co/rhasspy/piper-voices/resolve/main/it/it_IT"
 $ai = Join-Path $env:LOCALAPPDATA "planet-one\ai"
 
 Write-Host "== Planet One: dialoghi con IA locale =="
-$ollama = Get-Command ollama -ErrorAction SilentlyContinue
-if (-not $ollama) {
-    Write-Host "Ollama non è installato. Installalo da https://ollama.com/download e rilancia lo script."
-} else {
-    Write-Host ("Ollama trovato: " + (ollama --version 2>&1 | Select-Object -First 1))
-    if ($ollamaHost -notmatch '^(127\.0\.0\.1|localhost|\[::1\])') {
-        Write-Host "ATTENZIONE: OLLAMA_HOST=$ollamaHost non è locale. Planet One rifiuta host non locali."
-        Write-Host "Imposta OLLAMA_HOST=127.0.0.1:11434 (o rimuovilo) per non esporre il servizio in rete."
-        exit 1
+
+# ---------- Fase 1: Ollama del gioco + modello ----------
+# Nella cartella dati del gioco, non nel sistema: nessun servizio installato, nessuna porta aperta
+# finché il gioco non lo avvia (solo su 127.0.0.1, su una porta a caso).
+$ol = Join-Path $ai "ollama"
+function Find-OllamaExe { foreach ($c in @((Join-Path $ol "ollama.exe"), (Join-Path $ol "bin\ollama.exe"))) { if (Test-Path $c) { return $c } }; return $null }
+if ($Ollama) { $Pull = $true }
+
+if ($Ollama -and -not (Find-OllamaExe)) {
+    $pkgs = @("ollama-windows-amd64.zip")
+    if ($Amd) { $pkgs += "ollama-windows-amd64-rocm.zip" }
+    Write-Host ""
+    Write-Host "Ollama del gioco: verranno scaricati, UNA TANTUM, dal sito ufficiale (licenza MIT):"
+    foreach ($p in $pkgs) { Write-Host "  - $ollamaUrl/$p" }
+    Write-Host "  e poi il modello $model (circa 10 GB per gemma4:e4b, 7 GB per gemma4:e2b)."
+    Write-Host "  Destinazione: $ol   (il gioco lo avvia e lo chiude da sé)"
+    if ($DryRun) { Write-Host "[dry-run] nessun download eseguito."; exit 0 }
+    if (-not $Yes) {
+        $ans = Read-Host "Scarico e installo? [s/N]"
+        if ($ans -notmatch '^[sSyY]') { Write-Host "Annullato."; exit 0 }
     }
-    $installed = (ollama list 2>$null | Select-Object -Skip 1 | ForEach-Object { ($_ -split '\s+')[0] })
-    if ($installed -contains $model) { Write-Host "Modello $model già installato." }
-    elseif ($Pull) {
-        if ($DryRun) { Write-Host "[dry-run] ollama pull $model" } else { Write-Host "Scarico $model (una tantum)..."; ollama pull $model }
-    } else { Write-Host "Modello $model non ancora installato. Per scaricarlo: ollama pull $model  (oppure -Pull)" }
+    New-Item -ItemType Directory -Force -Path $ol | Out-Null
+    $ProgressPreference = 'SilentlyContinue'  # Invoke-WebRequest è molto più veloce senza barra
+    $sums = (Invoke-WebRequest -Uri "$ollamaUrl/sha256sum.txt" -UseBasicParsing).Content -split "`n"
+    foreach ($p in $pkgs) {
+        $zip = Join-Path $env:TEMP $p
+        Write-Host "Scarico $p..."
+        Invoke-WebRequest -Uri "$ollamaUrl/$p" -OutFile $zip -UseBasicParsing
+        $want = ($sums | Where-Object { $_ -match ("\s(\./|\*)?" + [regex]::Escape($p) + "\s*$") } | ForEach-Object { ($_ -split '\s+')[0] }) | Select-Object -First 1
+        if (-not $want -or (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower() -ne $want.ToLower()) {
+            Remove-Item $zip; Write-Host "Hash di $p errato: annullato."; exit 1
+        }
+        Expand-Archive -Path $zip -DestinationPath $ol -Force
+        Remove-Item $zip
+    }
+    if (-not (Find-OllamaExe)) { Write-Host "Nell'archivio non c'è ollama.exe: annullato."; exit 1 }
+    Write-Host "Ollama $ollamaTag installato in $ol"
+}
+
+$exe = Find-OllamaExe
+if (-not $exe) {
+    Write-Host "Ollama del gioco non installato. Per installarlo:  .\scripts\setup_ai.ps1 -Ollama"
+    Write-Host "(Senza, il gioco prova un Ollama già avviato su 127.0.0.1:11434.)"
+} else {
+    Write-Host ("Ollama del gioco: " + (& $exe --version 2>&1 | Select-Object -Last 1))
+    # Un server temporaneo, come quello del gioco: solo loopback, porta a caso, modelli nella
+    # cartella del gioco. Si chiude alla fine.
+    $port = Get-Random -Minimum 20000 -Maximum 40000
+    $env:OLLAMA_HOST = "127.0.0.1:$port"
+    $env:OLLAMA_MODELS = Join-Path $ol "models"
+    $env:OLLAMA_NO_CLOUD = "1"
+    $server = Start-Process -FilePath $exe -ArgumentList "serve" -WindowStyle Hidden -PassThru `
+        -RedirectStandardOutput (Join-Path $ol "setup.log") -RedirectStandardError (Join-Path $ol "setup-err.log")
+    try {
+        for ($i = 0; $i -lt 60; $i++) {
+            try { Invoke-WebRequest -Uri "http://127.0.0.1:$port/api/version" -UseBasicParsing -TimeoutSec 2 | Out-Null; break } catch { Start-Sleep -Milliseconds 500 }
+        }
+        $installed = (& $exe list 2>$null | Select-Object -Skip 1 | ForEach-Object { ($_ -split '\s+')[0] })
+        if ($installed -contains $model) { Write-Host "Modello $model già installato." }
+        elseif ($Pull) {
+            if ($DryRun) { Write-Host "[dry-run] ollama pull $model" } else { Write-Host "Scarico $model (una tantum)..."; & $exe pull $model }
+        } else { Write-Host "Modello $model non ancora installato. Per scaricarlo: .\scripts\setup_ai.ps1 -Pull" }
+    } finally {
+        Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
+        Remove-Item Env:OLLAMA_HOST, Env:OLLAMA_MODELS, Env:OLLAMA_NO_CLOUD -ErrorAction SilentlyContinue
+    }
 }
 
 if ($Tts) {

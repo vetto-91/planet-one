@@ -2,6 +2,27 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non ancora rilasciato — IA locale avviata dal gioco
+
+ADR 0063.
+
+- **Ollama del gioco**: `setup_ai.sh --ollama` (Windows `setup_ai.ps1 -Ollama`) scarica Ollama v0.40.18 dalle
+  release ufficiali, ne controlla lo SHA-256 e lo mette nella cartella dati del gioco insieme al modello `gemma4:e4b`.
+  Niente servizio di sistema. `--amd` aggiunge il supporto alle schede AMD.
+- **Vive solo mentre giochi**:
+  - con la IA accesa, il gioco avvia il suo Ollama solo su `127.0.0.1`, su una porta libera diversa a ogni avvio;
+  - lo chiude all'uscita o quando la IA si spegne dal menu, e lo riaccende quando la IA si riaccende;
+  - lo chiude anche in caso di crash, insieme al modello in memoria: guardiano `--ollama-guard` su Linux e macOS,
+    job object su Windows;
+  - al successivo avvio chiude i resti di una partita finita male (Linux).
+- Stato della IA nel menu: «avvio di Ollama…» e «Ollama non è partito (vedi server.log)»; i suggerimenti indicano lo
+  script giusto.
+- Senza l'Ollama del gioco resta valido un Ollama già avviato sul PC (`ai_host`, solo loopback).
+- I pacchetti di rilascio contengono `setup_ai.sh` (Linux, macOS) o `setup_ai.ps1` (Windows). Il pacchetto Linux
+  si costruisce con `scripts/package_linux.sh`.
+- README riscritto: prima chi gioca (installazione, IA, controlli, il gioco), poi chi sviluppa; numeri e controlli
+  aggiornati.
+
 ## v0.0.68.0 — Correzioni della beta 067 (2026-11-27)
 
 ADR 0062.

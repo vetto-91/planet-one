@@ -87,3 +87,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0060 | Finestre vere, focolari aperti e scale a L | accettato |
 | 0061 | Mare opaco con la distanza e cronologia dell'editor F4 | accettato |
 | 0062 | Le correzioni della beta 067 | accettato |
+| 0063 | Ollama avviato e chiuso dal gioco | accettato |

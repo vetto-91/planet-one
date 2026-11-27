@@ -8,6 +8,7 @@
 
 pub mod ollama;
 pub mod persona;
+pub mod server;
 pub mod stt;
 pub mod tts;
 pub mod ui;
@@ -37,6 +38,10 @@ pub enum AiStatus {
     Unreachable,
     /// `ai_host` non è locale: rifiutato.
     BadHost,
+    /// L'Ollama del gioco si sta avviando.
+    Starting,
+    /// L'Ollama del gioco non è partito (dettagli in `server.log`).
+    ServerFailed,
 }
 
 impl AiStatus {
@@ -45,9 +50,11 @@ impl AiStatus {
         match self {
             AiStatus::Off => "spenta",
             AiStatus::Ready => "pronta (locale)",
-            AiStatus::NoModel => "modello non installato: ollama pull <modello>",
-            AiStatus::Unreachable => "Ollama non trovato su questo PC",
+            AiStatus::NoModel => "modello non installato: scripts/setup_ai --pull",
+            AiStatus::Unreachable => "Ollama non trovato: scripts/setup_ai --ollama",
             AiStatus::BadHost => "host non locale: rifiutato",
+            AiStatus::Starting => "avvio di Ollama…",
+            AiStatus::ServerFailed => "Ollama non è partito (vedi server.log)",
         }
     }
 }
@@ -93,6 +100,8 @@ pub struct AiState {
     pub status: AiStatus,
     /// Modelli installati nell'Ollama locale (aggiornati a ogni controllo).
     pub models: Vec<String>,
+    /// Indirizzo usato: l'Ollama avviato dal gioco o, senza, `ai_host` (`server.rs`).
+    pub host: String,
     tx: mpsc::Sender<Request>,
     rx: Mutex<mpsc::Receiver<Event>>,
     probe_timer: f32,
@@ -114,6 +123,7 @@ impl Default for AiState {
         Self {
             status: AiStatus::Off,
             models: Vec::new(),
+            host: String::new(),
             tx,
             rx: Mutex::new(rx),
             probe_timer: PROBE_EVERY,
@@ -298,7 +308,7 @@ pub fn ai_probe(time: Res<Time<Real>>, settings: Res<AudioSettings>, mut ai: Res
         if ai.was_enabled {
             ai.was_enabled = false;
             let _ = ai.tx.send(Request::Unload {
-                host: settings.ai_host.clone(),
+                host: ai.host.clone(),
                 model: settings.ai_model.clone(),
             });
             ai.preloaded = None;
@@ -308,12 +318,30 @@ pub fn ai_probe(time: Res<Time<Real>>, settings: Res<AudioSettings>, mut ai: Res
         return;
     }
     ai.was_enabled = true;
+    // Con l'Ollama del gioco si aspetta che sia in ascolto; senza, si usa `ai_host`.
+    match server::state() {
+        server::ServerState::Missing => ai.host.clone_from(&settings.ai_host),
+        server::ServerState::Ready(base) => {
+            if ai.host != base {
+                ai.host = base;
+                ai.probe_timer = 0.0;
+            }
+        }
+        server::ServerState::Failed => {
+            ai.status = AiStatus::ServerFailed;
+            return;
+        }
+        server::ServerState::Stopped | server::ServerState::Starting => {
+            ai.status = AiStatus::Starting;
+            return;
+        }
+    }
     ai.probe_timer -= time.delta_secs();
     if ai.probe_timer <= 0.0 && !ai.probing {
         ai.probe_timer = PROBE_EVERY;
         ai.probing = true;
         let _ = ai.tx.send(Request::Probe {
-            host: settings.ai_host.clone(),
+            host: ai.host.clone(),
             model: settings.ai_model.clone(),
         });
     }
@@ -346,7 +374,7 @@ pub fn ai_pump(
                 {
                     ai.preloaded = Some(settings.ai_model.clone());
                     let _ = ai.tx.send(Request::Preload {
-                        host: settings.ai_host.clone(),
+                        host: ai.host.clone(),
                         model: settings.ai_model.clone(),
                     });
                 }
@@ -384,7 +412,7 @@ pub fn ai_pump(
                 if ai.preloaded.is_none() {
                     ai.preloaded = Some(settings.ai_model.clone());
                     let _ = ai.tx.send(Request::Inspect {
-                        host: settings.ai_host.clone(),
+                        host: ai.host.clone(),
                         model: settings.ai_model.clone(),
                     });
                 }
@@ -447,7 +475,7 @@ fn request_reply(chat: &mut AiChat, ai: &AiState, settings: &AudioSettings) {
     chat.options.clear();
     let _ = ai.tx.send(Request::Chat {
         id: chat.req,
-        host: settings.ai_host.clone(),
+        host: ai.host.clone(),
         model: settings.ai_model.clone(),
         system: chat.system.clone(),
         turns,
@@ -535,6 +563,7 @@ pub fn plugin(app: &mut App) {
         .add_systems(
             Update,
             (
+                server::follow_ai_switch.before(ai_probe),
                 ai_probe,
                 ai_pump,
                 tts::tts_scan,
