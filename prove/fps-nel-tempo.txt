@@ -17,7 +17,7 @@ dump misura01
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -32,7 +32,7 @@ dump misura02
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -47,7 +47,7 @@ dump misura03
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -62,7 +62,7 @@ dump misura04
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -77,7 +77,7 @@ dump misura05
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -92,7 +92,7 @@ dump misura06
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -107,7 +107,7 @@ dump misura07
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -122,7 +122,7 @@ dump misura08
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -137,7 +137,7 @@ dump misura09
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -152,7 +152,7 @@ dump misura10
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -167,7 +167,7 @@ dump misura11
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -182,7 +182,7 @@ dump misura12
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -197,7 +197,7 @@ dump misura13
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -212,7 +212,7 @@ dump misura14
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -227,7 +227,7 @@ dump misura15
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -242,7 +242,7 @@ dump misura16
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -257,7 +257,7 @@ dump misura17
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -272,7 +272,7 @@ dump misura18
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -287,7 +287,7 @@ dump misura19
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -302,7 +302,7 @@ dump misura20
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -317,7 +317,7 @@ dump misura21
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -332,7 +332,7 @@ dump misura22
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -347,7 +347,7 @@ dump misura23
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -362,7 +362,7 @@ dump misura24
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -377,7 +377,7 @@ dump misura25
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -392,7 +392,7 @@ dump misura26
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -407,7 +407,7 @@ dump misura27
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -422,7 +422,7 @@ dump misura28
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -437,7 +437,7 @@ dump misura29
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
@@ -452,7 +452,7 @@ dump misura30
 meteo auto
 tp porta nord
 corri chiesa
-vai marta
+tp marta
 tp -10 4 84
 aspetta 15
 tp 90 8 36
