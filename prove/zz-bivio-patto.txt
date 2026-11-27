@@ -11,7 +11,7 @@ premi e
 aspetta 1
 verifica parla = Ladro
 avanza
-scegli Sei a te
+scegli Dividiamocele
 attendi quest = Returning 10
 verifica /quest/sorte = patto
 verifica monete >= 36
