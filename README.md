@@ -2,9 +2,12 @@
 
 RPG 3D open source, in terza persona, con grafica realistica in corso (personaggi veri da `v0.0.25.0`, mondo e materiali PBR da `v0.0.26.0`, animazioni dei personaggi da `v0.0.28.0`). Scritto in **Rust** con il motore **[Bevy](https://bevy.org)**. Obiettivo iniziale: una **vertical slice** giocabile (1 quest, 1 NPC, 1 nemico, inventario minimale).
 
-> Stato: **Fase 5 — Vertical slice completata, con rifiniture** (`v0.0.67.0`).
-> Quest "Denaro Rubato", bussola, obiettivi (TAB), combattimento e inventario.
-> Roadmap e fasi: [docs/ROADMAP.md](docs/ROADMAP.md).
+> Stato: ultimo rilascio **`v0.0.67.0`** (fase 15.11, correzioni della beta). In prova le
+> **correzioni della beta 067** (sei blocchi: urgenze, collisioni, modelli, luci, NPC, gioco): vedi la
+> sezione «Non ancora rilasciato» del [CHANGELOG](CHANGELOG.md).
+> L'Isola di Fontevivo ha la storia completa del Prologo (5 missioni principali, 14 secondarie,
+> 11 eventi); il Continente del Nord è esplorabile. Roadmap e fasi: [docs/ROADMAP.md](docs/ROADMAP.md).
+> Crediti di modelli, texture, audio e voci: [CREDITS.md](CREDITS.md).
 
 ## Requisiti
 
@@ -194,7 +197,11 @@ grep "\[EVENT\]" run.log    # eventi finestra/cursore
 | W/A/S/D o frecce | Movimento |
 | Shift | Corsa (1,55×) |
 | Space | Salto |
+| X | Scatto in avanti (talento dell'Atletica, costa vigore) |
+| Ctrl (in acqua profonda) | Apnea: ci si immerge (talento del Nuoto, ADR 0055) |
 | Mouse | Orbita camera (sensibilità dal menu) |
+| V | Prima persona fissa on/off; tenendo premuto il tasto destro del mouse, prima persona finché lo tieni |
+| H | Nasconde / mostra l'interfaccia |
 | Esc | Menu pausa (tasti, slider sensibilità, checkbox FPS, reset scena) |
 | \\ | Shell dei trucchi (vedi sotto) |
 | C | Pannello del personaggio |
@@ -212,7 +219,18 @@ grep "\[EVENT\]" run.log    # eventi finestra/cursore
 | Invio | Nel dialogo: continua / conferma (alternativa a E) |
 | Su/Giù o W/S | Nel dialogo: cambia la scelta evidenziata |
 | 1–9, 0 | Usa l'oggetto nello slot corrispondente della barra in basso (pozione: +25 HP) |
-| Click sinistro | Attacco melee |
+| Click sinistro | Attacco (con l'arma impugnata; con l'arco tira verso il mirino) |
+| Z / Q | Sceglie l'incantesimo / lo lancia |
+| F | Alle spalle di un abitante: borseggio (fruga nelle tasche) |
+| G | Alle spalle di un abitante: gli infila cinque monete; di fronte: gli dai il regalo che gradisce |
+| R | Spacca pietra e taglia legname; al Poggio del Naufrago posa le fondamenta e alza la casa |
+| Spazio (scasso) | Ferma l'ago sulla tacca d'oro, un perno alla volta |
+| F2 (tenuto, in chat) | Parla al personaggio col microfono (whisper.cpp locale) |
+| F6 | Camera libera, solo dopo `debug on` nella shell |
+
+Raccogliendo l'indole tra i rottami (risveglio) vale l'oggetto **nel mirino**; Esc o «Lascialo lì» lo
+rimettono giù. Accanto a «[E] Apri» un mobile vuoto mostra «(Vuoto)». Con il talento della Lama, un nemico
+ferito gravemente getta l'arma e si arrende (**Disarmo di Grazia**).
 
 ## La storia del Prologo
 
@@ -244,7 +262,9 @@ e scegli «Portami al Continente del Nord». Sbarchi all'**Approdo delle Brume**
 attraversa il bosco di querce e betulle, costeggia il **Grande Lago** e arriva a **Fontebruma**
 (circa 700 m a nord). Gaspare aspetta all'approdo per riportarti a Fontevivo quando vuoi.
 
-Inventario, quest, data e ora viaggiano con te; ogni regione resta com'era quando l'hai lasciata.
+Inventario, quest, data e ora viaggiano con te; ogni regione resta com'era quando l'hai lasciata. Isola e continente
+hanno coordinate proprie: bussola e segnalino indicano un punto solo nella regione della sua missione (le persone da
+raggiungere, invece, le trovano ovunque, anche se ti seguono). La traversata è letta da una voce narrante.
 Ci vivono 22 abitanti (più Gaspare all'approdo): i 12 di Fontebruma, Olmo al lago, l'eremita Nereo, tre famiglie
 isolate nel bosco e Barnaba sulla collina; Mirta, Corrado e Sereno vendono. Missioni ed eventi arrivano nei prossimi passi.
 Dalla shell: `regione nord` e `regione isola`. I dati del continente si rigenerano con
@@ -290,14 +310,16 @@ La colonna sonora (`assets/audio/music/legacy_of_the_first_light.ogg`, in loop) 
 all'avvio; dal tramonto (18:00) fino a poco prima dell'alba (5:54) suona `lanterns_in_the_grove.ogg`
 con dissolvenza incrociata. Il volume delle musiche e quello delle voci dei personaggi si regolano dal menu Esc
 ("Volume musica", "Volume voci") e vengono salvati in `~/.config/planet-one/settings.txt`. "Volume ambiente" regola meteo, campane, passi e suoni dell'isola.
-Le voci registrate (`assets/audio/voci/`) già presenti sono state generate con voci neurali Microsoft (edge-tts, online) in una
-fase precedente: verificarne i termini d'uso prima di distribuire il gioco. Le **nuove** si generano solo in locale con
-`scripts/gen_tts_voci.py` (Piper + ffmpeg, solo i clip mancanti; `--force` per rigenerarli tutti). Autore e licenza del brano da
-indicare prima di rendere pubblico il repository.
+Le voci registrate (`assets/audio/voci/`) sono tutte generate **in locale** con Piper (voci `it_IT-riccardo-x_low` e
+`it_IT-paola-medium`): `scripts/gen_tts_voci.py` (Viandante e ladro; `--force` rigenera, `--solo viandante|ladro` un
+personaggio), `scripts/gen_voci_prologo.py` (battute delle missioni, degli abitanti e la voce narrante della traversata) e
+`scripts/gen_voci_abitanti.py` (saluti e congedi). Le stesse voci leggono i dialoghi con la IA, così un personaggio ha
+sempre la stessa voce.
 
-**Crediti audio.** Il brusio del mercato in piazza (`assets/audio/ambience/vita_tra_i_banchi.ogg`, «Vita tra i banchi») è una
-registrazione dell'autore del gioco, distribuita con il gioco con il suo permesso; è convertita in Ogg Vorbis dall'originale e
-ripetuta in ciclo (coda e inizio sfumati l'una nell'altro). Gli altri suoni d'ambiente sono sintetizzati dal gioco.
+**Crediti audio.** Le due musiche sono state create dall'autore del gioco con Gemini; il brusio del mercato in piazza
+(`assets/audio/ambience/vita_tra_i_banchi.ogg`, «Vita tra i banchi») è generato con l'IA di Google, convertito in Ogg Vorbis
+e ripetuto in ciclo (coda e inizio sfumati l'una nell'altro). Gli altri suoni sono sintetizzati dal gioco. Dettagli e
+licenze in [CREDITS.md](CREDITS.md).
 
 ### Dialoghi con IA (locale)
 
@@ -327,8 +349,8 @@ Il carattere dei personaggi è in `assets/ai/<nome>.txt` (modificabile a mano). 
 
 ### Il villaggio di Fontevivo
 
-Un villaggio murato con due cancelli (**Porta Nord** e **Porta Sud**, aperti dalle 6 alle 21 e di notte chiusi con un varco
-pedonale libero; si usano anche col mirino), una **strada a selciato** che li unisce, **stradine** verso ogni casa, una piazza con
+Un villaggio murato con due cancelli (**Porta Nord** e **Porta Sud**, aperti dalle 6 alle 21; di notte sono chiusi e li apre
+chi passa, abitanti e guardie, poi si richiudono da soli; si usano anche col mirino), una **strada a selciato** che li unisce, **stradine** verso ogni casa, una piazza con
 il pozzo, la **chiesa** col campanile, case di vario tipo, locanda, forno, lampioni accesi di sera e **cartelli** con il nome fuori dai
 cancelli e lungo le strade. Il nome compare in alto quando si entra e sulla mappa (M).
 
@@ -353,7 +375,7 @@ Sopra la barra degli oggetti ci sono tre barre: **magia** a sinistra, **vita** a
 
 **La tua casa**: a sud-ovest del paese, fuori dalle mura, quattro paletti segnano il Poggio del Naufrago. Con `R` spacchi la pietra e tagli il legname lì accanto (per il legname serve un'ascia), e sempre con `R` sul terreno posi le fondamenta e poi alzi la casa. Dentro, i mobili sono il tuo deposito.
 
-**La Prova dell'Arco**: oltre il ponte di legno a est del paese pendono tre anelli di ferro. Centrali in fila, dal più vicino al più lontano, con tre frecce consecutive. Te la propone Silvia.
+**La Prova dell'Arco**: oltre il ponte di legno a est del paese pendono tre anelli di ferro. Centrali in fila, dal più vicino al più lontano, con tre frecce consecutive. Te la propone Silvia, che ti dà le frecce e, se non ne hai uno, ti presta il suo vecchio arco.
 
 **Scasso e borseggio**: i bauli sono chiusi a chiave finché non li apri una volta. Con un grimaldello (da Ferruccio) ferma l'ago sulla tacca d'oro con `Spazio`, una volta per perno. Alle spalle di un abitante, `F` gli sfila qualche moneta e `G` gliene infila cinque; se se ne accorge paghi una multa.
 
@@ -369,7 +391,7 @@ Fontevivo è abitata: 6 abitanti (locandiere, fornaia, prete, anziana, ragazzo, 
 e poi, a fine dialogo, la **chat con la IA locale** ("Parliamo d'altro…") con il proprio carattere e la propria voce (Piper). Di giorno stanno
 al loro posto, la sera si ritrovano in piazza (camminando sulle strade), di notte spariscono in casa; le guardie lavorano su **tre turni** (6–14, 14–22, 22–6): ai cancelli ce n'è sempre almeno una (subito oltre l'anta aperta), il cambio
 turno arriva un'ora prima, e chi finisce va a riposare alla **casa delle guardie** (fuori da Porta Nord, a est della strada). Quattro guardie fanno la **ronda** lungo tutte le mura. Il camminamento è continuo: si sale dalle scale ricavate nello spessore del muro (una per cancello, più una a est e una a ovest), si passa dentro le torri e sopra i cancelli. Di notte hanno la lanterna accesa. I dati sono in `assets/world/abitanti.txt` (posto, orari, aspetto) e `assets/ai/<nome>.txt` (persona, voce,
-saluto); l'aspetto (`modello:`) è uno dei file in `assets/models/characters/`, composti da `scripts/build_characters.py` (vedi `assets/models/LICENSES.md`).
+saluto); l'aspetto (`modello:`) è uno dei file in `assets/models/characters/`, composti da `scripts/build_characters.py` (vedi `CREDITS.md`).
 
 ### Negozi, mercato, armi e campi
 
@@ -402,7 +424,7 @@ Fuori dalle mura ci sono posti da scoprire, con il nome sulla mappa: il campo de
 
 Il paese è vissuto: dai comignoli esce il fumo, di notte sulle mura si accendono le torce, e per strada e al porto trovi carretti, botti, casse, panni stesi e reti. Carretti, botti e casse si aprono con E.
 
-Ci sono anche gli animali: mucche e pecore pascolano e si scostano se ti avvicini, le galline razzolano in paese, i gabbiani girano sul porto, gli uccelli si alzano quando arrivi, nel laghetto nuotano i pesci, e con i fiori compaiono le farfalle. Modelli di mucca, pecora e latifoglie: CC0 di Quaternius. Mandrie e pollai si cambiano in `assets/world/isola.txt`.
+Ci sono anche gli animali: mucche e pecore pascolano e si scostano se ti avvicini, le galline razzolano in paese, i gabbiani girano sul porto, gli uccelli si alzano quando arrivi, nel laghetto nuotano i pesci, e con i fiori compaiono le farfalle. Modelli di mucca, pecora e latifoglie: CC0 di Quaternius (vedi [CREDITS.md](CREDITS.md)). Mandrie e pollai si cambiano in `assets/world/isola.txt`.
 
 ### Giorno e notte
 
@@ -425,28 +447,14 @@ La logica della quest è in `src/quests/<quest>/mod.rs`.
 ## Struttura
 
 ```
-assets/   modelli glTF, texture, audio, scene
-  textures/terrain_heightmap.png   heightmap in scala di grigi (256×256)
-scripts/  utility di sviluppo (es. gen_heightmap.py per rigenerare il terreno)
-src/      codice del gioco (ECS Bevy)
-  main.rs   stato app e cablaggio sistemi
-  scene.rs  costruzione e reset della scena
-  terrain.rs heightmap → mesh + collider, hot-reload
-  sky.rs    cubemap procedurale (gradiente cielo)
-  player.rs movimento, salto, corsa, facing, ground-check
-  camera.rs orbita e follow della camera
-  menu.rs   UI egui (menu Esc, hint, contatore FPS, diario)
-  audio.rs   musica di sottofondo e impostazioni audio
-  hut.rs     casetta-chiosco: fondamenta, porta, interni, stufa e routine del Viandante
-  props.rs   appoggio a terra degli oggetti di scena
-  world_props.rs alberi, fiori, panchine, lampioni da debug/placements.txt
-  voice.rs   riproduzione delle voci dei personaggi
-  daynight.rs orologio di gioco, sole e luna, luci e cielo
-  figure.rs  personaggi: modelli glTF con scheletro, posa di riposo, oggetti agganciati alle mani
-  quests/   una cartella per quest (logica) + parser dialoghi e diario
-assets/quests/<quest>/dialoghi.txt   testi della quest, modificabili a mano
-docs/     decisioni (ADR), convenzioni e battute per le voci (docs/voci/, generate da scripts/export_voci.py)
-.github/  template issue e PR
+src/        codice del gioco (ECS Bevy): un modulo per sistema (scena, terreno, giocatore, camera, abitanti,
+            missioni, meteo, audio, IA locale…); l'elenco commentato di tutti i moduli è in CLAUDE.md
+assets/     modelli glTF, texture, audio, voci, mondo (assets/world/*.txt) e testi delle quest (assets/quests/)
+scripts/    generatori degli asset e strumenti (beta_check.sh, setup_ai.sh, gen_*.py, make_*.py)
+prove/      copioni del pilota automatico (scripts/beta_check.sh)
+docs/       ROADMAP, versioni, decisioni (ADR in docs/decisions/), piano beta, battute per le voci
+debug/      piazzamenti dell'isola e del continente (modalità F4)
+.github/    template issue e PR, rilascio multipiattaforma
 ```
 
 ## Asset e hot-reload
@@ -463,12 +471,8 @@ python3 scripts/gen_heightmap.py
 
 ## Roadmap
 
-- [x] Fase 0 — Bootstrap
-- [x] Fase 1 — Movimento (WASD + camera terza persona)
-- [x] Fase 2 — Scena (terreno heightmap, cielo, luci)
-- [x] Fase 3 — Entità (NPC, dialoghi, nemico)
-- [x] Fase 4 — UI / Inventario / Combattimento
-- [x] Fase 5 — Vertical slice RPG ("Denaro Rubato")
+Le fasi fatte e quelle in programma sono in [docs/ROADMAP.md](docs/ROADMAP.md); ogni rilascio è descritto nel
+[CHANGELOG](CHANGELOG.md), e le scelte di progetto negli ADR di [docs/decisions/](docs/decisions/README.md).
 
 ## Contribuire
 
@@ -476,4 +480,7 @@ Progetto sviluppato in modo AI-assisted con revisione umana. Apri una issue usan
 
 ## Licenza
 
-Doppia licenza: **MIT OR Apache-2.0** — vedi `LICENSE-MIT` e `LICENSE-APACHE`.
+Il **codice** è sotto doppia licenza **MIT OR Apache-2.0**: vedi `LICENSE-MIT` e `LICENSE-APACHE`.
+Gli **asset** hanno ciascuno la propria licenza (CC0 per i modelli di Quaternius e le texture di Poly Haven, i termini di
+Google per i contenuti generati con Gemini, le licenze delle voci di Piper…): l'elenco completo, con autori e link, è in
+[CREDITS.md](CREDITS.md).
