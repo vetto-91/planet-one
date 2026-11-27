@@ -71,7 +71,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 - `src/nature.rs`: boschi, cespugli, rocce, fiori ed erba a riquadri, da `assets/world/isola.txt` (ADR 0027).
 - `src/ambience.rs`: suoni d'ambiente e passi per superficie, sintetizzati in locale (ADR 0028; su moli e barche il passo è di legno se un collider regge i piedi); `src/animals.rs`: mucche, pecore, galline, gabbiani, uccelli, pesci, farfalle, dati in `assets/world/isola.txt`; modelli da `scripts/build_animals_trees.py` (Blender) partendo da `assets_src/`.
 - `src/walk_test.rs`: prova di camminata con fisica vera (solo test) per scale e torri (ADR 0030).
-- `src/village_life.rs`: fumo dei camini del paese e torce sulle mura; carretti, botti, casse, panni e reti sono piazzamenti (`buildings::model`, `scripts/gen_paese.py`).
+- `src/village_life.rs`: fumo dei camini del paese e torce sulle mura; falò e focolari accesi scottano (`burn_player`, ADR 0064); carretti, botti, casse, panni e reti sono piazzamenti (`buildings::model`, `scripts/gen_paese.py`).
 - `src/places.rs`: luoghi da scoprire e banditi che ricompaiono (ADR 0029), posizioni da `scripts/gen_luoghi.py`, nomi in `isola.txt` (`luogo:`); luoghi scoperti (`Known`) e viaggio veloce dalla mappa (ADR 0037).
 - `src/world_props.rs`: alberi, fiori, panchine, lampioni veri creati da `debug/placements.txt`.
 - `src/audio.rs`: musica di sottofondo giorno/notte con dissolvenza (OGG in `assets/audio/music/`), volume musiche salvato in `~/.config/planet-one/settings.txt`; audio posizionale (ascoltatore sulla camera, `spatial_once`, ADR 0032).
