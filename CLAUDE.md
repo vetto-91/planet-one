@@ -5,7 +5,7 @@ RPG 3D open source, grafica realistica PBR in corso (ADR 0015), terza persona. R
 ## Stato e roadmap
 
 - Roadmap e stato reale delle fasi: [docs/ROADMAP.md](docs/ROADMAP.md).
-- Ultima fase completata: 15.12, correzioni della beta 067 (`v0.0.68.0`, ultimo rilascio; ADR 0062).
+- Ultima fase completata: 15.13, Ollama avviato e chiuso dal gioco (`v0.0.69.0`, ultimo rilascio; ADR 0063).
 - Crediti e licenze di tutti gli asset: [CREDITS.md](CREDITS.md).
 - Storia dei rilasci: [CHANGELOG.md](CHANGELOG.md). Schema versioni: [docs/VERSIONING.md](docs/VERSIONING.md).
 

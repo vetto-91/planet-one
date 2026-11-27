@@ -2,7 +2,7 @@
 
 - Stato: accettato
 - Data: 2026-11-27
-- Versione: non ancora rilasciata
+- Versione: v0.0.69.0
 
 ## Contesto
 

@@ -2,7 +2,7 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
-## Non ancora rilasciato — IA locale avviata dal gioco
+## v0.0.69.0 — IA locale avviata dal gioco (2026-11-27)
 
 ADR 0063.
 
