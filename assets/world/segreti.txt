@@ -36,7 +36,7 @@ ama: aiuto, onesta
 sblocca: dai mappa delle secche 1; sblocca gaspare-timoniere
 segreto: Vent'anni fa provò a passare lo Stretto da solo. Gli Scogli Calamita gli strapparono tutti i chiodi di ferro, ma vide le mura bianche di una città. Sotto il molo tiene nascosto un timone di cedro che non è di quest'isola.
 > Te lo dico perché hai le mani di uno che il mare lo ascolta, {nome}.
-> Vent'anni fa lo Stretto l'ho provato. Da solo. Gli scogli mi hanno tirato via i chiodi uno a uno, come denti.
+> Vent'anni fa lo Stretto l'ho provato. Da solo. Gli scogli neri mi hanno strappato i chiodi dallo scafo uno a uno, come denti.
 > Ma prima di tornare a nuoto ho visto mura bianche, alte. E sotto il molo c'è un timone di cedro che non ho fatto io.
 
 [Gino]
