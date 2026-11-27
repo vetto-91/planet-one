@@ -1410,10 +1410,20 @@ fn perf_log(world: &mut World) {
         .and_then(|d| d.smoothed());
     let entities = world.entities().count_spawned();
     let counts = resource_counts(world);
+    // Ora, meteo e regione: un calo di FPS può dipendere dalla sera (luci) o dal tempo che fa.
+    let hour = world
+        .get_resource::<crate::daynight::GameClock>()
+        .map_or("?".into(), |c| c.label());
+    let weather = world
+        .get_resource::<crate::weather::WeatherState>()
+        .map_or("?".into(), |w| w.label());
     info!(
-        "[PERF] fps {} entita {} risorse {}",
+        "[PERF] fps {} entita {} ore {} meteo {} regione {:?} risorse {}",
         fps.map_or("?".into(), |f| format!("{f:.0}")),
         entities,
+        hour,
+        weather,
+        crate::region::current(),
         counts
     );
 }

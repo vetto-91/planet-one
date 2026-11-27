@@ -40,6 +40,17 @@ pub fn headless() -> bool {
     std::env::var("PLANET_ONE_HEADLESS").is_ok_and(|v| v != "0")
 }
 
+/// Senza finestra il gioco gira di base a 60 Hz. Con `PLANET_ONE_HEADLESS=libero` va più veloce
+/// che può: misura quanto costa davvero un fotogramma, senza il limite di una finestra (in un
+/// container la finestra passa da Xwayland e decide lei gli FPS).
+pub fn headless_frame() -> std::time::Duration {
+    if std::env::var("PLANET_ONE_HEADLESS").is_ok_and(|v| v == "libero") {
+        std::time::Duration::ZERO
+    } else {
+        std::time::Duration::from_secs_f64(1.0 / 60.0)
+    }
+}
+
 /// Immagine su cui disegna la camera nella modalità senza finestra (foto del pilota).
 #[derive(Resource, Clone)]
 pub struct HeadlessTarget(pub Handle<Image>);
