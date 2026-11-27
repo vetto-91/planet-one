@@ -326,6 +326,8 @@ si riparte con tutto spento. `aiuto` mostra i comandi:
 |---|---|
 | `god`, `noclip`, `invisibile` | Nessun danno; volo senza collisioni (Spazio sale, Ctrl scende); invisibile ai nemici |
 | `tp x y z`, `tp chiesa`, `tp porta nord`, `tp marta`, `tp casa-media 1` | Teletrasporto |
+| `salta <ore>` | Fa passare ore e giorni come «Aspetta» (T) |
+| `diagnosi` | Spegne una parte del gioco alla volta (ombre, luci, particelle, vegetazione, animazioni, acqua, effetti, scala al 50%) e scrive nel log quanto costa ognuna; circa un minuto, da fermi |
 | `passepartout [off]`, `chiavi`, `dai mela 3` | Chiave che apre tutto, chi ha quali chiavi, oggetti |
 | `f3`, `f4`, `debug on`, `coordinate` | Collider, piazzamenti, tasti di debug, coordinate nell'HUD |
 | `ora 21.5`, `meteo neve`, `meteo auto` | Ora e meteo |
@@ -437,7 +439,10 @@ Le foto si confrontano con quelle di `prove/riferimento/`: una differenza RMSE o
 fallimento. Per ogni bug riprodotto si scrive un copione nuovo.
 
 **F12, «Segnala bug»**: salva in `~/.local/share/planet-one/segnalazioni/<data-ora>/` lo schermo, lo stato
-del gioco, le ultime righe del log e una `nota.txt` da compilare. Basta mandare quella cartella.
+del gioco, le ultime righe del log, `prestazioni.txt` (scheda video, impostazioni e lo storico delle righe
+`[PERF]`, `[EVENTO]` e `[DIAGNOSI]` della partita) e una `nota.txt` da compilare. Percorsi della cartella
+utente, nome del personaggio e chat con la IA vengono tolti (ADR 0065). La cartella resta sul PC: basta
+mandarla. Se gli FPS calano, prima `diagnosi` nella shell e poi F12.
 
 ### Rilasci
 

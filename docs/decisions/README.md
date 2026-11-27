@@ -88,3 +88,4 @@ Pro, contro, impatto sul codice e sulla roadmap.
 | 0061 | Mare opaco con la distanza e cronologia dell'editor F4 | accettato |
 | 0062 | Le correzioni della beta 067 | accettato |
 | 0063 | Ollama avviato e chiuso dal gioco | accettato |
+| 0065 | Misure delle prestazioni e segnalazioni private | accettato |

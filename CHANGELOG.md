@@ -2,6 +2,27 @@
 
 Formato versione: `vMAJOR.MINOR.FEATURE.BUGFIX` (vedi [docs/VERSIONING.md](docs/VERSIONING.md)).
 
+## Non ancora rilasciato — Misure delle prestazioni e segnalazioni private
+
+ADR 0065. Dalle segnalazioni Windows del 27 novembre: FPS da 122 a 18 in un'ora e mezza con tutti i
+contatori fermi.
+
+- **Riga `[PERF]`**, una al minuto: aggiunti fotogrammi e tempo medio e massimo del fotogramma, tick
+  per fotogramma del mondo principale e del render, viste disegnate, luci accese e con ombra,
+  animazioni in corso. Righe `[EVENTO]` per attese con T, viaggi, mappa, grafica e F12.
+- **Nuovi comandi della shell**:
+  - `diagnosi` misura quanto costa ogni parte del gioco spegnendola per 3 s, una alla volta;
+  - `salta <ore>` fa passare il tempo come T.
+- **Segnalazioni F12**:
+  - nuovo file `prestazioni.txt` con la scheda della macchina e lo storico della partita;
+  - tolti i percorsi della cartella utente, il nome del personaggio e il testo della chat con la IA;
+  - `nota.txt` dice cosa contiene la cartella.
+- **Prove**:
+  - copione `prove/fps-nel-tempo.txt`, che rifà la partita di Windows con salti di T fino a
+    giugno;
+  - guida `docs/beta/PROVA-WINDOWS-FPS.md` per la prova su Windows, per l'autore e per
+    l'assistente.
+
 ## v0.0.70.0 — Camminata e prestazioni (2026-11-27)
 
 - **Camminata regolare**:

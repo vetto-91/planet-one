@@ -79,6 +79,7 @@ Su Linux servono `libudev`, `alsa` e un driver Vulkan.
 - `src/map.rs`: mappa (M): camera ortografica dall'alto sulla scena reale + overlay egui (bussola, segnalino); `MapView` per lo zoom.
 - `src/debug_place.rs`: modalità debug piazzamenti (F4), file `debug/placements.txt` (riletto all'avvio).
 - `src/autopilot.rs`: pilota automatico (`PLANET_ONE_SCRIPT`, ADR 0031): copioni con `vai`, `guarda`, `premi` (anche `+`/`-`), `verifica`, stato JSON (fra gli altri `npc:<nome>:sguardo`, `/personaggio/risveglio_pannello`, `/interfaccia/seguita/verso_qui`), foto; `src/bugreport.rs`: F12 «Segnala bug» e copia delle ultime righe del log.
+- `src/perf.rs`: misure della riga `[PERF]` (tempi del fotogramma, tick per fotogramma dei mondi principale e del render, viste) e righe `[EVENTO]` (`perf::event`); `src/diagnosis.rs`: comando `diagnosi` che spegne una parte alla volta e scrive `[DIAGNOSI]`; `src/privacy.rs`: le segnalazioni F12 senza dati personali (percorsi dell'utente, nome del personaggio, chat con la IA). ADR 0065; guida per la prova su Windows in `docs/beta/PROVA-WINDOWS-FPS.md`.
 - `src/devtools.rs`: variabili d'ambiente di debug (`PLANET_ONE_HOUR/POS/LOOK`) per provare il gioco e fare screenshot.
 - `src/props.rs`: `SnapToGround` (appoggio a terra con raycast).
 - `src/voice.rs`: voci dei personaggi (`assets/audio/voci/`, mappa in `assets/quests/<quest>/voci.txt` generata da `scripts/export_voci.py`).
